@@ -1,0 +1,368 @@
+package net.timafe.triptale.ui;
+
+import javafx.collections.FXCollections;
+import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DateCell;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.util.StringConverter;
+import net.timafe.triptale.config.TripTaleProperties;
+import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.git.GitService;
+import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.util.Slugs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
+
+@Component
+public class MainController {
+
+    private static final Logger log = LoggerFactory.getLogger(MainController.class);
+
+    @FXML private ComboBox<Trip> tripCombo;
+    @FXML private DatePicker datePicker;
+    @FXML private TextField distanceField;
+    @FXML private TextField altField;
+    @FXML private TextField routeField;
+    @FXML private TextArea notesArea;
+    @FXML private Label statusLabel;
+    @FXML private Label tourDayLabel;
+    @FXML private Button saveButton;
+    @FXML private Button prevDayButton;
+
+    private String baselineDistance = "";
+    private String baselineAlt = "";
+    private String baselineRoute = "";
+    private String baselineNotes = "";
+    private boolean entryExists;
+
+    private final MarkdownStore store;
+    private final GitService gitService;
+    private final TripTaleProperties props;
+
+    public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props) {
+        this.store = store;
+        this.gitService = gitService;
+        this.props = props;
+    }
+
+    private static final DateTimeFormatter DATE_DISPLAY =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.ENGLISH);
+
+    @FXML
+    public void initialize() {
+        datePicker.setConverter(new StringConverter<>() {
+            @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
+            @Override public LocalDate fromString(String s) {
+                if (s == null || s.isBlank()) return null;
+                try { return LocalDate.parse(s.trim(), DATE_DISPLAY); } catch (Exception e) { return null; }
+            }
+        });
+        tripCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(Trip t) { return t == null ? "" : t.name() + " (" + t.slug() + ")"; }
+            @Override public Trip fromString(String s) { return null; }
+        });
+        datePicker.setDayCellFactory(dp -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                Trip trip = tripCombo.getValue();
+                if (!empty && item != null && trip != null && trip.startDate() != null
+                        && item.isBefore(trip.startDate())) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #f0f0f0;");
+                }
+            }
+        });
+        reloadTrips();
+        tripCombo.valueProperty().addListener((obs, old, sel) -> {
+            if (sel == null) return;
+            if (sel.startDate() != null && datePicker.getValue() != null
+                    && datePicker.getValue().isBefore(sel.startDate())) {
+                datePicker.setValue(sel.startDate());
+                status("Snapped to day 1 (" + sel.startDate() + ")");
+                return;
+            }
+            loadEntry();
+            updatePrevButtonState();
+        });
+        datePicker.setValue(LocalDate.now());
+        datePicker.valueProperty().addListener((obs, old, sel) -> {
+            Trip trip = tripCombo.getValue();
+            if (sel != null && trip != null && trip.startDate() != null
+                    && sel.isBefore(trip.startDate())) {
+                datePicker.setValue(trip.startDate());
+                status("Snapped to day 1 (" + trip.startDate() + ")");
+                return;
+            }
+            loadEntry();
+            updatePrevButtonState();
+        });
+        distanceField.textProperty().addListener((o, a, b) -> updateDirty());
+        altField.textProperty().addListener((o, a, b) -> updateDirty());
+        routeField.textProperty().addListener((o, a, b) -> updateDirty());
+        notesArea.textProperty().addListener((o, a, b) -> updateDirty());
+        if (!tripCombo.getItems().isEmpty()) {
+            tripCombo.getSelectionModel().selectFirst();
+        }
+        updateDirty();
+        updatePrevButtonState();
+        status("Data dir: " + props.resolvedDataDir());
+    }
+
+    private void reloadTrips() {
+        tripCombo.setItems(FXCollections.observableArrayList(store.listTrips()));
+    }
+
+    @FXML
+    public void onNewTrip() {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("New Trip");
+        dlg.setHeaderText("Create a new trip");
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Trip name");
+        nameField.setPrefColumnCount(28);
+        DatePicker startField = new DatePicker(LocalDate.now());
+        TextArea descArea = new TextArea();
+        descArea.setPromptText("Optional description");
+        descArea.setPrefRowCount(3);
+        descArea.setPrefColumnCount(28);
+        descArea.setWrapText(true);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        grid.setPadding(new Insets(10));
+        grid.add(new Label("Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Start date:"), 0, 1);
+        grid.add(startField, 1, 1);
+        grid.add(new Label("Description:"), 0, 2);
+        grid.add(descArea, 1, 2);
+
+        dlg.getDialogPane().setContent(grid);
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.setDisable(true);
+        Runnable refreshOk = () -> okButton.setDisable(
+                nameField.getText().isBlank() || startField.getValue() == null);
+        nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
+        startField.valueProperty().addListener((o, a, b) -> refreshOk.run());
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+        String name = nameField.getText().trim();
+        LocalDate start = startField.getValue();
+        String desc = descArea.getText();
+        String slug = Slugs.toSlug(name);
+        Trip trip = new Trip(slug, name, start, desc);
+        store.saveTrip(trip);
+        if (props.getGit().isAutoCommit()) gitService.commitAll("Create trip: " + slug);
+        reloadTrips();
+        tripCombo.getSelectionModel().select(
+                tripCombo.getItems().stream().filter(t -> t.slug().equals(slug)).findFirst().orElse(null));
+        status("Created trip " + slug);
+    }
+
+    @FXML
+    public void onTripDetails() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+
+        List<LocalDate> dates = store.listEntryDates(trip.slug());
+        double totalDistance = 0;
+        double totalAltitude = 0;
+        for (LocalDate d : dates) {
+            DiaryEntry e = store.loadEntry(trip.slug(), d);
+            if (e.distance() != null) totalDistance += e.distance();
+            if (e.altitudeMeters() != null) totalAltitude += e.altitudeMeters();
+        }
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        grid.setPadding(new Insets(10));
+        int row = 0;
+        grid.add(new Label("Slug:"), 0, row);
+        grid.add(new Label(trip.slug()), 1, row++);
+        grid.add(new Label("Start date:"), 0, row);
+        grid.add(new Label(trip.startDate() == null ? "—" : trip.startDate().toString()), 1, row++);
+        grid.add(new Label("Entries:"), 0, row);
+        grid.add(new Label(Integer.toString(dates.size())), 1, row++);
+        grid.add(new Label("Total distance:"), 0, row);
+        grid.add(new Label(String.format(Locale.ROOT, "%.1f km", totalDistance)), 1, row++);
+        grid.add(new Label("Total altitude:"), 0, row);
+        grid.add(new Label(String.format(Locale.ROOT, "%.0f m", totalAltitude)), 1, row++);
+        grid.add(new Label("Description:"), 0, row);
+        TextArea descArea = new TextArea(trip.description() == null ? "" : trip.description());
+        descArea.setEditable(false);
+        descArea.setWrapText(true);
+        descArea.setPrefRowCount(4);
+        descArea.setPrefColumnCount(40);
+        grid.add(descArea, 1, row);
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Trip Details");
+        alert.setHeaderText(trip.name());
+        alert.getDialogPane().setContent(grid);
+        alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        alert.showAndWait();
+    }
+
+    @FXML
+    public void onPrevDay() {
+        if (datePicker.getValue() != null) datePicker.setValue(datePicker.getValue().minusDays(1));
+    }
+
+    @FXML
+    public void onNextDay() {
+        if (datePicker.getValue() != null) datePicker.setValue(datePicker.getValue().plusDays(1));
+    }
+
+    private void loadEntry() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        updateTourDay(trip, date);
+        if (trip == null || date == null) return;
+        entryExists = store.entryExists(trip.slug(), date);
+        DiaryEntry e = store.loadEntry(trip.slug(), date);
+        distanceField.setText(e.distance() == null ? "" : e.distance().toString());
+        altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
+        routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
+        notesArea.setText(e.notes() == null ? "" : e.notes());
+        snapshotBaseline();
+        updateDirty();
+    }
+
+    private void snapshotBaseline() {
+        baselineDistance = distanceField.getText();
+        baselineAlt = altField.getText();
+        baselineRoute = routeField.getText();
+        baselineNotes = notesArea.getText();
+    }
+
+    private void updateDirty() {
+        boolean dirty = !Objects.equals(distanceField.getText(), baselineDistance)
+                || !Objects.equals(altField.getText(), baselineAlt)
+                || !Objects.equals(routeField.getText(), baselineRoute)
+                || !Objects.equals(notesArea.getText(), baselineNotes);
+        if (saveButton != null) {
+            saveButton.setDisable(!dirty);
+            saveButton.setText(entryExists ? "Save" : "Create");
+        }
+    }
+
+    private void updatePrevButtonState() {
+        if (prevDayButton == null) return;
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || trip.startDate() == null || date == null) {
+            prevDayButton.setDisable(false);
+            return;
+        }
+        prevDayButton.setDisable(!date.isAfter(trip.startDate()));
+    }
+
+    private void updateTourDay(Trip trip, LocalDate date) {
+        if (tourDayLabel == null) return;
+        if (trip == null || trip.startDate() == null || date == null) {
+            tourDayLabel.setText("");
+            return;
+        }
+        long day = ChronoUnit.DAYS.between(trip.startDate(), date) + 1;
+        tourDayLabel.setText("Day " + day);
+    }
+
+    @FXML
+    public void onSave() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+        if (date == null) { error("No date selected"); return; }
+        Double distance = parseDouble(distanceField.getText(), "distance");
+        Double alt = parseDouble(altField.getText(), "altitude");
+        if (distance == null && !distanceField.getText().isBlank()) return;
+        if (alt == null && !altField.getText().isBlank()) return;
+        DiaryEntry entry = DiaryEntry.builder(date)
+                .distance(distance)
+                .altitudeMeters(alt)
+                .route(routeField.getText())
+                .notes(notesArea.getText())
+                .build();
+        boolean wasNew = !entryExists;
+        store.saveEntry(trip.slug(), entry);
+        entryExists = true;
+        if (props.getGit().isAutoCommit()) {
+            gitService.commitAll((wasNew ? "Create " : "Update ") + trip.slug() + "/" + date);
+        }
+        snapshotBaseline();
+        updateDirty();
+        status("Saved " + trip.slug() + "/" + date);
+    }
+
+    @FXML
+    public void onPull() {
+        try {
+            gitService.pull();
+            reloadTrips();
+            loadEntry();
+            status("Pulled from remote");
+        } catch (RuntimeException e) {
+            error(e.getMessage());
+        }
+    }
+
+    @FXML
+    public void onPush() {
+        try {
+            gitService.push();
+            status("Pushed to remote");
+        } catch (RuntimeException e) {
+            error(e.getMessage());
+        }
+    }
+
+    private Double parseDouble(String s, String field) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Double.parseDouble(s.trim().replace(',', '.'));
+        } catch (NumberFormatException nfe) {
+            error("Invalid " + field + ": " + s);
+            return null;
+        }
+    }
+
+    private void status(String msg) {
+        log.info(msg);
+        if (statusLabel != null) statusLabel.setText(msg);
+    }
+
+    private void error(String msg) {
+        log.warn(msg);
+        if (statusLabel != null) statusLabel.setText(msg);
+        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        a.showAndWait();
+    }
+}

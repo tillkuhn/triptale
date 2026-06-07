@@ -1,0 +1,24 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+
+triptale:
+  # Root directory for all trips (single git repo). Configurable.
+  # Supports ~ for the user home directory.
+  #data-dir: ~/.triptale
+  data-dir: ~/Pictures/TripTale
+  git:
+    # Auto-commit on every entry save
+    auto-commit: true
+    # Default commit author (falls back to system git config if blank)
+    author-name: ""
+    author-email: ""
+    # Optional remote for push/pull. Leave blank to work fully offline.
+    remote: ""
+
+logging:
+  level:
+    root: INFO
+    net.timafe.triptale: DEBUG
+    org.eclipse.jgit: WARN
