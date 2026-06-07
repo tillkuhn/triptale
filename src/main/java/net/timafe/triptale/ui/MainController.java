@@ -1,5 +1,6 @@
 package net.timafe.triptale.ui;
 
+import javafx.application.HostServices;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -38,8 +39,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
-import java.awt.Desktop;
-import java.net.URI;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -88,15 +87,18 @@ public class MainController {
     private final TripTaleProperties props;
     private final DiaryExporter diaryExporter;
     private final BuildProperties buildProperties;
+    private final HostServices hostServices;
 
     public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
                           DiaryExporter diaryExporter,
-                          ObjectProvider<BuildProperties> buildPropertiesProvider) {
+                          ObjectProvider<BuildProperties> buildPropertiesProvider,
+                          ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.props = props;
         this.diaryExporter = diaryExporter;
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
+        this.hostServices = hostServicesProvider.getIfAvailable();
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -661,8 +663,10 @@ public class MainController {
 
     private void openInBrowser(String url) {
         try {
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().browse(URI.create(url));
+            if (hostServices != null) {
+                hostServices.showDocument(url);
+            } else {
+                log.warn("HostServices not available; cannot open {}", url);
             }
         } catch (Exception ex) {
             log.warn("Could not open browser for {}: {}", url, ex.getMessage());

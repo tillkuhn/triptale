@@ -24,7 +24,10 @@ public class TripTaleApplication extends Application {
 
     @Override
     public void init() {
-        spring = new SpringApplication(TripTaleApplication.class).run(getParameters().getRaw().toArray(new String[0]));
+        javafx.application.HostServices hs = getHostServices();
+        SpringApplication app = new SpringApplication(TripTaleApplication.class);
+        app.addInitializers(ctx -> ctx.getBeanFactory().registerSingleton("hostServices", hs));
+        spring = app.run(getParameters().getRaw().toArray(new String[0]));
     }
 
     @Override
