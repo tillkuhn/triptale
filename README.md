@@ -127,4 +127,4 @@ If you're thinking of something larger than a small fix, open an issue first so 
 
 ## License 📜
 
-Apache License 2.0 — see [LICENSE](LICENSE) (TODO: add file).
+Apache License 2.0 — see [LICENSE](LICENSE).
