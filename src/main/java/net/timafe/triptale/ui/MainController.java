@@ -240,10 +240,18 @@ public class MainController {
         List<LocalDate> dates = store.listEntryDates(trip.slug());
         double totalDistance = 0;
         double totalAltitude = 0;
+        int activeDays = 0;
+        int activeAltitudeDays = 0;
         for (LocalDate d : dates) {
             DiaryEntry e = store.loadEntry(trip.slug(), d);
-            if (e.distance() != null) totalDistance += e.distance();
-            if (e.altitudeMeters() != null) totalAltitude += e.altitudeMeters();
+            if (e.distance() != null && e.distance() > 0) {
+                totalDistance += e.distance();
+                activeDays++;
+            }
+            if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
+                totalAltitude += e.altitudeMeters();
+                activeAltitudeDays++;
+            }
         }
 
         GridPane grid = new GridPane();
@@ -258,9 +266,17 @@ public class MainController {
         grid.add(new Label("Entries:"), 0, row);
         grid.add(new Label(Integer.toString(dates.size())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
-        grid.add(new Label(String.format(Locale.ROOT, "%.1f km", totalDistance)), 1, row++);
+        String distanceText = activeDays > 0
+                ? String.format(Locale.ROOT, "%.1f km (avg %.1f km / active day, %d days)",
+                        totalDistance, totalDistance / activeDays, activeDays)
+                : String.format(Locale.ROOT, "%.1f km", totalDistance);
+        grid.add(new Label(distanceText), 1, row++);
         grid.add(new Label("Total altitude:"), 0, row);
-        grid.add(new Label(String.format(Locale.ROOT, "%.0f m", totalAltitude)), 1, row++);
+        String altitudeText = activeAltitudeDays > 0
+                ? String.format(Locale.ROOT, "%.0f m (avg %.0f m / active day, %d days)",
+                        totalAltitude, totalAltitude / activeAltitudeDays, activeAltitudeDays)
+                : String.format(Locale.ROOT, "%.0f m", totalAltitude);
+        grid.add(new Label(altitudeText), 1, row++);
         grid.add(new Label("Description:"), 0, row);
         TextArea descArea = new TextArea(trip.description() == null ? "" : trip.description());
         descArea.setEditable(false);
