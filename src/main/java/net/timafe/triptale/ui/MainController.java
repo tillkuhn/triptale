@@ -63,6 +63,7 @@ public class MainController {
     @FXML private Button saveButton;
     @FXML private Button commitButton;
     @FXML private Button prevDayButton;
+    @FXML private Button firstDayButton;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
@@ -266,6 +267,14 @@ public class MainController {
     }
 
     @FXML
+    public void onFirstDay() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null || trip.startDate() == null) return;
+        datePicker.setValue(trip.startDate());
+        status("Snapped to day 1 (" + trip.startDate() + ")");
+    }
+
+    @FXML
     public void onPrevDay() {
         if (datePicker.getValue() != null) datePicker.setValue(datePicker.getValue().minusDays(1));
     }
@@ -350,14 +359,16 @@ public class MainController {
     }
 
     private void updatePrevButtonState() {
-        if (prevDayButton == null) return;
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
+        boolean disabled;
         if (trip == null || trip.startDate() == null || date == null) {
-            prevDayButton.setDisable(false);
-            return;
+            disabled = false;
+        } else {
+            disabled = !date.isAfter(trip.startDate());
         }
-        prevDayButton.setDisable(!date.isAfter(trip.startDate()));
+        if (prevDayButton != null) prevDayButton.setDisable(disabled);
+        if (firstDayButton != null) firstDayButton.setDisable(disabled);
     }
 
     private void updateTourDay(Trip trip, LocalDate date) {

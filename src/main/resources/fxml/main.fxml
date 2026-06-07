@@ -54,6 +54,9 @@
                 <Button text="ⓘ" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip details"/></tooltip>
                 </Button>
+                <Button fx:id="firstDayButton" text="⏮" onAction="#onFirstDay">
+                    <tooltip><Tooltip text="Go to day 1"/></tooltip>
+                </Button>
                 <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
                 <DatePicker fx:id="datePicker"/>
                 <Button text="▶" onAction="#onNextDay"/>
