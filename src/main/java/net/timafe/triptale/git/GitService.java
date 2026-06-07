@@ -66,6 +66,15 @@ public class GitService {
         }
     }
 
+    public String remoteUrl() {
+        try (Git git = Git.open(store.dataDir().toFile())) {
+            String url = git.getRepository().getConfig().getString("remote", "origin", "url");
+            return url == null ? "" : url;
+        } catch (IOException e) {
+            throw new GitException("Failed to read git config", e);
+        }
+    }
+
     public Iterable<PushResult> push() {
         if (props.getGit().getRemote().isBlank()) {
             throw new GitException("No remote configured (triptale.git.remote)", null);

@@ -24,13 +24,10 @@ public class TripTaleProperties {
     public void setGit(Git git) { this.git = git; }
 
     public static class Git {
-        private boolean autoCommit = true;
         private String authorName = "";
         private String authorEmail = "";
         private String remote = "";
 
-        public boolean isAutoCommit() { return autoCommit; }
-        public void setAutoCommit(boolean autoCommit) { this.autoCommit = autoCommit; }
         public String getAuthorName() { return authorName; }
         public void setAuthorName(String authorName) { this.authorName = authorName; }
         public String getAuthorEmail() { return authorEmail; }

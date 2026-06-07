@@ -1,5 +1,6 @@
 package net.timafe.triptale.ui;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -11,9 +12,13 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -24,13 +29,21 @@ import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.util.Slugs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -48,7 +61,12 @@ public class MainController {
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
     @FXML private Button saveButton;
+    @FXML private Button commitButton;
     @FXML private Button prevDayButton;
+
+    private static final String CREATE = "Create";
+    private static final String UPDATE = "Update";
+    private static final int COMMIT_MSG_INLINE_LIMIT = 5;
 
     private String baselineDistance = "";
     private String baselineAlt = "";
@@ -56,14 +74,19 @@ public class MainController {
     private String baselineNotes = "";
     private boolean entryExists;
 
+    private final Map<String, String> pending = new LinkedHashMap<>();
+
     private final MarkdownStore store;
     private final GitService gitService;
     private final TripTaleProperties props;
+    private final BuildProperties buildProperties;
 
-    public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props) {
+    public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
+                          ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.props = props;
+        this.buildProperties = buildPropertiesProvider.getIfAvailable();
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -127,6 +150,17 @@ public class MainController {
         }
         updateDirty();
         updatePrevButtonState();
+        saveButton.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN),
+                        () -> { if (isDirty()) onSave(); });
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN),
+                        () -> { if (canCommit()) onCommit(); });
+            }
+        });
+        updateCommitButton();
         status("Data dir: " + props.resolvedDataDir());
     }
 
@@ -179,7 +213,7 @@ public class MainController {
         String slug = Slugs.toSlug(name);
         Trip trip = new Trip(slug, name, start, desc);
         store.saveTrip(trip);
-        if (props.getGit().isAutoCommit()) gitService.commitAll("Create trip: " + slug);
+        addPending(slug, CREATE);
         reloadTrips();
         tripCombo.getSelectionModel().select(
                 tripCombo.getItems().stream().filter(t -> t.slug().equals(slug)).findFirst().orElse(null));
@@ -263,15 +297,56 @@ public class MainController {
         baselineNotes = notesArea.getText();
     }
 
-    private void updateDirty() {
-        boolean dirty = !Objects.equals(distanceField.getText(), baselineDistance)
+    private boolean isDirty() {
+        return !Objects.equals(distanceField.getText(), baselineDistance)
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(routeField.getText(), baselineRoute)
                 || !Objects.equals(notesArea.getText(), baselineNotes);
+    }
+
+    private void updateDirty() {
+        boolean dirty = isDirty();
         if (saveButton != null) {
             saveButton.setDisable(!dirty);
             saveButton.setText(entryExists ? "Save" : "Create");
         }
+        updateCommitButton();
+    }
+
+    private void addPending(String label, String action) {
+        pending.putIfAbsent(label, action);
+        updateCommitButton();
+    }
+
+    private boolean canCommit() {
+        return !pending.isEmpty() && !isDirty();
+    }
+
+    private void updateCommitButton() {
+        if (commitButton == null) return;
+        commitButton.setText("Commit (" + pending.size() + ")");
+        commitButton.setDisable(!canCommit());
+    }
+
+    private String buildCommitMessage() {
+        int total = pending.size();
+        if (total <= COMMIT_MSG_INLINE_LIMIT) {
+            List<String> creates = new ArrayList<>();
+            List<String> updates = new ArrayList<>();
+            pending.forEach((label, action) ->
+                    (CREATE.equals(action) ? creates : updates).add(label));
+            StringBuilder sb = new StringBuilder();
+            if (!creates.isEmpty()) sb.append(CREATE).append(": ").append(String.join(", ", creates));
+            if (!updates.isEmpty()) {
+                if (sb.length() > 0) sb.append(" | ");
+                sb.append(UPDATE).append(": ").append(String.join(", ", updates));
+            }
+            return sb.toString();
+        }
+        List<String> labels = new ArrayList<>(pending.keySet());
+        String head = String.join(", ", labels.subList(0, COMMIT_MSG_INLINE_LIMIT));
+        int more = total - COMMIT_MSG_INLINE_LIMIT;
+        return UPDATE + ": " + head + ", ... and " + more + " more (" + total + " total)";
     }
 
     private void updatePrevButtonState() {
@@ -314,16 +389,41 @@ public class MainController {
         boolean wasNew = !entryExists;
         store.saveEntry(trip.slug(), entry);
         entryExists = true;
-        if (props.getGit().isAutoCommit()) {
-            gitService.commitAll((wasNew ? "Create " : "Update ") + trip.slug() + "/" + date);
-        }
+        addPending(trip.slug() + "/" + date, wasNew ? CREATE : UPDATE);
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.slug() + "/" + date);
     }
 
     @FXML
+    public void onCommit() {
+        if (!canCommit()) return;
+        String message = buildCommitMessage();
+        try {
+            gitService.commitAll(message);
+        } catch (RuntimeException e) {
+            error(e.getMessage());
+            return;
+        }
+        int n = pending.size();
+        pending.clear();
+        updateCommitButton();
+        status("Committed " + n + " change" + (n == 1 ? "" : "s"));
+    }
+
+    @FXML
     public void onPull() {
+        if (!pending.isEmpty()) {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "You have " + pending.size() + " uncommitted save"
+                            + (pending.size() == 1 ? "" : "s")
+                            + ". Pull may fail or create a merge. Continue?",
+                    ButtonType.OK, ButtonType.CANCEL);
+            confirm.setTitle("Pull");
+            confirm.setHeaderText("Uncommitted changes");
+            Optional<ButtonType> result = confirm.showAndWait();
+            if (result.isEmpty() || result.get() != ButtonType.OK) return;
+        }
         try {
             gitService.pull();
             reloadTrips();
@@ -341,6 +441,146 @@ public class MainController {
             status("Pushed to remote");
         } catch (RuntimeException e) {
             error(e.getMessage());
+        }
+    }
+
+    @FXML
+    public void onRemoteInfo() {
+        String configuredRemote = props.getGit().getRemote();
+        String actualRemote;
+        try {
+            actualRemote = gitService.remoteUrl();
+        } catch (RuntimeException e) {
+            actualRemote = "(error: " + e.getMessage() + ")";
+        }
+        String authorName = props.getGit().getAuthorName();
+        String authorEmail = props.getGit().getAuthorEmail();
+        String authorDisplay = (authorName.isBlank() && authorEmail.isBlank())
+                ? "(system git config)"
+                : (authorName + " <" + authorEmail + ">");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(6);
+        grid.setPadding(new Insets(10));
+        int row = 0;
+        grid.add(new Label("Data dir:"), 0, row);
+        grid.add(new Label(props.resolvedDataDir().toString()), 1, row++);
+        grid.add(new Label("Configured remote:"), 0, row);
+        grid.add(new Label(configuredRemote.isBlank() ? "(none)" : configuredRemote), 1, row++);
+        grid.add(new Label("Active origin URL:"), 0, row);
+        grid.add(new Label(actualRemote.isBlank() ? "(none)" : actualRemote), 1, row++);
+        grid.add(new Label("Author:"), 0, row);
+        grid.add(new Label(authorDisplay), 1, row);
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Remote Info");
+        alert.setHeaderText("Git configuration");
+        alert.getDialogPane().setContent(grid);
+        alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        alert.showAndWait();
+    }
+
+    @FXML
+    public void onExit() {
+        boolean dirty = isDirty();
+        boolean hasPending = !pending.isEmpty();
+        if (!dirty && !hasPending) {
+            Platform.exit();
+            return;
+        }
+        StringBuilder body = new StringBuilder();
+        if (dirty) body.append("You have unsaved edits to the current entry");
+        if (dirty && hasPending) body.append("\nand ");
+        if (hasPending) {
+            body.append(pending.size())
+                    .append(" saved change")
+                    .append(pending.size() == 1 ? "" : "s")
+                    .append(" not yet committed");
+        }
+        body.append(".");
+
+        ButtonType commitAndExit = new ButtonType("Commit & Exit");
+        ButtonType exitAnyway = new ButtonType("Exit anyway");
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, body.toString(),
+                commitAndExit, exitAnyway, ButtonType.CANCEL);
+        confirm.setTitle("Exit TripTale");
+        confirm.setHeaderText(dirty && hasPending
+                ? "Unsaved and uncommitted changes"
+                : (dirty ? "Unsaved changes" : "Uncommitted changes"));
+        // Same rule as the main Commit button: cannot commit while form is dirty.
+        Node commitBtn = confirm.getDialogPane().lookupButton(commitAndExit);
+        if (commitBtn != null) commitBtn.setDisable(dirty || !hasPending);
+
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() == ButtonType.CANCEL) return;
+        if (result.get() == commitAndExit) {
+            try {
+                gitService.commitAll(buildCommitMessage());
+            } catch (RuntimeException e) {
+                error(e.getMessage());
+                return;
+            }
+        }
+        Platform.exit();
+    }
+
+    @FXML
+    public void onAbout() {
+        String version = buildProperties != null ? buildProperties.getVersion() : "dev";
+        String builtAt = (buildProperties != null && buildProperties.getTime() != null)
+                ? DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                        .withZone(ZoneId.systemDefault())
+                        .format(buildProperties.getTime())
+                : "—";
+        String javaVersion = System.getProperty("java.version", "?");
+        String javafxVersion = System.getProperty("javafx.runtime.version",
+                System.getProperty("javafx.version", "?"));
+        String repoUrl = "https://github.com/tillkuhn/triptale";
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(6);
+        grid.setPadding(new Insets(10));
+        int row = 0;
+
+        Label title = new Label("TripTale");
+        title.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+        grid.add(title, 0, row++, 2, 1);
+
+        Label desc = new Label("Offline-first cycling and hiking trip diary with git sync");
+        desc.setWrapText(true);
+        desc.setMaxWidth(360);
+        grid.add(desc, 0, row++, 2, 1);
+
+        grid.add(new Label("Version:"), 0, row);
+        grid.add(new Label(version), 1, row++);
+        grid.add(new Label("Built:"), 0, row);
+        grid.add(new Label(builtAt), 1, row++);
+        grid.add(new Label("Runtime:"), 0, row);
+        grid.add(new Label("Java " + javaVersion + "  ·  JavaFX " + javafxVersion), 1, row++);
+        grid.add(new Label("License:"), 0, row);
+        grid.add(new Label("Apache 2.0"), 1, row++);
+        grid.add(new Label("Source:"), 0, row);
+        Hyperlink link = new Hyperlink("github.com/tillkuhn/triptale");
+        link.setOnAction(e -> openInBrowser(repoUrl));
+        grid.add(link, 1, row);
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("About TripTale");
+        alert.setHeaderText(null);
+        alert.getDialogPane().setContent(grid);
+        alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        alert.showAndWait();
+    }
+
+    private void openInBrowser(String url) {
+        try {
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().browse(URI.create(url));
+            }
+        } catch (Exception ex) {
+            log.warn("Could not open browser for {}: {}", url, ex.getMessage());
         }
     }
 

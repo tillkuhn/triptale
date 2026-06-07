@@ -47,7 +47,7 @@ All data lives under a single root (`triptale.data-dir`, default `~/.triptale`),
 - `@PostConstruct initOnStartup()` calls `git init` on the data dir if `.git` is missing, and writes the `origin` remote from `triptale.git.remote` if set.
 - `commitAll(msg)` stages everything (`git add .`), is a no-op when the tree is clean, and uses `triptale.git.author-{name,email}` if both are non-blank — otherwise JGit falls back to the system git config.
 - `push()` / `pull()` throw `GitException` when no remote is configured. The UI surfaces those messages via `MainController.error(...)`.
-- When `triptale.git.auto-commit=true` (default), `MainController` calls `commitAll(...)` after every save / new trip. New commits should follow this pattern (save first, then optionally commit) rather than committing from inside the storage layer.
+- Commits are manual: `MainController` tracks saved-but-uncommitted entries in an in-memory pending map and exposes a Commit button (Cmd+K) that calls `commitAll(...)` with an aggregated message. New write operations should follow this pattern (save first, add to the pending map via `addPending(...)`) rather than committing from inside the storage layer.
 
 ### Dependency direction
 

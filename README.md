@@ -100,7 +100,6 @@ Override defaults via `application.yml`, env vars, or `-D` flags:
 | Property                     | Default       | Notes                                       |
 |------------------------------|---------------|---------------------------------------------|
 | `triptale.data-dir`          | `~/.triptale` | Root directory; also the git repo root      |
-| `triptale.git.auto-commit`   | `true`        | Commit on every save                        |
 | `triptale.git.remote`        | *(blank)*     | Optional remote URL for push/pull           |
 | `triptale.git.author-name`   | *(blank)*     | Falls back to system git config             |
 | `triptale.git.author-email`  | *(blank)*     | Falls back to system git config             |

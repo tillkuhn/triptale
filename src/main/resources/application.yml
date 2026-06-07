@@ -9,8 +9,6 @@ triptale:
   #data-dir: ~/.triptale
   data-dir: ~/Pictures/TripTale
   git:
-    # Auto-commit on every entry save
-    auto-commit: true
     # Default commit author (falls back to system git config if blank)
     author-name: ""
     author-email: ""

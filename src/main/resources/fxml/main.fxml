@@ -4,6 +4,10 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Tooltip?>
@@ -18,23 +22,44 @@
             prefWidth="900" prefHeight="600">
 
     <top>
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
-            <Label text="Trip:"/>
-            <ComboBox fx:id="tripCombo" prefWidth="240"/>
-            <Button text="ⓘ" onAction="#onTripDetails">
-                <tooltip><Tooltip text="Trip details"/></tooltip>
-            </Button>
-            <Button text="New Trip…" onAction="#onNewTrip"/>
-            <Label text="  Date:"/>
-            <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
-            <DatePicker fx:id="datePicker"/>
-            <Button text="▶" onAction="#onNextDay"/>
-            <Label fx:id="tourDayLabel"/>
-            <HBox HBox.hgrow="ALWAYS"/>
-            <Button text="Pull" onAction="#onPull"/>
-            <Button text="Push" onAction="#onPush"/>
-        </HBox>
+        <VBox>
+            <MenuBar>
+                <menus>
+                    <Menu text="File">
+                        <items>
+                            <MenuItem text="New Trip…" onAction="#onNewTrip"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem text="Exit" onAction="#onExit"/>
+                        </items>
+                    </Menu>
+                    <Menu text="Remote">
+                        <items>
+                            <MenuItem text="Pull" onAction="#onPull"/>
+                            <MenuItem text="Push" onAction="#onPush"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem text="Remote Info…" onAction="#onRemoteInfo"/>
+                        </items>
+                    </Menu>
+                    <Menu text="Help">
+                        <items>
+                            <MenuItem text="About" onAction="#onAbout"/>
+                        </items>
+                    </Menu>
+                </menus>
+            </MenuBar>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                <Label text="Trip:"/>
+                <ComboBox fx:id="tripCombo" prefWidth="240"/>
+                <Button text="ⓘ" onAction="#onTripDetails">
+                    <tooltip><Tooltip text="Trip details"/></tooltip>
+                </Button>
+                <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
+                <DatePicker fx:id="datePicker"/>
+                <Button text="▶" onAction="#onNextDay"/>
+                <Label fx:id="tourDayLabel"/>
+            </HBox>
+        </VBox>
     </top>
 
     <center>
@@ -54,6 +79,7 @@
                 <Label fx:id="statusLabel"/>
                 <HBox HBox.hgrow="ALWAYS"/>
                 <Button fx:id="saveButton" text="Save" onAction="#onSave" defaultButton="true"/>
+                <Button fx:id="commitButton" text="Commit (0)" onAction="#onCommit" disable="true"/>
             </HBox>
         </VBox>
     </center>
