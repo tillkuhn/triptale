@@ -29,6 +29,8 @@
                         <items>
                             <MenuItem text="New Trip…" onAction="#onNewTrip"/>
                             <SeparatorMenuItem/>
+                            <MenuItem text="Export Diary…" onAction="#onExportDiary"/>
+                            <SeparatorMenuItem/>
                             <MenuItem text="Exit" onAction="#onExit"/>
                         </items>
                     </Menu>

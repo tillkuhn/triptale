@@ -1,0 +1,1 @@
+Distance covered: {{distance}} km

@@ -16,14 +16,19 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.GridPane;
+import javafx.event.ActionEvent;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.util.Slugs;
@@ -81,13 +86,16 @@ public class MainController {
     private final MarkdownStore store;
     private final GitService gitService;
     private final TripTaleProperties props;
+    private final DiaryExporter diaryExporter;
     private final BuildProperties buildProperties;
 
     public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
+                          DiaryExporter diaryExporter,
                           ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.props = props;
+        this.diaryExporter = diaryExporter;
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
     }
 
@@ -265,6 +273,46 @@ public class MainController {
         alert.getDialogPane().setContent(grid);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
         alert.showAndWait();
+    }
+
+    @FXML
+    public void onExportDiary() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+        String exported;
+        try {
+            exported = diaryExporter.exportTrip(trip);
+        } catch (RuntimeException e) {
+            error("Export failed: " + e.getMessage());
+            return;
+        }
+
+        TextArea ta = new TextArea(exported);
+        ta.setEditable(false);
+        ta.setWrapText(false);
+        ta.setStyle("-fx-font-family: 'monospace';");
+        ta.setPrefRowCount(28);
+        ta.setPrefColumnCount(90);
+
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Export Diary");
+        dlg.setHeaderText(trip.name());
+        dlg.setResizable(true);
+        dlg.getDialogPane().setContent(ta);
+
+        ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
+        dlg.getDialogPane().getButtonTypes().setAll(copyType, ButtonType.CLOSE);
+
+        Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
+        copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
+            ClipboardContent cc = new ClipboardContent();
+            cc.putString(exported);
+            Clipboard.getSystemClipboard().setContent(cc);
+            status("Diary copied to clipboard");
+            ev.consume();
+        });
+
+        dlg.showAndWait();
     }
 
     @FXML

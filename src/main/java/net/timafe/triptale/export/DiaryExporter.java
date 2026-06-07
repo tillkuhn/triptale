@@ -1,0 +1,156 @@
+package net.timafe.triptale.export;
+
+import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.storage.MarkdownStore;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+
+@Component
+public class DiaryExporter {
+
+    private static final String SHELL = "/export/diary-template.md";
+    private static final String ENTRY_HEADING = "/export/entry-heading.md";
+    private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
+    private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
+    private static final String ENTRY_NOTES = "/export/entry-notes.md";
+
+    private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final DateTimeFormatter WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
+    private static final String MISSING = "—";
+
+    private final MarkdownStore store;
+
+    public DiaryExporter(MarkdownStore store) {
+        this.store = store;
+    }
+
+    public String exportTrip(Trip trip) {
+        Objects.requireNonNull(trip, "trip");
+        List<LocalDate> dates = store.listEntryDates(trip.slug());
+        List<DiaryEntry> entries = dates.stream()
+                .map(d -> store.loadEntry(trip.slug(), d))
+                .toList();
+
+        double totalDistance = entries.stream()
+                .filter(e -> e.distance() != null)
+                .mapToDouble(DiaryEntry::distance)
+                .sum();
+        double totalAltitude = entries.stream()
+                .filter(e -> e.altitudeMeters() != null)
+                .mapToDouble(DiaryEntry::altitudeMeters)
+                .sum();
+        LocalDate startDate = trip.startDate();
+        LocalDate endDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
+
+        StringBuilder entriesBlock = new StringBuilder();
+        for (DiaryEntry e : entries) {
+            if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
+            entriesBlock.append(renderEntry(trip, e));
+        }
+
+        Map<String, String> vars = new LinkedHashMap<>();
+        vars.put("tripName", trip.name() == null ? "" : trip.name());
+        vars.put("tripDescription", trip.description() == null ? "" : trip.description().strip());
+        vars.put("startDate", startDate == null ? MISSING : startDate.format(ISO));
+        vars.put("endDate", endDate == null ? MISSING : endDate.format(ISO));
+        vars.put("totalDays", totalDaysLabel(startDate, endDate));
+        vars.put("entryCount", Integer.toString(dates.size()));
+        vars.put("totalDistance", formatDistance(totalDistance));
+        vars.put("totalAltitude", formatAltitude(totalAltitude));
+        vars.put("entries", entriesBlock.toString());
+
+        String out = substitute(load(SHELL), vars);
+        return collapseBlankLines(out).strip() + "\n";
+    }
+
+    private String renderEntry(Trip trip, DiaryEntry e) {
+        StringBuilder sb = new StringBuilder();
+
+        Map<String, String> h = new LinkedHashMap<>();
+        h.put("date", e.date().format(ISO));
+        h.put("weekday", e.date().format(WEEKDAY));
+        h.put("daySegment", daySegment(trip.startDate(), e.date()));
+        h.put("routeSegment", routeSegment(e.route()));
+        sb.append(substitute(load(ENTRY_HEADING), h).stripTrailing());
+
+        StringBuilder stats = new StringBuilder();
+        if (e.distance() != null) {
+            stats.append(substitute(load(ENTRY_DISTANCE),
+                    Map.of("distance", formatDistance(e.distance()))).stripTrailing());
+        }
+        if (e.altitudeMeters() != null) {
+            if (stats.length() > 0) stats.append("\n");
+            stats.append(substitute(load(ENTRY_ALTITUDE),
+                    Map.of("altitude", formatAltitude(e.altitudeMeters()))).stripTrailing());
+        }
+        if (stats.length() > 0) {
+            sb.append("\n\n").append(stats);
+        }
+
+        String notes = e.notes() == null ? "" : e.notes().strip();
+        if (!notes.isBlank()) {
+            String rendered = substitute(load(ENTRY_NOTES), Map.of("notes", notes)).stripTrailing();
+            sb.append("\n\n").append(rendered);
+        }
+
+        return sb.toString();
+    }
+
+    private static String daySegment(LocalDate startDate, LocalDate entryDate) {
+        if (startDate == null) return "";
+        long day = ChronoUnit.DAYS.between(startDate, entryDate) + 1;
+        return " Day " + day;
+    }
+
+    private static String routeSegment(String route) {
+        if (route == null || route.isBlank() || DiaryEntry.DEFAULT_ROUTE.equals(route)) return "";
+        return ": " + route;
+    }
+
+    private static String totalDaysLabel(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) return MISSING;
+        return Long.toString(ChronoUnit.DAYS.between(startDate, endDate) + 1);
+    }
+
+    private static String formatDistance(double v) {
+        return String.format(Locale.ROOT, "%.1f", v);
+    }
+
+    private static String formatAltitude(double v) {
+        return String.format(Locale.ROOT, "%.0f", v);
+    }
+
+    private static String substitute(String template, Map<String, String> vars) {
+        String out = template;
+        for (Map.Entry<String, String> v : vars.entrySet()) {
+            out = out.replace("{{" + v.getKey() + "}}", v.getValue());
+        }
+        return out;
+    }
+
+    private static String collapseBlankLines(String s) {
+        return s.replaceAll("\n{3,}", "\n\n");
+    }
+
+    private static String load(String resource) {
+        try (InputStream in = DiaryExporter.class.getResourceAsStream(resource)) {
+            if (in == null) throw new IllegalStateException("Missing template: " + resource);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+}
