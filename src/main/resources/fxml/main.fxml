@@ -60,6 +60,9 @@
                 <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
                 <DatePicker fx:id="datePicker"/>
                 <Button text="▶" onAction="#onNextDay"/>
+                <Button fx:id="todayButton" text="◉" onAction="#onToday">
+                    <tooltip><Tooltip text="Go to today"/></tooltip>
+                </Button>
                 <Label fx:id="tourDayLabel"/>
             </HBox>
         </VBox>

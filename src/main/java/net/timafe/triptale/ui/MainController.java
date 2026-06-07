@@ -64,6 +64,7 @@ public class MainController {
     @FXML private Button commitButton;
     @FXML private Button prevDayButton;
     @FXML private Button firstDayButton;
+    @FXML private Button todayButton;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
@@ -284,6 +285,15 @@ public class MainController {
         if (datePicker.getValue() != null) datePicker.setValue(datePicker.getValue().plusDays(1));
     }
 
+    @FXML
+    public void onToday() {
+        LocalDate today = LocalDate.now();
+        datePicker.setValue(today);
+        if (today.equals(datePicker.getValue())) {
+            status("Snapped to today (" + today + ")");
+        }
+    }
+
     private void loadEntry() {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
@@ -361,14 +371,21 @@ public class MainController {
     private void updatePrevButtonState() {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
-        boolean disabled;
+        boolean prevDisabled;
         if (trip == null || trip.startDate() == null || date == null) {
-            disabled = false;
+            prevDisabled = false;
         } else {
-            disabled = !date.isAfter(trip.startDate());
+            prevDisabled = !date.isAfter(trip.startDate());
         }
-        if (prevDayButton != null) prevDayButton.setDisable(disabled);
-        if (firstDayButton != null) firstDayButton.setDisable(disabled);
+        if (prevDayButton != null) prevDayButton.setDisable(prevDisabled);
+        if (firstDayButton != null) firstDayButton.setDisable(prevDisabled);
+        if (todayButton != null) {
+            LocalDate target = LocalDate.now();
+            if (trip != null && trip.startDate() != null && target.isBefore(trip.startDate())) {
+                target = trip.startDate();
+            }
+            todayButton.setDisable(date == null || date.equals(target));
+        }
     }
 
     private void updateTourDay(Trip trip, LocalDate date) {
