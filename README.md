@@ -20,6 +20,8 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 ## Screenshot 📸
 
 <!-- TODO: drop a real screenshot here -->
+![](./preview.png)
+
 ```
 +----------------------------------------------+
 |  TripTale — Alps 2026                        |
