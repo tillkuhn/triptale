@@ -367,7 +367,16 @@ public class MainController {
             return;
         }
         long day = ChronoUnit.DAYS.between(trip.startDate(), date) + 1;
-        tourDayLabel.setText("Day " + day);
+        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(date, day) + ")");
+    }
+
+    private static String relativeDayLabel(LocalDate date, long tourDay) {
+        long delta = ChronoUnit.DAYS.between(LocalDate.now(), date);
+        if (delta == 0) return "today";
+        if (delta == -1) return "yesterday";
+        if (delta == 1) return "tomorrow";
+        if (delta < -1) return tourDay == 1 ? "first day" : (-delta) + " days ago";
+        return "in " + delta + " days";
     }
 
     @FXML
