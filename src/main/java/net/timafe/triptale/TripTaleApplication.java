@@ -35,7 +35,7 @@ public class TripTaleApplication extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
         loader.setControllerFactory(spring::getBean);
         Parent root = loader.load();
-        stage.setTitle("TripTale");
+        stage.setTitle("🏔️🚴TripTale");
         stage.setScene(new Scene(root, 900, 600));
         stage.show();
     }

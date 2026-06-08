@@ -61,7 +61,7 @@ public class MainController {
     @FXML private TextField distanceField;
     @FXML private TextField altField;
     @FXML private TextField routeField;
-    @FXML private TextArea notesArea;
+    @FXML private TextArea talesArea;
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
     @FXML private Button saveButton;
@@ -77,7 +77,7 @@ public class MainController {
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineRoute = "";
-    private String baselineNotes = "";
+    private String baselineTales = "";
     private boolean entryExists;
 
     private final Map<String, String> pending = new LinkedHashMap<>();
@@ -156,7 +156,7 @@ public class MainController {
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
         routeField.textProperty().addListener((o, a, b) -> updateDirty());
-        notesArea.textProperty().addListener((o, a, b) -> updateDirty());
+        talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (!tripCombo.getItems().isEmpty()) {
             tripCombo.getSelectionModel().selectFirst();
         }
@@ -370,7 +370,7 @@ public class MainController {
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
         routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
-        notesArea.setText(e.notes() == null ? "" : e.notes());
+        talesArea.setText(e.tales() == null ? "" : e.tales());
         snapshotBaseline();
         updateDirty();
     }
@@ -379,14 +379,14 @@ public class MainController {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineRoute = routeField.getText();
-        baselineNotes = notesArea.getText();
+        baselineTales = talesArea.getText();
     }
 
     private boolean isDirty() {
         return !Objects.equals(distanceField.getText(), baselineDistance)
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(routeField.getText(), baselineRoute)
-                || !Objects.equals(notesArea.getText(), baselineNotes);
+                || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
     private void updateDirty() {
@@ -487,7 +487,7 @@ public class MainController {
                 .distance(distance)
                 .altitudeMeters(alt)
                 .route(routeField.getText())
-                .notes(notesArea.getText())
+                .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
         store.saveEntry(trip.slug(), entry);

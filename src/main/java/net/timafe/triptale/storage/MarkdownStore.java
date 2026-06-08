@@ -132,7 +132,7 @@ public class MarkdownStore {
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         if (entry.route() != null && !entry.route().isBlank()) fm.put("route", entry.route());
         try {
-            String body = entry.notes() == null ? "" : entry.notes();
+            String body = entry.tales() == null ? "" : entry.tales();
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
             Files.writeString(entryFile(slug, entry.date()), content);
         } catch (IOException e) {
@@ -165,11 +165,11 @@ public class MarkdownStore {
 
     private DiaryEntry parseEntry(LocalDate date, String content) throws IOException {
         if (!content.startsWith(FRONTMATTER_DELIM)) {
-            return DiaryEntry.builder(date).notes(content).build();
+            return DiaryEntry.builder(date).tales(content).build();
         }
         int end = content.indexOf("\n" + FRONTMATTER_DELIM, FRONTMATTER_DELIM.length());
         if (end < 0) {
-            return DiaryEntry.builder(date).notes(content).build();
+            return DiaryEntry.builder(date).tales(content).build();
         }
         String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
         String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
@@ -178,7 +178,7 @@ public class MarkdownStore {
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .route(asString(data.get("route")))
-                .notes(body)
+                .tales(body)
                 .build();
     }
 

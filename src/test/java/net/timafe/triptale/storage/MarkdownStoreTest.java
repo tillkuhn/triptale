@@ -86,7 +86,7 @@ class MarkdownStoreTest {
                 .distance(82.5)
                 .altitudeMeters(1240.0)
                 .route("Innsbruck → Brenner")
-                .notes("Hot day, lots of climbing.")
+                .tales("Hot day, lots of climbing.")
                 .build();
         store.saveEntry("alps-2025", entry);
 
@@ -95,14 +95,14 @@ class MarkdownStoreTest {
         assertEquals(82.5, loaded.distance());
         assertEquals(1240.0, loaded.altitudeMeters());
         assertEquals("Innsbruck → Brenner", loaded.route());
-        assertTrue(loaded.notes().contains("Hot day"));
+        assertTrue(loaded.tales().contains("Hot day"));
     }
 
     @Test
     void saveEntryOmitsNullDistanceAndAltitudeFromFrontmatter() throws Exception {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
-                .notes("Rest day.")
+                .tales("Rest day.")
                 .build();
         store.saveEntry("alps-2025", entry);
 
@@ -122,15 +122,15 @@ class MarkdownStoreTest {
         assertEquals(LocalDate.of(2025, 7, 4), empty.date());
         assertNull(empty.distance());
         assertNull(empty.altitudeMeters());
-        assertNotNull(empty.notes());
-        assertTrue(empty.notes().isEmpty());
+        assertNotNull(empty.tales());
+        assertTrue(empty.tales().isEmpty());
     }
 
     @Test
     void entryExistsReflectsFileSystemState() {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         assertFalse(store.entryExists("alps-2025", LocalDate.of(2025, 7, 4)));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4)).notes("x").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
         assertTrue(store.entryExists("alps-2025", LocalDate.of(2025, 7, 4)));
     }
 

@@ -36,9 +36,9 @@ class DiaryExporterTest {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .distance(50.0).altitudeMeters(800.0).route("A → B").notes("Day one").build());
+                .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day one").build());
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 2))
-                .distance(32.5).altitudeMeters(400.0).route("B → C").notes("Day two").build());
+                .distance(32.5).altitudeMeters(400.0).route("B → C").tales("Day two").build());
 
         String out = exporter.exportTrip(trip);
 
@@ -60,7 +60,7 @@ class DiaryExporterTest {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .route(DiaryEntry.DEFAULT_ROUTE).notes("hi").build());
+                .route(DiaryEntry.DEFAULT_ROUTE).tales("hi").build());
 
         String out = exporter.exportTrip(trip);
 
@@ -83,7 +83,7 @@ class DiaryExporterTest {
     void distanceAndAltitudeStatsOmittedWhenAbsent() {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).notes("Rest day.").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Rest day.").build());
 
         String out = exporter.exportTrip(trip);
 
@@ -96,7 +96,7 @@ class DiaryExporterTest {
     void outputEndsWithSingleTrailingNewline() {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).notes("hi").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
 
         String out = exporter.exportTrip(trip);
         assertTrue(out.endsWith("\n"));
@@ -107,8 +107,8 @@ class DiaryExporterTest {
     void daysCountIsInclusiveOfStartAndEnd() {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).notes(".").build());
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 5)).notes(".").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales(".").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 5)).tales(".").build());
 
         String out = exporter.exportTrip(trip);
         assertTrue(out.contains("(5 days, 2 entries)"),
@@ -119,7 +119,7 @@ class DiaryExporterTest {
     void exportedTripCanBeCalledTwiceWithSameOutput() {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "x");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).distance(10.0).notes("a").build());
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).distance(10.0).tales("a").build());
 
         assertEquals(exporter.exportTrip(trip), exporter.exportTrip(trip));
     }
