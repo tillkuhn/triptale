@@ -393,7 +393,7 @@ public class MainController {
         boolean dirty = isDirty();
         if (saveButton != null) {
             saveButton.setDisable(!dirty);
-            saveButton.setText(entryExists ? "Save" : "Create");
+            saveButton.setText(entryExists ? "Save Tale" : "Create Tale");
         }
         updateCommitButton();
     }

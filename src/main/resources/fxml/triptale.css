@@ -1,0 +1,187 @@
+/* TripTale — dark slate theme */
+
+.root {
+    -fx-background-color: #1e2a2a;
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* ── Menu bar ─────────────────────────────────────────── */
+.menu-bar {
+    -fx-background-color: #16201f;
+    -fx-border-color: transparent transparent #2e4040 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2 8 2 8;
+}
+.menu-bar .menu .label {
+    -fx-text-fill: #b0ccc8;
+    -fx-font-size: 13px;
+}
+.menu-bar .menu:hover, .menu-bar .menu:focused, .menu-bar .menu:showing {
+    -fx-background-color: #253333;
+}
+.menu-bar .menu:hover .label,
+.menu-bar .menu:showing .label {
+    -fx-text-fill: #4ec9b0;
+}
+.context-menu {
+    -fx-background-color: #253333;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0, 2, 4);
+}
+.menu-item .label {
+    -fx-text-fill: #c8deda;
+}
+.menu-item:focused, .menu-item:hover {
+    -fx-background-color: #4ec9b0;
+}
+.menu-item:focused .label, .menu-item:hover .label {
+    -fx-text-fill: #16201f;
+}
+
+/* ── Toolbar strip ────────────────────────────────────── */
+.toolbar-strip {
+    -fx-background-color: #202e2e;
+    -fx-border-color: transparent transparent #2e4040 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ── Labels ───────────────────────────────────────────── */
+.label {
+    -fx-text-fill: #c8deda;
+}
+.section-label {
+    -fx-text-fill: #4ec9b0;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 4 0 2 0;
+}
+.tour-day-label {
+    -fx-text-fill: #6a9090;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}
+
+/* ── Text inputs ──────────────────────────────────────── */
+.text-field, .text-area, .date-picker .text-field {
+    -fx-background-color: #172020;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: #d4e8e4;
+    -fx-prompt-text-fill: #4a6868;
+    -fx-padding: 5 9 5 9;
+}
+.text-field:focused, .text-area:focused, .date-picker:focused .text-field {
+    -fx-border-color: #4ec9b0;
+    -fx-effect: dropshadow(gaussian, rgba(78,201,176,0.25), 5, 0, 0, 0);
+}
+.text-area .content {
+    -fx-background-color: #172020;
+    -fx-background-radius: 6;
+}
+
+/* ── DatePicker ───────────────────────────────────────── */
+.date-picker {
+    -fx-background-color: transparent;
+}
+.date-picker .arrow-button {
+    -fx-background-color: #2e4040;
+    -fx-border-radius: 0 6 6 0;
+    -fx-background-radius: 0 6 6 0;
+}
+.date-picker .arrow-button:hover {
+    -fx-background-color: #4ec9b0;
+}
+.date-picker .arrow-button .arrow {
+    -fx-background-color: #4ec9b0;
+}
+.date-picker .arrow-button:hover .arrow {
+    -fx-background-color: #16201f;
+}
+
+/* ── ComboBox ─────────────────────────────────────────── */
+.combo-box {
+    -fx-background-color: #172020;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.combo-box .label,
+.combo-box .list-cell {
+    -fx-text-fill: #d4e8e4;
+}
+.combo-box:focused {
+    -fx-border-color: #4ec9b0;
+}
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+.combo-box .arrow {
+    -fx-background-color: #4ec9b0;
+}
+.combo-box-popup .list-view {
+    -fx-background-color: #202e2e;
+    -fx-border-color: #3a5050;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 2, 4);
+}
+.combo-box-popup .list-cell {
+    -fx-background-color: #202e2e;
+    -fx-text-fill: #c8deda;
+}
+.combo-box-popup .list-cell:filled:selected,
+.combo-box-popup .list-cell:filled:hover {
+    -fx-background-color: #4ec9b0;
+    -fx-text-fill: #16201f;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+.button {
+    -fx-background-color: #253333;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: #c8deda;
+    -fx-padding: 5 13 5 13;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #2e4040;
+    -fx-border-color: #4ec9b0;
+}
+.button:pressed {
+    -fx-background-color: #1e3030;
+}
+.button:default {
+    -fx-background-color: #4ec9b0;
+    -fx-border-color: #38b09a;
+    -fx-text-fill: #16201f;
+}
+.button:default:hover {
+    -fx-background-color: #38b09a;
+}
+.button:disabled {
+    -fx-opacity: 0.35;
+}
+
+/* ── Status label ─────────────────────────────────────── */
+.status-label {
+    -fx-text-fill: #6a9090;
+    -fx-font-size: 13px;
+    -fx-font-style: italic;
+}
+
+/* ── Card panel (metrics grid) ────────────────────────── */
+.card {
+    -fx-background-color: #202e2e;
+    -fx-border-color: #2e4040;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 8, 0, 1, 3);
+    -fx-padding: 12 14 12 14;
+}
