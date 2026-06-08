@@ -1,30 +1,31 @@
 .DEFAULT_GOAL := help
 
 MVN ?= mvnd
+MVNARGS ?= -B -ntp
 
 .PHONY: run help build compile test package clean format deps
 
 run: ## Launch the TripTale JavaFX app
-	$(MVN) javafx:run
+	$(MVN) $(MVNARGS) javafx:run
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "TripTale — available targets:\n\n"} \
 		/^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 build: ## Compile and package (skips tests)
-	$(MVN) -DskipTests package
+	$(MVN) $(MVNARGS) -DskipTests package
 
 compile: ## Compile sources only
-	$(MVN) compile
+	$(MVN) $(MVNARGS) compile
 
 test: ## Run unit tests
-	$(MVN) test
+	$(MVN) $(MVNARGS) test
 
 package: ## Build the jar (runs tests)
-	$(MVN) package
+	$(MVN) $(MVNARGS) package
 
 clean: ## Remove target/ build output
-	$(MVN) clean
+	$(MVN) $(MVNARGS) clean
 
 deps: ## Print resolved dependency tree
-	$(MVN) dependency:tree
+	$(MVN) $(MVNARGS) dependency:tree
