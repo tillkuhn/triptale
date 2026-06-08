@@ -25,7 +25,7 @@ public class DiaryExporter {
     private static final String ENTRY_HEADING = "/export/entry-heading.md";
     private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
     private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
-    private static final String ENTRY_NOTES = "/export/entry-notes.md";
+    private static final String ENTRY_TALES = "/export/entry-tales.md";
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
@@ -100,9 +100,9 @@ public class DiaryExporter {
             sb.append("\n\n").append(stats);
         }
 
-        String notes = e.notes() == null ? "" : e.notes().strip();
-        if (!notes.isBlank()) {
-            String rendered = substitute(load(ENTRY_NOTES), Map.of("notes", notes)).stripTrailing();
+        String tales = e.tales() == null ? "" : e.tales().strip();
+        if (!tales.isBlank()) {
+            String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);
         }
 

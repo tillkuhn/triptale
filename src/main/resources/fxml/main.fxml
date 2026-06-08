@@ -81,8 +81,8 @@
                 <Label text="Route:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                 <TextField fx:id="routeField" prefWidth="360" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="3"/>
             </GridPane>
-            <Label text="Notes"/>
-            <TextArea fx:id="notesArea" VBox.vgrow="ALWAYS" wrapText="true"/>
+            <Label text="Tales"/>
+            <TextArea fx:id="talesArea" VBox.vgrow="ALWAYS" wrapText="true"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Label fx:id="statusLabel"/>
                 <HBox HBox.hgrow="ALWAYS"/>
