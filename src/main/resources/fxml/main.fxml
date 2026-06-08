@@ -19,7 +19,8 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="net.timafe.triptale.ui.MainController"
-            prefWidth="900" prefHeight="600">
+            prefWidth="920" prefHeight="640"
+            stylesheets="@triptale.css">
 
     <top>
         <VBox>
@@ -49,8 +50,8 @@
                     </Menu>
                 </menus>
             </MenuBar>
-            <HBox spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <HBox spacing="10" alignment="CENTER_LEFT" styleClass="toolbar-strip">
+                <padding><Insets top="10" right="12" bottom="10" left="12"/></padding>
                 <Label text="Trip:"/>
                 <ComboBox fx:id="tripCombo" prefWidth="240"/>
                 <Button text="ⓘ" onAction="#onTripDetails">
@@ -65,28 +66,30 @@
                 <Button fx:id="todayButton" text="◉" onAction="#onToday">
                     <tooltip><Tooltip text="Go to today"/></tooltip>
                 </Button>
-                <Label fx:id="tourDayLabel"/>
+                <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
             </HBox>
         </VBox>
     </top>
 
     <center>
         <VBox spacing="10">
-            <padding><Insets top="0" right="10" bottom="10" left="10"/></padding>
-            <GridPane hgap="10" vgap="6">
-                <Label text="Distance (km):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                <Label text="Altitude (m):" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
-                <Label text="Route:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="routeField" prefWidth="360" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="3"/>
-            </GridPane>
-            <Label text="Tales"/>
+            <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
+            <VBox styleClass="card" spacing="6">
+                <GridPane hgap="12" vgap="8">
+                    <Label text="Distance (km):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="Altitude (m):" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                    <Label text="Route:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="3"/>
+                </GridPane>
+            </VBox>
+            <Label text="Tales" styleClass="section-label"/>
             <TextArea fx:id="talesArea" VBox.vgrow="ALWAYS" wrapText="true"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
-                <Label fx:id="statusLabel"/>
+                <Label fx:id="statusLabel" styleClass="status-label"/>
                 <HBox HBox.hgrow="ALWAYS"/>
-                <Button fx:id="saveButton" text="Save" onAction="#onSave" defaultButton="true"/>
+                <Button fx:id="saveButton" text="Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="commitButton" text="Commit (0)" onAction="#onCommit" disable="true"/>
             </HBox>
         </VBox>
