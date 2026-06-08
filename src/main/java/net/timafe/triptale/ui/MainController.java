@@ -199,7 +199,8 @@ public class MainController {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
-        grid.setPadding(new Insets(10));
+        grid.setPadding(new Insets(14));
+        grid.getStyleClass().add("card");
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Start date:"), 0, 1);
@@ -209,6 +210,7 @@ public class MainController {
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        applyStylesheet(dlg.getDialogPane());
 
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
         okButton.setDisable(true);
@@ -257,7 +259,8 @@ public class MainController {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
-        grid.setPadding(new Insets(10));
+        grid.setPadding(new Insets(14));
+        grid.getStyleClass().add("card");
         int row = 0;
         grid.add(new Label("Slug:"), 0, row);
         grid.add(new Label(trip.slug()), 1, row++);
@@ -290,6 +293,7 @@ public class MainController {
         alert.setHeaderText(trip.name());
         alert.getDialogPane().setContent(grid);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        applyStylesheet(alert.getDialogPane());
         alert.showAndWait();
     }
 
@@ -317,6 +321,7 @@ public class MainController {
         dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(ta);
+        applyStylesheet(dlg.getDialogPane());
 
         ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
         dlg.getDialogPane().getButtonTypes().setAll(copyType, ButtonType.CLOSE);
@@ -581,6 +586,7 @@ public class MainController {
         alert.setHeaderText("Git configuration");
         alert.getDialogPane().setContent(grid);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        applyStylesheet(alert.getDialogPane());
         alert.showAndWait();
     }
 
@@ -608,6 +614,7 @@ public class MainController {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, body.toString(),
                 commitAndExit, exitAnyway, ButtonType.CANCEL);
         confirm.setTitle("Exit TripTale");
+        applyStylesheet(confirm.getDialogPane());
         confirm.setHeaderText(dirty && hasPending
                 ? "Unsaved and uncommitted changes"
                 : (dirty ? "Unsaved changes" : "Uncommitted changes"));
@@ -674,6 +681,7 @@ public class MainController {
         alert.setHeaderText(null);
         alert.getDialogPane().setContent(grid);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
+        applyStylesheet(alert.getDialogPane());
         alert.showAndWait();
     }
 
@@ -708,6 +716,12 @@ public class MainController {
         log.warn(msg);
         if (statusLabel != null) statusLabel.setText(msg);
         Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        applyStylesheet(a.getDialogPane());
         a.showAndWait();
+    }
+
+    private void applyStylesheet(javafx.scene.control.DialogPane pane) {
+        pane.getStylesheets().add(
+                getClass().getResource("/fxml/triptale.css").toExternalForm());
     }
 }

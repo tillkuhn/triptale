@@ -175,6 +175,32 @@
     -fx-font-style: italic;
 }
 
+/* ── Dialogs ──────────────────────────────────────────── */
+.dialog-pane {
+    -fx-background-color: #1e2a2a;
+    -fx-border-color: #2e4040;
+    -fx-border-width: 1;
+}
+.dialog-pane > .header-panel {
+    -fx-background-color: #202e2e;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.dialog-pane > .header-panel .label {
+    -fx-text-fill: #c8deda;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.dialog-pane:header .header-panel {
+    -fx-background-color: #202e2e;
+}
+.dialog-pane .graphic-container {
+    -fx-padding: 0;
+}
+.dialog-pane > .button-bar {
+    -fx-background-color: #1e2a2a;
+}
+
 /* ── Card panel (metrics grid) ────────────────────────── */
 .card {
     -fx-background-color: #202e2e;
