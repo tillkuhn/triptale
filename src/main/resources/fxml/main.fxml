@@ -87,7 +87,10 @@
             <Label text="Tales" styleClass="section-label"/>
             <TextArea fx:id="talesArea" VBox.vgrow="ALWAYS" wrapText="true"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
-                <Label fx:id="statusLabel" styleClass="status-label"/>
+                <HBox styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
+                    <Label text="&#9432;" styleClass="status-icon"/>
+                    <Label fx:id="statusLabel" styleClass="status-label"/>
+                </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
                 <Button fx:id="saveButton" text="Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="commitButton" text="Commit (0)" onAction="#onCommit" disable="true"/>

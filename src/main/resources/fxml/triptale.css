@@ -168,11 +168,24 @@
     -fx-opacity: 0.35;
 }
 
-/* ── Status label ─────────────────────────────────────── */
+/* ── Status bar ───────────────────────────────────────── */
+.status-bar {
+    -fx-background-color: #16201f;
+    -fx-border-color: #4ec9b0;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 10 4 10;
+}
+.status-icon {
+    -fx-text-fill: #4ec9b0;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
 .status-label {
-    -fx-text-fill: #6a9090;
+    -fx-text-fill: #e8f4f1;
     -fx-font-size: 13px;
-    -fx-font-style: italic;
+    -fx-font-weight: bold;
 }
 
 /* ── Dialogs ──────────────────────────────────────────── */
