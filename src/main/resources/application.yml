@@ -7,7 +7,7 @@ triptale:
   # Root directory for all trips (single git repo). Configurable.
   # Supports ~ for the user home directory.
   #data-dir: ~/.triptale
-  data-dir: ~/Pictures/TripTale
+  data-dir: ~/Pictures/triptale-data
   git:
     # Default commit author (falls back to system git config if blank)
     author-name: ""
