@@ -406,7 +406,7 @@ public class MainController {
         boolean dirty = isDirty();
         if (saveButton != null) {
             saveButton.setDisable(!dirty);
-            saveButton.setText(entryExists ? "Save Tale" : "Create Tale");
+            saveButton.setText(entryExists ? "💾 Save Tale" : "📝 Create Tale");
         }
         updateCommitButton();
     }
@@ -422,7 +422,7 @@ public class MainController {
 
     private void updateCommitButton() {
         if (commitButton == null) return;
-        commitButton.setText("Commit (" + pending.size() + ")");
+        commitButton.setText("📦 Commit (" + pending.size() + ")");
         commitButton.setDisable(!canCommit());
     }
 

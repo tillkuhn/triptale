@@ -28,24 +28,24 @@
                 <menus>
                     <Menu text="File">
                         <items>
-                            <MenuItem text="New Trip…" onAction="#onNewTrip"/>
+                            <MenuItem text="🧳 New Trip…" onAction="#onNewTrip"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="Export Diary…" onAction="#onExportDiary"/>
+                            <MenuItem text="📤 Export Diary…" onAction="#onExportDiary"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="Exit" onAction="#onExit"/>
+                            <MenuItem text="🚪 Exit" onAction="#onExit"/>
                         </items>
                     </Menu>
                     <Menu text="Remote">
                         <items>
-                            <MenuItem text="Push" onAction="#onPush"/>
-                            <MenuItem text="Pull" onAction="#onPull"/>
+                            <MenuItem text="⬆ Push" onAction="#onPush"/>
+                            <MenuItem text="⬇ Pull" onAction="#onPull"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="Remote Info…" onAction="#onRemoteInfo"/>
+                            <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                         </items>
                     </Menu>
                     <Menu text="Help">
                         <items>
-                            <MenuItem text="About" onAction="#onAbout"/>
+                            <MenuItem text="❓ About" onAction="#onAbout"/>
                         </items>
                     </Menu>
                 </menus>
@@ -92,8 +92,8 @@
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
-                <Button fx:id="saveButton" text="Save Tale" onAction="#onSave" defaultButton="true"/>
-                <Button fx:id="commitButton" text="Commit (0)" onAction="#onCommit" disable="true"/>
+                <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
+                <Button fx:id="commitButton" text="📦 Commit (0)" onAction="#onCommit" disable="true"/>
             </HBox>
         </VBox>
     </center>
