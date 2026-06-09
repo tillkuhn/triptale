@@ -132,16 +132,24 @@ public class MainController {
         reloadTrips();
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
-            if (sel.startDate() != null && datePicker.getValue() != null
-                    && datePicker.getValue().isBefore(sel.startDate())) {
-                datePicker.setValue(sel.startDate());
-                status("Snapped to day 1 (" + sel.startDate() + ")");
-                return;
+            List<LocalDate> dates = store.listEntryDates(sel.slug());
+            LocalDate target;
+            String reason;
+            if (!dates.isEmpty()) {
+                target = dates.get(dates.size() - 1);
+                reason = "Opened last entry (" + target + ")";
+            } else if (sel.startDate() != null) {
+                target = sel.startDate();
+                reason = "No entries — starting at day 1 (" + target + ")";
+            } else {
+                target = LocalDate.now();
+                reason = "No entries — defaulting to today (" + target + ")";
             }
+            datePicker.setValue(target);
             loadEntry();
             updatePrevButtonState();
+            status(reason);
         });
-        datePicker.setValue(LocalDate.now());
         datePicker.valueProperty().addListener((obs, old, sel) -> {
             Trip trip = tripCombo.getValue();
             if (sel != null && trip != null && trip.startDate() != null
