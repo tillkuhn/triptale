@@ -554,7 +554,6 @@ public class MainController {
 
     @FXML
     public void onRemoteInfo() {
-        String configuredRemote = props.getGit().getRemote();
         String actualRemote;
         try {
             actualRemote = gitService.remoteUrl();
@@ -574,9 +573,7 @@ public class MainController {
         int row = 0;
         grid.add(new Label("Data dir:"), 0, row);
         grid.add(new Label(props.resolvedDataDir().toString()), 1, row++);
-        grid.add(new Label("Configured remote:"), 0, row);
-        grid.add(new Label(configuredRemote.isBlank() ? "(none)" : configuredRemote), 1, row++);
-        grid.add(new Label("Active origin URL:"), 0, row);
+        grid.add(new Label("Origin URL:"), 0, row);
         grid.add(new Label(actualRemote.isBlank() ? "(none)" : actualRemote), 1, row++);
         grid.add(new Label("Author:"), 0, row);
         grid.add(new Label(authorDisplay), 1, row);
