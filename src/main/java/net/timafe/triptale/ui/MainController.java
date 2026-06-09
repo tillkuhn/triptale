@@ -538,7 +538,7 @@ public class MainController {
             loadEntry();
             status("Pulled from remote");
         } catch (RuntimeException e) {
-            error(e.getMessage());
+            error(describe(e));
         }
     }
 
@@ -548,7 +548,7 @@ public class MainController {
             gitService.push();
             status("Pushed to remote");
         } catch (RuntimeException e) {
-            error(e.getMessage());
+            error(describe(e));
         }
     }
 
@@ -715,6 +715,19 @@ public class MainController {
         Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
         applyStylesheet(a.getDialogPane());
         a.showAndWait();
+    }
+
+    private static String describe(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        Throwable t = e;
+        while (t != null) {
+            if (sb.length() > 0) sb.append(" — caused by ");
+            String m = t.getMessage();
+            sb.append(t.getClass().getSimpleName())
+                    .append(m == null ? "" : ": " + m);
+            t = t.getCause();
+        }
+        return sb.toString();
     }
 
     private void applyStylesheet(javafx.scene.control.DialogPane pane) {

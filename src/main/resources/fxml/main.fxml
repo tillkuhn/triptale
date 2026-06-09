@@ -37,8 +37,8 @@
                     </Menu>
                     <Menu text="Remote">
                         <items>
-                            <MenuItem text="Pull" onAction="#onPull"/>
                             <MenuItem text="Push" onAction="#onPush"/>
+                            <MenuItem text="Pull" onAction="#onPull"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="Remote Info…" onAction="#onRemoteInfo"/>
                         </items>

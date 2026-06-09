@@ -4,17 +4,19 @@ import jakarta.annotation.PostConstruct;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.storage.MarkdownStore;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.transport.PushResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class GitService {
@@ -68,31 +70,55 @@ public class GitService {
         }
     }
 
-    public Iterable<PushResult> push() {
-        try (Git git = Git.open(store.dataDir().toFile())) {
-            if (originUrl(git).isBlank()) {
-                throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
-            }
-            return git.push().setRemote("origin").call();
-        } catch (GitAPIException | IOException e) {
-            throw new GitException("Failed to push", e);
+    public String push() {
+        requireOrigin();
+        return runGit("push", "origin");
+    }
+
+    public String pull() {
+        requireOrigin();
+        return runGit("pull", "--ff", "origin");
+    }
+
+    private void requireOrigin() {
+        if (remoteUrl().isBlank()) {
+            throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
         }
     }
 
-    public PullResult pull() {
-        try (Git git = Git.open(store.dataDir().toFile())) {
-            if (originUrl(git).isBlank()) {
-                throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
+    private String runGit(String... args) {
+        Path root = store.dataDir();
+        String[] cmd = new String[args.length + 1];
+        cmd[0] = "git";
+        System.arraycopy(args, 0, cmd, 1, args.length);
+        try {
+            Process p = new ProcessBuilder(cmd)
+                    .directory(root.toFile())
+                    .redirectErrorStream(true)
+                    .start();
+            StringBuilder out = new StringBuilder();
+            try (BufferedReader r = new BufferedReader(
+                    new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    out.append(line).append('\n');
+                }
             }
-            return git.pull().setRemote("origin").call();
-        } catch (GitAPIException | IOException e) {
-            throw new GitException("Failed to pull", e);
+            if (!p.waitFor(120, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                throw new GitException("git " + args[0] + " timed out", null);
+            }
+            String output = out.toString().trim();
+            if (p.exitValue() != 0) {
+                throw new GitException("git " + args[0] + " failed: "
+                        + (output.isBlank() ? "(no output)" : output), null);
+            }
+            log.info("git {} ok: {}", args[0], output);
+            return output;
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw new GitException("Failed to run git " + args[0], e);
         }
-    }
-
-    private static String originUrl(Git git) {
-        String url = git.getRepository().getConfig().getString("remote", "origin", "url");
-        return url == null ? "" : url;
     }
 
     private PersonIdent author() {
