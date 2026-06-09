@@ -76,10 +76,10 @@ public class GitService {
     }
 
     public Iterable<PushResult> push() {
-        if (props.getGit().getRemote().isBlank()) {
-            throw new GitException("No remote configured (triptale.git.remote)", null);
-        }
         try (Git git = Git.open(store.dataDir().toFile())) {
+            if (originUrl(git).isBlank()) {
+                throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
+            }
             return git.push().setRemote("origin").call();
         } catch (GitAPIException | IOException e) {
             throw new GitException("Failed to push", e);
@@ -87,14 +87,19 @@ public class GitService {
     }
 
     public PullResult pull() {
-        if (props.getGit().getRemote().isBlank()) {
-            throw new GitException("No remote configured (triptale.git.remote)", null);
-        }
         try (Git git = Git.open(store.dataDir().toFile())) {
+            if (originUrl(git).isBlank()) {
+                throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
+            }
             return git.pull().setRemote("origin").call();
         } catch (GitAPIException | IOException e) {
             throw new GitException("Failed to pull", e);
         }
+    }
+
+    private static String originUrl(Git git) {
+        String url = git.getRepository().getConfig().getString("remote", "origin", "url");
+        return url == null ? "" : url;
     }
 
     private PersonIdent author() {
