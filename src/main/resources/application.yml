@@ -12,8 +12,6 @@ triptale:
     # Default commit author (falls back to system git config if blank)
     author-name: ""
     author-email: ""
-    # Optional remote for push/pull. Leave blank to work fully offline.
-    remote: ""
 
 logging:
   level:

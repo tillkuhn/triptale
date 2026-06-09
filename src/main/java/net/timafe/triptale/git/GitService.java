@@ -7,7 +7,6 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.PushResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +34,8 @@ public class GitService {
         Path root = store.dataDir();
         if (!Files.isDirectory(root.resolve(".git"))) {
             try (Git git = Git.init().setDirectory(root.toFile()).call()) {
-                log.info("Initialized git repo at {}", root);
-                if (!props.getGit().getRemote().isBlank()) {
-                    StoredConfig cfg = git.getRepository().getConfig();
-                    cfg.setString("remote", "origin", "url", props.getGit().getRemote());
-                    cfg.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
-                    cfg.save();
-                }
-            } catch (GitAPIException | IOException e) {
+                log.info("Initialized git repo at {}. Configure 'origin' via 'git remote add' to enable push/pull.", root);
+            } catch (GitAPIException e) {
                 throw new GitException("Failed to init git repo at " + root, e);
             }
         }
