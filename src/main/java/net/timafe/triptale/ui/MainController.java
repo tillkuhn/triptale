@@ -132,6 +132,7 @@ public class MainController {
         reloadTrips();
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
+            store.saveLastTripSlug(sel.slug());
             List<LocalDate> dates = store.listEntryDates(sel.slug());
             LocalDate target;
             String reason;
@@ -166,7 +167,11 @@ public class MainController {
         routeField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (!tripCombo.getItems().isEmpty()) {
-            tripCombo.getSelectionModel().selectFirst();
+            String lastSlug = store.loadLastTripSlug().orElse(null);
+            Trip toSelect = lastSlug != null
+                    ? tripCombo.getItems().stream().filter(t -> t.slug().equals(lastSlug)).findFirst().orElse(null)
+                    : null;
+            tripCombo.getSelectionModel().select(toSelect != null ? toSelect : tripCombo.getItems().get(0));
         }
         updateDirty();
         updatePrevButtonState();
