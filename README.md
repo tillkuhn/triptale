@@ -79,12 +79,16 @@ The next time you open the JavaFX app, your entries are right there. Use the app
 
 This also means you can keep writing offline for weeks — every save is a local git commit — and push the whole batch the moment you find Wi-Fi.
 
+## Export 📤
+
+The **File → Export Diary** menu renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to clipboard and paste anywhere. Export uses five small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output format.
+
 ## Run it 🛠️
 
-Requires **Java 25** and Maven.
+Requires **Java 25** and Maven (uses `mvnd` by default).
 
 ```bash
-make run        # or: mvn javafx:run
+make run        # or: mvnd javafx:run
 make build      # package without tests
 make test       # run unit tests
 ```
@@ -112,8 +116,9 @@ To enable push/pull, add a remote in the data dir: `git -C <data-dir> remote add
 - **Java 25** with records for the domain types
 - **Spring Boot** (headless — `web-application-type: none`) for DI, config binding, and lifecycle
 - **JavaFX** for the UI, with FXML controllers resolved as Spring beans
-- **JGit** for in-process git operations (init, commit, push, pull)
-- **Maven** as the build system; a thin `Makefile` wraps the common targets
+- **JGit** for in-process git operations (init, commit, status); `push`/`pull` delegate to the OS `git` binary via `ProcessBuilder`
+- **Jackson YAML** for reading and writing `trip.yml` and entry frontmatter
+- **Maven** as the build system; a thin `Makefile` wraps the common targets (uses `mvnd` by default)
 
 The interesting bit architecturally is that JavaFX's `Application.init()` boots Spring *before* `start()`, and the FXML loader uses `spring::getBean` as its controller factory — so controllers are real Spring beans with constructor-injected services. See `CLAUDE.md` for more on the layering.
 
@@ -121,9 +126,10 @@ The interesting bit architecturally is that JavaFX's `Application.init()` boots 
 
 This is a hobby project, but PRs, issues, and ideas are welcome. A few ground rules:
 
-- Keep JavaFX imports out of the `storage`, `git`, `config`, and `domain` packages.
+- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, and `domain` packages.
 - Domain types are records — keep them plain.
 - Constructor injection only, no field `@Autowired`.
+- New write operations should save first, then call `addPending(...)` in `MainController` — do not commit from inside the storage layer.
 
 If you're thinking of something larger than a small fix, open an issue first so we can talk about it.
 
