@@ -89,6 +89,43 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.13</version>
+                <executions>
+                    <!-- Instrument bytecode before tests run -->
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                        <configuration>
+                            <!--
+                              Restrict agent instrumentation to our own classes only.
+                              Without this, JaCoCo tries to instrument JDK-internal
+                              bootstrap classes (e.g. java.sql.Timestamp, sun.util.*),
+                              which may be compiled at a bytecode version newer than
+                              JaCoCo's bundled ASM supports, producing a flood of
+                              "Unsupported class file major version" warnings at runtime.
+                            -->
+                            <includes>net.timafe.triptale.*</includes>
+                        </configuration>
+                    </execution>
+                    <!-- Generate HTML + XML report after tests -->
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- Exclude JavaFX UI layer — it can't run headless -->
+                    <excludes>
+                        <exclude>net/timafe/triptale/ui/**</exclude>
+                        <exclude>net/timafe/triptale/TripTaleApplication.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
