@@ -31,6 +31,8 @@ public class GitService {
         this.store = store;
     }
 
+    private static final String GITIGNORE_ENTRY = "prefs.yml";
+
     @PostConstruct
     public void initOnStartup() {
         Path root = store.dataDir();
@@ -40,6 +42,23 @@ public class GitService {
             } catch (GitAPIException e) {
                 throw new GitException("Failed to init git repo at " + root, e);
             }
+        }
+        ensureGitignore(root);
+    }
+
+    private void ensureGitignore(Path root) {
+        Path gitignore = root.resolve(".gitignore");
+        try {
+            String existing = Files.exists(gitignore) ? Files.readString(gitignore) : "";
+            if (!existing.lines().map(String::trim).anyMatch(GITIGNORE_ENTRY::equals)) {
+                String updated = existing.isEmpty()
+                        ? GITIGNORE_ENTRY + "\n"
+                        : (existing.endsWith("\n") ? existing : existing + "\n") + GITIGNORE_ENTRY + "\n";
+                Files.writeString(gitignore, updated);
+                log.info("Added '{}' to {}", GITIGNORE_ENTRY, gitignore);
+            }
+        } catch (IOException e) {
+            log.warn("Could not update {}: {}", gitignore, e.getMessage());
         }
     }
 
