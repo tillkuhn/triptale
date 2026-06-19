@@ -154,4 +154,28 @@ class MarkdownStoreTest {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         assertTrue(store.listEntryDates("alps-2025").isEmpty());
     }
+
+    // -------------------------------------------------------------------------
+    // Local preferences
+    // -------------------------------------------------------------------------
+
+    @Test
+    void saveAndLoadLastTripSlugRoundTrip() {
+        store.saveLastTripSlug("alps-2025");
+        Optional<String> loaded = store.loadLastTripSlug();
+        assertTrue(loaded.isPresent());
+        assertEquals("alps-2025", loaded.get());
+    }
+
+    @Test
+    void loadLastTripSlugReturnsEmptyWhenPrefsFileMissing() {
+        assertTrue(store.loadLastTripSlug().isEmpty());
+    }
+
+    @Test
+    void saveLastTripSlugOverwritesPreviousValue() {
+        store.saveLastTripSlug("trip-one");
+        store.saveLastTripSlug("trip-two");
+        assertEquals("trip-two", store.loadLastTripSlug().orElseThrow());
+    }
 }
