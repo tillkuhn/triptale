@@ -224,3 +224,23 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 8, 0, 1, 3);
     -fx-padding: 12 14 12 14;
 }
+
+/* ── Connectivity button ──────────────────────────────── */
+.connectivity-checking {
+    -fx-text-fill: #6a9090;
+    -fx-border-color: #3a5050;
+    -fx-font-size: 14px;
+    -fx-padding: 4 10 4 10;
+}
+.connectivity-connected {
+    -fx-text-fill: #4ec9b0;
+    -fx-border-color: #4ec9b0;
+    -fx-font-size: 14px;
+    -fx-padding: 4 10 4 10;
+}
+.connectivity-disconnected {
+    -fx-text-fill: #e06c6c;
+    -fx-border-color: #e06c6c;
+    -fx-font-size: 14px;
+    -fx-padding: 4 10 4 10;
+}
