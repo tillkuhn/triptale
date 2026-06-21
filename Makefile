@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 MVN ?= mvnd
-MVNARGS ?= -e -ntp
+MVNARGS ?= -e -ntp -T 1C
 
 .PHONY: run help build compile test package clean format deps
 

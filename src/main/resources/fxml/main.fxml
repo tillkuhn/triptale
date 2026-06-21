@@ -14,6 +14,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
@@ -37,10 +38,12 @@
                     </Menu>
                     <Menu text="Remote">
                         <items>
-                            <MenuItem text="⬆ Push" onAction="#onPush"/>
-                            <MenuItem text="⬇ Pull" onAction="#onPull"/>
+                            <MenuItem fx:id="pushMenuItem" text="⬆ Push" onAction="#onPush"/>
+                            <MenuItem fx:id="pullMenuItem" text="⬇ Pull" onAction="#onPull"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
                         </items>
                     </Menu>
                     <Menu text="Help">
@@ -67,6 +70,10 @@
                     <tooltip><Tooltip text="Go to today"/></tooltip>
                 </Button>
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
+                    <tooltip><Tooltip text="Check connectivity"/></tooltip>
+                </Button>
             </HBox>
         </VBox>
     </top>
@@ -92,6 +99,7 @@
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
+                <Button fx:id="copyButton" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
                 <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="commitButton" text="📦 Commit (0)" onAction="#onCommit" disable="true"/>
             </HBox>

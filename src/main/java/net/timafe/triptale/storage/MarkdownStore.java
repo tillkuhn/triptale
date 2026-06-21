@@ -140,6 +140,44 @@ public class MarkdownStore {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Local preferences (gitignored, not synced)
+    // -------------------------------------------------------------------------
+
+    private static final String PREFS_FILE = "prefs.yml";
+    private static final String PREFS_LAST_TRIP_KEY = "lastTripSlug";
+    private static final String PREFS_COMMENT =
+            "# Local preferences — machine-specific, not committed to git.\n" +
+            "# This file is listed in .gitignore and intentionally excluded from sync.\n";
+
+    public void saveLastTripSlug(String slug) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(PREFS_LAST_TRIP_KEY, slug);
+        try {
+            String content = PREFS_COMMENT + yaml.writeValueAsString(data);
+            Files.writeString(dataDir().resolve(PREFS_FILE), content);
+        } catch (IOException e) {
+            log.warn("Could not write {}: {}", PREFS_FILE, e.getMessage());
+        }
+    }
+
+    public Optional<String> loadLastTripSlug() {
+        Path prefs = dataDir().resolve(PREFS_FILE);
+        if (!Files.exists(prefs)) return Optional.empty();
+        try {
+            String raw = Files.readString(prefs);
+            // Strip leading comment lines before YAML parsing
+            String yaml_ = raw.lines()
+                    .filter(l -> !l.startsWith("#"))
+                    .reduce("", (a, b) -> a + b + "\n");
+            Map<String, Object> data = yaml.readValue(yaml_, Map.class);
+            return Optional.ofNullable(asString(data.get(PREFS_LAST_TRIP_KEY)));
+        } catch (IOException e) {
+            log.warn("Could not read {}: {}", PREFS_FILE, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     public List<LocalDate> listEntryDates(String slug) {
         Path dir = entriesDir(slug);
         if (!Files.isDirectory(dir)) return List.of();
