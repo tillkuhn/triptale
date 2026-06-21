@@ -55,11 +55,15 @@ A diary entry is just Markdown with a YAML frontmatter block — structured fiel
 ---
 distance: 87.0
 altitude: 1840.0
+route: Andermatt → Airolo
+trackurl: https://www.strava.com/activities/123456
 ---
 
 Crossed the Gotthard pass today. Strong headwind from the south,
 but the descent into Airolo was worth it.
 ```
+
+The optional `trackurl` field links the day to an external tracking tool (Strava, Komoot, …). In the app it sits next to distance and altitude; when it holds a valid `http(s)` URL a 🔗 button opens it in your system browser.
 
 That's it. No database, no schema migrations. If TripTale disappears tomorrow, your trips remain a perfectly readable folder of Markdown.
 
@@ -81,7 +85,7 @@ This also means you can keep writing offline for weeks — every save is a local
 
 ## Export 📤
 
-The **File → Export Diary** menu renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to clipboard and paste anywhere. Export uses five small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output format.
+The **File → Export Diary** menu renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to clipboard and paste anywhere. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output format.
 
 ## Run it 🛠️
 

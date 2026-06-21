@@ -63,6 +63,8 @@ public class MainController {
     @FXML private TextField distanceField;
     @FXML private TextField altField;
     @FXML private TextField routeField;
+    @FXML private TextField trackUrlField;
+    @FXML private Button openTrackUrlButton;
     @FXML private TextArea talesArea;
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
@@ -91,6 +93,7 @@ public class MainController {
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineRoute = "";
+    private String baselineTrackUrl = "";
     private String baselineTales = "";
     private boolean entryExists;
 
@@ -191,6 +194,7 @@ public class MainController {
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
         routeField.textProperty().addListener((o, a, b) -> updateDirty());
+        trackUrlField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (!tripCombo.getItems().isEmpty()) {
             String lastSlug = store.loadLastTripSlug().orElse(null);
@@ -416,6 +420,7 @@ public class MainController {
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
         routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
+        trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
         talesArea.setText(e.tales() == null ? "" : e.tales());
         snapshotBaseline();
         updateDirty();
@@ -425,6 +430,7 @@ public class MainController {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineRoute = routeField.getText();
+        baselineTrackUrl = trackUrlField.getText();
         baselineTales = talesArea.getText();
     }
 
@@ -432,6 +438,7 @@ public class MainController {
         return !Objects.equals(distanceField.getText(), baselineDistance)
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(routeField.getText(), baselineRoute)
+                || !Objects.equals(trackUrlField.getText(), baselineTrackUrl)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
@@ -478,6 +485,9 @@ public class MainController {
             boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
                     && tripCombo.getValue() != null && datePicker.getValue() != null;
             copyButton.setDisable(!hasContent);
+        }
+        if (openTrackUrlButton != null) {
+            openTrackUrlButton.setDisable(!isValidHttpUrl(trackUrlField.getText()));
         }
         updateCommitButton();
     }
@@ -571,6 +581,7 @@ public class MainController {
                 .distance(distance)
                 .altitudeMeters(alt)
                 .route(routeField.getText())
+                .trackUrl(trackUrlField.getText())
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
@@ -843,14 +854,34 @@ public class MainController {
         alert.showAndWait();
     }
 
+    @FXML
+    public void onOpenTrackUrl() {
+        String url = trackUrlField.getText();
+        if (isValidHttpUrl(url)) openInBrowser(url.trim());
+    }
+
+    /** True when the value is a well-formed absolute http(s) URL. */
+    private static boolean isValidHttpUrl(String value) {
+        if (value == null || value.isBlank()) return false;
+        try {
+            java.net.URI uri = java.net.URI.create(value.trim());
+            String scheme = uri.getScheme();
+            return uri.isAbsolute()
+                    && scheme != null
+                    && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                    && uri.getHost() != null;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     private void openInBrowser(String url) {
         try {
             if (hostServices != null) {
                 hostServices.showDocument(url);
             } else {
                 log.warn("HostServices not available; cannot open {}", url);
-            }
-        } catch (Exception ex) {
+            }        } catch (Exception ex) {
             log.warn("Could not open browser for {}: {}", url, ex.getMessage());
         }
     }

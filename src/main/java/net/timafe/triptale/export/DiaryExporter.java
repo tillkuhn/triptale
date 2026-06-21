@@ -25,6 +25,7 @@ public class DiaryExporter {
     private static final String ENTRY_HEADING = "/export/entry-heading.md";
     private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
     private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
+    private static final String ENTRY_TRACK = "/export/entry-track.md";
     private static final String ENTRY_TALES = "/export/entry-tales.md";
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -95,6 +96,11 @@ public class DiaryExporter {
             if (stats.length() > 0) stats.append("\n");
             stats.append(substitute(load(ENTRY_ALTITUDE),
                     Map.of("altitude", formatAltitude(e.altitudeMeters()))).stripTrailing());
+        }
+        if (e.trackUrl() != null && !e.trackUrl().isBlank()) {
+            if (stats.length() > 0) stats.append("\n");
+            stats.append(substitute(load(ENTRY_TRACK),
+                    Map.of("trackUrl", e.trackUrl())).stripTrailing());
         }
         if (stats.length() > 0) {
             sb.append("\n\n").append(stats);
