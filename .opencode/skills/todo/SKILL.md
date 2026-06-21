@@ -48,7 +48,12 @@ The number is the leading numeric token (preserve any leading zeros, e.g. `02`).
      project's conventions (see CLAUDE.md), and verify it (build/tests where
      applicable).
 
-5. **Mark DONE.** Once an "implement"/"fix" item is completed (and verified),
+5. **Add tests and update README where appropriate
+   - If test makes sense, add a unit test
+   - if the change is relevant for the user to understand the app, update README.md
+
+
+6. **Mark DONE.** Once an "implement"/"fix" item is completed (and verified),
    edit `TODO.md` to add the `DONE` prefix immediately before the number,
    preserving the rest of the heading verbatim. Example:
 

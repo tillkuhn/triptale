@@ -822,6 +822,11 @@ public class MainController {
         grid.add(new Label(builtAt), 1, row++);
         grid.add(new Label("Runtime:"), 0, row);
         grid.add(new Label("Java " + javaVersion + "  ·  JavaFX " + javafxVersion), 1, row++);
+        Runtime runtime = Runtime.getRuntime();
+        long usedBytes = runtime.totalMemory() - runtime.freeMemory();
+        String usedMemory = String.format(Locale.ROOT, "%.0f MB", usedBytes / (1024.0 * 1024.0));
+        grid.add(new Label("Memory:"), 0, row);
+        grid.add(new Label(usedMemory), 1, row++);
         grid.add(new Label("License:"), 0, row);
         grid.add(new Label("Apache 2.0"), 1, row++);
         grid.add(new Label("Source:"), 0, row);
