@@ -37,23 +37,33 @@ The number is the leading numeric token (preserve any leading zeros, e.g. `02`).
    - If no matching heading exists at all, report that and list the available
      open todo numbers and titles.
 
-3. **Resolve ambiguity.** Before writing any code, use the `grill-me` skill to
-   interview the user and resolve every ambiguous or underspecified
-   requirement in the item. Do not proceed to implementation until the
-   requirements are fully clear.
+3. **Check `docs/` for prior context.** Before grilling, look in the `docs/`
+   directory for a file whose name starts with the requested number (e.g.
+   `docs/04_fixbug.md` for todo `04`). Match on the leading numeric token,
+   ignoring the separator/suffix. Such files may contain plans or analyses
+   from previous sessions. If one exists, read it and use it as context for
+   the grilling and implementation. If multiple match, read all of them; if
+   none match, proceed without it.
 
-4. **Act based on the verb.**
+4. **Grill first — always.** This step is mandatory and happens BEFORE any
+   planning or implementation, for every verb ("plan", "implement", and
+   "fix"). Load and run the `grill-me` skill to interview the user and resolve
+   every ambiguous or underspecified requirement in the item. Do NOT produce a
+   plan, write code, or make any concrete changes until the grilling is
+   complete and the requirements are fully clear.
+
+5. **Act based on the verb.** Only after step 4 (grill-me) is complete:
    - "plan" — produce an implementation plan only; do not write code.
    - "implement" / "fix" — implement the change in the codebase, following the
      project's conventions (see CLAUDE.md), and verify it (build/tests where
      applicable).
 
-5. **Add tests and update README where appropriate
+6. **Add tests and update README where appropriate
    - If test makes sense, add a unit test
    - if the change is relevant for the user to understand the app, update README.md
 
 
-6. **Mark DONE.** Once an "implement"/"fix" item is completed (and verified),
+7. **Mark DONE.** Once an "implement"/"fix" item is completed (and verified),
    edit `TODO.md` to add the `DONE` prefix immediately before the number,
    preserving the rest of the heading verbatim. Example:
 
