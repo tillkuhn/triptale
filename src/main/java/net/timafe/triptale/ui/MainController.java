@@ -93,6 +93,9 @@ public class MainController {
     private String baselineTales = "";
     private boolean entryExists;
 
+    /** Guard flag to prevent listener re-entrancy when reverting a navigation on Cancel. */
+    private boolean navigating = false;
+
     /** Tri-state: null = checking/unknown, true = online, false = offline */
     private Boolean connected = null;
 
@@ -149,7 +152,9 @@ public class MainController {
         });
         reloadTrips();
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
+            if (navigating) return;
             if (sel == null) return;
+            if (!confirmNavigateAway(() -> tripCombo.setValue(old))) return;
             store.saveLastTripSlug(sel.slug());
             List<LocalDate> dates = store.listEntryDates(sel.slug());
             LocalDate target;
@@ -170,6 +175,7 @@ public class MainController {
             status(reason);
         });
         datePicker.valueProperty().addListener((obs, old, sel) -> {
+            if (navigating) return;
             Trip trip = tripCombo.getValue();
             if (sel != null && trip != null && trip.startDate() != null
                     && sel.isBefore(trip.startDate())) {
@@ -177,6 +183,7 @@ public class MainController {
                 status("Snapped to day 1 (" + trip.startDate() + ")");
                 return;
             }
+            if (!confirmNavigateAway(() -> datePicker.setValue(old))) return;
             loadEntry();
             updatePrevButtonState();
         });
@@ -425,6 +432,39 @@ public class MainController {
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(routeField.getText(), baselineRoute)
                 || !Objects.equals(talesArea.getText(), baselineTales);
+    }
+
+    /**
+     * If the form is dirty, shows a Save / Discard / Cancel dialog.
+     * <ul>
+     *   <li>Save — calls {@link #onSave()} then returns {@code true} (navigation proceeds).</li>
+     *   <li>Discard — returns {@code true} (navigation proceeds, changes are lost).</li>
+     *   <li>Cancel — invokes {@code revert} to undo the navigation, returns {@code false}.</li>
+     * </ul>
+     * Returns {@code true} immediately when the form is not dirty.
+     */
+    private boolean confirmNavigateAway(Runnable revert) {
+        if (!isDirty()) return true;
+        LocalDate currentDate = datePicker.getValue();
+        String dateLabel = currentDate != null ? currentDate.toString() : "current entry";
+        ButtonType save    = new ButtonType("Save");
+        ButtonType discard = new ButtonType("Discard");
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "You have unsaved changes for " + dateLabel + ". What would you like to do?",
+                save, discard, ButtonType.CANCEL);
+        alert.setTitle("Unsaved Changes");
+        alert.setHeaderText("Unsaved changes");
+        applyStylesheet(alert.getDialogPane());
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isEmpty() || result.get() == ButtonType.CANCEL) {
+            navigating = true;
+            try { revert.run(); } finally { navigating = false; }
+            return false;
+        }
+        if (result.get() == save) {
+            onSave();
+        }
+        return true;
     }
 
     private void updateDirty() {
