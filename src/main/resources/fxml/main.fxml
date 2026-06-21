@@ -99,7 +99,7 @@
                 </GridPane>
             </VBox>
             <Label text="Tales" styleClass="section-label"/>
-            <TextArea fx:id="talesArea" VBox.vgrow="ALWAYS" wrapText="true"/>
+            <TextArea fx:id="talesArea" styleClass="tale-text" VBox.vgrow="ALWAYS" wrapText="true"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <HBox styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
                     <Label text="&#9432;" styleClass="status-icon"/>
