@@ -80,22 +80,40 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void saveAndLoadEntryRoundTrip() {
+    void saveAndLoadEntryRoundTrip() throws Exception {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .distance(82.5)
                 .altitudeMeters(1240.0)
                 .route("Innsbruck → Brenner")
+                .trackUrl("https://www.strava.com/activities/123")
                 .tales("Hot day, lots of climbing.")
                 .build();
         store.saveEntry("alps-2025", entry);
+
+        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("trackurl:"));
 
         DiaryEntry loaded = store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4));
         assertEquals(LocalDate.of(2025, 7, 4), loaded.date());
         assertEquals(82.5, loaded.distance());
         assertEquals(1240.0, loaded.altitudeMeters());
         assertEquals("Innsbruck → Brenner", loaded.route());
+        assertEquals("https://www.strava.com/activities/123", loaded.trackUrl());
         assertTrue(loaded.tales().contains("Hot day"));
+    }
+
+    @Test
+    void saveEntryOmitsBlankTrackUrlFromFrontmatter() throws Exception {
+        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .trackUrl("   ")
+                .tales("No track.")
+                .build());
+
+        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        assertFalse(raw.contains("trackurl"));
+        assertNull(store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4)).trackUrl());
     }
 
     @Test

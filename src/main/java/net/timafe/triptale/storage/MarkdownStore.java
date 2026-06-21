@@ -131,6 +131,7 @@ public class MarkdownStore {
         if (entry.distance() != null) fm.put("distance", entry.distance());
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         if (entry.route() != null && !entry.route().isBlank()) fm.put("route", entry.route());
+        if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
         try {
             String body = entry.tales() == null ? "" : entry.tales();
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
@@ -216,6 +217,7 @@ public class MarkdownStore {
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .route(asString(data.get("route")))
+                .trackUrl(asString(data.get("trackurl")))
                 .tales(body)
                 .build();
     }
