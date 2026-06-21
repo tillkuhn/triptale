@@ -1,6 +1,6 @@
 # ToDos
 
-## 03 show current memory consumption in about -> info
+## DONE 03 show current memory consumption in about -> info
 
 use whatever runtime memory feedback is appropriate for current usage, but I want only a single figure
 
