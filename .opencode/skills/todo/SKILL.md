@@ -65,10 +65,10 @@ The number is the leading numeric token (preserve any leading zeros, e.g. `02`).
 
 7. **Mark DONE.** Once an "implement"/"fix" item is completed (and verified),
    edit `TODO.md` to add the `DONE` prefix immediately before the number,
-   preserving the rest of the heading verbatim. Example:
+   preserving the rest of the heading verbatim. including ## (2 hashes) to indicate the h2 headline. Example:
 
    - Before: `## 03 show current memory consumption in about -> info`
-   - After:  `## DONE 03 show current memory consumption in about -> info`
+   - After:  `## DONE 03 show current memory consumption in about -> info` 
 
    For "plan" requests, do NOT mark the item DONE.
 

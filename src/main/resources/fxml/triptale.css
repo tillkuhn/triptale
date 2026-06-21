@@ -83,6 +83,20 @@
     -fx-background-radius: 6;
 }
 
+/* ── Tale text (light "written tale" look) ────────────── */
+.text-area.tale-text {
+    -fx-background-color: #f5f0e1;
+    -fx-border-color: #c9bfa3;
+    -fx-text-fill: #0a1428;
+    -fx-prompt-text-fill: #8a8166;
+}
+.text-area.tale-text .content {
+    -fx-background-color: #f5f0e1;
+}
+.text-area.tale-text:focused {
+    -fx-border-color: #4ec9b0;
+}
+
 /* ── DatePicker ───────────────────────────────────────── */
 .date-picker {
     -fx-background-color: transparent;
