@@ -99,6 +99,7 @@
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
+                <Button fx:id="copyButton" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
                 <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="commitButton" text="📦 Commit (0)" onAction="#onCommit" disable="true"/>
             </HBox>
