@@ -66,6 +66,7 @@ public class MainController {
     @FXML private TextArea talesArea;
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
+    @FXML private Button copyButton;
     @FXML private Button saveButton;
     @FXML private Button commitButton;
     @FXML private Button prevDayButton;
@@ -473,6 +474,11 @@ public class MainController {
             saveButton.setDisable(!dirty);
             saveButton.setText(entryExists ? "💾 Save Tale" : "📝 Create Tale");
         }
+        if (copyButton != null) {
+            boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
+                    && tripCombo.getValue() != null && datePicker.getValue() != null;
+            copyButton.setDisable(!hasContent);
+        }
         updateCommitButton();
     }
 
@@ -574,6 +580,20 @@ public class MainController {
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.slug() + "/" + date);
+    }
+
+    @FXML
+    public void onCopyTale() {
+        String route = routeField.getText();
+        String tales = talesArea.getText();
+        StringBuilder sb = new StringBuilder();
+        if (route != null && !route.isBlank() && !route.equals(DiaryEntry.DEFAULT_ROUTE)) {
+            sb.append(route).append("\n\n");
+        }
+        if (tales != null) sb.append(tales);
+        ClipboardContent cc = new ClipboardContent();
+        cc.putString(sb.toString());
+        Clipboard.getSystemClipboard().setContent(cc);
     }
 
     @FXML
