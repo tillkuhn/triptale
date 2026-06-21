@@ -3,6 +3,7 @@ package net.timafe.triptale.ui;
 import javafx.application.HostServices;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -15,6 +16,7 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ButtonBar;
@@ -64,15 +66,27 @@ public class MainController {
     @FXML private TextArea talesArea;
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
+    @FXML private Button copyButton;
     @FXML private Button saveButton;
     @FXML private Button commitButton;
     @FXML private Button prevDayButton;
     @FXML private Button firstDayButton;
     @FXML private Button todayButton;
+    @FXML private Button connectivityButton;
+    @FXML private MenuItem pushMenuItem;
+    @FXML private MenuItem pullMenuItem;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
+
+    // Connectivity button style classes
+    private static final String CONN_CHECKING     = "connectivity-checking";
+    private static final String CONN_CONNECTED    = "connectivity-connected";
+    private static final String CONN_DISCONNECTED = "connectivity-disconnected";
+    private static final String CONN_ICON_CHECKING     = "⟳";
+    private static final String CONN_ICON_CONNECTED    = "●";
+    private static final String CONN_ICON_DISCONNECTED = "○";
 
     private String baselineDistance = "";
     private String baselineAlt = "";
@@ -80,23 +94,31 @@ public class MainController {
     private String baselineTales = "";
     private boolean entryExists;
 
+    /** Guard flag to prevent listener re-entrancy when reverting a navigation on Cancel. */
+    private boolean navigating = false;
+
+    /** Tri-state: null = checking/unknown, true = online, false = offline */
+    private Boolean connected = null;
+
     private final Map<String, String> pending = new LinkedHashMap<>();
 
     private final MarkdownStore store;
     private final GitService gitService;
     private final TripTaleProperties props;
     private final DiaryExporter diaryExporter;
+    private final ConnectivityService connectivityService;
     private final BuildProperties buildProperties;
     private final HostServices hostServices;
 
     public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
-                          DiaryExporter diaryExporter,
+                          DiaryExporter diaryExporter, ConnectivityService connectivityService,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.props = props;
         this.diaryExporter = diaryExporter;
+        this.connectivityService = connectivityService;
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
         this.hostServices = hostServicesProvider.getIfAvailable();
     }
@@ -131,7 +153,10 @@ public class MainController {
         });
         reloadTrips();
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
+            if (navigating) return;
             if (sel == null) return;
+            if (!confirmNavigateAway(() -> tripCombo.setValue(old))) return;
+            store.saveLastTripSlug(sel.slug());
             List<LocalDate> dates = store.listEntryDates(sel.slug());
             LocalDate target;
             String reason;
@@ -151,6 +176,7 @@ public class MainController {
             status(reason);
         });
         datePicker.valueProperty().addListener((obs, old, sel) -> {
+            if (navigating) return;
             Trip trip = tripCombo.getValue();
             if (sel != null && trip != null && trip.startDate() != null
                     && sel.isBefore(trip.startDate())) {
@@ -158,6 +184,7 @@ public class MainController {
                 status("Snapped to day 1 (" + trip.startDate() + ")");
                 return;
             }
+            if (!confirmNavigateAway(() -> datePicker.setValue(old))) return;
             loadEntry();
             updatePrevButtonState();
         });
@@ -166,7 +193,11 @@ public class MainController {
         routeField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (!tripCombo.getItems().isEmpty()) {
-            tripCombo.getSelectionModel().selectFirst();
+            String lastSlug = store.loadLastTripSlug().orElse(null);
+            Trip toSelect = lastSlug != null
+                    ? tripCombo.getItems().stream().filter(t -> t.slug().equals(lastSlug)).findFirst().orElse(null)
+                    : null;
+            tripCombo.getSelectionModel().select(toSelect != null ? toSelect : tripCombo.getItems().get(0));
         }
         updateDirty();
         updatePrevButtonState();
@@ -182,6 +213,8 @@ public class MainController {
         });
         updateCommitButton();
         status("Data dir: " + props.resolvedDataDir());
+        // Kick off a non-blocking connectivity check on startup
+        triggerConnectivityCheck();
     }
 
     private void reloadTrips() {
@@ -402,11 +435,49 @@ public class MainController {
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
+    /**
+     * If the form is dirty, shows a Save / Discard / Cancel dialog.
+     * <ul>
+     *   <li>Save — calls {@link #onSave()} then returns {@code true} (navigation proceeds).</li>
+     *   <li>Discard — returns {@code true} (navigation proceeds, changes are lost).</li>
+     *   <li>Cancel — invokes {@code revert} to undo the navigation, returns {@code false}.</li>
+     * </ul>
+     * Returns {@code true} immediately when the form is not dirty.
+     */
+    private boolean confirmNavigateAway(Runnable revert) {
+        if (!isDirty()) return true;
+        LocalDate currentDate = datePicker.getValue();
+        String dateLabel = currentDate != null ? currentDate.toString() : "current entry";
+        ButtonType save    = new ButtonType("Save");
+        ButtonType discard = new ButtonType("Discard");
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "You have unsaved changes for " + dateLabel + ". What would you like to do?",
+                save, discard, ButtonType.CANCEL);
+        alert.setTitle("Unsaved Changes");
+        alert.setHeaderText("Unsaved changes");
+        applyStylesheet(alert.getDialogPane());
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isEmpty() || result.get() == ButtonType.CANCEL) {
+            navigating = true;
+            try { revert.run(); } finally { navigating = false; }
+            return false;
+        }
+        if (result.get() == save) {
+            onSave();
+        }
+        return true;
+    }
+
     private void updateDirty() {
         boolean dirty = isDirty();
         if (saveButton != null) {
             saveButton.setDisable(!dirty);
             saveButton.setText(entryExists ? "💾 Save Tale" : "📝 Create Tale");
+        }
+        if (copyButton != null) {
+            boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
+                    && tripCombo.getValue() != null && datePicker.getValue() != null;
+            copyButton.setDisable(!hasContent);
         }
         updateCommitButton();
     }
@@ -512,6 +583,20 @@ public class MainController {
     }
 
     @FXML
+    public void onCopyTale() {
+        String route = routeField.getText();
+        String tales = talesArea.getText();
+        StringBuilder sb = new StringBuilder();
+        if (route != null && !route.isBlank() && !route.equals(DiaryEntry.DEFAULT_ROUTE)) {
+            sb.append(route).append("\n\n");
+        }
+        if (tales != null) sb.append(tales);
+        ClipboardContent cc = new ClipboardContent();
+        cc.putString(sb.toString());
+        Clipboard.getSystemClipboard().setContent(cc);
+    }
+
+    @FXML
     public void onCommit() {
         if (!canCommit()) return;
         String message = buildCommitMessage();
@@ -525,6 +610,69 @@ public class MainController {
         pending.clear();
         updateCommitButton();
         status("Committed " + n + " change" + (n == 1 ? "" : "s"));
+    }
+
+    @FXML
+    public void onCheckConnectivity() {
+        triggerConnectivityCheck();
+    }
+
+    private void triggerConnectivityCheck() {
+        // Show "checking" state immediately on the FX thread
+        connected = null;
+        applyConnectivityState();
+
+        String remoteUrl;
+        try {
+            remoteUrl = gitService.remoteUrl();
+        } catch (RuntimeException e) {
+            remoteUrl = "";
+        }
+
+        Task<Boolean> task = connectivityService.checkTask(remoteUrl);
+        task.setOnSucceeded(e -> Platform.runLater(() -> {
+            connected = task.getValue();
+            applyConnectivityState();
+        }));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            connected = false;
+            applyConnectivityState();
+        }));
+        Thread thread = new Thread(task, "connectivity-check");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void applyConnectivityState() {
+        boolean hasRemote = hasRemoteConfigured();
+        if (connectivityButton != null) {
+            connectivityButton.getStyleClass().removeAll(CONN_CHECKING, CONN_CONNECTED, CONN_DISCONNECTED);
+            if (connected == null) {
+                connectivityButton.getStyleClass().add(CONN_CHECKING);
+                connectivityButton.setText(CONN_ICON_CHECKING);
+                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Checking connectivity…"));
+            } else if (connected) {
+                connectivityButton.getStyleClass().add(CONN_CONNECTED);
+                connectivityButton.setText(CONN_ICON_CONNECTED);
+                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Connected — click to recheck"));
+            } else {
+                connectivityButton.getStyleClass().add(CONN_DISCONNECTED);
+                connectivityButton.setText(CONN_ICON_DISCONNECTED);
+                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Offline — click to recheck"));
+            }
+        }
+        // Gray out push/pull when offline or no remote configured
+        boolean remoteEnabled = Boolean.TRUE.equals(connected) && hasRemote;
+        if (pushMenuItem != null) pushMenuItem.setDisable(!remoteEnabled);
+        if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
+    }
+
+    private boolean hasRemoteConfigured() {
+        try {
+            return !gitService.remoteUrl().isBlank();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @FXML
