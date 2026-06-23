@@ -73,6 +73,7 @@
     </dependencies>
 
     <build>
+        <finalName>triptale</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
