@@ -121,7 +121,7 @@ Five Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded 
 ## CI
 
 - **`build.yml`** — triggers on push/PR to `main`; runs `mvn -B -ntp verify` on `ubuntu-latest` with Temurin 25.
-- **`release.yml`** — triggers on `v*` tags; matrix-builds jar with `-DskipTests` on `ubuntu-latest` and `macos-13` (Intel — JavaFX bundles OS/arch-specific natives, so a jar built on one platform won't run on another), publishes `triptale-linux.jar` and `triptale-mac.jar` as separate GitHub Release assets.
+- **`release.yml`** — triggers on `v*` tags; builds jar with `-DskipTests` on `ubuntu-latest` only (macOS runner was hanging with no available runner), publishes `triptale-linux.jar` as a GitHub Release asset.
 
 ---
 
