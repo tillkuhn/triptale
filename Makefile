@@ -3,7 +3,7 @@
 MVN ?= mvnd
 MVNARGS ?= -e -ntp -T 1C
 JAR := target/triptale.jar
-JVMFLAGS := --enable-native-access=javafx.graphics --sun-misc-unsafe-memory-access=allow
+JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow
 
 .PHONY: run run-jar help build compile test package clean format deps
 
@@ -14,7 +14,7 @@ $(JAR): pom.xml src ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
 
 run-jar: $(JAR) ## Run the pre-built jar directly with java (no Maven required)
-	java $(JVMFLAGS) -jar $(JAR)
+	java $(JVMFLAGS) -Dlogging.level.net.timafe.triptale=INFO -jar $(JAR)
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "TripTale — available targets:\n\n"} \
