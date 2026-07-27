@@ -36,7 +36,9 @@ public class TripTaleApplication extends Application {
         loader.setControllerFactory(spring::getBean);
         Parent root = loader.load();
         stage.setTitle("🏔️🚴TripTale");
-        stage.setScene(new Scene(root, 900, 600));
+        stage.setScene(new Scene(root, 1150, 650));
+        stage.setMinWidth(1100);
+        stage.setMinHeight(550);
         stage.show();
     }
 
