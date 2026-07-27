@@ -25,7 +25,7 @@ mvn test -Dtest=SlugsTest#toSlug_stripsAccents
 mvnd javafx:run -Dtriptale.data-dir=/path/to/data
 
 # Run the built jar directly (no Maven)
-java --enable-native-access=javafx.graphics --sun-misc-unsafe-memory-access=allow -jar target/triptale.jar
+java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -jar target/triptale.jar
 ```
 
 `make` uses `mvnd` (Maven daemon) by default; CI uses plain `mvn`. Override locally: `make run MVN=mvn`.
