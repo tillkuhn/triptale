@@ -6,6 +6,7 @@ import net.timafe.triptale.storage.MarkdownStore;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,19 +63,25 @@ public class GitService {
         }
     }
 
-    public void commitAll(String message) {
+    /**
+     * Commits all pending changes and returns the abbreviated (short) commit SHA,
+     * or {@code null} if there was nothing to commit.
+     */
+    public String commitAll(String message) {
         Path root = store.dataDir();
         try (Git git = Git.open(root.toFile())) {
             git.add().addFilepattern(".").call();
             if (git.status().call().isClean()) {
                 log.debug("Nothing to commit");
-                return;
+                return null;
             }
             PersonIdent author = author();
             var commit = git.commit().setMessage(message);
             if (author != null) commit.setAuthor(author).setCommitter(author);
-            commit.call();
-            log.info("Committed: {}", message);
+            RevCommit result = commit.call();
+            String shortSha = result.abbreviate(7).name();
+            log.info("Committed {}: {}", shortSha, message);
+            return shortSha;
         } catch (GitAPIException | IOException e) {
             throw new GitException("Failed to commit", e);
         }

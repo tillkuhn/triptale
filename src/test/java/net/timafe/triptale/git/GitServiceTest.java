@@ -97,17 +97,21 @@ class GitServiceTest {
     @Test
     void commitAllOnCleanTreeIsNoOp() {
         gitService.initOnStartup();
-        // No staged changes — should not throw
-        assertDoesNotThrow(() -> gitService.commitAll("empty commit"));
+        // initOnStartup creates .gitignore, so the first commit picks that up;
+        // a second commit on the now-clean tree should be a genuine no-op.
+        assertNotNull(gitService.commitAll("first commit"));
+        assertNull(gitService.commitAll("empty commit"));
     }
 
     @Test
     void commitAllCommitsStagedChanges() {
         gitService.initOnStartup();
         store.saveTrip(new Trip("tour", "Tour", LocalDate.of(2025, 6, 1), "test"));
-        assertDoesNotThrow(() -> gitService.commitAll("add trip"));
-        // second commit on now-clean tree should also be a no-op
-        assertDoesNotThrow(() -> gitService.commitAll("nothing new"));
+        String sha = gitService.commitAll("add trip");
+        assertNotNull(sha);
+        assertEquals(7, sha.length());
+        // second commit on now-clean tree should be a no-op and return null
+        assertNull(gitService.commitAll("nothing new"));
     }
 
     @Test
@@ -123,7 +127,7 @@ class GitServiceTest {
         svc.initOnStartup();
         store.saveEntry("tour",
                 DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
-        assertDoesNotThrow(() -> svc.commitAll("entry with author"));
+        assertNotNull(svc.commitAll("entry with author"));
     }
 
     // -------------------------------------------------------------------------

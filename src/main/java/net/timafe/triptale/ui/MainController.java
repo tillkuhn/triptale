@@ -611,8 +611,9 @@ public class MainController {
     public void onCommit() {
         if (!canCommit()) return;
         String message = buildCommitMessage();
+        String sha;
         try {
-            gitService.commitAll(message);
+            sha = gitService.commitAll(message);
         } catch (RuntimeException e) {
             error(e.getMessage());
             return;
@@ -620,7 +621,8 @@ public class MainController {
         int n = pending.size();
         pending.clear();
         updateCommitButton();
-        status("Committed " + n + " change" + (n == 1 ? "" : "s"));
+        String suffix = sha != null ? " (" + sha + ")" : "";
+        status("Committed " + n + " change" + (n == 1 ? "" : "s") + suffix);
     }
 
     @FXML
