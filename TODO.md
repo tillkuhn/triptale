@@ -1,6 +1,10 @@
-# ToDos
+# ToDos for this app
 
-# DONE 05 Tale testbox light background
+## Next Todo numer: 6
+
+## 6 prefix "Tales" label over the large input tales with with a Dragon emojy.
+
+## DONE 05 Tale testbox light background
 
 I like the overall darkmode look and we should keep it, but for the actual tale text I still prefer light background with dark font since it's easier to read.
 Maybe not white but a very light beige as background, and darkblue as foreground so it looks more like a written tale?
