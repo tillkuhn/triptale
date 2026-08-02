@@ -2,11 +2,9 @@
 
 ## Next Todo numer: 08
 
-## 07 Check feasability of HTML Preview for markdown export
+## DONE 07 Check feasability of HTML Preview for markdown export
 
-I understand that it's a considerable overhead to render markdown in the exort. but would it be possible if we assume we only have very simple markdown to write a temporary HTML file and have it openene dby the default system browser? Suggest efforts and create a plan if reasonable
-
-[Plan](docs/07_html-preview-export.md)
+see docs/done/07_html-preview-export.md
 
 ## 06 Enhance "Tales" Label
 

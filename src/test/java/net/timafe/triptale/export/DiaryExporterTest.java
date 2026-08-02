@@ -123,4 +123,33 @@ class DiaryExporterTest {
 
         assertEquals(exporter.exportTrip(trip), exporter.exportTrip(trip));
     }
+
+    @Test
+    void exportTripAsHtmlRendersHeadingsAndParagraphs() {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day **one** was *great*.").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("<!DOCTYPE html>"));
+        assertTrue(html.contains("<title>Alps 2025</title>"));
+        assertTrue(html.contains("<h1>Alps 2025</h1>"));
+        assertTrue(html.contains("<h2>2025-07-01 Tuesday Day 1: A → B</h2>"));
+        assertTrue(html.contains("<strong>one</strong>"));
+        assertTrue(html.contains("<em>great</em>"));
+        assertTrue(html.contains("<p>"));
+    }
+
+    @Test
+    void exportTripAsHtmlEscapesTripNameInTitle() {
+        Trip trip = new Trip("weird", "A & B <Trip>", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("weird", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("<title>A &amp; B &lt;Trip&gt;</title>"));
+    }
 }
