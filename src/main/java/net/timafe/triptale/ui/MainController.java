@@ -376,7 +376,8 @@ public class MainController {
         applyStylesheet(dlg.getDialogPane());
 
         ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
-        dlg.getDialogPane().getButtonTypes().setAll(copyType, ButtonType.CLOSE);
+        ButtonType previewType = new ButtonType("Preview in Browser", ButtonBar.ButtonData.OTHER);
+        dlg.getDialogPane().getButtonTypes().setAll(copyType, previewType, ButtonType.CLOSE);
 
         Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
         copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
@@ -384,6 +385,20 @@ public class MainController {
             cc.putString(exported);
             Clipboard.getSystemClipboard().setContent(cc);
             status("Diary copied to clipboard");
+            ev.consume();
+        });
+
+        Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
+        previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
+            try {
+                String html = diaryExporter.exportTripAsHtml(trip);
+                java.nio.file.Path tmp = Files.createTempFile("triptale-export-", ".html");
+                Files.writeString(tmp, html, java.nio.charset.StandardCharsets.UTF_8);
+                tmp.toFile().deleteOnExit();
+                openInBrowser(tmp.toUri().toString());
+            } catch (IOException ex) {
+                error("Preview failed: " + ex.getMessage());
+            }
             ev.consume();
         });
 

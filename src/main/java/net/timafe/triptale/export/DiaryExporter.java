@@ -3,6 +3,9 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -27,6 +30,7 @@ public class DiaryExporter {
     private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
     private static final String ENTRY_TRACK = "/export/entry-track.md";
     private static final String ENTRY_TALES = "/export/entry-tales.md";
+    private static final String HTML_SHELL = "/export/html-shell.html";
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
@@ -75,6 +79,22 @@ public class DiaryExporter {
 
         String out = substitute(load(SHELL), vars);
         return collapseBlankLines(out).strip() + "\n";
+    }
+
+    /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
+    public String exportTripAsHtml(Trip trip) {
+        String markdown = exportTrip(trip);
+        Node document = Parser.builder().build().parse(markdown);
+        String bodyHtml = HtmlRenderer.builder().build().render(document);
+        String title = trip.name() == null ? "" : escapeHtml(trip.name());
+        return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private String renderEntry(Trip trip, DiaryEntry e) {

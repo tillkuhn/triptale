@@ -25,6 +25,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>23.0.1</javafx.version>
         <jgit.version>7.0.0.202409031743-r</jgit.version>
+        <commonmark.version>0.29.0</commonmark.version>
         <main.class>net.timafe.triptale.TripTaleApplication</main.class>
     </properties>
 
@@ -54,6 +55,12 @@
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
             <version>${jgit.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <dependency>
