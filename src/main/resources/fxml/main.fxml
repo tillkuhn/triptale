@@ -98,7 +98,7 @@
                     <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="5"/>
                 </GridPane>
             </VBox>
-            <Label text="Tales" styleClass="section-label"/>
+            <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
             <TextArea fx:id="talesArea" styleClass="tale-text" VBox.vgrow="ALWAYS" wrapText="true"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <HBox styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">

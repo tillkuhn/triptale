@@ -34,15 +34,19 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.Slugs;
+import net.timafe.triptale.util.TextStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -52,6 +56,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.nio.file.Files;
 
 @Component
 public class MainController {
@@ -66,6 +71,7 @@ public class MainController {
     @FXML private TextField trackUrlField;
     @FXML private Button openTrackUrlButton;
     @FXML private TextArea talesArea;
+    @FXML private Label talesLabel;
     @FXML private Label statusLabel;
     @FXML private Label tourDayLabel;
     @FXML private Button copyButton;
@@ -96,6 +102,7 @@ public class MainController {
     private String baselineTrackUrl = "";
     private String baselineTales = "";
     private boolean entryExists;
+    private Instant talesUpdatedAt;
 
     /** Guard flag to prevent listener re-entrancy when reverting a navigation on Cancel. */
     private boolean navigating = false;
@@ -422,8 +429,30 @@ public class MainController {
         routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
         trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
         talesArea.setText(e.tales() == null ? "" : e.tales());
+        talesUpdatedAt = readTalesLastModified(trip, date);
+        updateTalesLabel();
         snapshotBaseline();
         updateDirty();
+    }
+
+    private Instant readTalesLastModified(Trip trip, LocalDate date) {
+        try {
+            return Files.getLastModifiedTime(store.entryFile(trip.slug(), date)).toInstant();
+        } catch (IOException ex) {
+            return null;
+        }
+    }
+
+    private void updateTalesLabel() {
+        if (talesLabel == null) return;
+        String text = talesArea.getText();
+        if (text == null || text.isBlank()) {
+            talesLabel.setText("🐉 Tales · here be dragons");
+            return;
+        }
+        int words = TextStats.wordCount(text);
+        String ago = talesUpdatedAt == null ? "just now" : RelativeTime.ago(talesUpdatedAt, Instant.now());
+        talesLabel.setText("🐉 Tales · " + words + " word" + (words == 1 ? "" : "s") + " updated " + ago);
     }
 
     private void snapshotBaseline() {
@@ -587,6 +616,8 @@ public class MainController {
         boolean wasNew = !entryExists;
         store.saveEntry(trip.slug(), entry);
         entryExists = true;
+        talesUpdatedAt = Instant.now();
+        updateTalesLabel();
         addPending(trip.slug() + "/" + date, wasNew ? CREATE : UPDATE);
         snapshotBaseline();
         updateDirty();
