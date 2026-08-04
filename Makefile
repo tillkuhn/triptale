@@ -14,7 +14,9 @@ $(JAR): pom.xml src ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
 
 run-jar: $(JAR) ## Run the pre-built jar directly with java (no Maven required)
-	java $(JVMFLAGS) -Dlogging.level.net.timafe.triptale=INFO -jar $(JAR)
+	@# Filters a benign, unsuppressable JavaFX startup warning (fat jar loads JavaFX
+	@# as an unnamed module — see AGENTS.md/CLAUDE.md if you ever revisit this).
+	java $(JVMFLAGS) -Dlogging.level.net.timafe.triptale=INFO -jar $(JAR) 2>&1 | grep --line-buffered -v -e "Unsupported JavaFX configuration" -e "com.sun.javafx.application.PlatformImpl startup"
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "TripTale — available targets:\n\n"} \
