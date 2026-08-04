@@ -5,7 +5,7 @@ MVNARGS ?= -e -ntp -T 1C
 JAR := target/triptale.jar
 JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow
 
-.PHONY: run run-jar help build compile test package clean format deps
+.PHONY: run run-jar help build compile test package clean format deps major minor patch
 
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
 	$(MVN) $(MVNARGS) javafx:run
@@ -39,3 +39,30 @@ clean: ## Remove target/ build output
 
 deps: ## Print resolved dependency tree
 	$(MVN) $(MVNARGS) dependency:tree
+
+define semtag_check
+	@if ! command -v semtag >/dev/null 2>&1; then \
+		echo "semtag not found in PATH."; \
+		echo "Install it with: brew install semtag  (or see https://github.com/nico2sh/semtag)"; \
+		echo "Then run again."; \
+		exit 1; \
+	fi
+endef
+
+major: ## Bump major version tag via semtag and push to remote
+	$(call semtag_check)
+	@echo "Next version will be: $$(semtag final -s major -o)"
+	@printf "Press any key to tag and push, or Ctrl-C to abort... " && read -r _dummy
+	semtag final -s major
+
+minor: ## Bump minor version tag via semtag and push to remote
+	$(call semtag_check)
+	@echo "Next version will be: $$(semtag final -s minor -o)"
+	@printf "Press any key to tag and push, or Ctrl-C to abort... " && read -r _dummy
+	semtag final -s minor
+
+patch: ## Bump patch version tag via semtag and push to remote
+	$(call semtag_check)
+	@echo "Next version will be: $$(semtag final -s patch -o)"
+	@printf "Press any key to tag and push, or Ctrl-C to abort... " && read -r _dummy
+	semtag final -s patch
