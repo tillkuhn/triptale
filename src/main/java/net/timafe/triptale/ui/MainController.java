@@ -94,8 +94,8 @@ public class MainController {
     private static final String CONN_CONNECTED    = "connectivity-connected";
     private static final String CONN_DISCONNECTED = "connectivity-disconnected";
     private static final String CONN_ICON_CHECKING     = "⟳";
-    private static final String CONN_ICON_CONNECTED    = "●";
-    private static final String CONN_ICON_DISCONNECTED = "○";
+    private static final String CONN_ICON_CONNECTED    = "📶";
+    private static final String CONN_ICON_DISCONNECTED = "📵";
 
     private String baselineDistance = "";
     private String baselineAlt = "";
