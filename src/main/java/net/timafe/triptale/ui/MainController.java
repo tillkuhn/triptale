@@ -35,6 +35,7 @@ import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.util.RelativeTime;
+import net.timafe.triptale.util.SaveTarget;
 import net.timafe.triptale.util.Slugs;
 import net.timafe.triptale.util.TextStats;
 import org.slf4j.Logger;
@@ -165,7 +166,10 @@ public class MainController {
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
             if (sel == null) return;
-            if (!confirmNavigateAway(() -> tripCombo.setValue(old))) return;
+            SaveTarget saveTarget = old != null
+                    ? SaveTarget.forTripChange(old.slug(), datePicker.getValue())
+                    : null;
+            if (!confirmNavigateAway(saveTarget, () -> tripCombo.setValue(old))) return;
             store.saveLastTripSlug(sel.slug());
             List<LocalDate> dates = store.listEntryDates(sel.slug());
             LocalDate target;
@@ -194,7 +198,10 @@ public class MainController {
                 status("Snapped to day 1 (" + trip.startDate() + ")");
                 return;
             }
-            if (!confirmNavigateAway(() -> datePicker.setValue(old))) return;
+            SaveTarget saveTarget = trip != null && old != null
+                    ? SaveTarget.forDateChange(trip.slug(), old)
+                    : null;
+            if (!confirmNavigateAway(saveTarget, () -> datePicker.setValue(old))) return;
             loadEntry();
             updatePrevButtonState();
         });
@@ -489,16 +496,17 @@ public class MainController {
     /**
      * If the form is dirty, shows a Save / Discard / Cancel dialog.
      * <ul>
-     *   <li>Save — calls {@link #onSave()} then returns {@code true} (navigation proceeds).</li>
+     *   <li>Save — persists to {@code target} (the trip/date the unsaved edits actually belong to,
+     *       <em>not</em> whatever the combo/picker controls currently report — see {@link SaveTarget})
+     *       then returns {@code true} (navigation proceeds).</li>
      *   <li>Discard — returns {@code true} (navigation proceeds, changes are lost).</li>
      *   <li>Cancel — invokes {@code revert} to undo the navigation, returns {@code false}.</li>
      * </ul>
      * Returns {@code true} immediately when the form is not dirty.
      */
-    private boolean confirmNavigateAway(Runnable revert) {
+    private boolean confirmNavigateAway(SaveTarget target, Runnable revert) {
         if (!isDirty()) return true;
-        LocalDate currentDate = datePicker.getValue();
-        String dateLabel = currentDate != null ? currentDate.toString() : "current entry";
+        String dateLabel = target != null && target.date() != null ? target.date().toString() : "current entry";
         ButtonType save    = new ButtonType("Save");
         ButtonType discard = new ButtonType("Discard");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
@@ -513,8 +521,8 @@ public class MainController {
             try { revert.run(); } finally { navigating = false; }
             return false;
         }
-        if (result.get() == save) {
-            onSave();
+        if (result.get() == save && target != null) {
+            doSave(target.tripSlug(), target.date());
         }
         return true;
     }
@@ -617,6 +625,17 @@ public class MainController {
         LocalDate date = datePicker.getValue();
         if (trip == null) { error("No trip selected"); return; }
         if (date == null) { error("No date selected"); return; }
+        doSave(trip.slug(), date);
+    }
+
+    /**
+     * Persists the current form field contents to {@code tripSlug}/{@code date}.
+     * <p>
+     * Callers must pass the trip/date the form fields actually belong to explicitly rather than
+     * re-reading {@code tripCombo.getValue()}/{@code datePicker.getValue()} — those controls may
+     * already have advanced to a new selection (see {@link SaveTarget} and {@link #confirmNavigateAway}).
+     */
+    private void doSave(String tripSlug, LocalDate date) {
         Double distance = parseDouble(distanceField.getText(), "distance");
         Double alt = parseDouble(altField.getText(), "altitude");
         if (distance == null && !distanceField.getText().isBlank()) return;
@@ -629,14 +648,14 @@ public class MainController {
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
-        store.saveEntry(trip.slug(), entry);
+        store.saveEntry(tripSlug, entry);
         entryExists = true;
         talesUpdatedAt = Instant.now();
         updateTalesLabel();
-        addPending(trip.slug() + "/" + date, wasNew ? CREATE : UPDATE);
+        addPending(tripSlug + "/" + date, wasNew ? CREATE : UPDATE);
         snapshotBaseline();
         updateDirty();
-        status("Saved " + trip.slug() + "/" + date);
+        status("Saved " + tripSlug + "/" + date);
     }
 
     @FXML
