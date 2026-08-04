@@ -1,12 +1,38 @@
 # ToDos for this app
 
-## Next Todo numer: 08
+## Next Todo numer: 10
+
+## 09 New concept for storing links
+
+we need a flexible way to store multiple links. introduce new "links" array in frontmatter for trip entry.
+the actual link should have a mandatory "url" property. kind is optional and should allow any string value, but for the UI
+we should enforve an enumerated value, suggest to use short very. Initial list "drink, eat, sleep, hike, bike, dive" (list should sort alphabetically). title is just an optional string
+
+
+```
+---
+date: 2026-07-24
+route: 'Essen → München'
+links:
+  - url: https://muc1.com/
+    kind: hike
+    title: Nice GPX routed for Muc 
+  - url: https://bar.com/
+    kind: drink
+    title: best bar in town
+  - url: https://random.com/
+```
+
+## DONE 08 Fix Save Bug when navigating away from unsaved entry
+
+When navigating from an unsaved entry to the next day, the system will show a confirmation that allows to discard changes or save them.
+But the app apparently already points to the next day, so the updated tale will be saved along with the wrong entry
 
 ## DONE 07 Check feasability of HTML Preview for markdown export
 
 see docs/done/07_html-preview-export.md
 
-## 06 Enhance "Tales" Label
+## DONE 06 Enhance "Tales" Label
 
 Replace the static "Tales" label with a single dynamic label (same `.section-label` style):
 
