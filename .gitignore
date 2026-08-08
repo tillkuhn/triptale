@@ -1,6 +1,10 @@
 target/
 *.class
 
+# jpackage build output (lives under target/ but excluded explicitly for clarity)
+target/dist/
+target/jpackage-input/
+
 .idea/
 *.iml
 .vscode/

@@ -34,6 +34,9 @@ test: ## Run unit tests
 package: ## Build the jar (runs tests)
 	$(MVN) $(MVNARGS) package
 
+app: build ## Build a macOS .app bundle via jpackage (target/dist/TripTale.app)
+	packaging/macos/build-app.sh
+
 clean: ## Remove target/ build output
 	$(MVN) $(MVNARGS) clean
 
