@@ -870,7 +870,7 @@ public class MainController {
     public void onAbout() {
         String version = buildProperties != null ? buildProperties.getVersion() : "dev";
         String builtAt = (buildProperties != null && buildProperties.getTime() != null)
-                ? DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                         .withZone(ZoneId.systemDefault())
                         .format(buildProperties.getTime())
                 : "—";
