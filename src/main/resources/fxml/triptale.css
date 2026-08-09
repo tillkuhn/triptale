@@ -228,6 +228,25 @@
     -fx-background-color: #1e2a2a;
 }
 
+/* ── CheckBox ─────────────────────────────────────────── */
+.check-box {
+    -fx-text-fill: #c8deda;
+}
+.check-box .box {
+    -fx-background-color: #172020;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+.check-box:selected .mark {
+    -fx-background-color: #4ec9b0;
+}
+.check-box:disabled {
+    -fx-opacity: 0.45;
+}
+
+
 /* ── Card panel (metrics grid) ────────────────────────── */
 .card {
     -fx-background-color: #202e2e;
