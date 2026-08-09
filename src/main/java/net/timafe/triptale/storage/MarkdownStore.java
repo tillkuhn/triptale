@@ -147,13 +147,35 @@ public class MarkdownStore {
 
     private static final String PREFS_FILE = "prefs.yml";
     private static final String PREFS_LAST_TRIP_KEY = "lastTripSlug";
+    private static final String PREFS_IMPRESSIONS_PATTERN_KEY = "impressionsFilePattern";
+    private static final String PREFS_IMPRESSIONS_GRID_COLUMNS_KEY = "impressionsGridColumns";
+    private static final int DEFAULT_IMPRESSIONS_GRID_COLUMNS = 2;
     private static final String PREFS_COMMENT =
             "# Local preferences — machine-specific, not committed to git.\n" +
             "# This file is listed in .gitignore and intentionally excluded from sync.\n";
 
-    public void saveLastTripSlug(String slug) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put(PREFS_LAST_TRIP_KEY, slug);
+    /** Reads the whole prefs.yml as a key-value map (empty map if the file doesn't exist). */
+    public Map<String, Object> loadPrefs() {
+        Path prefs = dataDir().resolve(PREFS_FILE);
+        if (!Files.exists(prefs)) return new LinkedHashMap<>();
+        try {
+            String raw = Files.readString(prefs);
+            // Strip leading comment lines before YAML parsing
+            String yaml_ = raw.lines()
+                    .filter(l -> !l.startsWith("#"))
+                    .reduce("", (a, b) -> a + b + "\n");
+            Map<String, Object> data = yaml.readValue(yaml_, Map.class);
+            return data == null ? new LinkedHashMap<>() : new LinkedHashMap<>(data);
+        } catch (IOException e) {
+            log.warn("Could not read {}: {}", PREFS_FILE, e.getMessage());
+            return new LinkedHashMap<>();
+        }
+    }
+
+    /** Merges the given key into the existing prefs.yml and writes the whole file back. */
+    public void savePref(String key, Object value) {
+        Map<String, Object> data = loadPrefs();
+        data.put(key, value);
         try {
             String content = PREFS_COMMENT + yaml.writeValueAsString(data);
             Files.writeString(dataDir().resolve(PREFS_FILE), content);
@@ -162,20 +184,34 @@ public class MarkdownStore {
         }
     }
 
+    public void saveLastTripSlug(String slug) {
+        savePref(PREFS_LAST_TRIP_KEY, slug);
+    }
+
     public Optional<String> loadLastTripSlug() {
-        Path prefs = dataDir().resolve(PREFS_FILE);
-        if (!Files.exists(prefs)) return Optional.empty();
+        return Optional.ofNullable(asString(loadPrefs().get(PREFS_LAST_TRIP_KEY)));
+    }
+
+    public void setImpressionsFilePattern(String pattern) {
+        savePref(PREFS_IMPRESSIONS_PATTERN_KEY, pattern);
+    }
+
+    public Optional<String> getImpressionsFilePattern() {
+        String v = asString(loadPrefs().get(PREFS_IMPRESSIONS_PATTERN_KEY));
+        return (v == null || v.isBlank()) ? Optional.empty() : Optional.of(v);
+    }
+
+    public void setImpressionsGridColumns(int columns) {
+        savePref(PREFS_IMPRESSIONS_GRID_COLUMNS_KEY, columns);
+    }
+
+    public int getImpressionsGridColumns() {
+        Object v = loadPrefs().get(PREFS_IMPRESSIONS_GRID_COLUMNS_KEY);
+        if (v == null) return DEFAULT_IMPRESSIONS_GRID_COLUMNS;
         try {
-            String raw = Files.readString(prefs);
-            // Strip leading comment lines before YAML parsing
-            String yaml_ = raw.lines()
-                    .filter(l -> !l.startsWith("#"))
-                    .reduce("", (a, b) -> a + b + "\n");
-            Map<String, Object> data = yaml.readValue(yaml_, Map.class);
-            return Optional.ofNullable(asString(data.get(PREFS_LAST_TRIP_KEY)));
-        } catch (IOException e) {
-            log.warn("Could not read {}: {}", PREFS_FILE, e.getMessage());
-            return Optional.empty();
+            return Integer.parseInt(v.toString());
+        } catch (NumberFormatException e) {
+            return DEFAULT_IMPRESSIONS_GRID_COLUMNS;
         }
     }
 

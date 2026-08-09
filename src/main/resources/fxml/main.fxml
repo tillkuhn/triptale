@@ -33,6 +33,8 @@
                             <SeparatorMenuItem/>
                             <MenuItem text="📤 Export Diary…" onAction="#onExportDiary"/>
                             <SeparatorMenuItem/>
+                            <MenuItem text="⚙ Edit Preferences…" onAction="#onEditPreferences"/>
+                            <SeparatorMenuItem/>
                             <MenuItem text="🚪 Exit" onAction="#onExit"/>
                         </items>
                     </Menu>
@@ -95,7 +97,10 @@
                         </Button>
                     </HBox>
                     <Label text="Route:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="5"/>
+                    <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
+                    <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions" GridPane.rowIndex="1" GridPane.columnIndex="5">
+                        <tooltip><Tooltip text="Show images for this day"/></tooltip>
+                    </Button>
                 </GridPane>
             </VBox>
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
