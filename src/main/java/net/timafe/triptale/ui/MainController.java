@@ -10,6 +10,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
@@ -20,12 +21,16 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ButtonBar;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.event.ActionEvent;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -33,6 +38,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.git.GitService;
+import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
@@ -45,6 +51,7 @@ import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.Instant;
@@ -71,6 +78,7 @@ public class MainController {
     @FXML private TextField routeField;
     @FXML private TextField trackUrlField;
     @FXML private Button openTrackUrlButton;
+    @FXML private Button impressionsButton;
     @FXML private TextArea talesArea;
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
@@ -117,18 +125,21 @@ public class MainController {
     private final GitService gitService;
     private final TripTaleProperties props;
     private final DiaryExporter diaryExporter;
+    private final ImpressionsResolver impressionsResolver;
     private final ConnectivityService connectivityService;
     private final BuildProperties buildProperties;
     private final HostServices hostServices;
 
     public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
-                          DiaryExporter diaryExporter, ConnectivityService connectivityService,
+                          DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
+                          ConnectivityService connectivityService,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.props = props;
         this.diaryExporter = diaryExporter;
+        this.impressionsResolver = impressionsResolver;
         this.connectivityService = connectivityService;
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
         this.hostServices = hostServicesProvider.getIfAvailable();
@@ -375,11 +386,18 @@ public class MainController {
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
 
+        boolean impressionsConfigured = store.getImpressionsFilePattern().isPresent();
+        CheckBox impressionsCheck = new CheckBox("Include impressions (images)");
+        impressionsCheck.setSelected(impressionsConfigured);
+        impressionsCheck.setDisable(!impressionsConfigured);
+
+        VBox contentBox = new VBox(8, ta, impressionsCheck);
+
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Export Diary");
         dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
-        dlg.getDialogPane().setContent(ta);
+        dlg.getDialogPane().setContent(contentBox);
         applyStylesheet(dlg.getDialogPane());
 
         ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
@@ -398,7 +416,7 @@ public class MainController {
         Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
         previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             try {
-                String html = diaryExporter.exportTripAsHtml(trip);
+                String html = diaryExporter.exportTripAsHtml(trip, impressionsCheck.isSelected());
                 java.nio.file.Path tmp = Files.createTempFile("triptale-export-", ".html");
                 Files.writeString(tmp, html, java.nio.charset.StandardCharsets.UTF_8);
                 tmp.toFile().deleteOnExit();
@@ -453,8 +471,27 @@ public class MainController {
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
         updateTalesLabel();
+        updateImpressionsButton(date);
         snapshotBaseline();
         updateDirty();
+    }
+
+    private void updateImpressionsButton(LocalDate date) {
+        if (impressionsButton == null) return;
+        String pattern = store.getImpressionsFilePattern().orElse(null);
+        if (pattern == null || date == null) {
+            impressionsButton.setText("No Impressions");
+            impressionsButton.setDisable(true);
+            return;
+        }
+        List<Path> images = impressionsResolver.resolve(pattern, date);
+        if (images.isEmpty()) {
+            impressionsButton.setText("No Impressions");
+            impressionsButton.setDisable(true);
+        } else {
+            impressionsButton.setText(images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
+            impressionsButton.setDisable(false);
+        }
     }
 
     private Instant readTalesLastModified(Trip trip, LocalDate date) {
@@ -925,6 +962,100 @@ public class MainController {
     public void onOpenTrackUrl() {
         String url = trackUrlField.getText();
         if (isValidHttpUrl(url)) openInBrowser(url.trim());
+    }
+
+    @FXML
+    public void onEditPreferences() {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Edit Preferences");
+        dlg.setHeaderText("Local preferences (not synced via git)");
+
+        TextField patternField = new TextField(store.getImpressionsFilePattern().orElse(""));
+        patternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg");
+        patternField.setPrefColumnCount(36);
+        TextField columnsField = new TextField(Integer.toString(store.getImpressionsGridColumns()));
+        columnsField.setPrefColumnCount(4);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        grid.setPadding(new Insets(14));
+        grid.getStyleClass().add("card");
+        grid.add(new Label("Impressions file pattern:"), 0, 0);
+        grid.add(patternField, 1, 0);
+        grid.add(new Label("Impressions grid columns:"), 0, 1);
+        grid.add(columnsField, 1, 1);
+
+        dlg.getDialogPane().setContent(grid);
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        applyStylesheet(dlg.getDialogPane());
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+
+        store.setImpressionsFilePattern(patternField.getText().trim());
+        int columns;
+        try {
+            columns = Integer.parseInt(columnsField.getText().trim());
+            if (columns < 1) columns = 1;
+        } catch (NumberFormatException nfe) {
+            columns = 2;
+        }
+        store.setImpressionsGridColumns(columns);
+        updateImpressionsButton(datePicker.getValue());
+        status("Preferences saved");
+    }
+
+    @FXML
+    public void onShowImpressions() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null) return;
+        String pattern = store.getImpressionsFilePattern().orElse(null);
+        if (pattern == null) return;
+        List<Path> images = impressionsResolver.resolve(pattern, date);
+        if (images.isEmpty()) return;
+
+        int[] index = {0};
+        ImageView imageView = new ImageView();
+        imageView.setPreserveRatio(true);
+        imageView.setFitWidth(640);
+        imageView.setFitHeight(480);
+        Label counter = new Label();
+
+        Button firstBtn = new Button("⏮");
+        Button prevBtn = new Button("◀");
+        Button nextBtn = new Button("▶");
+        Button lastBtn = new Button("⏭");
+
+        Runnable refresh = () -> {
+            Path p = images.get(index[0]);
+            imageView.setImage(new Image(p.toUri().toString(), 640, 480, true, true, true));
+            counter.setText((index[0] + 1) + " / " + images.size());
+            firstBtn.setDisable(index[0] == 0);
+            prevBtn.setDisable(index[0] == 0);
+            nextBtn.setDisable(index[0] == images.size() - 1);
+            lastBtn.setDisable(index[0] == images.size() - 1);
+        };
+        firstBtn.setOnAction(ev -> { index[0] = 0; refresh.run(); });
+        prevBtn.setOnAction(ev -> { if (index[0] > 0) index[0]--; refresh.run(); });
+        nextBtn.setOnAction(ev -> { if (index[0] < images.size() - 1) index[0]++; refresh.run(); });
+        lastBtn.setOnAction(ev -> { index[0] = images.size() - 1; refresh.run(); });
+        refresh.run();
+
+        HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn);
+        nav.setAlignment(javafx.geometry.Pos.CENTER);
+        VBox content = new VBox(10, imageView, nav);
+        content.setAlignment(javafx.geometry.Pos.CENTER);
+
+        Dialog<Void> dlg = new Dialog<>();
+        dlg.setTitle("Impressions");
+        dlg.setHeaderText(date.toString());
+        dlg.setResizable(true);
+        dlg.getDialogPane().setContent(content);
+        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        applyStylesheet(dlg.getDialogPane());
+        dlg.showAndWait();
     }
 
     /** True when the value is a well-formed absolute http(s) URL. */

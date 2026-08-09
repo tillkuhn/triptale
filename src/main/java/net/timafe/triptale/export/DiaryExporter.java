@@ -2,6 +2,7 @@ package net.timafe.triptale.export;
 
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -20,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class DiaryExporter {
@@ -35,14 +39,41 @@ public class DiaryExporter {
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
     private static final String MISSING = "—";
+    private static final Pattern IMPRESSIONS_MARKER = Pattern.compile("<!--IMPRESSIONS:(\\d{4}-\\d{2}-\\d{2})-->");
 
     private final MarkdownStore store;
+    private final ImpressionsResolver impressionsResolver;
 
-    public DiaryExporter(MarkdownStore store) {
+    public DiaryExporter(MarkdownStore store, ImpressionsResolver impressionsResolver) {
         this.store = store;
+        this.impressionsResolver = impressionsResolver;
     }
 
     public String exportTrip(Trip trip) {
+        return buildMarkdown(trip, false);
+    }
+
+    /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
+    public String exportTripAsHtml(Trip trip) {
+        return exportTripAsHtml(trip, false);
+    }
+
+    /**
+     * Renders the trip as a standalone HTML document, optionally embedding a per-day
+     * "impressions" image grid discovered via the configured {@code impressionsFilePattern}.
+     */
+    public String exportTripAsHtml(Trip trip, boolean includeImpressions) {
+        String markdown = buildMarkdown(trip, includeImpressions);
+        Node document = Parser.builder().build().parse(markdown);
+        String bodyHtml = HtmlRenderer.builder().build().render(document);
+        if (includeImpressions) {
+            bodyHtml = injectImpressions(bodyHtml);
+        }
+        String title = trip.name() == null ? "" : escapeHtml(trip.name());
+        return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
+    }
+
+    private String buildMarkdown(Trip trip, boolean includeImpressionMarkers) {
         Objects.requireNonNull(trip, "trip");
         List<LocalDate> dates = store.listEntryDates(trip.slug());
         List<DiaryEntry> entries = dates.stream()
@@ -63,7 +94,7 @@ public class DiaryExporter {
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
             if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
-            entriesBlock.append(renderEntry(trip, e));
+            entriesBlock.append(renderEntry(trip, e, includeImpressionMarkers));
         }
 
         Map<String, String> vars = new LinkedHashMap<>();
@@ -81,13 +112,36 @@ public class DiaryExporter {
         return collapseBlankLines(out).strip() + "\n";
     }
 
-    /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
-    public String exportTripAsHtml(Trip trip) {
-        String markdown = exportTrip(trip);
-        Node document = Parser.builder().build().parse(markdown);
-        String bodyHtml = HtmlRenderer.builder().build().render(document);
-        String title = trip.name() == null ? "" : escapeHtml(trip.name());
-        return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
+    /** Replaces embedded {@code <!--IMPRESSIONS:yyyy-MM-dd-->} markers with an image grid table. */
+    private String injectImpressions(String html) {
+        String pattern = store.getImpressionsFilePattern().orElse(null);
+        int columns = Math.max(1, store.getImpressionsGridColumns());
+        Matcher m = IMPRESSIONS_MARKER.matcher(html);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            LocalDate date = LocalDate.parse(m.group(1));
+            String replacement = pattern == null ? "" : renderImpressionsTable(pattern, date, columns);
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    private String renderImpressionsTable(String pattern, LocalDate date, int columns) {
+        List<Path> images = impressionsResolver.resolve(pattern, date);
+        if (images.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append("<table class=\"impressions\">\n");
+        for (int i = 0; i < images.size(); i++) {
+            if (i % columns == 0) {
+                if (i > 0) sb.append("</tr>\n");
+                sb.append("<tr>\n");
+            }
+            String uri = images.get(i).toUri().toString();
+            sb.append("<td><img src=\"").append(escapeHtml(uri)).append("\" /></td>\n");
+        }
+        sb.append("</tr>\n</table>\n");
+        return sb.toString();
     }
 
     private static String escapeHtml(String s) {
@@ -97,7 +151,7 @@ public class DiaryExporter {
                 .replace("\"", "&quot;");
     }
 
-    private String renderEntry(Trip trip, DiaryEntry e) {
+    private String renderEntry(Trip trip, DiaryEntry e, boolean includeImpressionMarker) {
         StringBuilder sb = new StringBuilder();
 
         Map<String, String> h = new LinkedHashMap<>();
@@ -130,6 +184,10 @@ public class DiaryExporter {
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);
+        }
+
+        if (includeImpressionMarker) {
+            sb.append("\n\n<!--IMPRESSIONS:").append(e.date().format(ISO)).append("-->");
         }
 
         return sb.toString();

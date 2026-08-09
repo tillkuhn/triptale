@@ -196,4 +196,25 @@ class MarkdownStoreTest {
         store.saveLastTripSlug("trip-two");
         assertEquals("trip-two", store.loadLastTripSlug().orElseThrow());
     }
+
+    @Test
+    void impressionsFilePatternDefaultsToEmpty() {
+        assertTrue(store.getImpressionsFilePattern().isEmpty());
+    }
+
+    @Test
+    void impressionsGridColumnsDefaultsToTwo() {
+        assertEquals(2, store.getImpressionsGridColumns());
+    }
+
+    @Test
+    void impressionsPrefsCoexistWithLastTripSlug() {
+        store.saveLastTripSlug("alps-2025");
+        store.setImpressionsFilePattern("${HOME}/Pictures/*.jpg");
+        store.setImpressionsGridColumns(3);
+
+        assertEquals("alps-2025", store.loadLastTripSlug().orElseThrow());
+        assertEquals("${HOME}/Pictures/*.jpg", store.getImpressionsFilePattern().orElseThrow());
+        assertEquals(3, store.getImpressionsGridColumns());
+    }
 }

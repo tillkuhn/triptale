@@ -3,6 +3,7 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ class DiaryExporterTest {
         TripTaleProperties props = new TripTaleProperties();
         props.setDataDir(tempDir.toString());
         store = new MarkdownStore(props);
-        exporter = new DiaryExporter(store);
+        exporter = new DiaryExporter(store, new ImpressionsResolver());
     }
 
     @Test
@@ -151,5 +152,50 @@ class DiaryExporterTest {
         String html = exporter.exportTripAsHtml(trip);
 
         assertTrue(html.contains("<title>A &amp; B &lt;Trip&gt;</title>"));
+    }
+
+    @Test
+    void exportTripAsHtmlWithoutImpressionsFlagOmitsImageMarkersAndGrid() {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+
+        String html = exporter.exportTripAsHtml(trip, false);
+
+        assertFalse(html.contains("IMPRESSIONS"));
+        assertFalse(html.contains("<table"));
+    }
+
+    @Test
+    void exportTripAsHtmlWithImpressionsFlagInjectsImageGrid() throws java.io.IOException {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
+        java.nio.file.Files.createFile(tempDir.resolve("20250701_two.jpg"));
+        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        store.setImpressionsGridColumns(2);
+
+        String html = exporter.exportTripAsHtml(trip, true);
+
+        assertFalse(html.contains("IMPRESSIONS"), "marker should be replaced");
+        assertTrue(html.contains("<table class=\"impressions\">"));
+        assertTrue(html.contains("20250701_one.jpg"));
+        assertTrue(html.contains("20250701_two.jpg"));
+    }
+
+    @Test
+    void exportTripPlainMarkdownNeverIncludesImpressions() throws java.io.IOException {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
+        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+
+        String markdown = exporter.exportTrip(trip);
+
+        assertFalse(markdown.contains("IMPRESSIONS"));
+        assertFalse(markdown.contains(".jpg"));
     }
 }
