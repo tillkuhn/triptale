@@ -1,6 +1,14 @@
 # ToDos for this app
 
-## Next Todo numer: 10
+## Next Todo numer: 11
+
+## 10 Impressions Feature
+
+The export for html should support images per day entry, suggest to make this optional with a boolean flag.
+To support this we need a new preference in prefs.yaml `impressionsFilePattern` that points to a file matching pattern that should support common file globs and predefined variables. One would be $HOME for user HOME, one would be $DATE for YYYYMMDD date.  to be able to edit the pattern, it's about time to introduce a simple edit prefs dialogue. 
+For example entry ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg would match 20260807_204352_Fireshow+_mini.jpg if the date of the current entry is  20260807! There should also be a new button behin the route input field (which is too wide anyway) that shows "No Impressions" if either the property is not set, or if no matching impressions (image files) could be found. If >0 images could be found, it should show "1 Impression>", "2 Impressions" etc. The link should open a small popup that allows to scroll thru the images, maybe same navigation as entry navigator (move to first, move forward, move backward, move to end). Make the discovery smart to limit the perfomance penalty when navigating. For example, in the sample pattern above all files are in a single directory, so no need for recursive search, it only has to look for matching files in that dir. If too complex, skip the glob support for now so we simply assume a pattern that points to files within a directory.
+In html export, the images should be shown as a grid with 2 columnes, probably easiest to use html table. Not sure if we can do the same for markdown, pls advise. to changes in a feat branch. this is a complex change so apply grill-me.
+
 
 ## 09 New concept for storing links
 
