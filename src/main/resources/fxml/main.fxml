@@ -85,22 +85,22 @@
             <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
             <VBox styleClass="card" spacing="6">
                 <GridPane hgap="12" vgap="8">
-                    <Label text="Distance (km):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                    <Label text="Altitude (m):" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
-                    <Label text="Track URL:" GridPane.rowIndex="0" GridPane.columnIndex="4"/>
-                    <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
+                    <Label text="Route:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
+                    <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions" GridPane.rowIndex="0" GridPane.columnIndex="5">
+                        <tooltip><Tooltip text="Show images for this day"/></tooltip>
+                    </Button>
+                    <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                    <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                    <Label text="Track URL:" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
+                    <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
                         <TextField fx:id="trackUrlField" prefWidth="220" HBox.hgrow="ALWAYS"/>
                         <Button fx:id="openTrackUrlButton" text="🔗" onAction="#onOpenTrackUrl" disable="true">
                             <tooltip><Tooltip text="Open track URL in browser"/></tooltip>
                         </Button>
                     </HBox>
-                    <Label text="Route:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
-                    <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <tooltip><Tooltip text="Show images for this day"/></tooltip>
-                    </Button>
                 </GridPane>
             </VBox>
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
