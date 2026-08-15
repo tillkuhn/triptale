@@ -28,6 +28,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -1054,6 +1055,15 @@ public class MainController {
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.LEFT) {
+                if (index[0] > 0) { index[0]--; refresh.run(); }
+                ev.consume();
+            } else if (ev.getCode() == KeyCode.RIGHT) {
+                if (index[0] < images.size() - 1) { index[0]++; refresh.run(); }
+                ev.consume();
+            }
+        });
         applyStylesheet(dlg.getDialogPane());
         dlg.showAndWait();
     }
