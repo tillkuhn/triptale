@@ -1,11 +1,17 @@
 # ToDos for this app
 
-## Next Todo numer: 11
+## Next Todo numer: 12
+
+## 11 supports faves & impressions
+
+extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
+also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images,
+it should re-use the samve image viewer
+
 
 ## DONE 10 Impressions Feature
 
 see docs/done/10_impressions_feature.md
-
 
 ## 09 New concept for storing links
 

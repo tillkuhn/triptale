@@ -10,7 +10,6 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
@@ -38,6 +37,7 @@ import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
+import net.timafe.triptale.export.ImpressionsMode;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
@@ -80,6 +80,7 @@ public class MainController {
     @FXML private TextField trackUrlField;
     @FXML private Button openTrackUrlButton;
     @FXML private Button impressionsButton;
+    @FXML private Button favesButton;
     @FXML private TextArea talesArea;
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
@@ -388,11 +389,30 @@ public class MainController {
         ta.setPrefColumnCount(90);
 
         boolean impressionsConfigured = store.getImpressionsFilePattern().isPresent();
-        CheckBox impressionsCheck = new CheckBox("Include impressions (images)");
-        impressionsCheck.setSelected(impressionsConfigured);
-        impressionsCheck.setDisable(!impressionsConfigured);
+        boolean favesConfigured = store.getImpressionsFaveFilePattern().isPresent();
+        ImpressionsMode defaultMode = impressionsConfigured
+                ? ImpressionsMode.ALL
+                : (favesConfigured ? ImpressionsMode.FAVES : ImpressionsMode.NONE);
 
-        VBox contentBox = new VBox(8, ta, impressionsCheck);
+        ComboBox<ImpressionsMode> impressionsCombo = new ComboBox<>(
+                FXCollections.observableArrayList(ImpressionsMode.NONE, ImpressionsMode.FAVES, ImpressionsMode.ALL));
+        impressionsCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(ImpressionsMode m) {
+                if (m == null) return "";
+                return switch (m) {
+                    case NONE -> "None";
+                    case FAVES -> "Fave Impressions";
+                    case ALL -> "All Impressions";
+                };
+            }
+            @Override public ImpressionsMode fromString(String s) { return null; }
+        });
+        impressionsCombo.setValue(defaultMode);
+
+        HBox impressionsBox = new HBox(8, new Label("Images:"), impressionsCombo);
+        impressionsBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        VBox contentBox = new VBox(8, ta, impressionsBox);
 
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Export Diary");
@@ -417,7 +437,7 @@ public class MainController {
         Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
         previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             try {
-                String html = diaryExporter.exportTripAsHtml(trip, impressionsCheck.isSelected());
+                String html = diaryExporter.exportTripAsHtml(trip, impressionsCombo.getValue());
                 java.nio.file.Path tmp = Files.createTempFile("triptale-export-", ".html");
                 Files.writeString(tmp, html, java.nio.charset.StandardCharsets.UTF_8);
                 tmp.toFile().deleteOnExit();
@@ -473,6 +493,7 @@ public class MainController {
         talesUpdatedAt = readTalesLastModified(trip, date);
         updateTalesLabel();
         updateImpressionsButton(date);
+        updateFavesButton(date);
         snapshotBaseline();
         updateDirty();
     }
@@ -492,6 +513,24 @@ public class MainController {
         } else {
             impressionsButton.setText(images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
             impressionsButton.setDisable(false);
+        }
+    }
+
+    private void updateFavesButton(LocalDate date) {
+        if (favesButton == null) return;
+        String pattern = store.getImpressionsFaveFilePattern().orElse(null);
+        if (pattern == null || date == null) {
+            favesButton.setText("No Faves");
+            favesButton.setDisable(true);
+            return;
+        }
+        List<Path> images = impressionsResolver.resolve(pattern, date);
+        if (images.isEmpty()) {
+            favesButton.setText("No Faves");
+            favesButton.setDisable(true);
+        } else {
+            favesButton.setText(images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
+            favesButton.setDisable(false);
         }
     }
 
@@ -976,6 +1015,9 @@ public class MainController {
         patternField.setPrefColumnCount(36);
         TextField columnsField = new TextField(Integer.toString(store.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);
+        TextField favePatternField = new TextField(store.getImpressionsFaveFilePattern().orElse(""));
+        favePatternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/${DATE}*.jpg");
+        favePatternField.setPrefColumnCount(36);
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -986,6 +1028,8 @@ public class MainController {
         grid.add(patternField, 1, 0);
         grid.add(new Label("Impressions grid columns:"), 0, 1);
         grid.add(columnsField, 1, 1);
+        grid.add(new Label("Faves file pattern:"), 0, 2);
+        grid.add(favePatternField, 1, 2);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -1003,7 +1047,9 @@ public class MainController {
             columns = 2;
         }
         store.setImpressionsGridColumns(columns);
+        store.setImpressionsFaveFilePattern(favePatternField.getText().trim());
         updateImpressionsButton(datePicker.getValue());
+        updateFavesButton(datePicker.getValue());
         status("Preferences saved");
     }
 
@@ -1016,7 +1062,22 @@ public class MainController {
         if (pattern == null) return;
         List<Path> images = impressionsResolver.resolve(pattern, date);
         if (images.isEmpty()) return;
+        showImagePopup("Impressions", images, date);
+    }
 
+    @FXML
+    public void onShowFaves() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null) return;
+        String pattern = store.getImpressionsFaveFilePattern().orElse(null);
+        if (pattern == null) return;
+        List<Path> images = impressionsResolver.resolve(pattern, date);
+        if (images.isEmpty()) return;
+        showImagePopup("Faves", images, date);
+    }
+
+    private void showImagePopup(String title, List<Path> images, LocalDate date) {
         int[] index = {0};
         ImageView imageView = new ImageView();
         imageView.setPreserveRatio(true);
@@ -1050,7 +1111,7 @@ public class MainController {
         content.setAlignment(javafx.geometry.Pos.CENTER);
 
         Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle("Impressions");
+        dlg.setTitle(title);
         dlg.setHeaderText(date.toString());
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(content);
