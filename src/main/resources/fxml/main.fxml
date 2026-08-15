@@ -87,9 +87,14 @@
                 <GridPane hgap="12" vgap="8">
                     <Label text="Route:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="routeField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
-                    <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <tooltip><Tooltip text="Show images for this day"/></tooltip>
-                    </Button>
+                    <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
+                        <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions">
+                            <tooltip><Tooltip text="Show images for this day"/></tooltip>
+                        </Button>
+                        <Button fx:id="favesButton" text="No Faves" onAction="#onShowFaves">
+                            <tooltip><Tooltip text="Show favourite images for this day"/></tooltip>
+                        </Button>
+                    </HBox>
                     <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                     <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                     <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>

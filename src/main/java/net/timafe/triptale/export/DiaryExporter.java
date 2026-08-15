@@ -55,19 +55,22 @@ public class DiaryExporter {
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
     public String exportTripAsHtml(Trip trip) {
-        return exportTripAsHtml(trip, false);
+        return exportTripAsHtml(trip, ImpressionsMode.NONE);
     }
 
     /**
-     * Renders the trip as a standalone HTML document, optionally embedding a per-day
-     * "impressions" image grid discovered via the configured {@code impressionsFilePattern}.
+     * Renders the trip as a standalone HTML document, optionally embedding a per-day image grid
+     * discovered via the configured pattern selected by {@code mode} — see {@link ImpressionsMode}.
+     * A pattern that isn't configured (or resolves no files for a given day) simply yields no
+     * grid for that day; this is not treated as an error.
      */
-    public String exportTripAsHtml(Trip trip, boolean includeImpressions) {
-        String markdown = buildMarkdown(trip, includeImpressions);
+    public String exportTripAsHtml(Trip trip, ImpressionsMode mode) {
+        boolean includeMarkers = mode != ImpressionsMode.NONE;
+        String markdown = buildMarkdown(trip, includeMarkers);
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
-        if (includeImpressions) {
-            bodyHtml = injectImpressions(bodyHtml);
+        if (includeMarkers) {
+            bodyHtml = injectImpressions(bodyHtml, mode);
         }
         String title = trip.name() == null ? "" : escapeHtml(trip.name());
         return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
@@ -113,8 +116,12 @@ public class DiaryExporter {
     }
 
     /** Replaces embedded {@code <!--IMPRESSIONS:yyyy-MM-dd-->} markers with an image grid table. */
-    private String injectImpressions(String html) {
-        String pattern = store.getImpressionsFilePattern().orElse(null);
+    private String injectImpressions(String html, ImpressionsMode mode) {
+        String pattern = switch (mode) {
+            case FAVES -> store.getImpressionsFaveFilePattern().orElse(null);
+            case ALL -> store.getImpressionsFilePattern().orElse(null);
+            case NONE -> null;
+        };
         int columns = Math.max(1, store.getImpressionsGridColumns());
         Matcher m = IMPRESSIONS_MARKER.matcher(html);
         StringBuilder sb = new StringBuilder();

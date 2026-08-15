@@ -161,7 +161,7 @@ class DiaryExporterTest {
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
-        String html = exporter.exportTripAsHtml(trip, false);
+        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.NONE);
 
         assertFalse(html.contains("IMPRESSIONS"));
         assertFalse(html.contains("<table"));
@@ -177,13 +177,50 @@ class DiaryExporterTest {
         store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
         store.setImpressionsGridColumns(2);
 
-        String html = exporter.exportTripAsHtml(trip, true);
+        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
 
         assertFalse(html.contains("IMPRESSIONS"), "marker should be replaced");
         assertTrue(html.contains("<table class=\"impressions\">"));
         assertTrue(html.contains("20250701_one.jpg"));
         assertTrue(html.contains("20250701_two.jpg"));
     }
+
+    @Test
+    void exportTripAsHtmlWithFavesModeUsesFavePattern() throws java.io.IOException {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        java.nio.file.Files.createFile(tempDir.resolve("20250701_all.jpg"));
+        java.nio.file.Path faveDir = tempDir.resolve("faves");
+        java.nio.file.Files.createDirectory(faveDir);
+        java.nio.file.Files.createFile(faveDir.resolve("20250701_fave.jpg"));
+        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        store.setImpressionsFaveFilePattern(faveDir.toString() + "/${DATE}*.jpg");
+
+        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
+
+        assertTrue(html.contains("<table class=\"impressions\">"));
+        assertTrue(html.contains("20250701_fave.jpg"));
+        assertFalse(html.contains("20250701_all.jpg"));
+    }
+
+    @Test
+    void exportTripAsHtmlGracefullyOmitsGridWhenPatternNotConfigured() {
+        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        // No impressionsFilePattern or impressionsFaveFilePattern configured at all.
+
+        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
+
+        assertFalse(html.contains("IMPRESSIONS"));
+        assertFalse(html.contains("<table"));
+
+        String favesHtml = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
+        assertFalse(favesHtml.contains("IMPRESSIONS"));
+        assertFalse(favesHtml.contains("<table"));
+    }
+
 
     @Test
     void exportTripPlainMarkdownNeverIncludesImpressions() throws java.io.IOException {

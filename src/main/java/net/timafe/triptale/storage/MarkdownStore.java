@@ -149,6 +149,7 @@ public class MarkdownStore {
     private static final String PREFS_LAST_TRIP_KEY = "lastTripSlug";
     private static final String PREFS_IMPRESSIONS_PATTERN_KEY = "impressionsFilePattern";
     private static final String PREFS_IMPRESSIONS_GRID_COLUMNS_KEY = "impressionsGridColumns";
+    private static final String PREFS_IMPRESSIONS_FAVE_PATTERN_KEY = "impressionsFaveFilePattern";
     private static final int DEFAULT_IMPRESSIONS_GRID_COLUMNS = 2;
     private static final String PREFS_COMMENT =
             "# Local preferences — machine-specific, not committed to git.\n" +
@@ -214,6 +215,16 @@ public class MarkdownStore {
             return DEFAULT_IMPRESSIONS_GRID_COLUMNS;
         }
     }
+
+    public void setImpressionsFaveFilePattern(String pattern) {
+        savePref(PREFS_IMPRESSIONS_FAVE_PATTERN_KEY, pattern);
+    }
+
+    public Optional<String> getImpressionsFaveFilePattern() {
+        String v = asString(loadPrefs().get(PREFS_IMPRESSIONS_FAVE_PATTERN_KEY));
+        return (v == null || v.isBlank()) ? Optional.empty() : Optional.of(v);
+    }
+
 
     public List<LocalDate> listEntryDates(String slug) {
         Path dir = entriesDir(slug);

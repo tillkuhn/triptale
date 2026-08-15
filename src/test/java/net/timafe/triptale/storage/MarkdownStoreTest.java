@@ -217,4 +217,18 @@ class MarkdownStoreTest {
         assertEquals("${HOME}/Pictures/*.jpg", store.getImpressionsFilePattern().orElseThrow());
         assertEquals(3, store.getImpressionsGridColumns());
     }
+
+    @Test
+    void impressionsFaveFilePatternDefaultsToEmpty() {
+        assertTrue(store.getImpressionsFaveFilePattern().isEmpty());
+    }
+
+    @Test
+    void impressionsFaveFilePatternCoexistsWithImpressionsFilePattern() {
+        store.setImpressionsFilePattern("${HOME}/Pictures/output/${DATE}*.jpg");
+        store.setImpressionsFaveFilePattern("${HOME}/Pictures/00_Faves/${DATE}*.jpg");
+
+        assertEquals("${HOME}/Pictures/output/${DATE}*.jpg", store.getImpressionsFilePattern().orElseThrow());
+        assertEquals("${HOME}/Pictures/00_Faves/${DATE}*.jpg", store.getImpressionsFaveFilePattern().orElseThrow());
+    }
 }
