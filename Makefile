@@ -10,7 +10,9 @@ JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=a
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
 	$(MVN) $(MVNARGS) javafx:run
 
-$(JAR): pom.xml src ## Build the fat jar (skips tests, only when sources change)
+SOURCES := $(shell find src -type f) pom.xml
+
+$(JAR): $(SOURCES) ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
 
 run-jar: $(JAR) ## Run the pre-built jar directly with java (no Maven required)
