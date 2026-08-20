@@ -20,6 +20,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ButtonBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
@@ -39,6 +40,8 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ImpressionsMode;
 import net.timafe.triptale.git.GitService;
+import net.timafe.triptale.storage.ExifInfo;
+import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.util.RelativeTime;
@@ -59,6 +62,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -128,12 +132,14 @@ public class MainController {
     private final TripTaleProperties props;
     private final DiaryExporter diaryExporter;
     private final ImpressionsResolver impressionsResolver;
+    private final ExifReader exifReader;
     private final ConnectivityService connectivityService;
     private final BuildProperties buildProperties;
     private final HostServices hostServices;
 
     public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
                           DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
+                          ExifReader exifReader,
                           ConnectivityService connectivityService,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
@@ -142,6 +148,7 @@ public class MainController {
         this.props = props;
         this.diaryExporter = diaryExporter;
         this.impressionsResolver = impressionsResolver;
+        this.exifReader = exifReader;
         this.connectivityService = connectivityService;
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
         this.hostServices = hostServicesProvider.getIfAvailable();
@@ -1079,16 +1086,36 @@ public class MainController {
 
     private void showImagePopup(String title, List<Path> images, LocalDate date) {
         int[] index = {0};
+        Map<Path, ExifInfo> exifCache = new HashMap<>();
+
         ImageView imageView = new ImageView();
         imageView.setPreserveRatio(true);
         imageView.setFitWidth(640);
         imageView.setFitHeight(480);
         Label counter = new Label();
 
+        Label filenameLabel = new Label();
+        filenameLabel.setStyle("-fx-font-weight: bold;");
+        Label metaLabel = new Label();
+        VBox topInfo = new VBox(2, filenameLabel, metaLabel);
+        topInfo.setAlignment(javafx.geometry.Pos.CENTER);
+
         Button firstBtn = new Button("⏮");
         Button prevBtn = new Button("◀");
         Button nextBtn = new Button("▶");
         Button lastBtn = new Button("⏭");
+
+        ButtonType mapButtonType = new ButtonType("Open in Maps", ButtonBar.ButtonData.LEFT);
+
+        Dialog<Void> dlg = new Dialog<>();
+        dlg.setTitle(title);
+        dlg.setResizable(true);
+        dlg.getDialogPane().getButtonTypes().add(mapButtonType);
+        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        Button mapButton = (Button) dlg.getDialogPane().lookupButton(mapButtonType);
+        Tooltip mapTooltip = new Tooltip();
+        Tooltip.install(mapButton, mapTooltip);
 
         Runnable refresh = () -> {
             Path p = images.get(index[0]);
@@ -1098,24 +1125,55 @@ public class MainController {
             prevBtn.setDisable(index[0] == 0);
             nextBtn.setDisable(index[0] == images.size() - 1);
             lastBtn.setDisable(index[0] == images.size() - 1);
+
+            filenameLabel.setText(p.getFileName().toString());
+            ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
+            if (exif.hasCameraData()) {
+                StringBuilder sb = new StringBuilder();
+                if (exif.cameraModel() != null) sb.append(exif.cameraModel());
+                if (exif.aperture() != null) {
+                    if (sb.length() > 0) sb.append(" · ");
+                    sb.append(exif.aperture());
+                }
+                if (exif.exposureTime() != null) {
+                    if (sb.length() > 0) sb.append(" · ");
+                    sb.append(exif.exposureTime());
+                }
+                metaLabel.setText(sb.toString());
+            } else {
+                metaLabel.setText("No camera data");
+            }
+
+            if (exif.hasLocation()) {
+                mapButton.setDisable(false);
+                mapTooltip.setText("Open coordinates in Google Maps");
+            } else {
+                mapButton.setDisable(true);
+                mapTooltip.setText("No geo data");
+            }
         };
         firstBtn.setOnAction(ev -> { index[0] = 0; refresh.run(); });
         prevBtn.setOnAction(ev -> { if (index[0] > 0) index[0]--; refresh.run(); });
         nextBtn.setOnAction(ev -> { if (index[0] < images.size() - 1) index[0]++; refresh.run(); });
         lastBtn.setOnAction(ev -> { index[0] = images.size() - 1; refresh.run(); });
+
+        mapButton.addEventFilter(ActionEvent.ACTION, ev -> {
+            ExifInfo exif = exifCache.get(images.get(index[0]));
+            if (exif != null && exif.hasLocation()) {
+                openInBrowser(exif.mapsUrl());
+            }
+            ev.consume();
+        });
+
         refresh.run();
 
         HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn);
         nav.setAlignment(javafx.geometry.Pos.CENTER);
-        VBox content = new VBox(10, imageView, nav);
+        VBox content = new VBox(10, topInfo, imageView, nav);
         content.setAlignment(javafx.geometry.Pos.CENTER);
 
-        Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle(title);
         dlg.setHeaderText(date.toString());
-        dlg.setResizable(true);
         dlg.getDialogPane().setContent(content);
-        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
             if (ev.getCode() == KeyCode.LEFT) {
                 if (index[0] > 0) { index[0]--; refresh.run(); }
