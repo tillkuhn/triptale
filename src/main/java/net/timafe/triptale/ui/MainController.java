@@ -247,6 +247,12 @@ public class MainController {
                 newScene.getAccelerators().put(
                         new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN),
                         () -> { if (canCommit()) onCommit(); });
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN),
+                        this::onPrevDay);
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN),
+                        this::onNextDay);
             }
         });
         updateCommitButton();
