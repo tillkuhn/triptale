@@ -58,9 +58,9 @@
     -fx-padding: 4 0 2 0;
 }
 .tour-day-label {
-    -fx-text-fill: #6a9090;
-    -fx-font-size: 12px;
-    -fx-font-style: italic;
+    -fx-text-fill: #e8f4f1;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 /* ── Text inputs ──────────────────────────────────────── */
