@@ -6,7 +6,7 @@
 
 extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
 also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images,
-it should re-use the samve image viewer
+it should re-use the samve image viewer.
 
 
 ## DONE 10 Impressions Feature
