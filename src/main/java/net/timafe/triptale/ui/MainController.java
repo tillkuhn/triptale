@@ -525,7 +525,7 @@ public class MainController {
             impressionsButton.setText("No Impressions");
             impressionsButton.setDisable(true);
         } else {
-            impressionsButton.setText(images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
+            impressionsButton.setText("🖼 " + images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
             impressionsButton.setDisable(false);
         }
     }
@@ -543,7 +543,7 @@ public class MainController {
             favesButton.setText("No Faves");
             favesButton.setDisable(true);
         } else {
-            favesButton.setText(images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
+            favesButton.setText("🖼 " + images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
             favesButton.setDisable(false);
         }
     }
