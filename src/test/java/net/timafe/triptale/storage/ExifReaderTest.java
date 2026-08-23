@@ -48,12 +48,28 @@ class ExifReaderTest {
     }
 
     @Test
+    void readsIsoWhenPresent() {
+        ExifInfo info = reader.read(fixture("with_iso.jpg"));
+
+        assertEquals("ISO 200", info.iso());
+        assertTrue(info.hasCameraData());
+    }
+
+    @Test
+    void isoIsNullWhenNotPresent() {
+        ExifInfo info = reader.read(fixture("with_exif.jpg"));
+
+        assertNull(info.iso());
+    }
+
+    @Test
     void returnsEmptyForImageWithoutExif() {
         ExifInfo info = reader.read(fixture("no_exif.jpg"));
 
         assertNull(info.cameraModel());
         assertNull(info.aperture());
         assertNull(info.exposureTime());
+        assertNull(info.iso());
         assertFalse(info.hasCameraData());
         assertFalse(info.hasLocation());
         assertNull(info.mapsUrl());
