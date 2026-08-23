@@ -62,7 +62,27 @@ public class ExifReader {
     private static String exposureTime(Metadata metadata) {
         ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         if (dir == null) return null;
-        return trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_EXPOSURE_TIME));
+        com.drew.lang.Rational rational = dir.getRational(ExifSubIFDDirectory.TAG_EXPOSURE_TIME);
+        if (rational == null) return trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_EXPOSURE_TIME));
+        return formatExposureTime(rational.doubleValue());
+    }
+
+    /**
+     * Formats an exposure time in seconds as a human-readable fraction (e.g. "1/33 sec") for
+     * exposures shorter than one second, or as a decimal number of seconds (e.g. "2.5 sec") for
+     * longer exposures. Some camera JPEGs (notably certain Samsung models) report the raw
+     * numerator/denominator un-simplified (e.g. "3030303/100000000 sec"); rounding to the nearest
+     * whole fraction avoids surfacing that noise.
+     */
+    static String formatExposureTime(double seconds) {
+        if (seconds <= 0) return null;
+        if (seconds >= 1) {
+            double rounded = Math.round(seconds * 10) / 10.0;
+            return (rounded == Math.rint(rounded) ? String.format(java.util.Locale.ROOT, "%.0f", rounded)
+                    : String.format(java.util.Locale.ROOT, "%.1f", rounded)) + " sec";
+        }
+        long denominator = Math.round(1.0 / seconds);
+        return "1/" + denominator + " sec";
     }
 
     private static String iso(Metadata metadata) {
