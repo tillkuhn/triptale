@@ -1,6 +1,10 @@
 .DEFAULT_GOAL := help
 
+ifeq ($(OS),Windows_NT)
+MVN ?= mvn
+else
 MVN ?= mvnd
+endif
 MVNARGS ?= -e -ntp -T 1C
 JAR := target/triptale.jar
 JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow
@@ -8,7 +12,12 @@ JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=a
 .PHONY: run run-jar help build compile test package clean format deps major minor patch
 
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
-	$(MVN) $(MVNARGS) javafx:run
+	# Use windows-javafx profile on Windows to ensure native JavaFX libs are available
+	ifeq ($(OS),Windows_NT)
+		$(MVN) $(MVNARGS) -Pwindows-javafx javafx:run
+	else
+		$(MVN) $(MVNARGS) javafx:run
+	endif
 
 SOURCES := $(shell find src -type f) pom.xml
 
