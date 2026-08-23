@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * Reads camera model, aperture, exposure time and GPS coordinates from an image file's EXIF
+ * Reads camera model, aperture, exposure time, ISO and GPS coordinates from an image file's EXIF
  * metadata, for display in the impressions viewer.
  *
  * <p>Never throws — any parsing failure (corrupt file, unsupported format, missing tags) yields
@@ -33,7 +33,7 @@ public class ExifReader {
         if (path == null) return ExifInfo.empty();
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(new File(path.toUri()));
-            return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata),
+            return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata), iso(metadata),
                     latitude(metadata), longitude(metadata));
         } catch (ImageProcessingException | IOException | RuntimeException e) {
             log.debug("Could not read EXIF metadata from {}: {}", path, e.getMessage());
@@ -63,6 +63,13 @@ public class ExifReader {
         ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         if (dir == null) return null;
         return trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_EXPOSURE_TIME));
+    }
+
+    private static String iso(Metadata metadata) {
+        ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+        if (dir == null) return null;
+        String iso = trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_ISO_EQUIVALENT));
+        return iso == null ? null : "ISO " + iso;
     }
 
     private static Double latitude(Metadata metadata) {

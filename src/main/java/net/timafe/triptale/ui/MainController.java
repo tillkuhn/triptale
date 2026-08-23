@@ -31,6 +31,7 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.event.ActionEvent;
 import javafx.util.StringConverter;
@@ -1098,24 +1099,52 @@ public class MainController {
         imageView.setPreserveRatio(true);
         imageView.setFitWidth(640);
         imageView.setFitHeight(480);
+        // With preserveRatio=true, ImageView's own layout size shrinks to the actual scaled
+        // image dimensions (e.g. a landscape photo ends up shorter than a portrait one), which
+        // shifts everything else in the VBox up/down between images. Wrapping it in a
+        // fixed-size, centered box keeps the layout footprint constant at 640x480 regardless of
+        // the photo's aspect ratio, so nothing above/below it ever moves.
+        StackPane imageBox = new StackPane(imageView);
+        imageBox.setAlignment(javafx.geometry.Pos.CENTER);
+        imageBox.setMinSize(640, 480);
+        imageBox.setPrefSize(640, 480);
+        imageBox.setMaxSize(640, 480);
         Label counter = new Label();
 
         Label filenameLabel = new Label();
         filenameLabel.setStyle("-fx-font-weight: bold;");
         Label metaLabel = new Label();
+        // Fixed width matching the image, with ellipsis instead of wrapping/growing - otherwise
+        // a longer/shorter filename or EXIF string changes the label's preferred width on every
+        // navigation, which grows/shrinks the whole dialog and reads as a flicker even though the
+        // vertical position is already locked.
+        for (Label l : new Label[]{filenameLabel, metaLabel}) {
+            l.setMaxWidth(640);
+            l.setMinWidth(640);
+            l.setPrefWidth(640);
+            l.setWrapText(false);
+            l.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
+            l.setAlignment(javafx.geometry.Pos.CENTER);
+        }
         VBox topInfo = new VBox(2, filenameLabel, metaLabel);
         topInfo.setAlignment(javafx.geometry.Pos.CENTER);
+        // Fixed 2-line height so the image never shifts vertically once EXIF data is
+        // populated (or when it's missing/short) - avoids the flicker/reflow on navigation.
+        topInfo.setMinHeight(36);
+        topInfo.setPrefHeight(36);
+        topInfo.setMaxHeight(36);
 
         Button firstBtn = new Button("⏮");
         Button prevBtn = new Button("◀");
         Button nextBtn = new Button("▶");
         Button lastBtn = new Button("⏭");
 
-        ButtonType mapButtonType = new ButtonType("Open in Maps", ButtonBar.ButtonData.LEFT);
+        ButtonType mapButtonType = new ButtonType("Open in Maps", ButtonBar.ButtonData.RIGHT);
 
         Dialog<Void> dlg = new Dialog<>();
         dlg.setTitle(title);
         dlg.setResizable(true);
+        dlg.getDialogPane().getStyleClass().add("image-viewer-dialog");
         dlg.getDialogPane().getButtonTypes().add(mapButtonType);
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
@@ -1140,6 +1169,10 @@ public class MainController {
                 if (exif.aperture() != null) {
                     if (sb.length() > 0) sb.append(" · ");
                     sb.append(exif.aperture());
+                }
+                if (exif.iso() != null) {
+                    if (sb.length() > 0) sb.append(" · ");
+                    sb.append(exif.iso());
                 }
                 if (exif.exposureTime() != null) {
                     if (sb.length() > 0) sb.append(" · ");
@@ -1175,10 +1208,20 @@ public class MainController {
 
         HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn);
         nav.setAlignment(javafx.geometry.Pos.CENTER);
-        VBox content = new VBox(10, topInfo, imageView, nav);
+        nav.setPadding(new Insets(0, 0, 4, 0));
+        VBox content = new VBox(4, topInfo, imageBox, nav);
         content.setAlignment(javafx.geometry.Pos.CENTER);
+        content.setMinWidth(640);
+        content.setPrefWidth(640);
+        content.setMaxWidth(640);
+        // Lock the dialog's initial width so it can't grow/shrink between images (which would
+        // look like a flicker) - the content is fixed at 640, the dialog pane just adds its own
+        // padding. Still resizable by the user afterwards since we only set the preferred width.
+        dlg.getDialogPane().setPrefWidth(680);
 
-        dlg.setHeaderText(date.toString());
+        // Date is shown in the window title only - it's redundant above the image and was
+        // taking up a whole header row of vertical space.
+        dlg.setTitle(title + " - " + date);
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
             if (ev.getCode() == KeyCode.LEFT) {

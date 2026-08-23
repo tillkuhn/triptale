@@ -228,6 +228,15 @@
     -fx-background-color: #1e2a2a;
 }
 
+/* Image viewer popup: tighten the gap between the nav row (⏮ ◀ ▶ ⏭) and the
+   bottom action buttons (Open in Maps / Close). */
+.image-viewer-dialog > .button-bar {
+    -fx-padding: 2 24 12 24;
+}
+.image-viewer-dialog > .content.fx-content {
+    -fx-padding: 8 12 4 12;
+}
+
 /* ── CheckBox ─────────────────────────────────────────── */
 .check-box {
     -fx-text-fill: #c8deda;

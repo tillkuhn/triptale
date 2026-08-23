@@ -10,17 +10,17 @@ import java.util.Locale;
  * EXIF data at all). No JavaFX dependency — kept in the {@code storage} package per the
  * project's package boundary rule.
  */
-public record ExifInfo(String cameraModel, String aperture, String exposureTime,
+public record ExifInfo(String cameraModel, String aperture, String exposureTime, String iso,
                         Double latitude, Double longitude) {
 
-    private static final ExifInfo EMPTY = new ExifInfo(null, null, null, null, null);
+    private static final ExifInfo EMPTY = new ExifInfo(null, null, null, null, null, null);
 
     public static ExifInfo empty() {
         return EMPTY;
     }
 
     public boolean hasCameraData() {
-        return cameraModel != null || aperture != null || exposureTime != null;
+        return cameraModel != null || aperture != null || exposureTime != null || iso != null;
     }
 
     public boolean hasLocation() {
