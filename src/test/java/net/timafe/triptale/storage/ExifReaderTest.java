@@ -63,6 +63,24 @@ class ExifReaderTest {
     }
 
     @Test
+    void formatsExposureTimeUnderOneSecondAsFraction() {
+        assertEquals("1/250 sec", ExifReader.formatExposureTime(1.0 / 250));
+    }
+
+    @Test
+    void formatsRawUnsimplifiedExposureTimeAsRoundedFraction() {
+        // Some cameras (e.g. certain Samsung models) report exposure as an un-simplified
+        // fraction such as 3030303/100000000 sec (~1/33 sec).
+        assertEquals("1/33 sec", ExifReader.formatExposureTime(3030303.0 / 100000000.0));
+    }
+
+    @Test
+    void formatsExposureTimeOfOneSecondOrLongerAsDecimalSeconds() {
+        assertEquals("1 sec", ExifReader.formatExposureTime(1.0));
+        assertEquals("2.5 sec", ExifReader.formatExposureTime(2.5));
+    }
+
+    @Test
     void returnsEmptyForImageWithoutExif() {
         ExifInfo info = reader.read(fixture("no_exif.jpg"));
 
