@@ -11,13 +11,14 @@ JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=a
 
 .PHONY: run run-jar help build compile test package clean format deps major minor patch
 
+ifeq ($(OS),Windows_NT)
+RUN_CMD := $(MVN) $(MVNARGS) -Pwindows-javafx javafx:run
+else
+RUN_CMD := $(MVN) $(MVNARGS) javafx:run
+endif
+
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
-	# Use windows-javafx profile on Windows to ensure native JavaFX libs are available
-	ifeq ($(OS),Windows_NT)
-		$(MVN) $(MVNARGS) -Pwindows-javafx javafx:run
-	else
-		$(MVN) $(MVNARGS) javafx:run
-	endif
+	$(RUN_CMD)
 
 SOURCES := $(shell find src -type f) pom.xml
 
