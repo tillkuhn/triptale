@@ -24,6 +24,8 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>23.0.1</javafx.version>
+        <!-- Platform classifier for JavaFX native libs. Change to 'linux' or 'mac' if needed. -->
+        <javafx.platform>win</javafx.platform>
         <jgit.version>7.0.0.202409031743-r</jgit.version>
         <commonmark.version>0.29.0</commonmark.version>
         <metadata-extractor.version>2.19.0</metadata-extractor.version>
@@ -40,11 +42,25 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <dependency>
@@ -154,4 +170,51 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Windows-only profile to prepare JavaFX native jars and set module-path for spring-boot:run -->
+    <profiles>
+        <profile>
+            <id>windows-javafx</id>
+            <activation>
+                <os>
+                    <family>Windows</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-javafx-native</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/javafx-lib</outputDirectory>
+                                    <includeGroupIds>org.openjfx</includeGroupIds>
+                                    <includeArtifactIds>javafx-controls,javafx-fxml,javafx-graphics,javafx-base</includeArtifactIds>
+                                    <includeClassifiers>${javafx.platform}</includeClassifiers>
+                                    <stripVersion>false</stripVersion>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Override spring-boot:run jvm args to use the copied JavaFX jars on module-path -->
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <mainClass>${main.class}</mainClass>
+                            <jvmArguments>--module-path "${project.build.directory}/javafx-lib" --add-modules=javafx.controls,javafx.fxml</jvmArguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

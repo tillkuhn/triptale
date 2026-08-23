@@ -97,6 +97,19 @@ make build      # package without tests
 make test       # run unit tests
 ```
 
+### Windows notes
+
+- The project uses platform-specific JavaFX native libraries. On macOS/Linux the default setup works without changes. On Windows the JVM needs the JavaFX native jars on the module-path; the repository includes a Windows-only Maven profile that copies the native jars and configures `spring-boot:run` accordingly.
+- On Windows use the system `mvn` (not `mvnd`). The `Makefile` detects this automatically and will call `mvn -Pwindows-javafx javafx:run` when run on Windows. You can also run directly:
+
+```
+mvn -Pwindows-javafx spring-boot:run
+```
+
+- If you get module not found errors (e.g. "Module javafx.controls not found"), run with the Windows profile as shown above. If you prefer to run the jar directly after `make build`, use `make run-jar` which starts the prebuilt JAR with recommended JVM flags.
+
+- Java may warn about restricted native access or `sun.misc.Unsafe` usage when JavaFX native libs load; these are known warnings and the app continues to run. To silence the native-access warning you can add `--enable-native-access=javafx.graphics` to your JVM options.
+
 Point at a different data directory (e.g. a USB stick for travel):
 
 ```bash
