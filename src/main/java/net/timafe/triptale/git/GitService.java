@@ -106,6 +106,40 @@ public class GitService {
         return runGit("pull", "--ff", "origin");
     }
 
+    /**
+     * Fetches from origin and rebases the current branch onto origin/&lt;branch&gt;.
+     * If the rebase fails (e.g. due to conflicts), automatically runs
+     * {@code git rebase --abort} to restore a clean working tree before rethrowing.
+     */
+    public String fetchAndRebase() {
+        requireOrigin();
+        String branch = currentBranch();
+        String fetchOutput = runGit("fetch", "origin");
+        try {
+            String rebaseOutput = runGit("rebase", "origin/" + branch);
+            return (fetchOutput + "\n" + rebaseOutput).trim();
+        } catch (GitException e) {
+            try {
+                runGit("rebase", "--abort");
+            } catch (GitException abortFailure) {
+                log.warn("Failed to abort rebase after failure: {}", abortFailure.getMessage());
+            }
+            throw new GitException("Rebase onto origin/" + branch + " failed (aborted): " + e.getMessage(), e);
+        }
+    }
+
+    private String currentBranch() {
+        try (Git git = Git.open(store.dataDir().toFile())) {
+            String branch = git.getRepository().getBranch();
+            if (branch == null || branch.isBlank()) {
+                throw new GitException("Could not determine current branch", null);
+            }
+            return branch;
+        } catch (IOException e) {
+            throw new GitException("Failed to read current branch", e);
+        }
+    }
+
     private void requireOrigin() {
         if (remoteUrl().isBlank()) {
             throw new GitException("No 'origin' remote configured in " + store.dataDir(), null);
