@@ -56,6 +56,18 @@ public class ExifReader {
     private static String aperture(Metadata metadata) {
         ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         if (dir == null) return null;
+        try {
+            Double fNumber = dir.getDoubleObject(ExifSubIFDDirectory.TAG_FNUMBER);
+            if (fNumber != null) {
+                double rounded = Math.round(fNumber * 10) / 10.0;
+                String formatted = (rounded == Math.rint(rounded))
+                        ? String.format(java.util.Locale.ROOT, "%.0f", rounded)
+                        : String.format(java.util.Locale.ROOT, "%.1f", rounded);
+                return "f/" + formatted;
+            }
+        } catch (Exception e) {
+            // fall through to description-based fallback
+        }
         return trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_FNUMBER));
     }
 
