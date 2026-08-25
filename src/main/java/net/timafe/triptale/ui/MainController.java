@@ -884,28 +884,94 @@ public class MainController {
     /**
      * All-in-one remote sync: commits any outstanding changes (in-memory pending
      * saves as well as any changes made to the data dir outside the app), then
-     * fetches and rebases onto the remote branch, then pushes.
+     * fetches and rebases onto the remote branch, then pushes. Runs the git
+     * operations on a background thread and shows a small progress popup that
+     * tracks the current step; the popup closes automatically on success, or
+     * stays open showing the failed step and error if something goes wrong.
      */
     @FXML
     public void onSync() {
+        String dataDir = props.resolvedDataDir().toString();
+        String remoteUrl;
         try {
-            String message = pending.isEmpty()
-                    ? "Sync: external changes"
-                    : buildCommitMessage();
-            String sha = gitService.commitAll(message);
-            if (sha != null) {
-                pending.clear();
-                updateCommitButton();
-            }
-            gitService.fetchAndRebase();
-            gitService.push();
-            reloadTrips();
-            loadEntry();
-            String suffix = sha != null ? " (committed " + sha + ")" : "";
-            status("Synced with remote" + suffix);
+            remoteUrl = gitService.remoteUrl();
         } catch (RuntimeException e) {
-            error(describe(e));
+            remoteUrl = "";
         }
+        String remoteDisplay = remoteUrl.isBlank() ? "(no remote)" : remoteUrl;
+
+        javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
+        spinner.setPrefSize(22, 22);
+        spinner.setMinSize(22, 22);
+        Label opLabel = new Label("Starting sync…");
+        opLabel.setWrapText(true);
+        opLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox stepRow = new HBox(10, spinner, opLabel);
+        stepRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        HBox.setHgrow(opLabel, javafx.scene.layout.Priority.ALWAYS);
+
+        Label contextLabel = new Label("Data dir: " + dataDir + "\nRemote: " + remoteDisplay);
+        contextLabel.setWrapText(true);
+        contextLabel.setMaxWidth(Double.MAX_VALUE);
+        contextLabel.setStyle("-fx-font-size: 11; -fx-opacity: 0.7;");
+
+        VBox content = new VBox(10, stepRow, contextLabel);
+        content.setPadding(new Insets(16));
+        content.setMinWidth(480);
+        content.setPrefWidth(520);
+
+        Dialog<Void> progress = new Dialog<>();
+        progress.setTitle("Sync");
+        progress.getDialogPane().setContent(content);
+        progress.getDialogPane().setMinWidth(520);
+        progress.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        Node closeButton = progress.getDialogPane().lookupButton(ButtonType.CLOSE);
+        closeButton.setVisible(false);
+        closeButton.setManaged(false);
+        applyStylesheet(progress.getDialogPane());
+        progress.show();
+
+        String remoteForMessages = remoteDisplay;
+        Thread worker = new Thread(() -> {
+            String step = "Commit";
+            try {
+                Platform.runLater(() -> opLabel.setText("Committing outstanding changes in " + dataDir + "…"));
+                String message = pending.isEmpty() ? "Sync: external changes" : buildCommitMessage();
+                String sha = gitService.commitAll(message);
+
+                step = "Rebase";
+                Platform.runLater(() -> opLabel.setText("Fetching & rebasing from " + remoteForMessages + "…"));
+                gitService.fetchAndRebase();
+
+                step = "Push";
+                Platform.runLater(() -> opLabel.setText("Pushing to " + remoteForMessages + "…"));
+                gitService.push();
+
+                String finalSha = sha;
+                Platform.runLater(() -> {
+                    if (finalSha != null) {
+                        pending.clear();
+                        updateCommitButton();
+                    }
+                    reloadTrips();
+                    loadEntry();
+                    String suffix = finalSha != null ? " (committed " + finalSha + ")" : "";
+                    status("Synced with remote" + suffix);
+                    progress.close();
+                });
+            } catch (RuntimeException e) {
+                String failedStep = step;
+                Platform.runLater(() -> {
+                    spinner.setVisible(false);
+                    spinner.setManaged(false);
+                    opLabel.setText(failedStep + " failed: " + describe(e));
+                    closeButton.setVisible(true);
+                    closeButton.setManaged(true);
+                });
+            }
+        }, "sync-worker");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     @FXML
