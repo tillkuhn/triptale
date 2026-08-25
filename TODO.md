@@ -1,6 +1,11 @@
 # ToDos for this app
 
-## Next Todo numer: 12
+## Next Todo numer: 13
+
+## DONE 12 Add Remote Sync all-in-one operation
+
+Add a new sync operation to the Remote menu that performs all git operations necessary to sync the remote menu. Only active if there's connectivity. Suggest it performs a commit of outstanding changes first (even if none are store in memory, there may be changed performed outside the app), followed by a rebase from remote, followed by a push. But suggest better workflows if you can think of improvements.
+also switch to emojis in menu (like "export diary") since the current icons for pull, push etc. are hard to distinguish. Last but not least, add the sync button to the buttom panel right behind commit
 
 ## 11 supports faves & impressions
 

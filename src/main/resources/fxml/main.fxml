@@ -40,8 +40,10 @@
                     </Menu>
                     <Menu text="Remote">
                         <items>
-                            <MenuItem fx:id="pushMenuItem" text="⬆ Push" onAction="#onPush"/>
-                            <MenuItem fx:id="pullMenuItem" text="⬇ Pull" onAction="#onPull"/>
+                            <MenuItem fx:id="syncMenuItem" text="🔄 Sync" onAction="#onSync"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="pushMenuItem" text="🚀 Push" onAction="#onPush"/>
+                            <MenuItem fx:id="pullMenuItem" text="📥 Pull" onAction="#onPull"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                             <SeparatorMenuItem/>
@@ -119,6 +121,7 @@
                 <Button fx:id="copyButton" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
                 <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="commitButton" text="📦 Commit (0)" onAction="#onCommit" disable="true"/>
+                <Button fx:id="syncButton" text="🔄 Sync" onAction="#onSync" disable="true"/>
             </HBox>
         </VBox>
     </center>

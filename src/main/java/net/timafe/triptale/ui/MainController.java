@@ -93,12 +93,14 @@ public class MainController {
     @FXML private Button copyButton;
     @FXML private Button saveButton;
     @FXML private Button commitButton;
+    @FXML private Button syncButton;
     @FXML private Button prevDayButton;
     @FXML private Button firstDayButton;
     @FXML private Button todayButton;
     @FXML private Button connectivityButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
+    @FXML private MenuItem syncMenuItem;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
@@ -834,6 +836,8 @@ public class MainController {
         boolean remoteEnabled = Boolean.TRUE.equals(connected) && hasRemote;
         if (pushMenuItem != null) pushMenuItem.setDisable(!remoteEnabled);
         if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
+        if (syncMenuItem != null) syncMenuItem.setDisable(!remoteEnabled);
+        if (syncButton != null) syncButton.setDisable(!remoteEnabled);
     }
 
     private boolean hasRemoteConfigured() {
@@ -872,6 +876,33 @@ public class MainController {
         try {
             gitService.push();
             status("Pushed to remote");
+        } catch (RuntimeException e) {
+            error(describe(e));
+        }
+    }
+
+    /**
+     * All-in-one remote sync: commits any outstanding changes (in-memory pending
+     * saves as well as any changes made to the data dir outside the app), then
+     * fetches and rebases onto the remote branch, then pushes.
+     */
+    @FXML
+    public void onSync() {
+        try {
+            String message = pending.isEmpty()
+                    ? "Sync: external changes"
+                    : buildCommitMessage();
+            String sha = gitService.commitAll(message);
+            if (sha != null) {
+                pending.clear();
+                updateCommitButton();
+            }
+            gitService.fetchAndRebase();
+            gitService.push();
+            reloadTrips();
+            loadEntry();
+            String suffix = sha != null ? " (committed " + sha + ")" : "";
+            status("Synced with remote" + suffix);
         } catch (RuntimeException e) {
             error(describe(e));
         }
