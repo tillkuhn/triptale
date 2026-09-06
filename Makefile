@@ -3,7 +3,7 @@
 ifeq ($(OS),Windows_NT)
 MVN ?= mvn
 else
-MVN ?= mvnd
+MVN ?= $(if $(shell command -v mvnd 2>/dev/null),mvnd,mvn)
 endif
 MVNARGS ?= -e -ntp -T 1C
 JAR := target/triptale.jar
