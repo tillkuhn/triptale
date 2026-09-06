@@ -34,6 +34,27 @@ public class GitService {
 
     private static final String GITIGNORE_ENTRY = "prefs.yml";
 
+    // Tolaria (https://github.com/refactoringhq/tolaria) type definitions, created at the data-dir root
+    // so entries tagged `type: Tale` and trips resolve to a note type in a Tolaria vault.
+    private static final String TRIP_MD = """
+            ---
+            type: Type
+            _icon: globe
+            ---
+            # Trip
+
+            Trip Type, act as parent for 1-n triptale entries of type [[tale]]
+            """;
+    private static final String TALE_MD = """
+            ---
+            type: Type
+            _icon: activity-icon
+            ---
+            # Tale
+
+            Tale Type to mark a particular [[trip]] Entry, usually the diary of a day
+            """;
+
     @PostConstruct
     public void initOnStartup() {
         Path root = store.dataDir();
@@ -45,6 +66,22 @@ public class GitService {
             }
         }
         ensureGitignore(root);
+        ensureTypeDefinitions(root);
+    }
+
+    private void ensureTypeDefinitions(Path root) {
+        ensureFile(root.resolve("trip.md"), TRIP_MD);
+        ensureFile(root.resolve("tale.md"), TALE_MD);
+    }
+
+    private void ensureFile(Path file, String content) {
+        if (Files.exists(file)) return;
+        try {
+            Files.writeString(file, content);
+            log.info("Created {}", file);
+        } catch (IOException e) {
+            log.warn("Could not create {}: {}", file, e.getMessage());
+        }
     }
 
     private void ensureGitignore(Path root) {

@@ -70,6 +70,8 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 - **`@TempDir`** for all tests touching the filesystem — no fixtures on disk.
 - **`Locale.ROOT`** for all number formatting — `String.format(Locale.ROOT, ...)` everywhere.
 - **`Double` null means "not recorded"** — `0.0` is a real measurement. Do not coerce null to zero.
+- **Errors from `storage`/`git` are unchecked** — `StorageException` / `GitException`. The UI catches `RuntimeException` at action boundaries and shows an alert; don't add checked exceptions to those layers.
+- **Build entries via `DiaryEntry.Builder`** (`DiaryEntry.builder(date)...build()`) rather than the record constructor directly; `DiaryEntry.empty(date)` gives a blank entry for a given date.
 
 ---
 
@@ -79,16 +81,22 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 <data-dir>/              # also a git repo; default: ~/Pictures/triptale-data (from application.yml)
 ├── .gitignore           # contains "prefs.yml"
 ├── prefs.yml            # gitignored; lastTripSlug only
+├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initOnStartup()
+├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initOnStartup()
 └── trips/<slug>/
     ├── trip.yml         # name, startDate (ISO string), description
     └── entries/
         └── YYYY-MM-DD_Weekday.md   # weekday in English locale, e.g. 2026-06-04_Thursday.md
 ```
 
+`MarkdownStore.dataDir()` lazily creates the root and `trips/` on first access — callers can rely on both directories existing after calling it.
+
 **Default data dir:** `application.yml` sets `~/Pictures/triptale-data`. `TripTaleProperties` Java field defaults to `~/.triptale` but is overridden at runtime. The `application.yml` value wins.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
-- `distance`, `altitude`, `route`, `trackurl` (all lowercase)
+- `altitude`, `date`, `distance`, `route`, `trackurl`, `type` (all lowercase)
+- `MarkdownStore.saveEntry` writes these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
+- Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`). This is a [Tolaria](https://github.com/refactoringhq/tolaria) note-type tag: it lets the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `GitService.initOnStartup()` creates them if missing, alongside `.gitignore` setup. `trip.yml` itself is **not** tagged with a type field (only entries are, for now).
 
 **Trip slugs are immutable** — derived once from the name via `Slugs.toSlug()` (NFD-normalize, strip diacritics, kebab-case). Renaming a trip does not rename the directory. There is no migration path.
 
@@ -99,6 +107,14 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 - JGit for `init`, `add`, `commit`, `status`.
 - OS `git` binary via `ProcessBuilder` for `push` and `pull` (120 s timeout; requires `git` on PATH).
 - **Never commit from inside `MarkdownStore` or `GitService` after a save.** Saves go to disk immediately. `MainController` accumulates pending saves in a `Map<String, String>` and commits them in batch via the Commit button (`Cmd+K` / `Ctrl+K`). Follow this pattern for new write operations: save → `addPending(...)` → user triggers commit.
+
+---
+
+## Connectivity check (`ConnectivityService`)
+
+- `checkTask(remoteUrl)` returns a JavaFX `Task<Boolean>` that opens a 3-second TCP connection to port 443 of the remote git host — run it on a daemon thread, never on the FX thread.
+- `resolveHost(remoteUrl)` handles both HTTPS and SCP-style (`git@host:repo`) remote URLs; falls back to `github.com` if the remote is blank or unparseable.
+- `MainController` updates the toolbar button style class (`connectivity-connected` / `connectivity-disconnected` / `connectivity-checking`) and enables/disables the push/pull menu items based on the result.
 
 ---
 
@@ -113,7 +129,7 @@ Five Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded 
 ## UI gotchas
 
 - Every new `Alert` or `Dialog` must call `applyStylesheet(dialogPane)` to inherit the dark theme.
-- `BuildProperties` is optional (`ObjectProvider`-injected). It is absent unless the `spring-boot-maven-plugin:build-info` goal has run (happens during `mvn package`/`verify`, not `compile`).
+- `BuildProperties` (version/build-date in About) and JavaFX `HostServices` (opening URLs in the system browser) are both `@Autowired(required = false)` on `MainController`. `BuildProperties` is absent unless the `spring-boot-maven-plugin:build-info` goal has run (happens during `mvn package`/`verify`, not `compile`).
 - Decimal input (`parseDouble`) accepts both `.` and `,` as separators.
 
 ---

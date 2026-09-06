@@ -33,6 +33,8 @@ public class MarkdownStore {
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter FILE_WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
     private static final String FRONTMATTER_DELIM = "---";
+    /** Tolaria (https://github.com/refactoringhq/tolaria) note type assigned to every diary entry. */
+    private static final String ENTRY_TYPE = "Tale";
 
     private final TripTaleProperties props;
     private final ObjectMapper yaml;
@@ -126,12 +128,14 @@ public class MarkdownStore {
 
     public void saveEntry(String slug, DiaryEntry entry) {
         ensureDir(entriesDir(slug));
+        // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
+        if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         fm.put("date", entry.date().toString());
         if (entry.distance() != null) fm.put("distance", entry.distance());
-        if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         if (entry.route() != null && !entry.route().isBlank()) fm.put("route", entry.route());
         if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
+        fm.put("type", ENTRY_TYPE);
         try {
             String body = entry.tales() == null ? "" : entry.tales();
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;

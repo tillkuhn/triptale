@@ -104,6 +104,29 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void saveEntryWritesTaleTypeAndKeepsFrontmatterAlphabetical() throws Exception {
+        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .distance(82.5)
+                .altitudeMeters(1240.0)
+                .route("Innsbruck → Brenner")
+                .trackUrl("https://www.strava.com/activities/123")
+                .tales("Hot day.")
+                .build());
+
+        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("type: Tale"));
+
+        List<String> frontmatterKeys = raw.substring(raw.indexOf("---") + 3, raw.indexOf("---", 3))
+                .lines()
+                .filter(l -> !l.isBlank())
+                .map(l -> l.split(":", 2)[0])
+                .toList();
+        List<String> sorted = frontmatterKeys.stream().sorted().toList();
+        assertEquals(sorted, frontmatterKeys);
+    }
+
+    @Test
     void saveEntryOmitsBlankTrackUrlFromFrontmatter() throws Exception {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4))

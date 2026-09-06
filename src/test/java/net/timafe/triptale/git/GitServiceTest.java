@@ -56,6 +56,25 @@ class GitServiceTest {
         assertTrue(Files.readString(gitignore).contains("prefs.yml"));
     }
 
+    @Test
+    void initOnStartupWritesTolariaTypeDefinitions() throws Exception {
+        gitService.initOnStartup();
+        Path tripMd = tempDir.resolve("trip.md");
+        Path taleMd = tempDir.resolve("tale.md");
+        assertTrue(Files.exists(tripMd));
+        assertTrue(Files.exists(taleMd));
+        assertTrue(Files.readString(tripMd).contains("type: Type"));
+        assertTrue(Files.readString(taleMd).contains("type: Type"));
+    }
+
+    @Test
+    void initOnStartupDoesNotOverwriteExistingTypeDefinitions() throws Exception {
+        Path tripMd = tempDir.resolve("trip.md");
+        Files.writeString(tripMd, "custom content");
+        gitService.initOnStartup();
+        assertEquals("custom content", Files.readString(tripMd));
+    }
+
     // -------------------------------------------------------------------------
     // ensureGitignore — various pre-existing file states
     // -------------------------------------------------------------------------

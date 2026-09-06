@@ -42,6 +42,8 @@ Everything lives under one directory (default `~/.triptale`), which is itself a 
 
 ```
 ~/.triptale/                          # single git repo
+├── trip.md                           # Tolaria type definition for a trip
+├── tale.md                           # Tolaria type definition for a diary entry
 └── trips/
     └── alps-2026/
         ├── trip.yml                  # name, start date, description
@@ -53,17 +55,23 @@ A diary entry is just Markdown with a YAML frontmatter block — structured fiel
 
 ```markdown
 ---
-distance: 87.0
 altitude: 1840.0
+date: 2026-06-04
+distance: 87.0
 route: Andermatt → Airolo
 trackurl: https://www.strava.com/activities/123456
+type: Tale
 ---
 
 Crossed the Gotthard pass today. Strong headwind from the south,
 but the descent into Airolo was worth it.
 ```
 
+Frontmatter keys are always written in alphabetical order, so saving an entry never produces a noisy diff.
+
 The optional `trackurl` field links the day to an external tracking tool (Strava, Komoot, …). In the app it sits next to distance and altitude; when it holds a valid `http(s)` URL a 🔗 button opens it in your system browser.
+
+Every entry carries `type: Tale`, and the data dir gets `trip.md`/`tale.md` type-definition notes at its root. These make the whole data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault — an alternative Markdown-based editor/knowledge-graph app — so you can browse and edit your trips there too, in addition to TripTale and any plain text editor.
 
 That's it. No database, no schema migrations. If TripTale disappears tomorrow, your trips remain a perfectly readable folder of Markdown.
 
