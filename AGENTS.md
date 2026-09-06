@@ -83,6 +83,7 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 ├── prefs.yml            # gitignored; lastTripSlug only
 ├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initOnStartup()
 ├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initOnStartup()
+├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initOnStartup()
 └── trips/<slug>/
     ├── trip.yml         # name, startDate (ISO string), description
     └── entries/
@@ -96,7 +97,7 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 **YAML frontmatter keys** (exact strings — do not camelCase):
 - `altitude`, `date`, `distance`, `route`, `trackurl`, `type` (all lowercase)
 - `MarkdownStore.saveEntry` writes these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
-- Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`). This is a [Tolaria](https://github.com/refactoringhq/tolaria) note-type tag: it lets the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `GitService.initOnStartup()` creates them if missing, alongside `.gitignore` setup. `trip.yml` itself is **not** tagged with a type field (only entries are, for now).
+- Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`). This is a [Tolaria](https://github.com/refactoringhq/tolaria) note-type tag: it lets the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initOnStartup()` creates all three if missing, alongside `.gitignore` setup. `trip.yml` itself is **not** tagged with a type field (only entries are, for now).
 
 **Trip slugs are immutable** — derived once from the name via `Slugs.toSlug()` (NFD-normalize, strip diacritics, kebab-case). Renaming a trip does not rename the directory. There is no migration path.
 
