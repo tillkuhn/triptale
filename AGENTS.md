@@ -28,7 +28,7 @@ mvnd javafx:run -Dtriptale.data-dir=/path/to/data
 java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -jar target/triptale.jar
 ```
 
-`make` uses `mvnd` (Maven daemon) by default; CI uses plain `mvn`. Override locally: `make run MVN=mvn`.
+`make` uses `mvnd` (Maven daemon) by default if it's on `PATH`, otherwise falls back to plain `mvn` automatically; CI uses plain `mvn`. Force one explicitly: `make run MVN=mvn`.
 
 `make format` is declared but has no recipe — it does nothing.
 
