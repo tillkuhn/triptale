@@ -61,10 +61,13 @@ class GitServiceTest {
         gitService.initOnStartup();
         Path tripMd = tempDir.resolve("trip.md");
         Path taleMd = tempDir.resolve("tale.md");
+        Path typeMd = tempDir.resolve("type.md");
         assertTrue(Files.exists(tripMd));
         assertTrue(Files.exists(taleMd));
+        assertTrue(Files.exists(typeMd));
         assertTrue(Files.readString(tripMd).contains("type: Type"));
         assertTrue(Files.readString(taleMd).contains("type: Type"));
+        assertTrue(Files.readString(typeMd).contains("type: Type"));
     }
 
     @Test

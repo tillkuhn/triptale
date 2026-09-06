@@ -54,6 +54,12 @@ public class GitService {
 
             Tale Type to mark a particular [[trip]] Entry, usually the diary of a day
             """;
+    private static final String TYPE_MD = """
+            ---
+            type: Type
+            _order: 4
+            _sort: "modified:desc"
+            ---""";
 
     @PostConstruct
     public void initOnStartup() {
@@ -72,6 +78,7 @@ public class GitService {
     private void ensureTypeDefinitions(Path root) {
         ensureFile(root.resolve("trip.md"), TRIP_MD);
         ensureFile(root.resolve("tale.md"), TALE_MD);
+        ensureFile(root.resolve("type.md"), TYPE_MD);
     }
 
     private void ensureFile(Path file, String content) {
