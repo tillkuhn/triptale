@@ -1119,7 +1119,8 @@ public class MainController {
     public void onEditPreferences() {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Edit Preferences");
-        dlg.setHeaderText("Local preferences (not synced via git)");
+        Path prefsPath = props.resolvedDataDir().resolve("prefs.yml");
+        dlg.setHeaderText("Local preferences (not synced via git)\nFile: " + prefsPath);
 
         TextField patternField = new TextField(store.getImpressionsFilePattern().orElse(""));
         patternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg");

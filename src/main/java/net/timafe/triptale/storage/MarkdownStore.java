@@ -181,11 +181,13 @@ public class MarkdownStore {
     public void savePref(String key, Object value) {
         Map<String, Object> data = loadPrefs();
         data.put(key, value);
+        Path prefsPath = dataDir().resolve(PREFS_FILE);
         try {
             String content = PREFS_COMMENT + yaml.writeValueAsString(data);
-            Files.writeString(dataDir().resolve(PREFS_FILE), content);
+            Files.writeString(prefsPath, content);
+            log.info("Saved preference '{}' to {}", key, prefsPath);
         } catch (IOException e) {
-            log.warn("Could not write {}: {}", PREFS_FILE, e.getMessage());
+            log.warn("Could not write {}: {}", prefsPath, e.getMessage());
         }
     }
 
