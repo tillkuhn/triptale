@@ -59,6 +59,18 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void saveTripWritesReadmeWithTripTypeAndDescriptionAsBody() throws Exception {
+        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride"));
+
+        Path readme = tempDir.resolve("trips").resolve("alps-2025").resolve("README.md");
+        assertTrue(Files.exists(readme));
+        String raw = Files.readString(readme);
+        assertTrue(raw.contains("type: Trip"));
+        assertTrue(raw.contains("name: Alps 2025"));
+        assertTrue(raw.endsWith("Summer ride"));
+    }
+
+    @Test
     void listTripsReturnsAllSavedTripsSortedBySlug() {
         store.saveTrip(new Trip("bravo", "Bravo", LocalDate.of(2025, 1, 1), ""));
         store.saveTrip(new Trip("alpha", "Alpha", LocalDate.of(2025, 1, 2), ""));

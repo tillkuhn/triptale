@@ -35,6 +35,8 @@ public class MarkdownStore {
     private static final String FRONTMATTER_DELIM = "---";
     /** Tolaria (https://github.com/refactoringhq/tolaria) note type assigned to every diary entry. */
     private static final String ENTRY_TYPE = "Tale";
+    /** Tolaria note type assigned to every trip README.md. */
+    private static final String TRIP_TYPE = "Trip";
 
     private final TripTaleProperties props;
     private final ObjectMapper yaml;
@@ -82,15 +84,25 @@ public class MarkdownStore {
     }
 
     public Optional<Trip> loadTrip(String slug) {
-        Path tripYml = tripDir(slug).resolve("trip.yml");
-        if (!Files.exists(tripYml)) return Optional.empty();
+        Path readme = tripDir(slug).resolve("README.md");
+        if (!Files.exists(readme)) return Optional.empty();
         try {
-            Map<String, Object> data = yaml.readValue(Files.readString(tripYml), Map.class);
+            String content = Files.readString(readme);
+            if (!content.startsWith(FRONTMATTER_DELIM)) {
+                return Optional.of(new Trip(slug, null, null, content));
+            }
+            int end = content.indexOf("\n" + FRONTMATTER_DELIM, FRONTMATTER_DELIM.length());
+            if (end < 0) {
+                return Optional.of(new Trip(slug, null, null, content));
+            }
+            String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
+            String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
+            Map<String, Object> data = yaml.readValue(fm, Map.class);
             return Optional.of(new Trip(
                     slug,
                     asString(data.get("name")),
                     asDate(data.get("startDate")),
-                    asString(data.get("description"))
+                    body
             ));
         } catch (IOException e) {
             throw new StorageException("Failed to load trip: " + slug, e);
@@ -100,12 +112,15 @@ public class MarkdownStore {
     public void saveTrip(Trip trip) {
         ensureDir(tripDir(trip.slug()));
         ensureDir(entriesDir(trip.slug()));
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("name", trip.name());
-        data.put("startDate", trip.startDate() == null ? null : trip.startDate().toString());
-        data.put("description", trip.description());
+        // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
+        Map<String, Object> fm = new LinkedHashMap<>();
+        fm.put("name", trip.name());
+        fm.put("startDate", trip.startDate() == null ? null : trip.startDate().toString());
+        fm.put("type", TRIP_TYPE);
         try {
-            Files.writeString(tripDir(trip.slug()).resolve("trip.yml"), yaml.writeValueAsString(data));
+            String body = trip.description() == null ? "" : trip.description();
+            String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
+            Files.writeString(tripDir(trip.slug()).resolve("README.md"), content);
         } catch (IOException e) {
             throw new StorageException("Failed to save trip: " + trip.slug(), e);
         }
