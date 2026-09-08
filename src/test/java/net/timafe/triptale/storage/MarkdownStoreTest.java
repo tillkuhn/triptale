@@ -89,7 +89,7 @@ class MarkdownStoreTest {
     @Test
     void entryFileNameContainsDateAndEnglishWeekday() {
         Path file = store.entryFile("alps-2025", LocalDate.of(2025, 7, 4));
-        assertEquals("2025-07-04_Friday.md", file.getFileName().toString());
+        assertEquals("2025-07-04-Friday.md", file.getFileName().toString());
     }
 
     @Test

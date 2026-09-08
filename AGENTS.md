@@ -86,7 +86,7 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 ├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initOnStartup()
 └── trips/<slug>/
     ├── README.md                   # frontmatter: startDate (ISO string), type: Trip; body: "# {name}" heading + description
-    └── YYYY-MM-DD_Weekday.md       # entries live directly in the trip folder (no entries/ subfolder); weekday in English locale, e.g. 2026-06-04_Thursday.md
+    └── YYYY-MM-DD-Weekday.md       # entries live directly in the trip folder (no entries/ subfolder); weekday in English locale, e.g. 2026-06-04-Thursday.md
 ```
 
 `MarkdownStore.dataDir()` lazily creates the root and `trips/` on first access — callers can rely on both directories existing after calling it.

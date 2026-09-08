@@ -66,7 +66,7 @@ public class MarkdownStore {
     }
 
     public Path entryFile(String slug, LocalDate date) {
-        return entriesDir(slug).resolve(date.format(FILE_DATE) + "_" + date.format(FILE_WEEKDAY) + ".md");
+        return entriesDir(slug).resolve(date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY) + ".md");
     }
 
     public List<Trip> listTrips() {
@@ -262,8 +262,7 @@ public class MarkdownStore {
             s.filter(p -> p.toString().endsWith(".md")).forEach(p -> {
                 String name = p.getFileName().toString();
                 String stem = name.substring(0, name.length() - 3);
-                int sep = stem.indexOf('_');
-                String dateStr = sep < 0 ? stem : stem.substring(0, sep);
+                String dateStr = stem.length() < 10 ? stem : stem.substring(0, 10);
                 try {
                     dates.add(LocalDate.parse(dateStr));
                 } catch (Exception ignored) {
