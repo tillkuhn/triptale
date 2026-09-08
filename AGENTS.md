@@ -85,7 +85,7 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 ├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initOnStartup()
 ├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initOnStartup()
 └── trips/<slug>/
-    ├── README.md        # frontmatter: name, startDate (ISO string), type: Trip; body = description
+    ├── README.md        # frontmatter: startDate (ISO string), type: Trip; body: "# {name}" heading + description
     └── entries/
         └── YYYY-MM-DD_Weekday.md   # weekday in English locale, e.g. 2026-06-04_Thursday.md
 ```
@@ -98,7 +98,8 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 - `altitude`, `date`, `distance`, `route`, `trackurl`, `type` (all lowercase)
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
 - Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initOnStartup()` creates all three if missing, alongside `.gitignore` setup.
-- Older data dirs may still have `trips/<slug>/trip.yml` from before the README.md migration — the app no longer reads it; migrate ad hoc (fold `description` into a markdown body, `name`/`startDate` into frontmatter, add `type: Trip`, delete the old file).
+- Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.
+- Older data dirs may still have `trips/<slug>/trip.yml` from before the README.md migration — the app no longer reads it; migrate ad hoc (`name` becomes a `# {name}` heading, `startDate` into frontmatter, `description` as the body after the heading, add `type: Trip`, delete the old file).
 
 **Trip slugs are immutable** — derived once from the name via `Slugs.toSlug()` (NFD-normalize, strip diacritics, kebab-case). Renaming a trip does not rename the directory. There is no migration path.
 

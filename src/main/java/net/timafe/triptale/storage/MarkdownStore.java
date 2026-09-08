@@ -98,11 +98,18 @@ public class MarkdownStore {
             String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
             String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
             Map<String, Object> data = yaml.readValue(fm, Map.class);
+            String name = null;
+            String description = body;
+            if (body.startsWith("# ")) {
+                int nl = body.indexOf('\n');
+                name = (nl < 0 ? body.substring(2) : body.substring(2, nl)).trim();
+                description = (nl < 0 ? "" : body.substring(nl + 1)).stripLeading();
+            }
             return Optional.of(new Trip(
                     slug,
-                    asString(data.get("name")),
+                    name,
                     asDate(data.get("startDate")),
-                    body
+                    description
             ));
         } catch (IOException e) {
             throw new StorageException("Failed to load trip: " + slug, e);
@@ -114,11 +121,11 @@ public class MarkdownStore {
         ensureDir(entriesDir(trip.slug()));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
-        fm.put("name", trip.name());
         fm.put("startDate", trip.startDate() == null ? null : trip.startDate().toString());
         fm.put("type", TRIP_TYPE);
         try {
-            String body = trip.description() == null ? "" : trip.description();
+            String description = trip.description() == null ? "" : trip.description();
+            String body = "# " + trip.name() + "\n\n" + description;
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
             Files.writeString(tripDir(trip.slug()).resolve("README.md"), content);
         } catch (IOException e) {
