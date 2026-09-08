@@ -62,7 +62,7 @@ public class MarkdownStore {
     }
 
     public Path entriesDir(String slug) {
-        return tripDir(slug).resolve("entries");
+        return tripDir(slug);
     }
 
     public Path entryFile(String slug, LocalDate date) {

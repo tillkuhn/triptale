@@ -93,6 +93,20 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void entryFileLivesDirectlyInTripFolderNotAnEntriesSubfolder() {
+        Path file = store.entryFile("alps-2025", LocalDate.of(2025, 7, 4));
+        assertEquals(store.tripDir("alps-2025"), file.getParent());
+    }
+
+    @Test
+    void listEntryDatesIgnoresReadme() {
+        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "desc"));
+        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
+
+        assertEquals(List.of(LocalDate.of(2025, 7, 4)), store.listEntryDates("alps-2025"));
+    }
+
+    @Test
     void saveAndLoadEntryRoundTrip() throws Exception {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
