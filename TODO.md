@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo numer: 13
+## Next Todo: 14
+
+## 13 settings handling
+Change handling of prefs.yml: Rename to settings.yml, also rebrand from preferences in code and ui labels etc. 
+New location settings.yml is %APPDATA%/triptale on windows and $HOME/.config/triptale on mac/linux, 
+But location should be changeable using spring standard mechanism via environment or passed param
+Settings should also contain git repo location which currently defaults to ~/Pictures/triptale-data/
+New behavior: If repo location setting is not present, system should raise a warning and encourage user to set it via 
+settings editor. No default value, but placeholder example "e.g. $HOME/git/triptale-data"
+If the location does not exist on safe or is empty dir, prompt user if repo should be initialized (yes / no) 
 
 ## DONE 12 Add Remote Sync all-in-one operation
 
