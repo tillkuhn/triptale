@@ -40,6 +40,8 @@ public class TripTaleApplication extends Application {
         stage.setMinWidth(1100);
         stage.setMinHeight(550);
         stage.show();
+        stage.toFront();
+        stage.requestFocus();
     }
 
     @Override

@@ -1203,7 +1203,7 @@ public class MainController {
 
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Edit Settings");
-        dlg.setHeaderText("App-wide settings\nFile: " + settingsStore.settingsFile());
+        dlg.setHeaderText("App-wide settings — File: " + settingsStore.settingsFile());
 
         TextField dataDirField = new TextField(settings.getDataDir());
         dataDirField.setPromptText("e.g. ${HOME}/git/triptale-data");
