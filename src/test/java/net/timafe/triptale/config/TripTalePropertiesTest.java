@@ -9,52 +9,45 @@ import static org.junit.jupiter.api.Assertions.*;
 class TripTalePropertiesTest {
 
     @Test
-    void defaultDataDirResolvedToAbsolutePath() {
+    void blankSettingsDirResolvesToPlatformDefault() {
         TripTaleProperties props = new TripTaleProperties();
-        Path resolved = props.resolvedDataDir();
+        Path resolved = props.resolvedSettingsDir();
         assertTrue(resolved.isAbsolute());
-        assertTrue(resolved.toString().contains(".triptale"));
+        // On Windows this would be %APPDATA%/triptale instead — this test only asserts the
+        // non-Windows branch (.config/triptale), matching this project's CI/dev environments.
+        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        if (!isWindows) {
+            assertTrue(resolved.toString().contains(".config"));
+            assertTrue(resolved.toString().endsWith("triptale"));
+        }
     }
 
     @Test
-    void resolvedDataDirExpandsTilde() {
+    void explicitSettingsDirExpandsTilde() {
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir("~/.triptale");
+        props.setSettingsDir("~/.triptale-settings");
         String home = System.getProperty("user.home");
-        assertTrue(props.resolvedDataDir().startsWith(home));
+        assertTrue(props.resolvedSettingsDir().startsWith(home));
+        assertTrue(props.resolvedSettingsDir().toString().endsWith(".triptale-settings"));
     }
 
     @Test
-    void resolvedDataDirUsesAbsolutePathDirectly() {
+    void explicitAbsoluteSettingsDirUsedDirectly() {
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir("/tmp/my-data");
-        assertEquals("/tmp/my-data", props.resolvedDataDir().toString());
+        props.setSettingsDir("/tmp/my-settings");
+        assertEquals("/tmp/my-settings", props.resolvedSettingsDir().toString());
     }
 
     @Test
-    void getAndSetDataDir() {
+    void getAndSetSettingsDir() {
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir("/custom/path");
-        assertEquals("/custom/path", props.getDataDir());
+        props.setSettingsDir("/custom/path");
+        assertEquals("/custom/path", props.getSettingsDir());
     }
 
     @Test
-    void getAndSetGit() {
+    void settingsDirDefaultsToBlank() {
         TripTaleProperties props = new TripTaleProperties();
-        TripTaleProperties.Git git = new TripTaleProperties.Git();
-        git.setAuthorName("Alice");
-        git.setAuthorEmail("alice@example.com");
-        props.setGit(git);
-
-        assertSame(git, props.getGit());
-        assertEquals("Alice", props.getGit().getAuthorName());
-        assertEquals("alice@example.com", props.getGit().getAuthorEmail());
-    }
-
-    @Test
-    void gitDefaultsAreEmptyStrings() {
-        TripTaleProperties.Git git = new TripTaleProperties.Git();
-        assertEquals("", git.getAuthorName());
-        assertEquals("", git.getAuthorEmail());
+        assertEquals("", props.getSettingsDir());
     }
 }

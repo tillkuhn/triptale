@@ -1,10 +1,12 @@
 package net.timafe.triptale.export;
 
+import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,14 +24,39 @@ class DiaryExporterTest {
     Path tempDir;
 
     private MarkdownStore store;
+    private SettingsStore settingsStore;
     private DiaryExporter exporter;
 
     @BeforeEach
     void setUp() {
+        Path settingsDir = tempDir.resolve("settings");
+        Path dataDir = tempDir.resolve("data");
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir(tempDir.toString());
-        store = new MarkdownStore(props);
-        exporter = new DiaryExporter(store, new ImpressionsResolver());
+        props.setSettingsDir(settingsDir.toString());
+        settingsStore = new SettingsStore(props);
+        AppSettings settings = new AppSettings();
+        settings.setDataDir(dataDir.toString());
+        settingsStore.save(settings);
+        store = new MarkdownStore(settingsStore);
+        exporter = new DiaryExporter(store, new ImpressionsResolver(), settingsStore);
+    }
+
+    private void setImpressionsFilePattern(String pattern) {
+        AppSettings settings = settingsStore.load();
+        settings.setImpressionsFilePattern(pattern);
+        settingsStore.save(settings);
+    }
+
+    private void setImpressionsFaveFilePattern(String pattern) {
+        AppSettings settings = settingsStore.load();
+        settings.setImpressionsFaveFilePattern(pattern);
+        settingsStore.save(settings);
+    }
+
+    private void setImpressionsGridColumns(int columns) {
+        AppSettings settings = settingsStore.load();
+        settings.setImpressionsGridColumns(columns);
+        settingsStore.save(settings);
     }
 
     @Test
@@ -159,7 +186,7 @@ class DiaryExporterTest {
         Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
-        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.NONE);
 
@@ -174,8 +201,8 @@ class DiaryExporterTest {
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
         java.nio.file.Files.createFile(tempDir.resolve("20250701_two.jpg"));
-        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
-        store.setImpressionsGridColumns(2);
+        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsGridColumns(2);
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
 
@@ -194,8 +221,8 @@ class DiaryExporterTest {
         java.nio.file.Path faveDir = tempDir.resolve("faves");
         java.nio.file.Files.createDirectory(faveDir);
         java.nio.file.Files.createFile(faveDir.resolve("20250701_fave.jpg"));
-        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
-        store.setImpressionsFaveFilePattern(faveDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFaveFilePattern(faveDir.toString() + "/${DATE}*.jpg");
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
 
@@ -228,7 +255,7 @@ class DiaryExporterTest {
         store.saveTrip(trip);
         store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
-        store.setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
         String markdown = exporter.exportTrip(trip);
 

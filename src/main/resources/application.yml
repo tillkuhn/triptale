@@ -8,14 +8,10 @@ spring:
 
 
 triptale:
-  # Root directory for all trips (single git repo). Configurable.
-  # Supports ~ for the user home directory.
-  #data-dir: ~/.triptale
-  data-dir: ~/Pictures/triptale-data
-  git:
-    # Default commit author (falls back to system git config if blank)
-    author-name: ""
-    author-email: ""
+  # Directory where settings.yml (data dir, git author, impressions patterns) is stored.
+  # Blank = platform default (%APPDATA%/triptale on Windows, $HOME/.config/triptale on
+  # macOS/Linux). Overridable via TRIPTALE_SETTINGS_DIR env var or -Dtriptale.settings-dir=.
+  settings-dir: ""
 
 logging:
   level:

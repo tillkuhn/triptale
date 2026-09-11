@@ -1,5 +1,6 @@
 package net.timafe.triptale.storage;
 
+import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarkdownStoreTest {
@@ -28,9 +30,15 @@ class MarkdownStoreTest {
 
     @BeforeEach
     void setUp() {
+        Path settingsDir = tempDir.resolve("settings");
+        Path dataDir = tempDir.resolve("data");
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir(tempDir.toString());
-        store = new MarkdownStore(props);
+        props.setSettingsDir(settingsDir.toString());
+        SettingsStore settingsStore = new SettingsStore(props);
+        AppSettings settings = new AppSettings();
+        settings.setDataDir(dataDir.toString());
+        settingsStore.save(settings);
+        store = new MarkdownStore(settingsStore);
     }
 
     @Test
@@ -38,6 +46,14 @@ class MarkdownStoreTest {
         Path root = store.dataDir();
         assertTrue(Files.isDirectory(root));
         assertTrue(Files.isDirectory(root.resolve("trips")));
+    }
+
+    @Test
+    void dataDirThrowsWhenUnconfigured() {
+        TripTaleProperties props = new TripTaleProperties();
+        props.setSettingsDir(tempDir.resolve("unconfigured-settings").toString());
+        MarkdownStore unconfiguredStore = new MarkdownStore(new SettingsStore(props));
+        assertThrows(StorageException.class, unconfiguredStore::dataDir);
     }
 
     @Test
@@ -62,7 +78,7 @@ class MarkdownStoreTest {
     void saveTripWritesReadmeWithTripTypeAndNameAsHeading() throws Exception {
         store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride"));
 
-        Path readme = tempDir.resolve("trips").resolve("alps-2025").resolve("README.md");
+        Path readme = store.dataDir().resolve("trips").resolve("alps-2025").resolve("README.md");
         assertTrue(Files.exists(readme));
         String raw = Files.readString(readme);
         assertTrue(raw.contains("type: Trip"));
@@ -224,7 +240,7 @@ class MarkdownStoreTest {
     }
 
     // -------------------------------------------------------------------------
-    // Local preferences
+    // Repo-local internal state (.state.yml)
     // -------------------------------------------------------------------------
 
     @Test
@@ -236,7 +252,7 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void loadLastTripSlugReturnsEmptyWhenPrefsFileMissing() {
+    void loadLastTripSlugReturnsEmptyWhenStateFileMissing() {
         assertTrue(store.loadLastTripSlug().isEmpty());
     }
 
@@ -248,37 +264,9 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void impressionsFilePatternDefaultsToEmpty() {
-        assertTrue(store.getImpressionsFilePattern().isEmpty());
-    }
-
-    @Test
-    void impressionsGridColumnsDefaultsToTwo() {
-        assertEquals(2, store.getImpressionsGridColumns());
-    }
-
-    @Test
-    void impressionsPrefsCoexistWithLastTripSlug() {
+    void lastTripSlugIsPersistedInStateYmlFile() {
         store.saveLastTripSlug("alps-2025");
-        store.setImpressionsFilePattern("${HOME}/Pictures/*.jpg");
-        store.setImpressionsGridColumns(3);
-
-        assertEquals("alps-2025", store.loadLastTripSlug().orElseThrow());
-        assertEquals("${HOME}/Pictures/*.jpg", store.getImpressionsFilePattern().orElseThrow());
-        assertEquals(3, store.getImpressionsGridColumns());
-    }
-
-    @Test
-    void impressionsFaveFilePatternDefaultsToEmpty() {
-        assertTrue(store.getImpressionsFaveFilePattern().isEmpty());
-    }
-
-    @Test
-    void impressionsFaveFilePatternCoexistsWithImpressionsFilePattern() {
-        store.setImpressionsFilePattern("${HOME}/Pictures/output/${DATE}*.jpg");
-        store.setImpressionsFaveFilePattern("${HOME}/Pictures/00_Faves/${DATE}*.jpg");
-
-        assertEquals("${HOME}/Pictures/output/${DATE}*.jpg", store.getImpressionsFilePattern().orElseThrow());
-        assertEquals("${HOME}/Pictures/00_Faves/${DATE}*.jpg", store.getImpressionsFaveFilePattern().orElseThrow());
+        Path stateFile = store.dataDir().resolve(".state.yml");
+        assertTrue(Files.exists(stateFile));
     }
 }

@@ -1,8 +1,7 @@
 package net.timafe.triptale.git;
 
-import jakarta.annotation.PostConstruct;
-import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -18,21 +17,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 @Service
 public class GitService {
 
     private static final Logger log = LoggerFactory.getLogger(GitService.class);
 
-    private final TripTaleProperties props;
+    private final SettingsStore settingsStore;
     private final MarkdownStore store;
 
-    public GitService(TripTaleProperties props, MarkdownStore store) {
-        this.props = props;
+    public GitService(SettingsStore settingsStore, MarkdownStore store) {
+        this.settingsStore = settingsStore;
         this.store = store;
     }
 
-    private static final String GITIGNORE_ENTRY = "prefs.yml";
+    private static final String GITIGNORE_ENTRY = ".state.yml";
 
     // Tolaria (https://github.com/refactoringhq/tolaria) type definitions, created at the data-dir root
     // so entries tagged `type: Tale` and trips resolve to a note type in a Tolaria vault.
@@ -61,8 +61,38 @@ public class GitService {
             _sort: "modified:desc"
             ---""";
 
-    @PostConstruct
-    public void initOnStartup() {
+    /** True when a data directory has been configured (see {@link SettingsStore#isConfigured()}). */
+    public boolean isConfigured() {
+        return settingsStore.isConfigured();
+    }
+
+    /**
+     * True when the configured data directory doesn't exist yet, or exists but is empty, and
+     * doesn't already have a {@code .git} directory — i.e. initializing a new repo there is a
+     * meaningful, safe action. Returns {@code false} if not configured at all (callers should
+     * check {@link #isConfigured()} first — that's a different UI situation).
+     */
+    public boolean needsInit() {
+        if (!isConfigured()) return false;
+        Path root = settingsStore.load().resolvedDataDir().orElseThrow();
+        if (Files.isDirectory(root.resolve(".git"))) return false;
+        if (!Files.isDirectory(root)) return true;
+        try (Stream<Path> s = Files.list(root)) {
+            return s.findAny().isEmpty();
+        } catch (IOException e) {
+            log.warn("Could not check if {} is empty: {}", root, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Performs the actual init work — creates the data dir if needed, runs {@code git init} if
+     * {@code .git} is missing, and ensures {@code .gitignore}/Tolaria type definitions exist.
+     * Idempotent. No JavaFX/UI here (package boundary rule) — callers (e.g. {@code
+     * MainController}) decide when to call this, based on {@link #needsInit()} and, where
+     * appropriate, user confirmation.
+     */
+    public void initRepo() {
         Path root = store.dataDir();
         if (!Files.isDirectory(root.resolve(".git"))) {
             try (Git git = Git.init().setDirectory(root.toFile()).call()) {
@@ -226,8 +256,8 @@ public class GitService {
     }
 
     private PersonIdent author() {
-        String name = props.getGit().getAuthorName();
-        String email = props.getGit().getAuthorEmail();
+        String name = settingsStore.load().getGit().getAuthorName();
+        String email = settingsStore.load().getGit().getAuthorEmail();
         if (name.isBlank() || email.isBlank()) return null;
         return new PersonIdent(name, email);
     }

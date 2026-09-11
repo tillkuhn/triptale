@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import org.slf4j.Logger;
@@ -38,11 +37,11 @@ public class MarkdownStore {
     /** Tolaria note type assigned to every trip README.md. */
     private static final String TRIP_TYPE = "Trip";
 
-    private final TripTaleProperties props;
+    private final SettingsStore settingsStore;
     private final ObjectMapper yaml;
 
-    public MarkdownStore(TripTaleProperties props) {
-        this.props = props;
+    public MarkdownStore(SettingsStore settingsStore) {
+        this.settingsStore = settingsStore;
         this.yaml = new ObjectMapper(new YAMLFactory()
                 .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
                 .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES))
@@ -51,7 +50,9 @@ public class MarkdownStore {
     }
 
     public Path dataDir() {
-        Path p = props.resolvedDataDir();
+        Path p = settingsStore.load().resolvedDataDir()
+                .orElseThrow(() -> new StorageException(
+                        "Data directory not configured — set it via Edit Settings"));
         ensureDir(p);
         ensureDir(p.resolve("trips"));
         return p;
@@ -168,25 +169,22 @@ public class MarkdownStore {
     }
 
     // -------------------------------------------------------------------------
-    // Local preferences (gitignored, not synced)
+    // Repo-local internal state (gitignored, not synced, never UI-edited)
     // -------------------------------------------------------------------------
 
-    private static final String PREFS_FILE = "prefs.yml";
-    private static final String PREFS_LAST_TRIP_KEY = "lastTripSlug";
-    private static final String PREFS_IMPRESSIONS_PATTERN_KEY = "impressionsFilePattern";
-    private static final String PREFS_IMPRESSIONS_GRID_COLUMNS_KEY = "impressionsGridColumns";
-    private static final String PREFS_IMPRESSIONS_FAVE_PATTERN_KEY = "impressionsFaveFilePattern";
-    private static final int DEFAULT_IMPRESSIONS_GRID_COLUMNS = 2;
-    private static final String PREFS_COMMENT =
-            "# Local preferences — machine-specific, not committed to git.\n" +
-            "# This file is listed in .gitignore and intentionally excluded from sync.\n";
+    private static final String STATE_FILE = ".state.yml";
+    private static final String STATE_LAST_TRIP_KEY = "lastTripSlug";
+    private static final String STATE_COMMENT =
+            "# Repo-local internal state — machine-specific, not committed to git.\n" +
+            "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
+            "# Written programmatically only; never exposed in any settings UI.\n";
 
-    /** Reads the whole prefs.yml as a key-value map (empty map if the file doesn't exist). */
-    public Map<String, Object> loadPrefs() {
-        Path prefs = dataDir().resolve(PREFS_FILE);
-        if (!Files.exists(prefs)) return new LinkedHashMap<>();
+    /** Reads the whole .state.yml as a key-value map (empty map if the file doesn't exist). */
+    public Map<String, Object> loadState() {
+        Path state = dataDir().resolve(STATE_FILE);
+        if (!Files.exists(state)) return new LinkedHashMap<>();
         try {
-            String raw = Files.readString(prefs);
+            String raw = Files.readString(state);
             // Strip leading comment lines before YAML parsing
             String yaml_ = raw.lines()
                     .filter(l -> !l.startsWith("#"))
@@ -194,65 +192,32 @@ public class MarkdownStore {
             Map<String, Object> data = yaml.readValue(yaml_, Map.class);
             return data == null ? new LinkedHashMap<>() : new LinkedHashMap<>(data);
         } catch (IOException e) {
-            log.warn("Could not read {}: {}", PREFS_FILE, e.getMessage());
+            log.warn("Could not read {}: {}", STATE_FILE, e.getMessage());
             return new LinkedHashMap<>();
         }
     }
 
-    /** Merges the given key into the existing prefs.yml and writes the whole file back. */
-    public void savePref(String key, Object value) {
-        Map<String, Object> data = loadPrefs();
+    /** Merges the given key into the existing .state.yml and writes the whole file back. */
+    public void saveState(String key, Object value) {
+        Map<String, Object> data = loadState();
         data.put(key, value);
-        Path prefsPath = dataDir().resolve(PREFS_FILE);
+        Path statePath = dataDir().resolve(STATE_FILE);
         try {
-            String content = PREFS_COMMENT + yaml.writeValueAsString(data);
-            Files.writeString(prefsPath, content);
-            log.info("Saved preference '{}' to {}", key, prefsPath);
+            String content = STATE_COMMENT + yaml.writeValueAsString(data);
+            Files.writeString(statePath, content);
+            log.info("Saved state '{}' to {}", key, statePath);
         } catch (IOException e) {
-            log.warn("Could not write {}: {}", prefsPath, e.getMessage());
+            log.warn("Could not write {}: {}", statePath, e.getMessage());
         }
     }
 
     public void saveLastTripSlug(String slug) {
-        savePref(PREFS_LAST_TRIP_KEY, slug);
+        saveState(STATE_LAST_TRIP_KEY, slug);
     }
 
     public Optional<String> loadLastTripSlug() {
-        return Optional.ofNullable(asString(loadPrefs().get(PREFS_LAST_TRIP_KEY)));
+        return Optional.ofNullable(asString(loadState().get(STATE_LAST_TRIP_KEY)));
     }
-
-    public void setImpressionsFilePattern(String pattern) {
-        savePref(PREFS_IMPRESSIONS_PATTERN_KEY, pattern);
-    }
-
-    public Optional<String> getImpressionsFilePattern() {
-        String v = asString(loadPrefs().get(PREFS_IMPRESSIONS_PATTERN_KEY));
-        return (v == null || v.isBlank()) ? Optional.empty() : Optional.of(v);
-    }
-
-    public void setImpressionsGridColumns(int columns) {
-        savePref(PREFS_IMPRESSIONS_GRID_COLUMNS_KEY, columns);
-    }
-
-    public int getImpressionsGridColumns() {
-        Object v = loadPrefs().get(PREFS_IMPRESSIONS_GRID_COLUMNS_KEY);
-        if (v == null) return DEFAULT_IMPRESSIONS_GRID_COLUMNS;
-        try {
-            return Integer.parseInt(v.toString());
-        } catch (NumberFormatException e) {
-            return DEFAULT_IMPRESSIONS_GRID_COLUMNS;
-        }
-    }
-
-    public void setImpressionsFaveFilePattern(String pattern) {
-        savePref(PREFS_IMPRESSIONS_FAVE_PATTERN_KEY, pattern);
-    }
-
-    public Optional<String> getImpressionsFaveFilePattern() {
-        String v = asString(loadPrefs().get(PREFS_IMPRESSIONS_FAVE_PATTERN_KEY));
-        return (v == null || v.isBlank()) ? Optional.empty() : Optional.of(v);
-    }
-
 
     public List<LocalDate> listEntryDates(String slug) {
         Path dir = entriesDir(slug);

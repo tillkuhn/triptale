@@ -1,15 +1,21 @@
 # ToDos for this app
 
-## Next Todo: 14
+## Next Todo: 15
+
+## 14 template variables for settings paths
+
+Generalize `ImpressionsResolver`'s existing `${HOME}`/`${DATE}` placeholder substitution into
+a shared, reusable resolver, add `${TRIP_SLUG}` (and rename/extend `${DATE}` towards a
+`${TALE_DATE}`-style name if it helps clarity), and apply it beyond impressions patterns to
+other settings paths (e.g. `dataDir`). Expansion happens at runtime when the value is actually
+used (writing an entry file, locating images), not at settings-save time. Follow-up to todo 13
+— see docs/13_settings_handling.md non-goals section.
 
 ## 13 settings handling
-Change handling of prefs.yml: Rename to settings.yml, also rebrand from preferences in code and ui labels etc. 
-New location settings.yml is %APPDATA%/triptale on windows and $HOME/.config/triptale on mac/linux, 
-But location should be changeable using spring standard mechanism via environment or passed param
-Settings should also contain git repo location which currently defaults to ~/Pictures/triptale-data/
-New behavior: If repo location setting is not present, system should raise a warning and encourage user to set it via 
-settings editor. No default value, but placeholder example "e.g. $HOME/git/triptale-data"
-If the location does not exist on safe or is empty dir, prompt user if repo should be initialized (yes / no) 
+
+See docs/13_settings_handling.md for the full design (from a grill-me session covering the
+settings.yml/.state.yml split, settings directory location, startup warning/init-prompt flow,
+and settings dialog rework).
 
 ## DONE 12 Add Remote Sync all-in-one operation
 
