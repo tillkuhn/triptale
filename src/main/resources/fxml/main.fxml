@@ -64,15 +64,17 @@
                 <Button text="ⓘ" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip details"/></tooltip>
                 </Button>
-                <Button fx:id="firstDayButton" text="⏮" onAction="#onFirstDay">
-                    <tooltip><Tooltip text="Go to day 1"/></tooltip>
-                </Button>
-                <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
                 <DatePicker fx:id="datePicker"/>
-                <Button text="▶" onAction="#onNextDay"/>
-                <Button fx:id="todayButton" text="◉" onAction="#onToday">
-                    <tooltip><Tooltip text="Go to today"/></tooltip>
-                </Button>
+                <HBox spacing="0" alignment="CENTER_LEFT" styleClass="nav-button-group">
+                    <Button fx:id="firstDayButton" text="⏮" onAction="#onFirstDay">
+                        <tooltip><Tooltip text="Go to day 1"/></tooltip>
+                    </Button>
+                    <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
+                    <Button text="▶" onAction="#onNextDay"/>
+                    <Button fx:id="todayButton" text="◉" onAction="#onToday">
+                        <tooltip><Tooltip text="Go to today"/></tooltip>
+                    </Button>
+                </HBox>
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">

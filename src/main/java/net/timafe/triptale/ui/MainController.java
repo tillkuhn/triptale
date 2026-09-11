@@ -344,12 +344,22 @@ public class MainController {
             }
         }
 
+        TextField nameField = new TextField(trip.name());
+        nameField.setPromptText("Trip name");
+        nameField.setPrefColumnCount(28);
+        TextArea descArea = new TextArea(trip.description() == null ? "" : trip.description());
+        descArea.setWrapText(true);
+        descArea.setPrefRowCount(4);
+        descArea.setPrefColumnCount(40);
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
         grid.setPadding(new Insets(14));
         grid.getStyleClass().add("card");
         int row = 0;
+        grid.add(new Label("Name:"), 0, row);
+        grid.add(nameField, 1, row++);
         grid.add(new Label("Slug:"), 0, row);
         grid.add(new Label(trip.slug()), 1, row++);
         grid.add(new Label("Start date:"), 0, row);
@@ -369,20 +379,38 @@ public class MainController {
                 : String.format(Locale.ROOT, "%.0f m", totalAltitude);
         grid.add(new Label(altitudeText), 1, row++);
         grid.add(new Label("Description:"), 0, row);
-        TextArea descArea = new TextArea(trip.description() == null ? "" : trip.description());
-        descArea.setEditable(false);
-        descArea.setWrapText(true);
-        descArea.setPrefRowCount(4);
-        descArea.setPrefColumnCount(40);
         grid.add(descArea, 1, row);
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Trip Details");
-        alert.setHeaderText(trip.name());
-        alert.getDialogPane().setContent(grid);
-        alert.getButtonTypes().setAll(ButtonType.CLOSE);
-        applyStylesheet(alert.getDialogPane());
-        alert.showAndWait();
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Trip Details");
+        dlg.setHeaderText(trip.name());
+        dlg.getDialogPane().setContent(grid);
+        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        applyStylesheet(dlg.getDialogPane());
+
+        Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
+        String originalDesc = trip.description() == null ? "" : trip.description();
+        Runnable refreshOk = () -> okButton.setDisable(
+                nameField.getText().isBlank()
+                        || (nameField.getText().trim().equals(trip.name()) && descArea.getText().equals(originalDesc)));
+        refreshOk.run();
+        nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
+        descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+        String newName = nameField.getText().trim();
+        String newDesc = descArea.getText();
+        if (newName.equals(trip.name()) && newDesc.equals(trip.description() == null ? "" : trip.description())) {
+            return;
+        }
+        Trip updated = new Trip(trip.slug(), newName, trip.startDate(), newDesc);
+        store.saveTrip(updated);
+        addPending(trip.slug(), UPDATE);
+        reloadTrips();
+        tripCombo.getSelectionModel().select(
+                tripCombo.getItems().stream().filter(t -> t.slug().equals(trip.slug())).findFirst().orElse(null));
+        status("Updated trip " + trip.slug());
     }
 
     @FXML
@@ -1119,7 +1147,8 @@ public class MainController {
     public void onEditPreferences() {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("Edit Preferences");
-        dlg.setHeaderText("Local preferences (not synced via git)");
+        Path prefsPath = props.resolvedDataDir().resolve("prefs.yml");
+        dlg.setHeaderText("Local preferences (not synced via git)\nFile: " + prefsPath);
 
         TextField patternField = new TextField(store.getImpressionsFilePattern().orElse(""));
         patternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg");
