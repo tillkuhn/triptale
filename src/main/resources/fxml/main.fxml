@@ -33,7 +33,7 @@
                             <SeparatorMenuItem/>
                             <MenuItem text="📤 Export Diary…" onAction="#onExportDiary"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="⚙ Edit Preferences…" onAction="#onEditPreferences"/>
+                            <MenuItem text="⚙ Edit Settings…" onAction="#onEditSettings"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="🚪 Exit" onAction="#onExit"/>
                         </items>

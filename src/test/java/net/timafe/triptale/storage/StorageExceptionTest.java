@@ -20,4 +20,11 @@ class StorageExceptionTest {
         assertEquals("no cause", ex.getMessage());
         assertNull(ex.getCause());
     }
+
+    @Test
+    void messageOnlyConstructorStoresMessageAndNoCause() {
+        StorageException ex = new StorageException("not configured");
+        assertEquals("not configured", ex.getMessage());
+        assertNull(ex.getCause());
+    }
 }

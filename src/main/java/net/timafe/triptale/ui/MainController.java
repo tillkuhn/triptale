@@ -35,7 +35,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.event.ActionEvent;
 import javafx.util.StringConverter;
-import net.timafe.triptale.config.TripTaleProperties;
+import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
@@ -45,6 +45,7 @@ import net.timafe.triptale.storage.ExifInfo;
 import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
 import net.timafe.triptale.util.Slugs;
@@ -132,7 +133,7 @@ public class MainController {
 
     private final MarkdownStore store;
     private final GitService gitService;
-    private final TripTaleProperties props;
+    private final SettingsStore settingsStore;
     private final DiaryExporter diaryExporter;
     private final ImpressionsResolver impressionsResolver;
     private final ExifReader exifReader;
@@ -140,7 +141,7 @@ public class MainController {
     private final BuildProperties buildProperties;
     private final HostServices hostServices;
 
-    public MainController(MarkdownStore store, GitService gitService, TripTaleProperties props,
+    public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
@@ -148,7 +149,7 @@ public class MainController {
                           ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
         this.gitService = gitService;
-        this.props = props;
+        this.settingsStore = settingsStore;
         this.diaryExporter = diaryExporter;
         this.impressionsResolver = impressionsResolver;
         this.exifReader = exifReader;
@@ -185,7 +186,10 @@ public class MainController {
                 }
             }
         });
-        reloadTrips();
+        boolean ready = performStartupChecks();
+        if (ready) {
+            reloadTrips();
+        }
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
             if (sel == null) return;
@@ -259,9 +263,55 @@ public class MainController {
             }
         });
         updateCommitButton();
-        status("Data dir: " + props.resolvedDataDir());
-        // Kick off a non-blocking connectivity check on startup
-        triggerConnectivityCheck();
+        if (ready) {
+            status("Data dir: " + settingsStore.load().resolvedDataDir()
+                    .map(Path::toString).orElse("(not configured)"));
+            // Kick off a non-blocking connectivity check on startup
+            triggerConnectivityCheck();
+        }
+    }
+
+    /**
+     * Runs before any trip/entry data is loaded. Returns {@code true} if it's safe to proceed
+     * with {@link #reloadTrips()} and the rest of startup, {@code false} if the app should stay
+     * in an empty-but-functional state this session (e.g. unconfigured data dir, or user
+     * declined to initialize a new repo).
+     * <p>
+     * Runs before {@code stage.show()} (this method is called from {@code initialize()}, which
+     * {@code FXMLLoader.load()} invokes synchronously in {@code TripTaleApplication.start()}) —
+     * JavaFX allows showing a {@link Dialog}/{@link Alert} here even though the primary stage
+     * isn't visible yet.
+     */
+    private boolean performStartupChecks() {
+        if (!gitService.isConfigured()) {
+            Alert warn = new Alert(Alert.AlertType.WARNING,
+                    "No data directory is configured yet. Open File → Edit Settings… to set one.",
+                    ButtonType.OK);
+            warn.setTitle("TripTale");
+            warn.setHeaderText("Data directory not configured");
+            applyStylesheet(warn.getDialogPane());
+            warn.showAndWait();
+            return false;
+        }
+        if (gitService.needsInit()) {
+            Path dataDir = settingsStore.load().resolvedDataDir().orElseThrow();
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "No git repository found at " + dataDir + ". Initialize one now?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle("TripTale");
+            confirm.setHeaderText("Initialize git repository");
+            applyStylesheet(confirm.getDialogPane());
+            Optional<ButtonType> result = confirm.showAndWait();
+            if (result.isEmpty() || result.get() != ButtonType.YES) {
+                // Leave as-is; the directory is still empty so we'll re-prompt next launch.
+                return false;
+            }
+            gitService.initRepo();
+        } else {
+            // .git already exists — idempotent, no prompt needed (matches old silent behavior).
+            gitService.initRepo();
+        }
+        return true;
     }
 
     private void reloadTrips() {
@@ -432,8 +482,9 @@ public class MainController {
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
 
-        boolean impressionsConfigured = store.getImpressionsFilePattern().isPresent();
-        boolean favesConfigured = store.getImpressionsFaveFilePattern().isPresent();
+        AppSettings settings = settingsStore.load();
+        boolean impressionsConfigured = !settings.getImpressionsFilePattern().isBlank();
+        boolean favesConfigured = !settings.getImpressionsFaveFilePattern().isBlank();
         ImpressionsMode defaultMode = impressionsConfigured
                 ? ImpressionsMode.ALL
                 : (favesConfigured ? ImpressionsMode.FAVES : ImpressionsMode.NONE);
@@ -544,7 +595,7 @@ public class MainController {
 
     private void updateImpressionsButton(LocalDate date) {
         if (impressionsButton == null) return;
-        String pattern = store.getImpressionsFilePattern().orElse(null);
+        String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
         if (pattern == null || date == null) {
             impressionsButton.setText("No Impressions");
             impressionsButton.setDisable(true);
@@ -562,7 +613,7 @@ public class MainController {
 
     private void updateFavesButton(LocalDate date) {
         if (favesButton == null) return;
-        String pattern = store.getImpressionsFaveFilePattern().orElse(null);
+        String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
         if (pattern == null || date == null) {
             favesButton.setText("No Faves");
             favesButton.setDisable(true);
@@ -919,7 +970,8 @@ public class MainController {
      */
     @FXML
     public void onSync() {
-        String dataDir = props.resolvedDataDir().toString();
+        String dataDir = settingsStore.load().resolvedDataDir()
+                .map(Path::toString).orElse("(not configured)");
         String remoteUrl;
         try {
             remoteUrl = gitService.remoteUrl();
@@ -1010,8 +1062,9 @@ public class MainController {
         } catch (RuntimeException e) {
             actualRemote = "(error: " + e.getMessage() + ")";
         }
-        String authorName = props.getGit().getAuthorName();
-        String authorEmail = props.getGit().getAuthorEmail();
+        AppSettings settings = settingsStore.load();
+        String authorName = settings.getGit().getAuthorName();
+        String authorEmail = settings.getGit().getAuthorEmail();
         String authorDisplay = (authorName.isBlank() && authorEmail.isBlank())
                 ? "(system git config)"
                 : (authorName + " <" + authorEmail + ">");
@@ -1022,7 +1075,7 @@ public class MainController {
         grid.setPadding(new Insets(10));
         int row = 0;
         grid.add(new Label("Data dir:"), 0, row);
-        grid.add(new Label(props.resolvedDataDir().toString()), 1, row++);
+        grid.add(new Label(settings.resolvedDataDir().map(Path::toString).orElse("(not configured)")), 1, row++);
         grid.add(new Label("Origin URL:"), 0, row);
         grid.add(new Label(actualRemote.isBlank() ? "(none)" : actualRemote), 1, row++);
         grid.add(new Label("Author:"), 0, row);
@@ -1144,18 +1197,27 @@ public class MainController {
     }
 
     @FXML
-    public void onEditPreferences() {
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Edit Preferences");
-        Path prefsPath = props.resolvedDataDir().resolve("prefs.yml");
-        dlg.setHeaderText("Local preferences (not synced via git)\nFile: " + prefsPath);
+    public void onEditSettings() {
+        AppSettings settings = settingsStore.load();
+        String previousDataDir = settings.getDataDir();
 
-        TextField patternField = new TextField(store.getImpressionsFilePattern().orElse(""));
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Edit Settings");
+        dlg.setHeaderText("App-wide settings\nFile: " + settingsStore.settingsFile());
+
+        TextField dataDirField = new TextField(settings.getDataDir());
+        dataDirField.setPromptText("e.g. ${HOME}/git/triptale-data");
+        dataDirField.setPrefColumnCount(36);
+        TextField authorNameField = new TextField(settings.getGit().getAuthorName());
+        authorNameField.setPrefColumnCount(36);
+        TextField authorEmailField = new TextField(settings.getGit().getAuthorEmail());
+        authorEmailField.setPrefColumnCount(36);
+        TextField patternField = new TextField(settings.getImpressionsFilePattern());
         patternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg");
         patternField.setPrefColumnCount(36);
-        TextField columnsField = new TextField(Integer.toString(store.getImpressionsGridColumns()));
+        TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);
-        TextField favePatternField = new TextField(store.getImpressionsFaveFilePattern().orElse(""));
+        TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
         favePatternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/${DATE}*.jpg");
         favePatternField.setPrefColumnCount(36);
 
@@ -1164,12 +1226,19 @@ public class MainController {
         grid.setVgap(8);
         grid.setPadding(new Insets(14));
         grid.getStyleClass().add("card");
-        grid.add(new Label("Impressions file pattern:"), 0, 0);
-        grid.add(patternField, 1, 0);
-        grid.add(new Label("Impressions grid columns:"), 0, 1);
-        grid.add(columnsField, 1, 1);
-        grid.add(new Label("Faves file pattern:"), 0, 2);
-        grid.add(favePatternField, 1, 2);
+        int row = 0;
+        grid.add(new Label("Data directory:"), 0, row);
+        grid.add(dataDirField, 1, row++);
+        grid.add(new Label("Git author name:"), 0, row);
+        grid.add(authorNameField, 1, row++);
+        grid.add(new Label("Git author email:"), 0, row);
+        grid.add(authorEmailField, 1, row++);
+        grid.add(new Label("Impressions file pattern:"), 0, row);
+        grid.add(patternField, 1, row++);
+        grid.add(new Label("Impressions grid columns:"), 0, row);
+        grid.add(columnsField, 1, row++);
+        grid.add(new Label("Faves file pattern:"), 0, row);
+        grid.add(favePatternField, 1, row);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -1178,7 +1247,6 @@ public class MainController {
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
 
-        store.setImpressionsFilePattern(patternField.getText().trim());
         int columns;
         try {
             columns = Integer.parseInt(columnsField.getText().trim());
@@ -1186,11 +1254,25 @@ public class MainController {
         } catch (NumberFormatException nfe) {
             columns = 2;
         }
-        store.setImpressionsGridColumns(columns);
-        store.setImpressionsFaveFilePattern(favePatternField.getText().trim());
+        String newDataDir = dataDirField.getText().trim();
+        AppSettings.Git git = new AppSettings.Git();
+        git.setAuthorName(authorNameField.getText().trim());
+        git.setAuthorEmail(authorEmailField.getText().trim());
+        settings.setDataDir(newDataDir);
+        settings.setGit(git);
+        settings.setImpressionsFilePattern(patternField.getText().trim());
+        settings.setImpressionsGridColumns(columns);
+        settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
+        settingsStore.save(settings);
+
         updateImpressionsButton(datePicker.getValue());
         updateFavesButton(datePicker.getValue());
-        status("Preferences saved");
+
+        if (!newDataDir.equals(previousDataDir)) {
+            status("Settings saved — restart TripTale for the new data directory to take effect");
+        } else {
+            status("Settings saved");
+        }
     }
 
     @FXML
@@ -1198,7 +1280,7 @@ public class MainController {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
-        String pattern = store.getImpressionsFilePattern().orElse(null);
+        String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
         if (pattern == null) return;
         List<Path> images = impressionsResolver.resolve(pattern, date);
         if (images.isEmpty()) return;
@@ -1210,7 +1292,7 @@ public class MainController {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
-        String pattern = store.getImpressionsFaveFilePattern().orElse(null);
+        String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
         if (pattern == null) return;
         List<Path> images = impressionsResolver.resolve(pattern, date);
         if (images.isEmpty()) return;
@@ -1386,6 +1468,10 @@ public class MainController {
             }        } catch (Exception ex) {
             log.warn("Could not open browser for {}: {}", url, ex.getMessage());
         }
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 
     private Double parseDouble(String s, String field) {

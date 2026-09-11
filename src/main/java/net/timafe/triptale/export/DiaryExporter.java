@@ -1,9 +1,11 @@
 package net.timafe.triptale.export;
 
+import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -43,10 +45,12 @@ public class DiaryExporter {
 
     private final MarkdownStore store;
     private final ImpressionsResolver impressionsResolver;
+    private final SettingsStore settingsStore;
 
-    public DiaryExporter(MarkdownStore store, ImpressionsResolver impressionsResolver) {
+    public DiaryExporter(MarkdownStore store, ImpressionsResolver impressionsResolver, SettingsStore settingsStore) {
         this.store = store;
         this.impressionsResolver = impressionsResolver;
+        this.settingsStore = settingsStore;
     }
 
     public String exportTrip(Trip trip) {
@@ -117,12 +121,13 @@ public class DiaryExporter {
 
     /** Replaces embedded {@code <!--IMPRESSIONS:yyyy-MM-dd-->} markers with an image grid table. */
     private String injectImpressions(String html, ImpressionsMode mode) {
+        AppSettings settings = settingsStore.load();
         String pattern = switch (mode) {
-            case FAVES -> store.getImpressionsFaveFilePattern().orElse(null);
-            case ALL -> store.getImpressionsFilePattern().orElse(null);
+            case FAVES -> blankToNull(settings.getImpressionsFaveFilePattern());
+            case ALL -> blankToNull(settings.getImpressionsFilePattern());
             case NONE -> null;
         };
-        int columns = Math.max(1, store.getImpressionsGridColumns());
+        int columns = Math.max(1, settings.getImpressionsGridColumns());
         Matcher m = IMPRESSIONS_MARKER.matcher(html);
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
@@ -149,6 +154,10 @@ public class DiaryExporter {
         }
         sb.append("</tr>\n</table>\n");
         return sb.toString();
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 
     private static String escapeHtml(String s) {

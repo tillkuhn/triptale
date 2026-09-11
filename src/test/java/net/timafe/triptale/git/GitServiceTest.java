@@ -1,9 +1,11 @@
 package net.timafe.triptale.git;
 
+import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,49 +21,57 @@ class GitServiceTest {
     @TempDir
     Path tempDir;
 
+    private Path dataDir;
+    private SettingsStore settingsStore;
     private GitService gitService;
     private MarkdownStore store;
 
     @BeforeEach
     void setUp() {
+        Path settingsDir = tempDir.resolve("settings");
+        dataDir = tempDir.resolve("data");
         TripTaleProperties props = new TripTaleProperties();
-        props.setDataDir(tempDir.toString());
-        store = new MarkdownStore(props);
-        gitService = new GitService(props, store);
+        props.setSettingsDir(settingsDir.toString());
+        settingsStore = new SettingsStore(props);
+        AppSettings settings = new AppSettings();
+        settings.setDataDir(dataDir.toString());
+        settingsStore.save(settings);
+        store = new MarkdownStore(settingsStore);
+        gitService = new GitService(settingsStore, store);
     }
 
     // -------------------------------------------------------------------------
-    // initOnStartup — git init
+    // initRepo — git init
     // -------------------------------------------------------------------------
 
     @Test
-    void initOnStartupCreatesGitRepo() {
-        gitService.initOnStartup();
-        assertTrue(Files.isDirectory(tempDir.resolve(".git")),
-                ".git directory should exist after initOnStartup");
+    void initRepoCreatesGitRepo() {
+        gitService.initRepo();
+        assertTrue(Files.isDirectory(dataDir.resolve(".git")),
+                ".git directory should exist after initRepo");
     }
 
     @Test
-    void initOnStartupIsIdempotent() {
+    void initRepoIsIdempotent() {
         // Should not throw when .git already exists
-        gitService.initOnStartup();
-        assertDoesNotThrow(() -> gitService.initOnStartup());
+        gitService.initRepo();
+        assertDoesNotThrow(() -> gitService.initRepo());
     }
 
     @Test
-    void initOnStartupWritesGitignore() throws Exception {
-        gitService.initOnStartup();
-        Path gitignore = tempDir.resolve(".gitignore");
+    void initRepoWritesGitignore() throws Exception {
+        gitService.initRepo();
+        Path gitignore = dataDir.resolve(".gitignore");
         assertTrue(Files.exists(gitignore));
-        assertTrue(Files.readString(gitignore).contains("prefs.yml"));
+        assertTrue(Files.readString(gitignore).contains(".state.yml"));
     }
 
     @Test
-    void initOnStartupWritesTolariaTypeDefinitions() throws Exception {
-        gitService.initOnStartup();
-        Path tripMd = tempDir.resolve("trip.md");
-        Path taleMd = tempDir.resolve("tale.md");
-        Path typeMd = tempDir.resolve("type.md");
+    void initRepoWritesTolariaTypeDefinitions() throws Exception {
+        gitService.initRepo();
+        Path tripMd = dataDir.resolve("trip.md");
+        Path taleMd = dataDir.resolve("tale.md");
+        Path typeMd = dataDir.resolve("type.md");
         assertTrue(Files.exists(tripMd));
         assertTrue(Files.exists(taleMd));
         assertTrue(Files.exists(typeMd));
@@ -71,10 +81,11 @@ class GitServiceTest {
     }
 
     @Test
-    void initOnStartupDoesNotOverwriteExistingTypeDefinitions() throws Exception {
-        Path tripMd = tempDir.resolve("trip.md");
+    void initRepoDoesNotOverwriteExistingTypeDefinitions() throws Exception {
+        Files.createDirectories(dataDir);
+        Path tripMd = dataDir.resolve("trip.md");
         Files.writeString(tripMd, "custom content");
-        gitService.initOnStartup();
+        gitService.initRepo();
         assertEquals("custom content", Files.readString(tripMd));
     }
 
@@ -84,32 +95,35 @@ class GitServiceTest {
 
     @Test
     void gitignoreEntryNotAddedWhenAlreadyPresent() throws Exception {
-        Path gitignore = tempDir.resolve(".gitignore");
-        Files.writeString(gitignore, "prefs.yml\n");
-        gitService.initOnStartup();
+        Files.createDirectories(dataDir);
+        Path gitignore = dataDir.resolve(".gitignore");
+        Files.writeString(gitignore, ".state.yml\n");
+        gitService.initRepo();
         // entry must appear exactly once
         String content = Files.readString(gitignore);
-        assertEquals(1, content.lines().filter("prefs.yml"::equals).count());
+        assertEquals(1, content.lines().filter(".state.yml"::equals).count());
     }
 
     @Test
     void gitignoreEntryAppendedToExistingContentWithTrailingNewline() throws Exception {
-        Path gitignore = tempDir.resolve(".gitignore");
+        Files.createDirectories(dataDir);
+        Path gitignore = dataDir.resolve(".gitignore");
         Files.writeString(gitignore, "*.log\n");
-        gitService.initOnStartup();
+        gitService.initRepo();
         String content = Files.readString(gitignore);
         assertTrue(content.contains("*.log"));
-        assertTrue(content.contains("prefs.yml"));
+        assertTrue(content.contains(".state.yml"));
     }
 
     @Test
     void gitignoreEntryAppendedToExistingContentWithoutTrailingNewline() throws Exception {
-        Path gitignore = tempDir.resolve(".gitignore");
+        Files.createDirectories(dataDir);
+        Path gitignore = dataDir.resolve(".gitignore");
         Files.writeString(gitignore, "*.log");   // no trailing newline
-        gitService.initOnStartup();
+        gitService.initRepo();
         String content = Files.readString(gitignore);
         assertTrue(content.contains("*.log"));
-        assertTrue(content.contains("prefs.yml"));
+        assertTrue(content.contains(".state.yml"));
     }
 
     // -------------------------------------------------------------------------
@@ -118,8 +132,8 @@ class GitServiceTest {
 
     @Test
     void commitAllOnCleanTreeIsNoOp() {
-        gitService.initOnStartup();
-        // initOnStartup creates .gitignore, so the first commit picks that up;
+        gitService.initRepo();
+        // initRepo creates .gitignore, so the first commit picks that up;
         // a second commit on the now-clean tree should be a genuine no-op.
         assertNotNull(gitService.commitAll("first commit"));
         assertNull(gitService.commitAll("empty commit"));
@@ -127,7 +141,7 @@ class GitServiceTest {
 
     @Test
     void commitAllCommitsStagedChanges() {
-        gitService.initOnStartup();
+        gitService.initRepo();
         store.saveTrip(new Trip("tour", "Tour", LocalDate.of(2025, 6, 1), "test"));
         String sha = gitService.commitAll("add trip");
         assertNotNull(sha);
@@ -138,15 +152,15 @@ class GitServiceTest {
 
     @Test
     void commitAllWithAuthorConfigured() {
-        TripTaleProperties propsWithAuthor = new TripTaleProperties();
-        propsWithAuthor.setDataDir(tempDir.toString());
-        TripTaleProperties.Git git = new TripTaleProperties.Git();
+        AppSettings settingsWithAuthor = settingsStore.load();
+        AppSettings.Git git = new AppSettings.Git();
         git.setAuthorName("Test User");
         git.setAuthorEmail("test@example.com");
-        propsWithAuthor.setGit(git);
+        settingsWithAuthor.setGit(git);
+        settingsStore.save(settingsWithAuthor);
 
-        GitService svc = new GitService(propsWithAuthor, store);
-        svc.initOnStartup();
+        GitService svc = new GitService(settingsStore, store);
+        svc.initRepo();
         store.saveEntry("tour",
                 DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
         assertNotNull(svc.commitAll("entry with author"));
@@ -158,7 +172,7 @@ class GitServiceTest {
 
     @Test
     void remoteUrlReturnsEmptyWhenNoOrigin() {
-        gitService.initOnStartup();
+        gitService.initRepo();
         assertEquals("", gitService.remoteUrl());
     }
 
@@ -168,13 +182,13 @@ class GitServiceTest {
 
     @Test
     void pushThrowsGitExceptionWhenNoOrigin() {
-        gitService.initOnStartup();
+        gitService.initRepo();
         assertThrows(GitException.class, () -> gitService.push());
     }
 
     @Test
     void pullThrowsGitExceptionWhenNoOrigin() {
-        gitService.initOnStartup();
+        gitService.initRepo();
         assertThrows(GitException.class, () -> gitService.pull());
     }
 
@@ -195,5 +209,53 @@ class GitServiceTest {
         GitException ex = new GitException("no cause", null);
         assertEquals("no cause", ex.getMessage());
         assertNull(ex.getCause());
+    }
+
+    // -------------------------------------------------------------------------
+    // isConfigured / needsInit
+    // -------------------------------------------------------------------------
+
+    @Test
+    void isConfiguredTrueWhenDataDirSet() {
+        assertTrue(gitService.isConfigured());
+    }
+
+    @Test
+    void isConfiguredFalseWhenDataDirBlank() {
+        Path unconfiguredSettingsDir = tempDir.resolve("unconfigured-settings");
+        TripTaleProperties props = new TripTaleProperties();
+        props.setSettingsDir(unconfiguredSettingsDir.toString());
+        SettingsStore unconfiguredSettingsStore = new SettingsStore(props);
+        GitService svc = new GitService(unconfiguredSettingsStore, store);
+        assertFalse(svc.isConfigured());
+    }
+
+    @Test
+    void needsInitFalseWhenNotConfigured() {
+        Path unconfiguredSettingsDir = tempDir.resolve("unconfigured-settings");
+        TripTaleProperties props = new TripTaleProperties();
+        props.setSettingsDir(unconfiguredSettingsDir.toString());
+        SettingsStore unconfiguredSettingsStore = new SettingsStore(props);
+        GitService svc = new GitService(unconfiguredSettingsStore, store);
+        assertFalse(svc.needsInit());
+    }
+
+    @Test
+    void needsInitTrueWhenConfiguredButDataDirMissing() {
+        // dataDir doesn't exist yet (BeforeEach only saves settings, doesn't create the dir)
+        assertFalse(Files.exists(dataDir));
+        assertTrue(gitService.needsInit());
+    }
+
+    @Test
+    void needsInitFalseWhenConfiguredAndGitAlreadyInitialized() {
+        gitService.initRepo();
+        assertFalse(gitService.needsInit());
+    }
+
+    @Test
+    void needsInitTrueWhenConfiguredAndDataDirEmpty() throws Exception {
+        Files.createDirectories(dataDir);
+        assertTrue(gitService.needsInit());
     }
 }
