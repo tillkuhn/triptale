@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 15
+## Next Todo: 16
+
+## 15 store optional start point coordinates per trip entry
+
+Add optional start-point coordinates to a trip entry's frontmatter, alongside the existing
+`altitude`/`distance`/`route`/`trackurl` fields. Keep frontmatter flat and simple (no nested
+geojson-style object) — two independent lowercase scalar keys, `startlat`/`startlon`, each a
+`Double` (null = not recorded, following the existing `altitude` convention). Keep frontmatter
+keys alphabetical per `MarkdownStore.saveEntry`. Needs: fields on `DiaryEntry`/`DiaryEntry.Builder`,
+read/write in `MarkdownStore`, UI inputs (decimal, accepts `.`/`,`), and export template support.
 
 ## 14 template variables for settings paths
 
