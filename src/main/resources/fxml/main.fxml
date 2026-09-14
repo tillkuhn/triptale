@@ -18,6 +18,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Rectangle?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -122,9 +123,12 @@
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
             <StackPane VBox.vgrow="ALWAYS">
                 <TextArea fx:id="talesArea" styleClass="tale-text" wrapText="true"/>
-                <VBox styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-9"
-                      prefWidth="18" maxWidth="18" minWidth="18"
+                <VBox fx:id="scallopColumn" styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-9"
+                      prefWidth="18" maxWidth="18" minWidth="18" minHeight="0" prefHeight="0"
                       mouseTransparent="true" pickOnBounds="false" StackPane.alignment="CENTER_LEFT">
+                    <clip>
+                        <Rectangle width="${scallopColumn.width}" height="${scallopColumn.height}"/>
+                    </clip>
                     <Circle radius="9" styleClass="scallop-bump"/>
                     <Circle radius="9" styleClass="scallop-bump"/>
                     <Circle radius="9" styleClass="scallop-bump"/>
