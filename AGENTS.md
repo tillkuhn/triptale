@@ -34,6 +34,18 @@ java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -j
 
 ---
 
+## Visual verification (screenshots, UI review) — not possible for an agent
+
+You **can** launch the app (`make run` in the background) to confirm it boots and check logs. But this is a native macOS JavaFX desktop app — it does **not** run in a browser or Electron, so there is no Playwright/xvfb-style driver available.
+
+Driving the UI (clicking menus, hovering, taking screenshots) requires macOS Accessibility permission for the calling process (System Events automation), which is not granted in the agent's environment. `osascript ... tell process "java" ...` fails with `-1728` ("not permitted to send Apple events"). This has been tried and confirmed broken — don't re-attempt it as a first move next session.
+
+**For any task involving visual UI review (contrast, layout, highlight colors, etc.): launch the app if useful for logs/compilation, but ask the user to check the actual screen and describe/screenshot what they see.** Iterate based on their feedback rather than trying to self-verify.
+
+This may be revisited later (e.g. granting Accessibility access to the terminal/agent process), but treat it as unresolved for now.
+
+---
+
 ## Boot sequence (unusual — read this)
 
 1. `main()` calls `Application.launch(TripTaleApplication.class, args)` — **not** `SpringApplication.run(...)`.
