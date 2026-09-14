@@ -185,7 +185,7 @@ public class MainController {
             }
         });
         tripCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(Trip t) { return t == null ? "" : t.name() + " (" + t.slug() + ")"; }
+            @Override public String toString(Trip t) { return t == null ? "" : t.name(); }
             @Override public Trip fromString(String s) { return null; }
         });
         datePicker.setDayCellFactory(dp -> new DateCell() {

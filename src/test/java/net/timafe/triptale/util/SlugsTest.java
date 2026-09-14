@@ -8,35 +8,41 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class SlugsTest {
 
     @Test
-    void lowercasesAndReplacesWhitespaceWithDashes() {
-        assertEquals("tour-de-france", Slugs.toSlug("Tour de France"));
+    void capitalizesEachWordAndJoinsWithoutSeparators() {
+        assertEquals("TourDeFrance", Slugs.toSlug("Tour de France"));
     }
 
     @Test
-    void keepsDigitsAndExistingDashes() {
-        assertEquals("bayern-tour-2025", Slugs.toSlug("Bayern-Tour 2025"));
+    void keepsDigitsAndTreatsDashesAsWordSeparators() {
+        assertEquals("BayernTour2025", Slugs.toSlug("Bayern-Tour 2025"));
     }
 
     @Test
     void stripsDiacritics() {
-        assertEquals("reise-nach-koln", Slugs.toSlug("Reise nach Köln"));
-        assertEquals("cafe-creme", Slugs.toSlug("Café Crème"));
+        assertEquals("ReiseNachKoln", Slugs.toSlug("Reise nach Köln"));
+        assertEquals("CafeCreme", Slugs.toSlug("Café Crème"));
     }
 
     @Test
     void collapsesRepeatedWhitespaceAndDashes() {
-        assertEquals("multi-spaces", Slugs.toSlug("  multi   spaces  "));
-        assertEquals("side-trip", Slugs.toSlug("Side -- Trip"));
+        assertEquals("MultiSpaces", Slugs.toSlug("  multi   spaces  "));
+        assertEquals("SideTrip", Slugs.toSlug("Side -- Trip"));
     }
 
     @Test
     void trimsLeadingAndTrailingDashes() {
-        assertEquals("edges", Slugs.toSlug("---edges---"));
+        assertEquals("Edges", Slugs.toSlug("---edges---"));
     }
 
     @Test
-    void dropsPunctuationOtherThanDashAndUnderscore() {
-        assertEquals("hello-world", Slugs.toSlug("Hello, world!"));
+    void dropsPunctuationThatIsNotAWordSeparator() {
+        assertEquals("HelloWorld", Slugs.toSlug("Hello, world!"));
+    }
+
+    @Test
+    void preservesExistingInternalCapitalization() {
+        assertEquals("MyHikeInBavaria", Slugs.toSlug("My Hike in Bavaria :-)"));
+        assertEquals("McDonaldTrip", Slugs.toSlug("McDonald Trip"));
     }
 
     @Test
