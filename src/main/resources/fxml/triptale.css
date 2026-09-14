@@ -101,6 +101,11 @@
 .text-area.tale-text:focused {
     -fx-border-color: #4ec9b0;
 }
+.scallop-bump {
+    -fx-fill: #f5f0e1;
+    -fx-stroke: #c9bfa3;
+    -fx-stroke-width: 1;
+}
 
 /* ── DatePicker ───────────────────────────────────────── */
 .date-picker {
