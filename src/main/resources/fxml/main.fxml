@@ -15,7 +15,9 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -118,7 +120,46 @@
                 </GridPane>
             </VBox>
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
-            <TextArea fx:id="talesArea" styleClass="tale-text" VBox.vgrow="ALWAYS" wrapText="true"/>
+            <StackPane VBox.vgrow="ALWAYS">
+                <TextArea fx:id="talesArea" styleClass="tale-text" wrapText="true"/>
+                <VBox styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-7"
+                      mouseTransparent="true" pickOnBounds="false" StackPane.alignment="CENTER_LEFT">
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="7" styleClass="scallop-bump"/>
+                </VBox>
+            </StackPane>
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <HBox styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
                     <Label text="&#9432;" styleClass="status-icon"/>
