@@ -1,8 +1,14 @@
 # ToDos for this app
 
-## Next Todo: 18
+## Next Todo: 19
 
-## 17 Add view source
+## 18 new top level directories
+
+see docs/18_year_top_level_dirs.md for the full design (from a grill-me session covering the
+TripRef identity type, per-year slug uniqueness, year/trip dropdown UX, and the lastTripPath
+cache format).
+
+## DONE 17 Add view source
 
 add a new menu item, either existing menu group or new group (view?) to open a window that shows the source of the current markdown file .
 If easier use the state currently saved on disk. Goal is to see the frontmatter any potential optimizations triggered during the save save.
