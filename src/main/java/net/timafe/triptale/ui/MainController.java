@@ -172,8 +172,8 @@ public class MainController {
     @FXML
     public void initialize() {
         appMenu.setText(appName);
-        aboutMenuItem.setText("❓ About " + appName);
-        quitMenuItem.setText("🚪 Quit " + appName);
+        aboutMenuItem.setText("ⓘ About " + appName);
+        quitMenuItem.setText("⏻ Quit " + appName);
         datePicker.setConverter(new StringConverter<>() {
             @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
             @Override public LocalDate fromString(String s) {

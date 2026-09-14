@@ -30,24 +30,24 @@
                     <Menu fx:id="appMenu">
                         <items>
                             <MenuItem fx:id="aboutMenuItem" onAction="#onAbout"/>
-                            <MenuItem text="⚙️ Edit Settings…" onAction="#onEditSettings"/>
+                            <MenuItem text="⚙ Edit Settings…" onAction="#onEditSettings"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="quitMenuItem" onAction="#onExit"/>
                         </items>
                     </Menu>
                     <Menu text="File">
                         <items>
-                            <MenuItem text="🧳 New Trip…" onAction="#onNewTrip"/>
+                            <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="📤 Export Diary…" onAction="#onExportDiary"/>
+                            <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                         </items>
                     </Menu>
                     <Menu text="Repository">
                         <items>
-                            <MenuItem fx:id="syncMenuItem" text="🔄 Sync" onAction="#onSync"/>
+                            <MenuItem fx:id="syncMenuItem" text="⟲ Sync" onAction="#onSync"/>
                             <SeparatorMenuItem/>
-                            <MenuItem fx:id="pushMenuItem" text="🚀 Push" onAction="#onPush"/>
-                            <MenuItem fx:id="pullMenuItem" text="📥 Pull" onAction="#onPull"/>
+                            <MenuItem fx:id="pushMenuItem" text="↑ Push" onAction="#onPush"/>
+                            <MenuItem fx:id="pullMenuItem" text="↓ Pull" onAction="#onPull"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                             <SeparatorMenuItem/>
