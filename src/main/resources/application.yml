@@ -12,6 +12,9 @@ triptale:
   # Blank = platform default (%APPDATA%/triptale on Windows, $HOME/.config/triptale on
   # macOS/Linux). Overridable via TRIPTALE_SETTINGS_DIR env var or -Dtriptale.settings-dir=.
   settings-dir: ""
+  # Display name of the app, used in menus, dialogs and the window title. Not user-editable
+  # at runtime — change here if the app is ever renamed.
+  app-name: "TripTale"
 
 logging:
   level:

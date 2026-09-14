@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 public class TripTaleProperties {
 
     private String settingsDir = "";
+    private String appName = "TripTale";
 
     /**
      * Resolves the settings directory. Blank {@link #settingsDir} means "use the platform
@@ -51,4 +52,7 @@ public class TripTaleProperties {
 
     public String getSettingsDir() { return settingsDir; }
     public void setSettingsDir(String settingsDir) { this.settingsDir = settingsDir; }
+
+    public String getAppName() { return appName; }
+    public void setAppName(String appName) { this.appName = appName; }
 }

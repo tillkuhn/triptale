@@ -16,6 +16,7 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -36,6 +37,7 @@ import javafx.scene.layout.VBox;
 import javafx.event.ActionEvent;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
+import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
@@ -102,6 +104,9 @@ public class MainController {
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem syncMenuItem;
+    @FXML private Menu appMenu;
+    @FXML private MenuItem aboutMenuItem;
+    @FXML private MenuItem quitMenuItem;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
@@ -140,11 +145,13 @@ public class MainController {
     private final ConnectivityService connectivityService;
     private final BuildProperties buildProperties;
     private final HostServices hostServices;
+    private final String appName;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
+                          TripTaleProperties tripTaleProperties,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
@@ -154,6 +161,7 @@ public class MainController {
         this.impressionsResolver = impressionsResolver;
         this.exifReader = exifReader;
         this.connectivityService = connectivityService;
+        this.appName = tripTaleProperties.getAppName();
         this.buildProperties = buildPropertiesProvider.getIfAvailable();
         this.hostServices = hostServicesProvider.getIfAvailable();
     }
@@ -163,6 +171,9 @@ public class MainController {
 
     @FXML
     public void initialize() {
+        appMenu.setText(appName);
+        aboutMenuItem.setText("❓ About " + appName);
+        quitMenuItem.setText("🚪 Quit " + appName);
         datePicker.setConverter(new StringConverter<>() {
             @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
             @Override public LocalDate fromString(String s) {
@@ -287,7 +298,7 @@ public class MainController {
             Alert warn = new Alert(Alert.AlertType.WARNING,
                     "No data directory is configured yet. Open File → Edit Settings… to set one.",
                     ButtonType.OK);
-            warn.setTitle("TripTale");
+            warn.setTitle(appName);
             warn.setHeaderText("Data directory not configured");
             applyStylesheet(warn.getDialogPane());
             warn.showAndWait();
@@ -298,7 +309,7 @@ public class MainController {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                     "No git repository found at " + dataDir + ". Initialize one now?",
                     ButtonType.YES, ButtonType.NO);
-            confirm.setTitle("TripTale");
+            confirm.setTitle(appName);
             confirm.setHeaderText("Initialize git repository");
             applyStylesheet(confirm.getDialogPane());
             Optional<ButtonType> result = confirm.showAndWait();
@@ -1113,7 +1124,7 @@ public class MainController {
         ButtonType exitAnyway = new ButtonType("Exit anyway");
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, body.toString(),
                 commitAndExit, exitAnyway, ButtonType.CANCEL);
-        confirm.setTitle("Exit TripTale");
+        confirm.setTitle("Exit " + appName);
         applyStylesheet(confirm.getDialogPane());
         confirm.setHeaderText(dirty && hasPending
                 ? "Unsaved and uncommitted changes"
@@ -1154,7 +1165,7 @@ public class MainController {
         grid.setPadding(new Insets(10));
         int row = 0;
 
-        Label title = new Label("TripTale");
+        Label title = new Label(appName);
         title.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
         grid.add(title, 0, row++, 2, 1);
 
@@ -1182,7 +1193,7 @@ public class MainController {
         grid.add(link, 1, row);
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About TripTale");
+        alert.setTitle("About " + appName);
         alert.setHeaderText(null);
         alert.getDialogPane().setContent(grid);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
@@ -1269,7 +1280,7 @@ public class MainController {
         updateFavesButton(datePicker.getValue());
 
         if (!newDataDir.equals(previousDataDir)) {
-            status("Settings saved — restart TripTale for the new data directory to take effect");
+            status("Settings saved — restart " + appName + " for the new data directory to take effect");
         } else {
             status("Settings saved");
         }

@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 16
+## Next Todo: 17
+
+## 16 menu refactoring
+
+Add a new menu group at the very left called TripTale (or whatever the app is named if we have a config or property for the app name)
+Move Exit and Edit Settings from File to this group, and move About from the Help group there as well. Remove the Help group which is now empty
+Rename "Exit" to "Quit TripTale" (same app name as menu group )
+Rename "About" to "About TripTale"
+New Trip and Export Diary remain in File 
+Rename "Remote" Group to "Repository"
 
 ## 15 store optional start point coordinates per trip entry
 

@@ -27,18 +27,22 @@
         <VBox>
             <MenuBar>
                 <menus>
+                    <Menu fx:id="appMenu">
+                        <items>
+                            <MenuItem fx:id="aboutMenuItem" onAction="#onAbout"/>
+                            <MenuItem text="⚙️ Edit Settings…" onAction="#onEditSettings"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="quitMenuItem" onAction="#onExit"/>
+                        </items>
+                    </Menu>
                     <Menu text="File">
                         <items>
                             <MenuItem text="🧳 New Trip…" onAction="#onNewTrip"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="📤 Export Diary…" onAction="#onExportDiary"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="⚙ Edit Settings…" onAction="#onEditSettings"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="🚪 Exit" onAction="#onExit"/>
                         </items>
                     </Menu>
-                    <Menu text="Remote">
+                    <Menu text="Repository">
                         <items>
                             <MenuItem fx:id="syncMenuItem" text="🔄 Sync" onAction="#onSync"/>
                             <SeparatorMenuItem/>
@@ -48,11 +52,6 @@
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
-                        </items>
-                    </Menu>
-                    <Menu text="Help">
-                        <items>
-                            <MenuItem text="❓ About" onAction="#onAbout"/>
                         </items>
                     </Menu>
                 </menus>
