@@ -211,6 +211,13 @@ public class MainController {
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
             reloadTrips(sel);
+            if (!tripCombo.getItems().isEmpty()) {
+                tripCombo.getSelectionModel().select(0);
+            } else {
+                tripCombo.setValue(null);
+                datePicker.setValue(null);
+                loadEntry();
+            }
         });
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
