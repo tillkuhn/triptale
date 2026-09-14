@@ -5,10 +5,8 @@ import java.util.regex.Pattern;
 
 public final class Slugs {
 
-    private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s_]+");
-    private static final Pattern EDGES = Pattern.compile("(^-+)|(-+$)");
-    private static final Pattern DASHES = Pattern.compile("-{2,}");
+    private static final Pattern WORD_SEPARATORS = Pattern.compile("[\\s_-]+");
+    private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^\\w]");
 
     private Slugs() {}
 
@@ -16,16 +14,19 @@ public final class Slugs {
         if (input == null || input.isBlank()) {
             throw new IllegalArgumentException("slug input must not be blank");
         }
-        String nowhitespace = WHITESPACE.matcher(input.trim()).replaceAll("-");
-        String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD)
+        String normalized = Normalizer.normalize(input.trim(), Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
-        String slug = NON_LATIN.matcher(normalized).replaceAll("");
-        slug = DASHES.matcher(slug).replaceAll("-");
-        slug = EDGES.matcher(slug).replaceAll("");
-        slug = slug.toLowerCase();
-        if (slug.isBlank()) {
+        StringBuilder slug = new StringBuilder();
+        for (String word : WORD_SEPARATORS.split(normalized)) {
+            String cleaned = NON_ALPHANUMERIC.matcher(word).replaceAll("");
+            if (cleaned.isEmpty()) {
+                continue;
+            }
+            slug.append(Character.toUpperCase(cleaned.charAt(0))).append(cleaned.substring(1));
+        }
+        if (slug.isEmpty()) {
             throw new IllegalArgumentException("slug is empty after normalization: " + input);
         }
-        return slug;
+        return slug.toString();
     }
 }

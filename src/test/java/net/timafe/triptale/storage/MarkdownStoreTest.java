@@ -4,6 +4,7 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripRef;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,6 +29,8 @@ class MarkdownStoreTest {
 
     private MarkdownStore store;
 
+    private static final TripRef ALPS_2025 = new TripRef(2025, "alps-2025");
+
     @BeforeEach
     void setUp() {
         Path settingsDir = tempDir.resolve("settings");
@@ -42,10 +45,9 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void dataDirCreatesRootAndTripsSubdir() {
+    void dataDirCreatesRoot() {
         Path root = store.dataDir();
         assertTrue(Files.isDirectory(root));
-        assertTrue(Files.isDirectory(root.resolve("trips")));
     }
 
     @Test
@@ -58,12 +60,13 @@ class MarkdownStoreTest {
 
     @Test
     void saveAndLoadTripRoundTrip() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
 
-        Optional<Trip> loaded = store.loadTrip("alps-2025");
+        Optional<Trip> loaded = store.loadTrip(ALPS_2025);
         assertTrue(loaded.isPresent());
         assertEquals("alps-2025", loaded.get().slug());
+        assertEquals(2025, loaded.get().year());
         assertEquals("Alps 2025", loaded.get().name());
         assertEquals(LocalDate.of(2025, 7, 1), loaded.get().startDate());
         assertEquals("Summer ride", loaded.get().description());
@@ -71,14 +74,14 @@ class MarkdownStoreTest {
 
     @Test
     void loadTripReturnsEmptyForUnknownSlug() {
-        assertTrue(store.loadTrip("nonexistent").isEmpty());
+        assertTrue(store.loadTrip(new TripRef(2025, "nonexistent")).isEmpty());
     }
 
     @Test
     void saveTripWritesReadmeWithTripTypeAndNameAsHeading() throws Exception {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride"));
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride"));
 
-        Path readme = store.dataDir().resolve("trips").resolve("alps-2025").resolve("README.md");
+        Path readme = store.dataDir().resolve("2025").resolve("alps-2025").resolve("README.md");
         assertTrue(Files.exists(readme));
         String raw = Files.readString(readme);
         assertTrue(raw.contains("type: Trip"));
@@ -88,43 +91,80 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void listTripsReturnsAllSavedTripsSortedBySlug() {
-        store.saveTrip(new Trip("bravo", "Bravo", LocalDate.of(2025, 1, 1), ""));
-        store.saveTrip(new Trip("alpha", "Alpha", LocalDate.of(2025, 1, 2), ""));
-        store.saveTrip(new Trip("charlie", "Charlie", LocalDate.of(2025, 1, 3), ""));
-
-        List<Trip> trips = store.listTrips();
-        assertEquals(List.of("alpha", "bravo", "charlie"), trips.stream().map(Trip::slug).toList());
+    void tripExistsReflectsFileSystemState() {
+        assertFalse(store.tripExists(ALPS_2025));
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        assertTrue(store.tripExists(ALPS_2025));
     }
 
     @Test
-    void listTripsReturnsEmptyListWhenNoTrips() {
-        assertTrue(store.listTrips().isEmpty());
+    void listTripsReturnsTripsForYearSortedByStartDateDescending() {
+        store.saveTrip(new Trip(2025, "bravo", "Bravo", LocalDate.of(2025, 1, 1), ""));
+        store.saveTrip(new Trip(2025, "alpha", "Alpha", LocalDate.of(2025, 6, 1), ""));
+        store.saveTrip(new Trip(2025, "charlie", "Charlie", LocalDate.of(2025, 3, 1), ""));
+
+        List<Trip> trips = store.listTrips(2025);
+        assertEquals(List.of("alpha", "charlie", "bravo"), trips.stream().map(Trip::slug).toList());
+    }
+
+    @Test
+    void listTripsScopesToRequestedYear() {
+        store.saveTrip(new Trip(2024, "iceland", "Iceland", LocalDate.of(2024, 6, 1), ""));
+        store.saveTrip(new Trip(2025, "iceland", "Iceland Again", LocalDate.of(2025, 6, 1), ""));
+
+        assertEquals(List.of("Iceland"), store.listTrips(2024).stream().map(Trip::name).toList());
+        assertEquals(List.of("Iceland Again"), store.listTrips(2025).stream().map(Trip::name).toList());
+    }
+
+    @Test
+    void listTripsReturnsEmptyListWhenNoTripsForYear() {
+        assertTrue(store.listTrips(2025).isEmpty());
+    }
+
+    @Test
+    void listYearsReturnsOnlyFourDigitDirectoriesDescending() throws Exception {
+        store.saveTrip(new Trip(2024, "a", "A", LocalDate.of(2024, 1, 1), ""));
+        store.saveTrip(new Trip(2026, "b", "B", LocalDate.of(2026, 1, 1), ""));
+        Files.createDirectories(store.dataDir().resolve("not-a-year"));
+
+        assertEquals(List.of(2026, 2024), store.listYears());
+    }
+
+    @Test
+    void listYearsReturnsEmptyListWhenNoYearDirectories() {
+        assertTrue(store.listYears().isEmpty());
     }
 
     @Test
     void entryFileNameContainsDateAndEnglishWeekday() {
-        Path file = store.entryFile("alps-2025", LocalDate.of(2025, 7, 4));
+        Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertEquals("2025-07-04-Friday.md", file.getFileName().toString());
     }
 
     @Test
     void entryFileLivesDirectlyInTripFolderNotAnEntriesSubfolder() {
-        Path file = store.entryFile("alps-2025", LocalDate.of(2025, 7, 4));
-        assertEquals(store.tripDir("alps-2025"), file.getParent());
+        Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals(store.tripDir(ALPS_2025), file.getParent());
+    }
+
+    @Test
+    void tripDirIsNestedUnderYear() {
+        Path dir = store.tripDir(ALPS_2025);
+        assertEquals("alps-2025", dir.getFileName().toString());
+        assertEquals("2025", dir.getParent().getFileName().toString());
     }
 
     @Test
     void listEntryDatesIgnoresReadme() {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "desc"));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "desc"));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
 
-        assertEquals(List.of(LocalDate.of(2025, 7, 4)), store.listEntryDates("alps-2025"));
+        assertEquals(List.of(LocalDate.of(2025, 7, 4)), store.listEntryDates(ALPS_2025));
     }
 
     @Test
     void saveAndLoadEntryRoundTrip() throws Exception {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .distance(82.5)
                 .altitudeMeters(1240.0)
@@ -132,12 +172,12 @@ class MarkdownStoreTest {
                 .trackUrl("https://www.strava.com/activities/123")
                 .tales("Hot day, lots of climbing.")
                 .build();
-        store.saveEntry("alps-2025", entry);
+        store.saveEntry(ALPS_2025, entry);
 
-        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertTrue(raw.contains("trackurl:"));
 
-        DiaryEntry loaded = store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4));
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertEquals(LocalDate.of(2025, 7, 4), loaded.date());
         assertEquals(82.5, loaded.distance());
         assertEquals(1240.0, loaded.altitudeMeters());
@@ -148,8 +188,8 @@ class MarkdownStoreTest {
 
     @Test
     void saveEntryWritesTaleTypeAndKeepsFrontmatterAlphabetical() throws Exception {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .distance(82.5)
                 .altitudeMeters(1240.0)
                 .route("Innsbruck → Brenner")
@@ -157,7 +197,7 @@ class MarkdownStoreTest {
                 .tales("Hot day.")
                 .build());
 
-        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertTrue(raw.contains("type: Tale"));
 
         List<String> frontmatterKeys = raw.substring(raw.indexOf("---") + 3, raw.indexOf("---", 3))
@@ -171,38 +211,38 @@ class MarkdownStoreTest {
 
     @Test
     void saveEntryOmitsBlankTrackUrlFromFrontmatter() throws Exception {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .trackUrl("   ")
                 .tales("No track.")
                 .build());
 
-        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertFalse(raw.contains("trackurl"));
-        assertNull(store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4)).trackUrl());
+        assertNull(store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4)).trackUrl());
     }
 
     @Test
     void saveEntryOmitsNullDistanceAndAltitudeFromFrontmatter() throws Exception {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .tales("Rest day.")
                 .build();
-        store.saveEntry("alps-2025", entry);
+        store.saveEntry(ALPS_2025, entry);
 
-        String raw = Files.readString(store.entryFile("alps-2025", LocalDate.of(2025, 7, 4)));
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertFalse(raw.contains("distance"));
         assertFalse(raw.contains("altitude"));
         assertTrue(raw.contains("Rest day."));
 
-        DiaryEntry loaded = store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4));
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertNull(loaded.distance());
         assertNull(loaded.altitudeMeters());
     }
 
     @Test
     void loadEntryReturnsEmptyWhenFileMissing() {
-        DiaryEntry empty = store.loadEntry("alps-2025", LocalDate.of(2025, 7, 4));
+        DiaryEntry empty = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertEquals(LocalDate.of(2025, 7, 4), empty.date());
         assertNull(empty.distance());
         assertNull(empty.altitudeMeters());
@@ -212,20 +252,20 @@ class MarkdownStoreTest {
 
     @Test
     void entryExistsReflectsFileSystemState() {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
-        assertFalse(store.entryExists("alps-2025", LocalDate.of(2025, 7, 4)));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
-        assertTrue(store.entryExists("alps-2025", LocalDate.of(2025, 7, 4)));
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        assertFalse(store.entryExists(ALPS_2025, LocalDate.of(2025, 7, 4)));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
+        assertTrue(store.entryExists(ALPS_2025, LocalDate.of(2025, 7, 4)));
     }
 
     @Test
     void listEntryDatesReturnsSortedDates() {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 3)).build());
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).build());
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 2)).build());
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 3)).build());
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).build());
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 2)).build());
 
-        List<LocalDate> dates = store.listEntryDates("alps-2025");
+        List<LocalDate> dates = store.listEntryDates(ALPS_2025);
         assertEquals(List.of(
                 LocalDate.of(2025, 7, 1),
                 LocalDate.of(2025, 7, 2),
@@ -235,8 +275,8 @@ class MarkdownStoreTest {
 
     @Test
     void listEntryDatesReturnsEmptyForTripWithoutEntries() {
-        store.saveTrip(new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
-        assertTrue(store.listEntryDates("alps-2025").isEmpty());
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        assertTrue(store.listEntryDates(ALPS_2025).isEmpty());
     }
 
     // -------------------------------------------------------------------------
@@ -244,29 +284,35 @@ class MarkdownStoreTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void saveAndLoadLastTripSlugRoundTrip() {
-        store.saveLastTripSlug("alps-2025");
-        Optional<String> loaded = store.loadLastTripSlug();
+    void saveAndLoadLastTripPathRoundTrip() {
+        store.saveLastTripPath(ALPS_2025);
+        Optional<TripRef> loaded = store.loadLastTripPath();
         assertTrue(loaded.isPresent());
-        assertEquals("alps-2025", loaded.get());
+        assertEquals(ALPS_2025, loaded.get());
     }
 
     @Test
-    void loadLastTripSlugReturnsEmptyWhenStateFileMissing() {
-        assertTrue(store.loadLastTripSlug().isEmpty());
+    void loadLastTripPathReturnsEmptyWhenStateFileMissing() {
+        assertTrue(store.loadLastTripPath().isEmpty());
     }
 
     @Test
-    void saveLastTripSlugOverwritesPreviousValue() {
-        store.saveLastTripSlug("trip-one");
-        store.saveLastTripSlug("trip-two");
-        assertEquals("trip-two", store.loadLastTripSlug().orElseThrow());
+    void saveLastTripPathOverwritesPreviousValue() {
+        store.saveLastTripPath(new TripRef(2024, "trip-one"));
+        store.saveLastTripPath(new TripRef(2025, "trip-two"));
+        assertEquals(new TripRef(2025, "trip-two"), store.loadLastTripPath().orElseThrow());
     }
 
     @Test
-    void lastTripSlugIsPersistedInStateYmlFile() {
-        store.saveLastTripSlug("alps-2025");
+    void lastTripPathIsPersistedInStateYmlFile() {
+        store.saveLastTripPath(ALPS_2025);
         Path stateFile = store.dataDir().resolve(".state.yml");
         assertTrue(Files.exists(stateFile));
+    }
+
+    @Test
+    void loadLastTripPathReturnsEmptyForMalformedValue() {
+        store.saveState("lastTripPath", "not-a-valid-path");
+        assertTrue(store.loadLastTripPath().isEmpty());
     }
 }

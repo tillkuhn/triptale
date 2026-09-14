@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Component
@@ -36,6 +38,7 @@ public class MarkdownStore {
     private static final String ENTRY_TYPE = "Tale";
     /** Tolaria note type assigned to every trip README.md. */
     private static final String TRIP_TYPE = "Trip";
+    private static final Pattern YEAR_DIR = Pattern.compile("\\d{4}");
 
     private final SettingsStore settingsStore;
     private final ObjectMapper yaml;
@@ -54,47 +57,68 @@ public class MarkdownStore {
                 .orElseThrow(() -> new StorageException(
                         "Data directory not configured — set it via Edit Settings"));
         ensureDir(p);
-        ensureDir(p.resolve("trips"));
         return p;
     }
 
-    public Path tripDir(String slug) {
-        return dataDir().resolve("trips").resolve(slug);
+    public Path tripDir(TripRef ref) {
+        return dataDir().resolve(Integer.toString(ref.year())).resolve(ref.slug());
     }
 
-    public Path entriesDir(String slug) {
-        return tripDir(slug);
+    public Path entriesDir(TripRef ref) {
+        return tripDir(ref);
     }
 
-    public Path entryFile(String slug, LocalDate date) {
-        return entriesDir(slug).resolve(date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY) + ".md");
+    public Path entryFile(TripRef ref, LocalDate date) {
+        return entriesDir(ref).resolve(date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY) + ".md");
     }
 
-    public List<Trip> listTrips() {
-        Path trips = dataDir().resolve("trips");
-        if (!Files.isDirectory(trips)) return List.of();
-        try (Stream<Path> s = Files.list(trips)) {
+    /** Top-level year directories directly under the data dir (4-digit names only), descending. */
+    public List<Integer> listYears() {
+        Path root = dataDir();
+        if (!Files.isDirectory(root)) return List.of();
+        try (Stream<Path> s = Files.list(root)) {
             return s.filter(Files::isDirectory)
-                    .map(p -> loadTrip(p.getFileName().toString()).orElse(null))
-                    .filter(t -> t != null)
-                    .sorted(Comparator.comparing(Trip::slug))
+                    .map(p -> p.getFileName().toString())
+                    .filter(name -> YEAR_DIR.matcher(name).matches())
+                    .map(Integer::parseInt)
+                    .sorted(Comparator.reverseOrder())
                     .toList();
         } catch (IOException e) {
-            throw new StorageException("Failed to list trips", e);
+            throw new StorageException("Failed to list years", e);
         }
     }
 
-    public Optional<Trip> loadTrip(String slug) {
-        Path readme = tripDir(slug).resolve("README.md");
+    /** Trips for a given year, sorted by startDate descending (most recent first). */
+    public List<Trip> listTrips(int year) {
+        Path yearDir = dataDir().resolve(Integer.toString(year));
+        if (!Files.isDirectory(yearDir)) return List.of();
+        try (Stream<Path> s = Files.list(yearDir)) {
+            return s.filter(Files::isDirectory)
+                    .map(p -> loadTrip(new TripRef(year, p.getFileName().toString())).orElse(null))
+                    .filter(t -> t != null)
+                    .sorted(Comparator.comparing(Trip::startDate,
+                            Comparator.nullsLast(Comparator.reverseOrder())))
+                    .toList();
+        } catch (IOException e) {
+            throw new StorageException("Failed to list trips for " + year, e);
+        }
+    }
+
+    public boolean tripExists(TripRef ref) {
+        return Files.isDirectory(tripDir(ref));
+    }
+
+    public Optional<Trip> loadTrip(TripRef ref) {
+        Path readme = tripDir(ref).resolve("README.md");
         if (!Files.exists(readme)) return Optional.empty();
         try {
             String content = Files.readString(readme);
             if (!content.startsWith(FRONTMATTER_DELIM)) {
-                return Optional.of(new Trip(slug, null, null, content));
+                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, content));
             }
             int end = content.indexOf("\n" + FRONTMATTER_DELIM, FRONTMATTER_DELIM.length());
             if (end < 0) {
-                return Optional.of(new Trip(slug, null, null, content));
+                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, content));
             }
             String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
             String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
@@ -107,19 +131,21 @@ public class MarkdownStore {
                 description = (nl < 0 ? "" : body.substring(nl + 1)).stripLeading();
             }
             return Optional.of(new Trip(
-                    slug,
+                    ref.year(),
+                    ref.slug(),
                     name,
                     asDate(data.get("startDate")),
                     description
             ));
         } catch (IOException e) {
-            throw new StorageException("Failed to load trip: " + slug, e);
+            throw new StorageException("Failed to load trip: " + ref.path(), e);
         }
     }
 
     public void saveTrip(Trip trip) {
-        ensureDir(tripDir(trip.slug()));
-        ensureDir(entriesDir(trip.slug()));
+        TripRef ref = trip.ref();
+        ensureDir(tripDir(ref));
+        ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
         fm.put("startDate", trip.startDate() == null ? null : trip.startDate().toString());
@@ -128,37 +154,37 @@ public class MarkdownStore {
             String description = trip.description() == null ? "" : trip.description();
             String body = "# " + trip.name() + "\n\n" + description;
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
-            Files.writeString(tripDir(trip.slug()).resolve("README.md"), content);
+            Files.writeString(tripDir(ref).resolve("README.md"), content);
         } catch (IOException e) {
-            throw new StorageException("Failed to save trip: " + trip.slug(), e);
+            throw new StorageException("Failed to save trip: " + ref.path(), e);
         }
     }
 
-    public boolean entryExists(String slug, LocalDate date) {
-        return Files.exists(entryFile(slug, date));
+    public boolean entryExists(TripRef ref, LocalDate date) {
+        return Files.exists(entryFile(ref, date));
     }
 
-    public DiaryEntry loadEntry(String slug, LocalDate date) {
-        Path file = entryFile(slug, date);
+    public DiaryEntry loadEntry(TripRef ref, LocalDate date) {
+        Path file = entryFile(ref, date);
         if (!Files.exists(file)) return DiaryEntry.empty(date);
         try {
             String content = Files.readString(file);
             return parseEntry(date, content);
         } catch (IOException e) {
-            throw new StorageException("Failed to load entry: " + slug + "/" + date, e);
+            throw new StorageException("Failed to load entry: " + ref.path() + "/" + date, e);
         }
     }
 
-    public String readEntrySource(String slug, LocalDate date) {
+    public String readEntrySource(TripRef ref, LocalDate date) {
         try {
-            return Files.readString(entryFile(slug, date));
+            return Files.readString(entryFile(ref, date));
         } catch (IOException e) {
-            throw new StorageException("Failed to read entry source: " + slug + "/" + date, e);
+            throw new StorageException("Failed to read entry source: " + ref.path() + "/" + date, e);
         }
     }
 
-    public void saveEntry(String slug, DiaryEntry entry) {
-        ensureDir(entriesDir(slug));
+    public void saveEntry(TripRef ref, DiaryEntry entry) {
+        ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
@@ -170,9 +196,9 @@ public class MarkdownStore {
         try {
             String body = entry.tales() == null ? "" : entry.tales();
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
-            Files.writeString(entryFile(slug, entry.date()), content);
+            Files.writeString(entryFile(ref, entry.date()), content);
         } catch (IOException e) {
-            throw new StorageException("Failed to save entry: " + slug + "/" + entry.date(), e);
+            throw new StorageException("Failed to save entry: " + ref.path() + "/" + entry.date(), e);
         }
     }
 
@@ -181,7 +207,7 @@ public class MarkdownStore {
     // -------------------------------------------------------------------------
 
     private static final String STATE_FILE = ".state.yml";
-    private static final String STATE_LAST_TRIP_KEY = "lastTripSlug";
+    private static final String STATE_LAST_TRIP_KEY = "lastTripPath";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
             "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
@@ -219,16 +245,23 @@ public class MarkdownStore {
         }
     }
 
-    public void saveLastTripSlug(String slug) {
-        saveState(STATE_LAST_TRIP_KEY, slug);
+    public void saveLastTripPath(TripRef ref) {
+        saveState(STATE_LAST_TRIP_KEY, ref.path());
     }
 
-    public Optional<String> loadLastTripSlug() {
-        return Optional.ofNullable(asString(loadState().get(STATE_LAST_TRIP_KEY)));
+    public Optional<TripRef> loadLastTripPath() {
+        String raw = asString(loadState().get(STATE_LAST_TRIP_KEY));
+        if (raw == null) return Optional.empty();
+        try {
+            return Optional.of(TripRef.parse(raw));
+        } catch (RuntimeException e) {
+            log.warn("Ignoring malformed {}: '{}'", STATE_LAST_TRIP_KEY, raw);
+            return Optional.empty();
+        }
     }
 
-    public List<LocalDate> listEntryDates(String slug) {
-        Path dir = entriesDir(slug);
+    public List<LocalDate> listEntryDates(TripRef ref) {
+        Path dir = entriesDir(ref);
         if (!Files.isDirectory(dir)) return List.of();
         try (Stream<Path> s = Files.list(dir)) {
             List<LocalDate> dates = new ArrayList<>();
@@ -245,7 +278,7 @@ public class MarkdownStore {
             dates.sort(Comparator.naturalOrder());
             return dates;
         } catch (IOException e) {
-            throw new StorageException("Failed to list entries for " + slug, e);
+            throw new StorageException("Failed to list entries for " + ref.path(), e);
         }
     }
 

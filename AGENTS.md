@@ -91,17 +91,28 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
 
 ```
 <data-dir>/              # also a git repo; default: ~/Pictures/triptale-data (from application.yml)
-├── .gitignore           # contains "prefs.yml"
-├── prefs.yml            # gitignored; lastTripSlug only
+├── .gitignore           # contains ".state.yml"
+├── .state.yml           # gitignored; internal state (currently: lastTripPath, "<year>/<slug>")
 ├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initOnStartup()
 ├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initOnStartup()
 ├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initOnStartup()
-└── trips/<slug>/
+└── <year>/<slug>/
     ├── README.md                   # frontmatter: startDate (ISO string), type: Trip; body: "# {name}" heading + description
     └── YYYY-MM-DD-Weekday.md       # entries live directly in the trip folder (no entries/ subfolder); weekday in English locale, e.g. 2026-06-04-Thursday.md
 ```
 
-`MarkdownStore.dataDir()` lazily creates the root and `trips/` on first access — callers can rely on both directories existing after calling it.
+Trip directories are nested one level under a 4-digit year directory at the data-dir root
+(`<year>/<slug>/`, not `trips/<slug>/` — that intermediate `trips/` directory was removed, see
+`docs/18_year_top_level_dirs.md`). `<year>` is fixed at creation time from the trip's
+`startDate` and is **not** recomputed if `startDate` is edited later — the directory the trip
+was loaded from is the authoritative year, carried as `Trip.year()` / `TripRef.year()`. Slugs
+are unique only **within** a year, not globally — `TripRef(year, slug)` is a trip's real
+identity; `MarkdownStore` methods that used to take a bare `String slug` now take `TripRef`.
+
+`MarkdownStore.dataDir()` lazily creates the root on first access — callers can rely on it
+existing after calling it. `listYears()` scans the data-dir root for 4-digit-named
+directories; `listTrips(int year)` scans one year directory (both ignore non-matching entries,
+e.g. `trip.md`/`type.md`/`.git`).
 
 **Default data dir:** `application.yml` sets `~/Pictures/triptale-data`. `TripTaleProperties` Java field defaults to `~/.triptale` but is overridden at runtime. The `application.yml` value wins.
 
