@@ -1,5 +1,7 @@
 package net.timafe.triptale.util;
 
+import net.timafe.triptale.domain.TripRef;
+
 import java.time.LocalDate;
 
 /**
@@ -12,21 +14,21 @@ import java.time.LocalDate;
  * unsaved edits were made against &mdash; it already reflects the new selection. Use these factory
  * methods to capture the correct target explicitly instead.
  */
-public record SaveTarget(String tripSlug, LocalDate date) {
+public record SaveTarget(TripRef trip, LocalDate date) {
 
     /**
      * The trip selector changed; the date picker has not moved yet, so the unsaved edits belong to the
      * <em>previous</em> trip at the <em>current</em> date.
      */
-    public static SaveTarget forTripChange(String previousTripSlug, LocalDate currentDate) {
-        return new SaveTarget(previousTripSlug, currentDate);
+    public static SaveTarget forTripChange(TripRef previousTrip, LocalDate currentDate) {
+        return new SaveTarget(previousTrip, currentDate);
     }
 
     /**
      * The date picker changed; the trip selector has not moved, so the unsaved edits belong to the
      * <em>current</em> trip at the <em>previous</em> date.
      */
-    public static SaveTarget forDateChange(String currentTripSlug, LocalDate previousDate) {
-        return new SaveTarget(currentTripSlug, previousDate);
+    public static SaveTarget forDateChange(TripRef currentTrip, LocalDate previousDate) {
+        return new SaveTarget(currentTrip, previousDate);
     }
 }

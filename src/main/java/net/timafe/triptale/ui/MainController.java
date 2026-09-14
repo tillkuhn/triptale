@@ -42,6 +42,7 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ImpressionsMode;
 import net.timafe.triptale.git.GitService;
@@ -68,6 +69,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,6 +84,7 @@ public class MainController {
 
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
+    @FXML private ComboBox<Integer> yearCombo;
     @FXML private ComboBox<Trip> tripCombo;
     @FXML private DatePicker datePicker;
     @FXML private TextField distanceField;
@@ -188,6 +191,10 @@ public class MainController {
             @Override public String toString(Trip t) { return t == null ? "" : t.name(); }
             @Override public Trip fromString(String s) { return null; }
         });
+        yearCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(Integer y) { return y == null ? "" : y.toString(); }
+            @Override public Integer fromString(String s) { return null; }
+        });
         datePicker.setDayCellFactory(dp -> new DateCell() {
             @Override
             public void updateItem(LocalDate item, boolean empty) {
@@ -201,18 +208,19 @@ public class MainController {
             }
         });
         boolean ready = performStartupChecks();
-        if (ready) {
-            reloadTrips();
-        }
+        yearCombo.valueProperty().addListener((obs, old, sel) -> {
+            if (sel == null) return;
+            reloadTrips(sel);
+        });
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
             if (sel == null) return;
             SaveTarget saveTarget = old != null
-                    ? SaveTarget.forTripChange(old.slug(), datePicker.getValue())
+                    ? SaveTarget.forTripChange(old.ref(), datePicker.getValue())
                     : null;
             if (!confirmNavigateAway(saveTarget, () -> tripCombo.setValue(old))) return;
-            store.saveLastTripSlug(sel.slug());
-            List<LocalDate> dates = store.listEntryDates(sel.slug());
+            store.saveLastTripPath(sel.ref());
+            List<LocalDate> dates = store.listEntryDates(sel.ref());
             LocalDate target;
             String reason;
             if (!dates.isEmpty()) {
@@ -240,7 +248,7 @@ public class MainController {
                 return;
             }
             SaveTarget saveTarget = trip != null && old != null
-                    ? SaveTarget.forDateChange(trip.slug(), old)
+                    ? SaveTarget.forDateChange(trip.ref(), old)
                     : null;
             if (!confirmNavigateAway(saveTarget, () -> datePicker.setValue(old))) return;
             loadEntry();
@@ -251,12 +259,8 @@ public class MainController {
         routeField.textProperty().addListener((o, a, b) -> updateDirty());
         trackUrlField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
-        if (!tripCombo.getItems().isEmpty()) {
-            String lastSlug = store.loadLastTripSlug().orElse(null);
-            Trip toSelect = lastSlug != null
-                    ? tripCombo.getItems().stream().filter(t -> t.slug().equals(lastSlug)).findFirst().orElse(null)
-                    : null;
-            tripCombo.getSelectionModel().select(toSelect != null ? toSelect : tripCombo.getItems().get(0));
+        if (ready) {
+            restoreLastSelection();
         }
         updateDirty();
         updatePrevButtonState();
@@ -287,9 +291,9 @@ public class MainController {
 
     /**
      * Runs before any trip/entry data is loaded. Returns {@code true} if it's safe to proceed
-     * with {@link #reloadTrips()} and the rest of startup, {@code false} if the app should stay
-     * in an empty-but-functional state this session (e.g. unconfigured data dir, or user
-     * declined to initialize a new repo).
+     * with {@link #restoreLastSelection()} and the rest of startup, {@code false} if the app
+     * should stay in an empty-but-functional state this session (e.g. unconfigured data dir, or
+     * user declined to initialize a new repo).
      * <p>
      * Runs before {@code stage.show()} (this method is called from {@code initialize()}, which
      * {@code FXMLLoader.load()} invokes synchronously in {@code TripTaleApplication.start()}) —
@@ -328,8 +332,50 @@ public class MainController {
         return true;
     }
 
-    private void reloadTrips() {
-        tripCombo.setItems(FXCollections.observableArrayList(store.listTrips()));
+    /** Years from disk, always including the current calendar year, descending. */
+    private void reloadYears() {
+        Integer previouslySelected = yearCombo.getValue();
+        List<Integer> years = new ArrayList<>(store.listYears());
+        int currentYear = LocalDate.now().getYear();
+        if (!years.contains(currentYear)) years.add(currentYear);
+        years.sort(Comparator.reverseOrder());
+        yearCombo.setItems(FXCollections.observableArrayList(years));
+        if (previouslySelected != null && years.contains(previouslySelected)) {
+            yearCombo.setValue(previouslySelected);
+        }
+    }
+
+    /** Trips for the given year (empty list disables the combo). */
+    private void reloadTrips(int year) {
+        tripCombo.setItems(FXCollections.observableArrayList(store.listTrips(year)));
+        tripCombo.setDisable(tripCombo.getItems().isEmpty());
+    }
+
+    /** Refreshes years and the current year's trips after external changes (pull/sync), preserving selection. */
+    private void reloadAll() {
+        reloadYears();
+        Integer year = yearCombo.getValue();
+        if (year != null) reloadTrips(year);
+    }
+
+    /** Restores the cached (year, trip) selection on startup, defaulting to the current year. */
+    private void restoreLastSelection() {
+        reloadYears();
+        TripRef last = store.loadLastTripPath().orElse(null);
+        int year = last != null && yearCombo.getItems().contains(last.year())
+                ? last.year()
+                : LocalDate.now().getYear();
+        yearCombo.setValue(year);
+        reloadTrips(year);
+        Trip toSelect = last != null
+                ? tripCombo.getItems().stream().filter(t -> t.slug().equals(last.slug())).findFirst().orElse(null)
+                : null;
+        if (toSelect == null && !tripCombo.getItems().isEmpty()) {
+            toSelect = tripCombo.getItems().get(0);
+        }
+        if (toSelect != null) {
+            tripCombo.getSelectionModel().select(toSelect);
+        }
     }
 
     @FXML
@@ -377,13 +423,21 @@ public class MainController {
         LocalDate start = startField.getValue();
         String desc = descArea.getText();
         String slug = Slugs.toSlug(name);
-        Trip trip = new Trip(slug, name, start, desc);
+        int year = start.getYear();
+        TripRef ref = new TripRef(year, slug);
+        if (store.tripExists(ref)) {
+            error("A trip named \"" + slug + "\" already exists for " + year);
+            return;
+        }
+        Trip trip = new Trip(year, slug, name, start, desc);
         store.saveTrip(trip);
-        addPending(slug, CREATE);
-        reloadTrips();
+        addPending(ref.path(), CREATE);
+        reloadYears();
+        yearCombo.setValue(year);
+        reloadTrips(year);
         tripCombo.getSelectionModel().select(
                 tripCombo.getItems().stream().filter(t -> t.slug().equals(slug)).findFirst().orElse(null));
-        status("Created trip " + slug);
+        status("Created trip " + ref.path());
     }
 
     @FXML
@@ -391,13 +445,13 @@ public class MainController {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
 
-        List<LocalDate> dates = store.listEntryDates(trip.slug());
+        List<LocalDate> dates = store.listEntryDates(trip.ref());
         double totalDistance = 0;
         double totalAltitude = 0;
         int activeDays = 0;
         int activeAltitudeDays = 0;
         for (LocalDate d : dates) {
-            DiaryEntry e = store.loadEntry(trip.slug(), d);
+            DiaryEntry e = store.loadEntry(trip.ref(), d);
             if (e.distance() != null && e.distance() > 0) {
                 totalDistance += e.distance();
                 activeDays++;
@@ -426,6 +480,8 @@ public class MainController {
         grid.add(nameField, 1, row++);
         grid.add(new Label("Slug:"), 0, row);
         grid.add(new Label(trip.slug()), 1, row++);
+        grid.add(new Label("Year:"), 0, row);
+        grid.add(new Label(Integer.toString(trip.year())), 1, row++);
         grid.add(new Label("Start date:"), 0, row);
         grid.add(new Label(trip.startDate() == null ? "—" : trip.startDate().toString()), 1, row++);
         grid.add(new Label("Entries:"), 0, row);
@@ -468,13 +524,13 @@ public class MainController {
         if (newName.equals(trip.name()) && newDesc.equals(trip.description() == null ? "" : trip.description())) {
             return;
         }
-        Trip updated = new Trip(trip.slug(), newName, trip.startDate(), newDesc);
+        Trip updated = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newDesc);
         store.saveTrip(updated);
-        addPending(trip.slug(), UPDATE);
-        reloadTrips();
+        addPending(trip.ref().path(), UPDATE);
+        reloadTrips(trip.year());
         tripCombo.getSelectionModel().select(
                 tripCombo.getItems().stream().filter(t -> t.slug().equals(trip.slug())).findFirst().orElse(null));
-        status("Updated trip " + trip.slug());
+        status("Updated trip " + trip.ref().path());
     }
 
     @FXML
@@ -567,7 +623,7 @@ public class MainController {
         if (trip == null || date == null) { error("No entry selected"); return; }
         String source;
         try {
-            source = store.readEntrySource(trip.slug(), date);
+            source = store.readEntrySource(trip.ref(), date);
         } catch (RuntimeException e) {
             error("Failed to read source: " + e.getMessage());
             return;
@@ -580,7 +636,7 @@ public class MainController {
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(70);
 
-        Path fullPath = store.entryFile(trip.slug(), date);
+        Path fullPath = store.entryFile(trip.ref(), date);
         Path relativePath = store.dataDir().relativize(fullPath);
 
         Label pathLabel = new Label("File: " + relativePath);
@@ -654,9 +710,9 @@ public class MainController {
             updateViewSourceMenuItem(false);
             return;
         }
-        entryExists = store.entryExists(trip.slug(), date);
+        entryExists = store.entryExists(trip.ref(), date);
         updateViewSourceMenuItem(entryExists);
-        DiaryEntry e = store.loadEntry(trip.slug(), date);
+        DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
         routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
@@ -713,7 +769,7 @@ public class MainController {
 
     private Instant readTalesLastModified(Trip trip, LocalDate date) {
         try {
-            return Files.getLastModifiedTime(store.entryFile(trip.slug(), date)).toInstant();
+            return Files.getLastModifiedTime(store.entryFile(trip.ref(), date)).toInstant();
         } catch (IOException ex) {
             return null;
         }
@@ -776,7 +832,7 @@ public class MainController {
             return false;
         }
         if (result.get() == save && target != null) {
-            doSave(target.tripSlug(), target.date());
+            doSave(target.trip(), target.date());
         }
         return true;
     }
@@ -879,17 +935,17 @@ public class MainController {
         LocalDate date = datePicker.getValue();
         if (trip == null) { error("No trip selected"); return; }
         if (date == null) { error("No date selected"); return; }
-        doSave(trip.slug(), date);
+        doSave(trip.ref(), date);
     }
 
     /**
-     * Persists the current form field contents to {@code tripSlug}/{@code date}.
+     * Persists the current form field contents to {@code trip}/{@code date}.
      * <p>
      * Callers must pass the trip/date the form fields actually belong to explicitly rather than
      * re-reading {@code tripCombo.getValue()}/{@code datePicker.getValue()} — those controls may
      * already have advanced to a new selection (see {@link SaveTarget} and {@link #confirmNavigateAway}).
      */
-    private void doSave(String tripSlug, LocalDate date) {
+    private void doSave(TripRef trip, LocalDate date) {
         Double distance = parseDouble(distanceField.getText(), "distance");
         Double alt = parseDouble(altField.getText(), "altitude");
         if (distance == null && !distanceField.getText().isBlank()) return;
@@ -902,15 +958,15 @@ public class MainController {
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
-        store.saveEntry(tripSlug, entry);
+        store.saveEntry(trip, entry);
         entryExists = true;
         updateViewSourceMenuItem(true);
         talesUpdatedAt = Instant.now();
         updateTalesLabel();
-        addPending(tripSlug + "/" + date, wasNew ? CREATE : UPDATE);
+        addPending(trip.path() + "/" + date, wasNew ? CREATE : UPDATE);
         snapshotBaseline();
         updateDirty();
-        status("Saved " + tripSlug + "/" + date);
+        status("Saved " + trip.path() + "/" + date);
     }
 
     @FXML
@@ -1025,7 +1081,7 @@ public class MainController {
         }
         try {
             gitService.pull();
-            reloadTrips();
+            reloadAll();
             loadEntry();
             status("Pulled from remote");
         } catch (RuntimeException e) {
@@ -1116,7 +1172,7 @@ public class MainController {
                         pending.clear();
                         updateCommitButton();
                     }
-                    reloadTrips();
+                    reloadAll();
                     loadEntry();
                     String suffix = finalSha != null ? " (committed " + finalSha + ")" : "";
                     status("Synced with remote" + suffix);

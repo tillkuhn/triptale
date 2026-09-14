@@ -4,6 +4,7 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -142,7 +143,7 @@ class GitServiceTest {
     @Test
     void commitAllCommitsStagedChanges() {
         gitService.initRepo();
-        store.saveTrip(new Trip("tour", "Tour", LocalDate.of(2025, 6, 1), "test"));
+        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), "test"));
         String sha = gitService.commitAll("add trip");
         assertNotNull(sha);
         assertEquals(7, sha.length());
@@ -161,7 +162,7 @@ class GitServiceTest {
 
         GitService svc = new GitService(settingsStore, store);
         svc.initRepo();
-        store.saveEntry("tour",
+        store.saveEntry(new TripRef(2025, "tour"),
                 DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
         assertNotNull(svc.commitAll("entry with author"));
     }

@@ -82,9 +82,9 @@ public class DiaryExporter {
 
     private String buildMarkdown(Trip trip, boolean includeImpressionMarkers) {
         Objects.requireNonNull(trip, "trip");
-        List<LocalDate> dates = store.listEntryDates(trip.slug());
+        List<LocalDate> dates = store.listEntryDates(trip.ref());
         List<DiaryEntry> entries = dates.stream()
-                .map(d -> store.loadEntry(trip.slug(), d))
+                .map(d -> store.loadEntry(trip.ref(), d))
                 .toList();
 
         double totalDistance = entries.stream()

@@ -61,11 +61,11 @@ class DiaryExporterTest {
 
     @Test
     void exportsHeaderTotalsAndEntries() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
                 .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day one").build());
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 2))
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2))
                 .distance(32.5).altitudeMeters(400.0).route("B → C").tales("Day two").build());
 
         String out = exporter.exportTrip(trip);
@@ -85,9 +85,9 @@ class DiaryExporterTest {
 
     @Test
     void defaultRouteIsOmittedFromHeading() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
                 .route(DiaryEntry.DEFAULT_ROUTE).tales("hi").build());
 
         String out = exporter.exportTrip(trip);
@@ -98,7 +98,7 @@ class DiaryExporterTest {
 
     @Test
     void missingValuesRenderedAsEmDash() {
-        Trip trip = new Trip("future", "Future Trip", null, "");
+        Trip trip = new Trip(2025, "future", "Future Trip", null, "");
         store.saveTrip(trip);
 
         String out = exporter.exportTrip(trip);
@@ -109,9 +109,9 @@ class DiaryExporterTest {
 
     @Test
     void distanceAndAltitudeStatsOmittedWhenAbsent() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Rest day.").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Rest day.").build());
 
         String out = exporter.exportTrip(trip);
 
@@ -122,9 +122,9 @@ class DiaryExporterTest {
 
     @Test
     void outputEndsWithSingleTrailingNewline() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
 
         String out = exporter.exportTrip(trip);
         assertTrue(out.endsWith("\n"));
@@ -133,10 +133,10 @@ class DiaryExporterTest {
 
     @Test
     void daysCountIsInclusiveOfStartAndEnd() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales(".").build());
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 5)).tales(".").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales(".").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 5)).tales(".").build());
 
         String out = exporter.exportTrip(trip);
         assertTrue(out.contains("(5 days, 2 entries)"),
@@ -145,18 +145,18 @@ class DiaryExporterTest {
 
     @Test
     void exportedTripCanBeCalledTwiceWithSameOutput() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "x");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "x");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).distance(10.0).tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).distance(10.0).tales("a").build());
 
         assertEquals(exporter.exportTrip(trip), exporter.exportTrip(trip));
     }
 
     @Test
     void exportTripAsHtmlRendersHeadingsAndParagraphs() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
                 .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day **one** was *great*.").build());
 
         String html = exporter.exportTripAsHtml(trip);
@@ -172,9 +172,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripAsHtmlEscapesTripNameInTitle() {
-        Trip trip = new Trip("weird", "A & B <Trip>", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "weird", "A & B <Trip>", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("weird", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
 
         String html = exporter.exportTripAsHtml(trip);
 
@@ -183,9 +183,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripAsHtmlWithoutImpressionsFlagOmitsImageMarkersAndGrid() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.NONE);
@@ -196,9 +196,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripAsHtmlWithImpressionsFlagInjectsImageGrid() throws java.io.IOException {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
         java.nio.file.Files.createFile(tempDir.resolve("20250701_two.jpg"));
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
@@ -214,9 +214,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripAsHtmlWithFavesModeUsesFavePattern() throws java.io.IOException {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_all.jpg"));
         java.nio.file.Path faveDir = tempDir.resolve("faves");
         java.nio.file.Files.createDirectory(faveDir);
@@ -233,9 +233,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripAsHtmlGracefullyOmitsGridWhenPatternNotConfigured() {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         // No impressionsFilePattern or impressionsFaveFilePattern configured at all.
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
@@ -251,9 +251,9 @@ class DiaryExporterTest {
 
     @Test
     void exportTripPlainMarkdownNeverIncludesImpressions() throws java.io.IOException {
-        Trip trip = new Trip("alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
-        store.saveEntry("alps-2025", DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
