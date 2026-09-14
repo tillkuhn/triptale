@@ -1,8 +1,17 @@
 # ToDos for this app
 
-## Next Todo: 17
+## Next Todo: 18
 
-## 16 menu refactoring
+## 17 Add view source
+
+add a new menu item, either existing menu group or new group (view?) to open a window that shows the source of the current markdown file .
+If easier use the state currently saved on disk. Goal is to see the frontmatter any potential optimizations triggered during the save save.
+maybe we can re-use the markdow viewer used in export diary.
+
+
+Add new view menu group with action "View Source"
+
+## DONE 16 menu refactoring
 
 Add a new menu group at the very left called TripTale (or whatever the app is named if we have a config or property for the app name)
 Move Exit and Edit Settings from File to this group, and move About from the Help group there as well. Remove the Help group which is now empty
@@ -29,7 +38,7 @@ other settings paths (e.g. `dataDir`). Expansion happens at runtime when the val
 used (writing an entry file, locating images), not at settings-save time. Follow-up to todo 13
 — see docs/13_settings_handling.md non-goals section.
 
-## 13 settings handling
+## DONE 13 settings handling
 
 See docs/13_settings_handling.md for the full design (from a grill-me session covering the
 settings.yml/.state.yml split, settings directory location, startup warning/init-prompt flow,

@@ -104,6 +104,7 @@ public class MainController {
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem syncMenuItem;
+    @FXML private MenuItem viewSourceMenuItem;
     @FXML private Menu appMenu;
     @FXML private MenuItem aboutMenuItem;
     @FXML private MenuItem quitMenuItem;
@@ -558,6 +559,48 @@ public class MainController {
     }
 
     @FXML
+    public void onViewSource() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null) { error("No entry selected"); return; }
+        String source;
+        try {
+            source = store.readEntrySource(trip.slug(), date);
+        } catch (RuntimeException e) {
+            error("Failed to read source: " + e.getMessage());
+            return;
+        }
+
+        TextArea ta = new TextArea(source);
+        ta.setEditable(false);
+        ta.setWrapText(false);
+        ta.setStyle("-fx-font-family: 'monospace';");
+        ta.setPrefRowCount(28);
+        ta.setPrefColumnCount(70);
+
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("View Source");
+        dlg.setHeaderText(trip.name() + " — " + store.entryFile(trip.slug(), date).getFileName());
+        dlg.setResizable(true);
+        dlg.getDialogPane().setContent(ta);
+        applyStylesheet(dlg.getDialogPane());
+
+        ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.LEFT);
+        dlg.getDialogPane().getButtonTypes().setAll(copyType, ButtonType.CLOSE);
+
+        Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
+        copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
+            ClipboardContent cc = new ClipboardContent();
+            cc.putString(source);
+            Clipboard.getSystemClipboard().setContent(cc);
+            status("Source copied to clipboard");
+            ev.consume();
+        });
+
+        dlg.showAndWait();
+    }
+
+    @FXML
     public void onFirstDay() {
         Trip trip = tripCombo.getValue();
         if (trip == null || trip.startDate() == null) return;
@@ -588,8 +631,12 @@ public class MainController {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         updateTourDay(trip, date);
-        if (trip == null || date == null) return;
+        if (trip == null || date == null) {
+            updateViewSourceMenuItem(false);
+            return;
+        }
         entryExists = store.entryExists(trip.slug(), date);
+        updateViewSourceMenuItem(entryExists);
         DiaryEntry e = store.loadEntry(trip.slug(), date);
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
@@ -638,6 +685,11 @@ public class MainController {
             favesButton.setText("🖼 " + images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
             favesButton.setDisable(false);
         }
+    }
+
+    private void updateViewSourceMenuItem(boolean exists) {
+        if (viewSourceMenuItem == null) return;
+        viewSourceMenuItem.setDisable(!exists);
     }
 
     private Instant readTalesLastModified(Trip trip, LocalDate date) {
@@ -833,6 +885,7 @@ public class MainController {
         boolean wasNew = !entryExists;
         store.saveEntry(tripSlug, entry);
         entryExists = true;
+        updateViewSourceMenuItem(true);
         talesUpdatedAt = Instant.now();
         updateTalesLabel();
         addPending(tripSlug + "/" + date, wasNew ? CREATE : UPDATE);

@@ -149,6 +149,14 @@ public class MarkdownStore {
         }
     }
 
+    public String readEntrySource(String slug, LocalDate date) {
+        try {
+            return Files.readString(entryFile(slug, date));
+        } catch (IOException e) {
+            throw new StorageException("Failed to read entry source: " + slug + "/" + date, e);
+        }
+    }
+
     public void saveEntry(String slug, DiaryEntry entry) {
         ensureDir(entriesDir(slug));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.

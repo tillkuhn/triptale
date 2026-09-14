@@ -42,6 +42,11 @@
                             <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                         </items>
                     </Menu>
+                    <Menu text="View">
+                        <items>
+                            <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
+                        </items>
+                    </Menu>
                     <Menu text="Repository">
                         <items>
                             <MenuItem fx:id="syncMenuItem" text="⟲ Sync" onAction="#onSync"/>
