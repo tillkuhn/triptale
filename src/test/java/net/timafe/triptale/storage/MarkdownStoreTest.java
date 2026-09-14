@@ -45,10 +45,9 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void dataDirCreatesRootAndTripsSubdir() {
+    void dataDirCreatesRoot() {
         Path root = store.dataDir();
         assertTrue(Files.isDirectory(root));
-        assertTrue(Files.isDirectory(root.resolve("trips")));
     }
 
     @Test
@@ -82,7 +81,7 @@ class MarkdownStoreTest {
     void saveTripWritesReadmeWithTripTypeAndNameAsHeading() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride"));
 
-        Path readme = store.dataDir().resolve("trips").resolve("2025").resolve("alps-2025").resolve("README.md");
+        Path readme = store.dataDir().resolve("2025").resolve("alps-2025").resolve("README.md");
         assertTrue(Files.exists(readme));
         String raw = Files.readString(readme);
         assertTrue(raw.contains("type: Trip"));
@@ -126,7 +125,7 @@ class MarkdownStoreTest {
     void listYearsReturnsOnlyFourDigitDirectoriesDescending() throws Exception {
         store.saveTrip(new Trip(2024, "a", "A", LocalDate.of(2024, 1, 1), ""));
         store.saveTrip(new Trip(2026, "b", "B", LocalDate.of(2026, 1, 1), ""));
-        Files.createDirectories(store.dataDir().resolve("trips").resolve("not-a-year"));
+        Files.createDirectories(store.dataDir().resolve("not-a-year"));
 
         assertEquals(List.of(2026, 2024), store.listYears());
     }

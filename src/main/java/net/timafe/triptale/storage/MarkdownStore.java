@@ -57,12 +57,11 @@ public class MarkdownStore {
                 .orElseThrow(() -> new StorageException(
                         "Data directory not configured — set it via Edit Settings"));
         ensureDir(p);
-        ensureDir(p.resolve("trips"));
         return p;
     }
 
     public Path tripDir(TripRef ref) {
-        return dataDir().resolve("trips").resolve(Integer.toString(ref.year())).resolve(ref.slug());
+        return dataDir().resolve(Integer.toString(ref.year())).resolve(ref.slug());
     }
 
     public Path entriesDir(TripRef ref) {
@@ -73,11 +72,11 @@ public class MarkdownStore {
         return entriesDir(ref).resolve(date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY) + ".md");
     }
 
-    /** Top-level year directories under trips/ (4-digit names only), descending. */
+    /** Top-level year directories directly under the data dir (4-digit names only), descending. */
     public List<Integer> listYears() {
-        Path trips = dataDir().resolve("trips");
-        if (!Files.isDirectory(trips)) return List.of();
-        try (Stream<Path> s = Files.list(trips)) {
+        Path root = dataDir();
+        if (!Files.isDirectory(root)) return List.of();
+        try (Stream<Path> s = Files.list(root)) {
             return s.filter(Files::isDirectory)
                     .map(p -> p.getFileName().toString())
                     .filter(name -> YEAR_DIR.matcher(name).matches())
@@ -91,7 +90,7 @@ public class MarkdownStore {
 
     /** Trips for a given year, sorted by startDate descending (most recent first). */
     public List<Trip> listTrips(int year) {
-        Path yearDir = dataDir().resolve("trips").resolve(Integer.toString(year));
+        Path yearDir = dataDir().resolve(Integer.toString(year));
         if (!Files.isDirectory(yearDir)) return List.of();
         try (Stream<Path> s = Files.list(yearDir)) {
             return s.filter(Files::isDirectory)

@@ -10,10 +10,12 @@ silently overwrites that trip's `README.md`).
 
 ## Key decisions (from grill-me session)
 
-1. **New layout:** `trips/<year>/<slug>/`, where `<year>` is the 4-digit start year of the
-   trip. Clean cutover — the app only ever reads/writes this layout. No dual-layout support
-   for the old flat `trips/<slug>/` structure. Existing data is migrated manually outside the
-   app (`mv trips/foo trips/2025/foo`).
+1. **New layout:** `<dataDir>/<year>/<slug>/`, where `<year>` is the 4-digit start year of the
+   trip — the year directories sit directly at the data-dir root, **not** under an
+   intermediate `trips/` directory (that directory is dropped entirely; it existed only in the
+   old flat layout). Clean cutover — the app only ever reads/writes this layout. No
+   dual-layout support for the old flat `trips/<slug>/` structure. Existing data is migrated
+   manually outside the app (`mv trips/foo 2025/foo`, then remove the now-empty `trips/`).
 2. **Year is fixed at trip-creation time**, exactly like slugs are immutable today. Editing a
    trip's `startDate` afterward does **not** move its directory — directory year and displayed
    `startDate` are allowed to silently diverge (same tradeoff already accepted for slugs vs.
