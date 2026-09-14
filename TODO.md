@@ -1,6 +1,16 @@
 # ToDos for this app
 
-## Next Todo: 19
+## Next Todo: 20
+
+## 19 DatePicker has no quick year navigation
+
+The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
+page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
+year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip while today is
+2026) means clicking through many months one at a time. JavaFX's DatePicker doesn't expose a
+year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
+Affects every DatePicker instance in the app, not just one dialog — worth checking all call
+sites for a consistent fix rather than patching one.
 
 ## 18 new top level directories
 
