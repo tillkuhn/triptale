@@ -6,6 +6,7 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -32,6 +33,7 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.event.ActionEvent;
@@ -573,14 +575,31 @@ public class MainController {
 
         TextArea ta = new TextArea(source);
         ta.setEditable(false);
-        ta.setWrapText(false);
+        ta.setWrapText(true);
         ta.setStyle("-fx-font-family: 'monospace';");
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(70);
 
+        Path fullPath = store.entryFile(trip.slug(), date);
+        Path relativePath = store.dataDir().relativize(fullPath);
+
+        Label pathLabel = new Label("File: " + relativePath);
+        Button copyPathBtn = new Button("📋");
+        copyPathBtn.setTooltip(new Tooltip("Copy full path to clipboard"));
+        copyPathBtn.setOnAction(ev -> {
+            ClipboardContent cc = new ClipboardContent();
+            cc.putString(fullPath.toString());
+            Clipboard.getSystemClipboard().setContent(cc);
+            status("Full path copied to clipboard");
+        });
+        HBox header = new HBox(10, pathLabel, copyPathBtn);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(10));
+        HBox.setHgrow(pathLabel, Priority.ALWAYS);
+
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("View Source");
-        dlg.setHeaderText(trip.name() + " — " + store.entryFile(trip.slug(), date).getFileName());
+        dlg.getDialogPane().setHeader(header);
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(ta);
         applyStylesheet(dlg.getDialogPane());
