@@ -122,42 +122,42 @@
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
             <StackPane VBox.vgrow="ALWAYS">
                 <TextArea fx:id="talesArea" styleClass="tale-text" wrapText="true"/>
-                <VBox styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-7"
+                <VBox styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-9"
                       mouseTransparent="true" pickOnBounds="false" StackPane.alignment="CENTER_LEFT">
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
-                    <Circle radius="7" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
+                    <Circle radius="9" styleClass="scallop-bump"/>
                 </VBox>
             </StackPane>
             <HBox spacing="10" alignment="CENTER_RIGHT">
