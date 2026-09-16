@@ -188,6 +188,7 @@ public class MarkdownStore {
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
+        fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
         if (entry.distance() != null) fm.put("distance", entry.distance());
         if (entry.route() != null && !entry.route().isBlank()) fm.put("route", entry.route());

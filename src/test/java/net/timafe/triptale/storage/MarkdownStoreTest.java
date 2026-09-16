@@ -210,6 +210,17 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void saveEntryWritesBelongsToPointingAtTripReadme() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .tales("Hot day.")
+                .build());
+
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("belongs_to: \"[[2025/alps-2025/README]]\""));
+    }
+
+    @Test
     void saveEntryOmitsBlankTrackUrlFromFrontmatter() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
