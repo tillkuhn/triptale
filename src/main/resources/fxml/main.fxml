@@ -63,9 +63,8 @@
             </MenuBar>
             <HBox spacing="10" alignment="CENTER_LEFT" styleClass="toolbar-strip">
                 <padding><Insets top="10" right="12" bottom="10" left="12"/></padding>
-                <Label text="Year:"/>
-                <ComboBox fx:id="yearCombo" prefWidth="90"/>
                 <Label text="Trip:"/>
+                <ComboBox fx:id="yearCombo" prefWidth="90"/>
                 <ComboBox fx:id="tripCombo" prefWidth="240"/>
                 <Button text="ⓘ" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip details"/></tooltip>
