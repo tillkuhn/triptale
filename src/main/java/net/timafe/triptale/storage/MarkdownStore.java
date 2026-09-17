@@ -8,6 +8,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
+import net.timafe.triptale.util.Markdown;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -188,13 +189,14 @@ public class MarkdownStore {
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
+        fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
         if (entry.distance() != null) fm.put("distance", entry.distance());
-        if (entry.route() != null && !entry.route().isBlank()) fm.put("route", entry.route());
         if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
         fm.put("type", ENTRY_TYPE);
         try {
-            String body = entry.tales() == null ? "" : entry.tales();
+            String tales = entry.tales() == null ? "" : entry.tales();
+            String body = "# " + entry.title() + "\n\n" + Markdown.demoteH1(tales);
             String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
             Files.writeString(entryFile(ref, entry.date()), content);
         } catch (IOException e) {
@@ -293,12 +295,16 @@ public class MarkdownStore {
         String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
         String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
         Map<String, Object> data = yaml.readValue(fm, Map.class);
+        Markdown.TitleAndBody titleAndBody = Markdown.extractTitle(body);
+        String title = titleAndBody.title();
+        boolean hasTitle = title != null && !title.isBlank();
+        String tales = hasTitle ? titleAndBody.remainder() : body;
         return DiaryEntry.builder(date)
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
-                .route(asString(data.get("route")))
+                .title(title)
                 .trackUrl(asString(data.get("trackurl")))
-                .tales(body)
+                .tales(tales)
                 .build();
     }
 

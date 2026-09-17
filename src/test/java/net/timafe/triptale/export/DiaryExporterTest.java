@@ -64,9 +64,9 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day one").build());
+                .distance(50.0).altitudeMeters(800.0).title("A → B").tales("Day one").build());
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2))
-                .distance(32.5).altitudeMeters(400.0).route("B → C").tales("Day two").build());
+                .distance(32.5).altitudeMeters(400.0).title("B → C").tales("Day two").build());
 
         String out = exporter.exportTrip(trip);
 
@@ -84,16 +84,16 @@ class DiaryExporterTest {
     }
 
     @Test
-    void defaultRouteIsOmittedFromHeading() {
+    void defaultTitleIsIncludedInHeading() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .route(DiaryEntry.DEFAULT_ROUTE).tales("hi").build());
+                .title(DiaryEntry.DEFAULT_TITLE).tales("hi").build());
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1"));
-        assertFalse(out.contains(DiaryEntry.DEFAULT_ROUTE), "default route placeholder should not leak into export");
+        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: Untitled"),
+                "with no blank-check guard, the default title placeholder should appear in the heading");
     }
 
     @Test
@@ -157,7 +157,7 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "Summer ride");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .distance(50.0).altitudeMeters(800.0).route("A → B").tales("Day **one** was *great*.").build());
+                .distance(50.0).altitudeMeters(800.0).title("A → B").tales("Day **one** was *great*.").build());
 
         String html = exporter.exportTripAsHtml(trip);
 

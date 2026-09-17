@@ -174,7 +174,7 @@ public class DiaryExporter {
         h.put("date", e.date().format(ISO));
         h.put("weekday", e.date().format(WEEKDAY));
         h.put("daySegment", daySegment(trip.startDate(), e.date()));
-        h.put("routeSegment", routeSegment(e.route()));
+        h.put("titleSegment", titleSegment(e.title()));
         sb.append(substitute(load(ENTRY_HEADING), h).stripTrailing());
 
         StringBuilder stats = new StringBuilder();
@@ -215,9 +215,8 @@ public class DiaryExporter {
         return " Day " + day;
     }
 
-    private static String routeSegment(String route) {
-        if (route == null || route.isBlank() || DiaryEntry.DEFAULT_ROUTE.equals(route)) return "";
-        return ": " + route;
+    private static String titleSegment(String title) {
+        return ": " + title;
     }
 
     private static String totalDaysLabel(LocalDate startDate, LocalDate endDate) {

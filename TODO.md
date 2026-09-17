@@ -1,6 +1,71 @@
 # ToDos for this app
 
-## Next Todo: 20
+## Next Todo: 22
+
+## 21 introduce h1 title, derive from route in frontmatter
+
+to align the md layout more with tolaria, we want to introduce a strong "title" per markdown and store as h1 headline on top of the md file.
+currently the "route" property in the yaml frontmatter acts as a kind of title, so we can retire it and derive the title from it
+
+* change label in UI from "Route" to "Title" but keep as separat element
+* store internally not in frontmatter but as first headline of the markdown payload, start with # (h1) similar to the README.md in trip type
+* since there should be only one "# title" in md, if the users also uses "# " in the md document they should be converted as "##" h2 headers during save, there should be alreay logic in the code
+* do a one time conversion of the current ~/Pictures/triptale-data repo once all is clarified. not migration support in the app required
+
+Example tale md file before the new change:
+```
+---
+date: 2026-06-19
+route: From  Vechta to  Bremen
+---
+
+# first part 
+tough climb ...
+
+## 2nd part
+much better ...
+
+```
+
+After the change:
+```
+---
+date: 2026-06-19
+---
+# From  Vechta to  Bremen
+
+## first part 
+tough climb ...
+
+## 2nd part
+much better ...
+
+```
+
+
+## DONE 20 Support Tolaria belongs_to references
+
+We are promoting tolaria as a drop in editor replacement. Tolaria supports references between notes.
+This fits our relationships perfectly since tales have an n:1 relationship with notes )belongs_to field in frontmatter)
+Example: a note 2026/HollywoodParty_Na/2026-06-21-Sunday.md refers to the trip's readme:
+
+
+```
+---
+altitude: 400.0
+date: 2026-06-21
+distance: 119.0
+route: From  Vechta → To Ganderkesee / Bremen
+trackurl: https://www.komoot.com/de-de/tour/3055021333
+type: Tale
+belongs_to: "[[2026/HollywoodParty_Na/README]]"
+---
+Tale goes here
+```
+
+Goal: Store this field on save using the path to the trip readme (w/o md).
+Do a one time migration (not part of the app) in ~/Pictures/triptale-data/  
+
 
 ## 19 DatePicker has no quick year navigation
 

@@ -168,7 +168,7 @@ class MarkdownStoreTest {
         DiaryEntry entry = DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .distance(82.5)
                 .altitudeMeters(1240.0)
-                .route("Innsbruck → Brenner")
+                .title("Innsbruck → Brenner")
                 .trackUrl("https://www.strava.com/activities/123")
                 .tales("Hot day, lots of climbing.")
                 .build();
@@ -176,12 +176,14 @@ class MarkdownStoreTest {
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertTrue(raw.contains("trackurl:"));
+        assertFalse(raw.contains("route:"));
+        assertTrue(raw.contains("# Innsbruck → Brenner\n\nHot day"), "body should start with H1 title");
 
         DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertEquals(LocalDate.of(2025, 7, 4), loaded.date());
         assertEquals(82.5, loaded.distance());
         assertEquals(1240.0, loaded.altitudeMeters());
-        assertEquals("Innsbruck → Brenner", loaded.route());
+        assertEquals("Innsbruck → Brenner", loaded.title());
         assertEquals("https://www.strava.com/activities/123", loaded.trackUrl());
         assertTrue(loaded.tales().contains("Hot day"));
     }
@@ -192,13 +194,14 @@ class MarkdownStoreTest {
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .distance(82.5)
                 .altitudeMeters(1240.0)
-                .route("Innsbruck → Brenner")
+                .title("Innsbruck → Brenner")
                 .trackUrl("https://www.strava.com/activities/123")
                 .tales("Hot day.")
                 .build());
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
         assertTrue(raw.contains("type: Tale"));
+        assertFalse(raw.contains("route:"));
 
         List<String> frontmatterKeys = raw.substring(raw.indexOf("---") + 3, raw.indexOf("---", 3))
                 .lines()
@@ -207,6 +210,46 @@ class MarkdownStoreTest {
                 .toList();
         List<String> sorted = frontmatterKeys.stream().sorted().toList();
         assertEquals(sorted, frontmatterKeys);
+    }
+
+    @Test
+    void saveEntryDemotesH1LinesInTalesBodyOnRoundTrip() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .title("First part")
+                .tales("# something\ntough climb\n\n## 2nd part\nmuch better")
+                .build());
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals("First part", loaded.title());
+        assertTrue(loaded.tales().lines().anyMatch(l -> l.equals("## something")),
+                "H1 line in tales body should be demoted to H2");
+        assertTrue(loaded.tales().lines().noneMatch(l -> l.equals("# something")),
+                "original H1 line should no longer be present as-is");
+        assertTrue(loaded.tales().lines().anyMatch(l -> l.equals("## 2nd part")),
+                "existing H2 line should be untouched");
+    }
+
+    @Test
+    void loadEntryWithoutH1LineDefaultsToUntitled() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
+        Files.writeString(file, "---\ndate: 2025-07-04\n---\n\nJust some text, no heading.");
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals(DiaryEntry.DEFAULT_TITLE, loaded.title());
+        assertEquals("Just some text, no heading.", loaded.tales());
+    }
+
+    @Test
+    void saveEntryWritesBelongsToPointingAtTripReadme() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .tales("Hot day.")
+                .build());
+
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("belongs_to: \"[[2025/alps-2025/README]]\""));
     }
 
     @Test
