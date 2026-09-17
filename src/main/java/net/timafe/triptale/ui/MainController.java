@@ -51,6 +51,7 @@ import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
 import net.timafe.triptale.util.Slugs;
@@ -89,7 +90,7 @@ public class MainController {
     @FXML private DatePicker datePicker;
     @FXML private TextField distanceField;
     @FXML private TextField altField;
-    @FXML private TextField routeField;
+    @FXML private TextField titleField;
     @FXML private TextField trackUrlField;
     @FXML private Button openTrackUrlButton;
     @FXML private Button impressionsButton;
@@ -128,7 +129,7 @@ public class MainController {
 
     private String baselineDistance = "";
     private String baselineAlt = "";
-    private String baselineRoute = "";
+    private String baselineTitle = "";
     private String baselineTrackUrl = "";
     private String baselineTales = "";
     private boolean entryExists;
@@ -263,7 +264,7 @@ public class MainController {
         });
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
-        routeField.textProperty().addListener((o, a, b) -> updateDirty());
+        titleField.textProperty().addListener((o, a, b) -> updateDirty());
         trackUrlField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (ready) {
@@ -722,7 +723,7 @@ public class MainController {
         DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
-        routeField.setText(e.route() == null ? DiaryEntry.DEFAULT_ROUTE : e.route());
+        titleField.setText(e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title());
         trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
@@ -797,7 +798,7 @@ public class MainController {
     private void snapshotBaseline() {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
-        baselineRoute = routeField.getText();
+        baselineTitle = titleField.getText();
         baselineTrackUrl = trackUrlField.getText();
         baselineTales = talesArea.getText();
     }
@@ -805,7 +806,7 @@ public class MainController {
     private boolean isDirty() {
         return !Objects.equals(distanceField.getText(), baselineDistance)
                 || !Objects.equals(altField.getText(), baselineAlt)
-                || !Objects.equals(routeField.getText(), baselineRoute)
+                || !Objects.equals(titleField.getText(), baselineTitle)
                 || !Objects.equals(trackUrlField.getText(), baselineTrackUrl)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
@@ -839,7 +840,10 @@ public class MainController {
             return false;
         }
         if (result.get() == save && target != null) {
-            doSave(target.trip(), target.date());
+            boolean valid = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
+            if (valid) {
+                doSave(target.trip(), target.date());
+            }
         }
         return true;
     }
@@ -847,7 +851,8 @@ public class MainController {
     private void updateDirty() {
         boolean dirty = isDirty();
         if (saveButton != null) {
-            saveButton.setDisable(!dirty);
+            boolean valid = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
+            saveButton.setDisable(!dirty || !valid);
             saveButton.setText(entryExists ? "💾 Save Tale" : "📝 Create Tale");
         }
         if (copyButton != null) {
@@ -960,7 +965,7 @@ public class MainController {
         DiaryEntry entry = DiaryEntry.builder(date)
                 .distance(distance)
                 .altitudeMeters(alt)
-                .route(routeField.getText())
+                .title(titleField.getText())
                 .trackUrl(trackUrlField.getText())
                 .tales(talesArea.getText())
                 .build();
@@ -971,6 +976,7 @@ public class MainController {
         talesUpdatedAt = Instant.now();
         updateTalesLabel();
         addPending(trip.path() + "/" + date, wasNew ? CREATE : UPDATE);
+        talesArea.setText(Markdown.demoteH1(talesArea.getText()));
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.path() + "/" + date);
@@ -978,11 +984,11 @@ public class MainController {
 
     @FXML
     public void onCopyTale() {
-        String route = routeField.getText();
+        String title = titleField.getText();
         String tales = talesArea.getText();
         StringBuilder sb = new StringBuilder();
-        if (route != null && !route.isBlank() && !route.equals(DiaryEntry.DEFAULT_ROUTE)) {
-            sb.append(route).append("\n\n");
+        if (title != null && !title.isBlank() && !title.equals(DiaryEntry.DEFAULT_TITLE)) {
+            sb.append(title).append("\n\n");
         }
         if (tales != null) sb.append(tales);
         ClipboardContent cc = new ClipboardContent();
