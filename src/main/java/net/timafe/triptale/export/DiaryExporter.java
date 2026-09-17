@@ -6,6 +6,7 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.util.Markdown;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -196,7 +197,7 @@ public class DiaryExporter {
             sb.append("\n\n").append(stats);
         }
 
-        String tales = e.tales() == null ? "" : e.tales().strip();
+        String tales = e.tales() == null ? "" : Markdown.shiftHeadings(e.tales().strip(), 1);
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);

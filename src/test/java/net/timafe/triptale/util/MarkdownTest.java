@@ -66,4 +66,48 @@ class MarkdownTest {
         assertEquals("Spacey Title", result.title());
         assertEquals("rest", result.remainder());
     }
+
+    @Test
+    void shiftHeadingsShiftsH2ToH3() {
+        assertEquals("### Foo", Markdown.shiftHeadings("## Foo", 1));
+    }
+
+    @Test
+    void shiftHeadingsShiftsH1ToH2() {
+        assertEquals("## Foo", Markdown.shiftHeadings("# Foo", 1));
+    }
+
+    @Test
+    void shiftHeadingsClampsAtH6() {
+        assertEquals("###### Foo", Markdown.shiftHeadings("###### Foo", 1));
+    }
+
+    @Test
+    void shiftHeadingsLeavesSevenHashesUntouched() {
+        assertEquals("####### Foo", Markdown.shiftHeadings("####### Foo", 1));
+    }
+
+    @Test
+    void shiftHeadingsShiftsMultipleHeadingsIndependently() {
+        String body = "# A\ntext\n## B\nmore\n### C";
+        assertEquals("## A\ntext\n### B\nmore\n#### C", Markdown.shiftHeadings(body, 1));
+    }
+
+    @Test
+    void shiftHeadingsLeavesNonHeadingLinesUntouched() {
+        String body = "plain text\ntext with # not at start\n#";
+        assertEquals(body, Markdown.shiftHeadings(body, 1));
+    }
+
+    @Test
+    void shiftHeadingsByZeroIsNoOp() {
+        String body = "# A\ntext\n## B";
+        assertEquals(body, Markdown.shiftHeadings(body, 0));
+    }
+
+    @Test
+    void shiftHeadingsHandlesNullAndEmpty() {
+        assertNull(Markdown.shiftHeadings(null, 1));
+        assertEquals("", Markdown.shiftHeadings("", 1));
+    }
 }

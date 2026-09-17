@@ -250,6 +250,26 @@ class DiaryExporterTest {
 
 
     @Test
+    void exportShiftsTaleSubheadingsSoTheyDontCollideWithEntryHeading() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .title("A → B").tales("Intro text.\n\n## Subheading\n\nMore detail.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: A → B"),
+                "entry heading should remain at H2");
+        assertTrue(out.lines().anyMatch(l -> l.equals("### Subheading")),
+                "tale subheading should be shifted to H3 to avoid colliding with the entry heading");
+        assertFalse(out.lines().anyMatch(l -> l.equals("## Subheading")),
+                "unshifted H2 subheading would collide with the entry's own H2 heading");
+
+        long h2Count = out.lines().filter(l -> l.startsWith("## ")).count();
+        assertEquals(1, h2Count, "only the entry's own heading should be at H2 level; got:\n" + out);
+    }
+
+    @Test
     void exportTripPlainMarkdownNeverIncludesImpressions() throws java.io.IOException {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
         store.saveTrip(trip);
