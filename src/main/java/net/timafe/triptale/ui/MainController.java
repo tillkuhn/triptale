@@ -1233,13 +1233,7 @@ public class MainController {
         grid.add(new Label("Author:"), 0, row);
         grid.add(new Label(authorDisplay), 1, row);
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Remote Info");
-        alert.setHeaderText("Git configuration");
-        alert.getDialogPane().setContent(grid);
-        alert.getButtonTypes().setAll(ButtonType.CLOSE);
-        applyStylesheet(alert.getDialogPane());
-        alert.showAndWait();
+        showInfoDialog("Remote Info", "Git configuration", grid);
     }
 
     @FXML
@@ -1306,10 +1300,6 @@ public class MainController {
         grid.setPadding(new Insets(10));
         int row = 0;
 
-        Label title = new Label(appName);
-        title.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
-        grid.add(title, 0, row++, 2, 1);
-
         Label desc = new Label("Offline-first cycling and hiking trip diary with git sync");
         desc.setWrapText(true);
         desc.setMaxWidth(360);
@@ -1333,10 +1323,18 @@ public class MainController {
         link.setOnAction(e -> openInBrowser(repoUrl));
         grid.add(link, 1, row);
 
+        showInfoDialog("About " + appName, appName, grid);
+    }
+
+    /**
+     * Shared layout for static info popups (Remote Info, About, ...): title bar text,
+     * a bold heading with the platform "i" icon, and arbitrary content below.
+     */
+    private void showInfoDialog(String title, String headerText, Node content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About " + appName);
-        alert.setHeaderText(null);
-        alert.getDialogPane().setContent(grid);
+        alert.setTitle(title);
+        alert.setHeaderText(headerText);
+        alert.getDialogPane().setContent(content);
         alert.getButtonTypes().setAll(ButtonType.CLOSE);
         applyStylesheet(alert.getDialogPane());
         alert.showAndWait();
