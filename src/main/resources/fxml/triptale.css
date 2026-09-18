@@ -97,9 +97,13 @@
 }
 .text-area.tale-text .content {
     -fx-background-color: #f5f0e1;
+    -fx-padding: 4 4 4 20;
 }
 .text-area.tale-text:focused {
     -fx-border-color: #4ec9b0;
+}
+.scallop-bump {
+    -fx-fill: #1e2a2a;
 }
 
 /* ── DatePicker ───────────────────────────────────────── */
