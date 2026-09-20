@@ -118,6 +118,31 @@ class DiaryExporterTest {
         assertTrue(out.contains("Rest day."));
         assertFalse(out.contains("Distance covered:"));
         assertFalse(out.contains("Altitude climbed:"));
+        assertFalse(out.contains("Start:"));
+    }
+
+    @Test
+    void includesStartPointAsDdmWhenBothCoordinatesSet() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .startLat(51.488).startLon(-0.013).tales("Started in London.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("Start: 51° 29.3' N 0° 0.8' W"));
+    }
+
+    @Test
+    void omitsStartPointWhenOnlyOneCoordinateSet() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .startLat(51.488).tales("Partial coordinates.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertFalse(out.contains("Start:"));
     }
 
     @Test

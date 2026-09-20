@@ -51,6 +51,7 @@ import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
@@ -93,6 +94,8 @@ public class MainController {
     @FXML private TextField titleField;
     @FXML private TextField trackUrlField;
     @FXML private Button openTrackUrlButton;
+    @FXML private Button coordinatesButton;
+    @FXML private Button openCoordinatesButton;
     @FXML private Button impressionsButton;
     @FXML private Button favesButton;
     @FXML private TextArea talesArea;
@@ -131,7 +134,11 @@ public class MainController {
     private String baselineAlt = "";
     private String baselineTitle = "";
     private String baselineTrackUrl = "";
+    private Double baselineStartLat;
+    private Double baselineStartLon;
     private String baselineTales = "";
+    private Double startLat;
+    private Double startLon;
     private boolean entryExists;
     private Instant talesUpdatedAt;
 
@@ -725,6 +732,9 @@ public class MainController {
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
         titleField.setText(e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title());
         trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
+        startLat = e.startLat();
+        startLon = e.startLon();
+        updateCoordinatesButton();
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
         updateTalesLabel();
@@ -770,6 +780,22 @@ public class MainController {
         }
     }
 
+    private void updateCoordinatesButton() {
+        boolean set = startLat != null && startLon != null;
+        if (coordinatesButton != null) {
+            coordinatesButton.setText(set ? "🗺️ " + Coordinates.toDdm(startLat, startLon) : "🗺️ Uncharted");
+        }
+        if (openCoordinatesButton != null) {
+            openCoordinatesButton.setDisable(!set);
+        }
+    }
+
+    @FXML
+    public void onOpenCoordinates() {
+        if (startLat == null || startLon == null) return;
+        openInBrowser("https://www.google.com/maps?q=" + startLat + "," + startLon);
+    }
+
     private void updateViewSourceMenuItem(boolean exists) {
         if (viewSourceMenuItem == null) return;
         viewSourceMenuItem.setDisable(!exists);
@@ -800,6 +826,8 @@ public class MainController {
         baselineAlt = altField.getText();
         baselineTitle = titleField.getText();
         baselineTrackUrl = trackUrlField.getText();
+        baselineStartLat = startLat;
+        baselineStartLon = startLon;
         baselineTales = talesArea.getText();
     }
 
@@ -808,6 +836,8 @@ public class MainController {
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(titleField.getText(), baselineTitle)
                 || !Objects.equals(trackUrlField.getText(), baselineTrackUrl)
+                || !Objects.equals(startLat, baselineStartLat)
+                || !Objects.equals(startLon, baselineStartLon)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
@@ -967,6 +997,8 @@ public class MainController {
                 .altitudeMeters(alt)
                 .title(titleField.getText())
                 .trackUrl(trackUrlField.getText())
+                .startLat(startLat)
+                .startLon(startLon)
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
@@ -1347,6 +1379,86 @@ public class MainController {
     }
 
     @FXML
+    public void onCoordinates() {
+        Dialog<ButtonType> dlg = new Dialog<>();
+        dlg.setTitle("Start Point Coordinates");
+        dlg.setHeaderText("Start point coordinates");
+
+        TextField latField = new TextField(startLat == null ? "" : startLat.toString());
+        TextField lonField = new TextField(startLon == null ? "" : startLon.toString());
+        Label ddmLabel = new Label("—");
+        TextArea parseArea = new TextArea();
+        parseArea.setPromptText("Paste a Google Maps URL, GPX <trkpt>, or GeoJSON [lon, lat] array");
+        parseArea.setPrefRowCount(3);
+        parseArea.setWrapText(true);
+        Label parseHintLabel = new Label();
+        parseHintLabel.getStyleClass().add("hint-label");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        grid.setPadding(new Insets(14));
+        grid.getStyleClass().add("card");
+        grid.add(new Label("DDM:"), 0, 0);
+        grid.add(ddmLabel, 1, 0);
+        grid.add(new Label("Latitude:"), 0, 1);
+        grid.add(latField, 1, 1);
+        grid.add(new Label("Longitude:"), 0, 2);
+        grid.add(lonField, 1, 2);
+        grid.add(new Label("Parse from:"), 0, 3);
+        grid.add(parseArea, 1, 3);
+        grid.add(parseHintLabel, 1, 4);
+
+        ButtonType clearType = new ButtonType("Clear", ButtonBar.ButtonData.OTHER);
+        ButtonType parseType = new ButtonType("Parse", ButtonBar.ButtonData.OTHER);
+        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dlg.getDialogPane().setContent(grid);
+        // ButtonType.CANCEL also re-enables the dialog window's native close (X) button —
+        // JavaFX disables it unless a CANCEL_CLOSE-data button is present.
+        dlg.getDialogPane().getButtonTypes().addAll(clearType, parseType, ButtonType.CANCEL, saveType);
+        applyStylesheet(dlg.getDialogPane());
+
+        Node saveButtonNode = dlg.getDialogPane().lookupButton(saveType);
+        Runnable refresh = () -> {
+            Double lat = silentParseDouble(latField.getText());
+            Double lon = silentParseDouble(lonField.getText());
+            boolean valid = lat != null && lon != null && Coordinates.isValid(lat, lon);
+            ddmLabel.setText(valid ? Coordinates.toDdm(lat, lon) : "—");
+            saveButtonNode.setDisable(!valid);
+        };
+        latField.textProperty().addListener((o, a, b) -> refresh.run());
+        lonField.textProperty().addListener((o, a, b) -> refresh.run());
+        refresh.run();
+
+        Node parseButtonNode = dlg.getDialogPane().lookupButton(parseType);
+        parseButtonNode.addEventFilter(ActionEvent.ACTION, ev -> {
+            Optional<Coordinates.LatLon> parsed = Coordinates.tryParse(parseArea.getText());
+            if (parsed.isPresent()) {
+                latField.setText(Double.toString(parsed.get().lat()));
+                lonField.setText(Double.toString(parsed.get().lon()));
+                parseHintLabel.setText("");
+            } else {
+                parseHintLabel.setText("Couldn't parse coordinates from input.");
+            }
+            ev.consume();
+        });
+
+        Optional<ButtonType> result = dlg.showAndWait();
+        if (result.isEmpty()) return;
+        if (result.get() == clearType) {
+            startLat = null;
+            startLon = null;
+        } else if (result.get() == saveType) {
+            startLat = silentParseDouble(latField.getText());
+            startLon = silentParseDouble(lonField.getText());
+        } else {
+            return;
+        }
+        updateCoordinatesButton();
+        updateDirty();
+    }
+
+    @FXML
     public void onEditSettings() {
         AppSettings settings = settingsStore.load();
         String previousDataDir = settings.getDataDir();
@@ -1630,6 +1742,16 @@ public class MainController {
             return Double.parseDouble(s.trim().replace(',', '.'));
         } catch (NumberFormatException nfe) {
             error("Invalid " + field + ": " + s);
+            return null;
+        }
+    }
+
+    /** Same decimal parsing as {@link #parseDouble}, but silent — for live-validation listeners. */
+    private static Double silentParseDouble(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return Double.parseDouble(s.trim().replace(',', '.'));
+        } catch (NumberFormatException nfe) {
             return null;
         }
     }

@@ -189,6 +189,30 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void saveAndLoadEntryRoundTripsStartPointCoordinates() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .startLat(51.553443)
+                .startLon(7.915507)
+                .tales("Started in the valley.")
+                .build());
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals(51.553443, loaded.startLat());
+        assertEquals(7.915507, loaded.startLon());
+    }
+
+    @Test
+    void loadEntryLeavesStartPointNullWhenNotRecorded() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("No coordinates.").build());
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertNull(loaded.startLat());
+        assertNull(loaded.startLon());
+    }
+
+    @Test
     void saveEntryWritesTaleTypeAndKeepsFrontmatterAlphabetical() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
@@ -196,6 +220,8 @@ class MarkdownStoreTest {
                 .altitudeMeters(1240.0)
                 .title("Innsbruck → Brenner")
                 .trackUrl("https://www.strava.com/activities/123")
+                .startLat(51.553443)
+                .startLon(7.915507)
                 .tales("Hot day.")
                 .build());
 

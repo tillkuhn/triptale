@@ -6,6 +6,7 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.Markdown;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
@@ -35,6 +36,7 @@ public class DiaryExporter {
     private static final String ENTRY_HEADING = "/export/entry-heading.md";
     private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
     private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
+    private static final String ENTRY_STARTPOINT = "/export/entry-startpoint.md";
     private static final String ENTRY_TRACK = "/export/entry-track.md";
     private static final String ENTRY_TALES = "/export/entry-tales.md";
     private static final String HTML_SHELL = "/export/html-shell.html";
@@ -187,6 +189,11 @@ public class DiaryExporter {
             if (stats.length() > 0) stats.append("\n");
             stats.append(substitute(load(ENTRY_ALTITUDE),
                     Map.of("altitude", formatAltitude(e.altitudeMeters()))).stripTrailing());
+        }
+        if (e.startLat() != null && e.startLon() != null) {
+            if (stats.length() > 0) stats.append("\n");
+            stats.append(substitute(load(ENTRY_STARTPOINT),
+                    Map.of("startpoint", Coordinates.toDdm(e.startLat(), e.startLon()))).stripTrailing());
         }
         if (e.trackUrl() != null && !e.trackUrl().isBlank()) {
             if (stats.length() > 0) stats.append("\n");

@@ -192,6 +192,8 @@ public class MarkdownStore {
         fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
         if (entry.distance() != null) fm.put("distance", entry.distance());
+        if (entry.startLat() != null) fm.put("startlat", entry.startLat());
+        if (entry.startLon() != null) fm.put("startlon", entry.startLon());
         if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
         fm.put("type", ENTRY_TYPE);
         try {
@@ -304,6 +306,8 @@ public class MarkdownStore {
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .title(title)
                 .trackUrl(asString(data.get("trackurl")))
+                .startLat(asDouble(data.get("startlat")))
+                .startLon(asDouble(data.get("startlon")))
                 .tales(tales)
                 .build();
     }

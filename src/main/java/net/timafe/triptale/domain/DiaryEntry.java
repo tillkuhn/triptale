@@ -8,6 +8,8 @@ public record DiaryEntry(
         Double altitudeMeters,
         String title,
         String trackUrl,
+        Double startLat,
+        Double startLon,
         String tales
 ) {
     public static final String DEFAULT_TITLE = "Untitled";
@@ -21,6 +23,8 @@ public record DiaryEntry(
         private Double altitudeMeters;
         private String title = DEFAULT_TITLE;
         private String trackUrl;
+        private Double startLat;
+        private Double startLon;
         private String tales = "";
 
         private Builder(LocalDate date) { this.date = date; }
@@ -29,10 +33,12 @@ public record DiaryEntry(
         public Builder altitudeMeters(Double v) { this.altitudeMeters = v; return this; }
         public Builder title(String v)          { this.title = (v != null && !v.isBlank()) ? v : DEFAULT_TITLE; return this; }
         public Builder trackUrl(String v)       { this.trackUrl = (v != null && !v.isBlank()) ? v : null; return this; }
+        public Builder startLat(Double v)       { this.startLat = v; return this; }
+        public Builder startLon(Double v)       { this.startLon = v; return this; }
         public Builder tales(String v)          { this.tales = v != null ? v : ""; return this; }
 
         public DiaryEntry build() {
-            return new DiaryEntry(date, distance, altitudeMeters, title, trackUrl, tales);
+            return new DiaryEntry(date, distance, altitudeMeters, title, trackUrl, startLat, startLon, tales);
         }
     }
 }
