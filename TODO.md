@@ -2,7 +2,25 @@
 
 ## Next Todo: 22
 
-## 21 introduce h1 title, derive from route in frontmatter
+## 15 store optional start point coordinates per trip entry
+
+Add optional start-point coordinates to a trip entry's frontmatter, alongside the existing
+`altitude`/`distance`/`route`/`trackurl` fields. Keep frontmatter flat and simple (no nested
+geojson-style object) — two independent lowercase scalar keys, `startlat`/`startlon`, (langitude / latitude) each a
+`Double` (null = not recorded, following the existing `altitude` convention). Keep frontmatter
+keys alphabetical per `MarkdownStore.saveEntry`. Needs: fields on `DiaryEntry`/`DiaryEntry.Builder`,
+read/write in `MarkdownStore`, UI inputs (decimal, accepts `.`/`,`), and export template support.
+
+## 14 template variables for settings paths
+
+Generalize `ImpressionsResolver`'s existing `${HOME}`/`${DATE}` placeholder substitution into
+a shared, reusable resolver, add `${TRIP_SLUG}` (and rename/extend `${DATE}` towards a
+`${TALE_DATE}`-style name if it helps clarity), and apply it beyond impressions patterns to
+other settings paths (e.g. `dataDir`). Expansion happens at runtime when the value is actually
+used (writing an entry file, locating images), not at settings-save time. Follow-up to todo 13
+— see docs/13_settings_handling.md non-goals section.
+
+## DONE 21 introduce h1 title, derive from route in frontmatter
 
 to align the md layout more with tolaria, we want to introduce a strong "title" per markdown and store as h1 headline on top of the md file.
 currently the "route" property in the yaml frontmatter acts as a kind of title, so we can retire it and derive the title from it
@@ -66,8 +84,7 @@ Tale goes here
 Goal: Store this field on save using the path to the trip readme (w/o md).
 Do a one time migration (not part of the app) in ~/Pictures/triptale-data/  
 
-
-## 19 DatePicker has no quick year navigation
+## TODO 19 DatePicker has no quick year navigation
 
 The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
 page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
@@ -77,7 +94,7 @@ year spinner natively; investigate a day-cell-factory-based or header-replacemen
 Affects every DatePicker instance in the app, not just one dialog — worth checking all call
 sites for a consistent fix rather than patching one.
 
-## 18 new top level directories
+## DONE 18 new top level directories
 
 see docs/18_year_top_level_dirs.md for the full design (from a grill-me session covering the
 TripRef identity type, per-year slug uniqueness, year/trip dropdown UX, and the lastTripPath
@@ -88,7 +105,6 @@ cache format).
 add a new menu item, either existing menu group or new group (view?) to open a window that shows the source of the current markdown file .
 If easier use the state currently saved on disk. Goal is to see the frontmatter any potential optimizations triggered during the save save.
 maybe we can re-use the markdow viewer used in export diary.
-
 
 Add new view menu group with action "View Source"
 
@@ -101,24 +117,6 @@ Rename "About" to "About TripTale"
 New Trip and Export Diary remain in File 
 Rename "Remote" Group to "Repository"
 
-## 15 store optional start point coordinates per trip entry
-
-Add optional start-point coordinates to a trip entry's frontmatter, alongside the existing
-`altitude`/`distance`/`route`/`trackurl` fields. Keep frontmatter flat and simple (no nested
-geojson-style object) — two independent lowercase scalar keys, `startlat`/`startlon`, each a
-`Double` (null = not recorded, following the existing `altitude` convention). Keep frontmatter
-keys alphabetical per `MarkdownStore.saveEntry`. Needs: fields on `DiaryEntry`/`DiaryEntry.Builder`,
-read/write in `MarkdownStore`, UI inputs (decimal, accepts `.`/`,`), and export template support.
-
-## 14 template variables for settings paths
-
-Generalize `ImpressionsResolver`'s existing `${HOME}`/`${DATE}` placeholder substitution into
-a shared, reusable resolver, add `${TRIP_SLUG}` (and rename/extend `${DATE}` towards a
-`${TALE_DATE}`-style name if it helps clarity), and apply it beyond impressions patterns to
-other settings paths (e.g. `dataDir`). Expansion happens at runtime when the value is actually
-used (writing an entry file, locating images), not at settings-save time. Follow-up to todo 13
-— see docs/13_settings_handling.md non-goals section.
-
 ## DONE 13 settings handling
 
 See docs/13_settings_handling.md for the full design (from a grill-me session covering the
@@ -130,18 +128,16 @@ and settings dialog rework).
 Add a new sync operation to the Remote menu that performs all git operations necessary to sync the remote menu. Only active if there's connectivity. Suggest it performs a commit of outstanding changes first (even if none are store in memory, there may be changed performed outside the app), followed by a rebase from remote, followed by a push. But suggest better workflows if you can think of improvements.
 also switch to emojis in menu (like "export diary") since the current icons for pull, push etc. are hard to distinguish. Last but not least, add the sync button to the buttom panel right behind commit
 
-## 11 supports faves & impressions
+## DONE 11 supports faves & impressions
 
 extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
-also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images,
-it should re-use the samve image viewer.
-
+also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images, it should re-use the samve image viewer.
 
 ## DONE 10 Impressions Feature
 
 see docs/done/10_impressions_feature.md
 
-## 09 New concept for storing links
+## DONE (WON'T DO) 09 New concept for storing links
 
 we need a flexible way to store multiple links. introduce new "links" array in frontmatter for trip entry.
 the actual link should have a mandatory "url" property. kind is optional and should allow any string value, but for the UI
