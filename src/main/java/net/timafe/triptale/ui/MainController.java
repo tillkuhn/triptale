@@ -1614,22 +1614,45 @@ public class MainController {
         imageBox.setMaxSize(640, 480);
         Label counter = new Label();
 
-        Label filenameLabel = new Label();
-        filenameLabel.setStyle("-fx-font-weight: bold;");
+        Label pathLabel = new Label();
+        pathLabel.setStyle("-fx-font-weight: bold;");
+        pathLabel.setWrapText(false);
+        // Leading (not trailing) ellipsis: the filename at the end of the path is what matters
+        // most, so a long directory prefix truncates from the front instead of hiding the name.
+        pathLabel.setTextOverrun(javafx.scene.control.OverrunStyle.LEADING_ELLIPSIS);
+        pathLabel.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        pathLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(pathLabel, Priority.ALWAYS);
+
+        Button copyDirBtn = new Button("📋");
+        copyDirBtn.setTooltip(new Tooltip("Copy directory to clipboard"));
+        copyDirBtn.setOnAction(ev -> {
+            Path dir = images.get(index[0]).getParent();
+            ClipboardContent cc = new ClipboardContent();
+            cc.putString(dir.toString());
+            Clipboard.getSystemClipboard().setContent(cc);
+            status("Directory copied to clipboard");
+        });
+
+        HBox pathRow = new HBox(6, pathLabel, copyDirBtn);
+        pathRow.setAlignment(javafx.geometry.Pos.CENTER);
+        pathRow.setMaxWidth(640);
+        pathRow.setMinWidth(640);
+        pathRow.setPrefWidth(640);
+
         Label metaLabel = new Label();
         // Fixed width matching the image, with ellipsis instead of wrapping/growing - otherwise
-        // a longer/shorter filename or EXIF string changes the label's preferred width on every
-        // navigation, which grows/shrinks the whole dialog and reads as a flicker even though the
-        // vertical position is already locked.
-        for (Label l : new Label[]{filenameLabel, metaLabel}) {
-            l.setMaxWidth(640);
-            l.setMinWidth(640);
-            l.setPrefWidth(640);
-            l.setWrapText(false);
-            l.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
-            l.setAlignment(javafx.geometry.Pos.CENTER);
-        }
-        VBox topInfo = new VBox(2, filenameLabel, metaLabel);
+        // a longer/shorter EXIF string changes the label's preferred width on every navigation,
+        // which grows/shrinks the whole dialog and reads as a flicker even though the vertical
+        // position is already locked.
+        metaLabel.setMaxWidth(640);
+        metaLabel.setMinWidth(640);
+        metaLabel.setPrefWidth(640);
+        metaLabel.setWrapText(false);
+        metaLabel.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
+        metaLabel.setAlignment(javafx.geometry.Pos.CENTER);
+
+        VBox topInfo = new VBox(2, pathRow, metaLabel);
         topInfo.setAlignment(javafx.geometry.Pos.CENTER);
         // Fixed 2-line height so the image never shifts vertically once EXIF data is
         // populated (or when it's missing/short) - avoids the flicker/reflow on navigation.
@@ -1664,10 +1687,10 @@ public class MainController {
             nextBtn.setDisable(index[0] == images.size() - 1);
             lastBtn.setDisable(index[0] == images.size() - 1);
 
-            filenameLabel.setText(p.getFileName().toString());
+            pathLabel.setText(homeRelative(p));
             ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
+            StringBuilder sb = new StringBuilder();
             if (exif.hasCameraData()) {
-                StringBuilder sb = new StringBuilder();
                 if (exif.cameraModel() != null) sb.append(exif.cameraModel());
                 if (exif.aperture() != null) {
                     if (sb.length() > 0) sb.append(" · ");
@@ -1681,10 +1704,13 @@ public class MainController {
                     if (sb.length() > 0) sb.append(" · ");
                     sb.append(exif.exposureTime());
                 }
-                metaLabel.setText(sb.toString());
             } else {
-                metaLabel.setText("No camera data");
+                sb.append("No camera data");
             }
+            if (exif.dimensions() != null) {
+                sb.append(" · ").append(exif.dimensions());
+            }
+            metaLabel.setText(sb.toString());
 
             if (exif.hasLocation()) {
                 mapButton.setDisable(false);
@@ -1724,7 +1750,7 @@ public class MainController {
 
         // Date is shown in the window title only - it's redundant above the image and was
         // taking up a whole header row of vertical space.
-        dlg.setTitle(title + " - " + date);
+        dlg.setTitle(title + " of " + friendlyDate(date));
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
             if (ev.getCode() == KeyCode.LEFT) {
@@ -1767,6 +1793,32 @@ public class MainController {
 
     private static String blankToNull(String s) {
         return (s == null || s.isBlank()) ? null : s;
+    }
+
+    /** Renders a path with the user's home directory prefix collapsed to {@code ~}. */
+    private static String homeRelative(Path p) {
+        String home = System.getProperty("user.home", "");
+        String s = p.toString();
+        return (!home.isEmpty() && s.startsWith(home)) ? "~" + s.substring(home.length()) : s;
+    }
+
+    /** e.g. "Friday, Aug 21st, 2026" — friendlier than a bare ISO date for a dialog title. */
+    private static String friendlyDate(LocalDate date) {
+        if (date == null) return "";
+        String weekday = date.format(DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH));
+        String month = date.format(DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH));
+        int day = date.getDayOfMonth();
+        return weekday + ", " + month + " " + day + daySuffix(day) + ", " + date.getYear();
+    }
+
+    private static String daySuffix(int day) {
+        if (day >= 11 && day <= 13) return "th";
+        return switch (day % 10) {
+            case 1 -> "st";
+            case 2 -> "nd";
+            case 3 -> "rd";
+            default -> "th";
+        };
     }
 
     private Double parseDouble(String s, String field) {

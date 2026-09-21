@@ -36,6 +36,15 @@ class ExifReaderTest {
         assertEquals(48.8557, info.latitude(), 0.001);
         assertEquals(2.3520, info.longitude(), 0.001);
         assertEquals("https://www.google.com/maps?q=48.85566111111111,2.352027777777778", info.mapsUrl());
+
+        assertEquals("4×4", info.dimensions());
+    }
+
+    @Test
+    void readsDimensionsEvenWithoutExif() {
+        ExifInfo info = reader.read(fixture("no_exif.jpg"));
+
+        assertEquals("4×4", info.dimensions());
     }
 
     @Test

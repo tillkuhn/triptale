@@ -4,9 +4,11 @@ import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
 import com.drew.lang.GeoLocation;
 import com.drew.metadata.Metadata;
+import com.drew.metadata.MetadataException;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.exif.GpsDirectory;
+import com.drew.metadata.jpeg.JpegDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -34,7 +36,7 @@ public class ExifReader {
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(new File(path.toUri()));
             return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata), iso(metadata),
-                    latitude(metadata), longitude(metadata));
+                    latitude(metadata), longitude(metadata), dimensions(metadata));
         } catch (ImageProcessingException | IOException | RuntimeException e) {
             log.debug("Could not read EXIF metadata from {}: {}", path, e.getMessage());
             return ExifInfo.empty();
@@ -102,6 +104,20 @@ public class ExifReader {
         if (dir == null) return null;
         String iso = trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_ISO_EQUIVALENT));
         return iso == null ? null : "ISO " + iso;
+    }
+
+    /**
+     * Pixel dimensions read from the JPEG's own SOF marker (not an EXIF tag), so it's available
+     * even for images with no EXIF metadata at all.
+     */
+    private static String dimensions(Metadata metadata) {
+        JpegDirectory dir = metadata.getFirstDirectoryOfType(JpegDirectory.class);
+        if (dir == null) return null;
+        try {
+            return dir.getImageWidth() + "×" + dir.getImageHeight();
+        } catch (MetadataException e) {
+            return null;
+        }
     }
 
     private static Double latitude(Metadata metadata) {
