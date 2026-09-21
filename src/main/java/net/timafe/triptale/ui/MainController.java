@@ -5,9 +5,6 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -15,29 +12,16 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Tooltip;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.event.ActionEvent;
+import javafx.scene.Node;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -45,13 +29,22 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.export.DiaryExporter;
-import net.timafe.triptale.export.ImpressionsMode;
+import net.timafe.triptale.export.ExportTempFiles;
 import net.timafe.triptale.git.GitService;
-import net.timafe.triptale.storage.ExifInfo;
 import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.ui.dialog.AboutDialog;
+import net.timafe.triptale.ui.dialog.CoordinatesDialog;
+import net.timafe.triptale.ui.dialog.EditSettingsDialog;
+import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
+import net.timafe.triptale.ui.dialog.ImageViewerDialog;
+import net.timafe.triptale.ui.dialog.NewTripDialog;
+import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
+import net.timafe.triptale.ui.dialog.SyncProgressDialog;
+import net.timafe.triptale.ui.dialog.TripDetailsDialog;
+import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
@@ -65,26 +58,30 @@ import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
+/**
+ * Controller for the single main window: trip/date navigation, the entry form and its dirty
+ * tracking, and the git actions on the toolbar and menu bar.
+ * <p>
+ * Modal dialogs live in {@link net.timafe.triptale.ui.dialog} — each returns its result as data
+ * rather than reaching back into this controller's fields.
+ */
 @Component
-public class MainController {
+public class MainController implements StatusSink {
 
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
@@ -170,37 +167,42 @@ public class MainController {
     private final MarkdownStore store;
     private final GitService gitService;
     private final SettingsStore settingsStore;
-    private final DiaryExporter diaryExporter;
     private final ImpressionsResolver impressionsResolver;
-    private final ExifReader exifReader;
     private final ConnectivityService connectivityService;
-    private final BuildProperties buildProperties;
-    private final HostServices hostServices;
+    private final ExportTempFiles exportTempFiles;
+    private final BrowserLauncher browser;
     private final String appName;
+
+    // Dialogs whose own dependencies this controller has no other use for.
+    private final ExportDiaryDialog exportDiaryDialog;
+    private final ImageViewerDialog imageViewerDialog;
+    private final AboutDialog aboutDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
+                          ExportTempFiles exportTempFiles,
                           TripTaleProperties tripTaleProperties,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
         this.store = store;
         this.gitService = gitService;
         this.settingsStore = settingsStore;
-        this.diaryExporter = diaryExporter;
         this.impressionsResolver = impressionsResolver;
-        this.exifReader = exifReader;
         this.connectivityService = connectivityService;
+        this.exportTempFiles = exportTempFiles;
         this.appName = tripTaleProperties.getAppName();
-        this.buildProperties = buildPropertiesProvider.getIfAvailable();
-        this.hostServices = hostServicesProvider.getIfAvailable();
+        this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
+        this.exportDiaryDialog =
+                new ExportDiaryDialog(diaryExporter, settingsStore, exportTempFiles, browser, this);
+        this.imageViewerDialog = new ImageViewerDialog(exifReader, browser, this);
+        this.aboutDialog =
+                new AboutDialog(appName, buildPropertiesProvider.getIfAvailable(), browser);
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
             DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.ENGLISH);
-    private static final DateTimeFormatter DATE_ISO =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
 
     @FXML
     public void initialize() {
@@ -236,7 +238,7 @@ public class MainController {
                 }
             }
         });
-        cleanupExportTmpDir();
+        exportTempFiles.sweep();
         boolean ready = performStartupChecks();
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
@@ -337,35 +339,6 @@ public class MainController {
      * JavaFX allows showing a {@link Dialog}/{@link Alert} here even though the primary stage
      * isn't visible yet.
      */
-    /** Dedicated subdirectory of the OS temp dir for export previews, so a single startup sweep can clear stale files from crashed/killed sessions. */
-    private static Path exportTmpDir() {
-        return Paths.get(System.getProperty("java.io.tmpdir"), "triptale");
-    }
-
-    /** Creates a fresh temp file under {@link #exportTmpDir()}, registered for best-effort deletion on clean shutdown. */
-    private static Path newExportTempFile(String prefix, String suffix) throws IOException {
-        Files.createDirectories(exportTmpDir());
-        Path tmp = Files.createTempFile(exportTmpDir(), prefix, suffix);
-        tmp.toFile().deleteOnExit();
-        return tmp;
-    }
-
-    private void cleanupExportTmpDir() {
-        Path dir = exportTmpDir();
-        if (!Files.isDirectory(dir)) return;
-        try (var files = Files.list(dir)) {
-            files.forEach(f -> {
-                try {
-                    Files.deleteIfExists(f);
-                } catch (IOException e) {
-                    log.warn("Could not delete stale temp file {}: {}", f, e.getMessage());
-                }
-            });
-        } catch (IOException e) {
-            log.warn("Could not clean temp dir {}: {}", dir, e.getMessage());
-        }
-    }
-
     private boolean performStartupChecks() {
         if (!gitService.isConfigured()) {
             Alert warn = new Alert(Alert.AlertType.WARNING,
@@ -373,7 +346,7 @@ public class MainController {
                     ButtonType.OK);
             warn.setTitle(appName);
             warn.setHeaderText("Data directory not configured");
-            applyStylesheet(warn.getDialogPane());
+            Dialogs.applyStylesheet(warn.getDialogPane());
             warn.showAndWait();
             return false;
         }
@@ -384,7 +357,7 @@ public class MainController {
                     ButtonType.YES, ButtonType.NO);
             confirm.setTitle(appName);
             confirm.setHeaderText("Initialize git repository");
-            applyStylesheet(confirm.getDialogPane());
+            Dialogs.applyStylesheet(confirm.getDialogPane());
             Optional<ButtonType> result = confirm.showAndWait();
             if (result.isEmpty() || result.get() != ButtonType.YES) {
                 // Leave as-is; the directory is still empty so we'll re-prompt next launch.
@@ -433,9 +406,7 @@ public class MainController {
                 : LocalDate.now().getYear();
         yearCombo.setValue(year);
         reloadTrips(year);
-        Trip toSelect = last != null
-                ? tripCombo.getItems().stream().filter(t -> t.slug().equals(last.slug())).findFirst().orElse(null)
-                : null;
+        Trip toSelect = last != null ? findTrip(last.slug()) : null;
         if (toSelect == null && !tripCombo.getItems().isEmpty()) {
             toSelect = tripCombo.getItems().get(0);
         }
@@ -444,57 +415,19 @@ public class MainController {
         }
     }
 
+    /** The loaded trip with this slug in the currently selected year, or null. */
+    private Trip findTrip(String slug) {
+        return tripCombo.getItems().stream()
+                .filter(t -> t.slug().equals(slug))
+                .findFirst().orElse(null);
+    }
+
     @FXML
     public void onNewTrip() {
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("New Trip");
-        dlg.setHeaderText("Create a new trip");
-
-        TextField nameField = new TextField();
-        nameField.setPromptText("Trip name");
-        nameField.setPrefColumnCount(28);
-        DatePicker startField = new DatePicker(LocalDate.now());
-        startField.setConverter(new StringConverter<>() {
-            @Override public String toString(LocalDate d) { return d == null ? "" : DATE_ISO.format(d); }
-            @Override public LocalDate fromString(String s) {
-                if (s == null || s.isBlank()) return null;
-                try { return LocalDate.parse(s.trim(), DATE_ISO); } catch (Exception e) { return null; }
-            }
-        });
-        TextArea descArea = new TextArea();
-        descArea.setPromptText("Optional description");
-        descArea.setPrefRowCount(3);
-        descArea.setPrefColumnCount(28);
-        descArea.setWrapText(true);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(14));
-        grid.getStyleClass().add("card");
-        grid.add(new Label("Name:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Start date:"), 0, 1);
-        grid.add(startField, 1, 1);
-        grid.add(new Label("Description:"), 0, 2);
-        grid.add(descArea, 1, 2);
-
-        dlg.getDialogPane().setContent(grid);
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        applyStylesheet(dlg.getDialogPane());
-
-        Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
-        okButton.setDisable(true);
-        Runnable refreshOk = () -> okButton.setDisable(
-                nameField.getText().isBlank() || startField.getValue() == null);
-        nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
-        startField.valueProperty().addListener((o, a, b) -> refreshOk.run());
-
-        Optional<ButtonType> result = dlg.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) return;
-        String name = nameField.getText().trim();
-        LocalDate start = startField.getValue();
-        String desc = descArea.getText();
+        Optional<NewTripDialog.Spec> spec = new NewTripDialog().showAndWait();
+        if (spec.isEmpty()) return;
+        String name = spec.get().name();
+        LocalDate start = spec.get().startDate();
         String slug = Slugs.toSlug(name);
         int year = start.getYear();
         TripRef ref = new TripRef(year, slug);
@@ -502,14 +435,12 @@ public class MainController {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        Trip trip = new Trip(year, slug, name, start, desc);
-        store.saveTrip(trip);
+        store.saveTrip(new Trip(year, slug, name, start, spec.get().description()));
         addPending(ref.path(), CREATE);
         reloadYears();
         yearCombo.setValue(year);
         reloadTrips(year);
-        tripCombo.getSelectionModel().select(
-                tripCombo.getItems().stream().filter(t -> t.slug().equals(slug)).findFirst().orElse(null));
+        tripCombo.getSelectionModel().select(findTrip(slug));
         status("Created trip " + ref.path());
     }
 
@@ -517,92 +448,12 @@ public class MainController {
     public void onTripDetails() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
-
-        List<LocalDate> dates = store.listEntryDates(trip.ref());
-        double totalDistance = 0;
-        double totalAltitude = 0;
-        int activeDays = 0;
-        int activeAltitudeDays = 0;
-        for (LocalDate d : dates) {
-            DiaryEntry e = store.loadEntry(trip.ref(), d);
-            if (e.distance() != null && e.distance() > 0) {
-                totalDistance += e.distance();
-                activeDays++;
-            }
-            if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
-                totalAltitude += e.altitudeMeters();
-                activeAltitudeDays++;
-            }
-        }
-
-        TextField nameField = new TextField(trip.name());
-        nameField.setPromptText("Trip name");
-        nameField.setPrefColumnCount(28);
-        TextArea descArea = new TextArea(trip.description() == null ? "" : trip.description());
-        descArea.setWrapText(true);
-        descArea.setPrefRowCount(4);
-        descArea.setPrefColumnCount(40);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(14));
-        grid.getStyleClass().add("card");
-        int row = 0;
-        grid.add(new Label("Name:"), 0, row);
-        grid.add(nameField, 1, row++);
-        grid.add(new Label("Slug:"), 0, row);
-        grid.add(new Label(trip.slug()), 1, row++);
-        grid.add(new Label("Year:"), 0, row);
-        grid.add(new Label(Integer.toString(trip.year())), 1, row++);
-        grid.add(new Label("Start date:"), 0, row);
-        grid.add(new Label(trip.startDate() == null ? "—" : trip.startDate().toString()), 1, row++);
-        grid.add(new Label("Entries:"), 0, row);
-        grid.add(new Label(Integer.toString(dates.size())), 1, row++);
-        grid.add(new Label("Total distance:"), 0, row);
-        String distanceText = activeDays > 0
-                ? String.format(Locale.ROOT, "%.1f km (avg %.1f km / active day, %d days)",
-                        totalDistance, totalDistance / activeDays, activeDays)
-                : String.format(Locale.ROOT, "%.1f km", totalDistance);
-        grid.add(new Label(distanceText), 1, row++);
-        grid.add(new Label("Total altitude:"), 0, row);
-        String altitudeText = activeAltitudeDays > 0
-                ? String.format(Locale.ROOT, "%.0f m (avg %.0f m / active day, %d days)",
-                        totalAltitude, totalAltitude / activeAltitudeDays, activeAltitudeDays)
-                : String.format(Locale.ROOT, "%.0f m", totalAltitude);
-        grid.add(new Label(altitudeText), 1, row++);
-        grid.add(new Label("Description:"), 0, row);
-        grid.add(descArea, 1, row);
-
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Trip Details");
-        dlg.setHeaderText(trip.name());
-        dlg.getDialogPane().setContent(grid);
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        applyStylesheet(dlg.getDialogPane());
-
-        Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
-        String originalDesc = trip.description() == null ? "" : trip.description();
-        Runnable refreshOk = () -> okButton.setDisable(
-                nameField.getText().isBlank()
-                        || (nameField.getText().trim().equals(trip.name()) && descArea.getText().equals(originalDesc)));
-        refreshOk.run();
-        nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
-        descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
-
-        Optional<ButtonType> result = dlg.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) return;
-        String newName = nameField.getText().trim();
-        String newDesc = descArea.getText();
-        if (newName.equals(trip.name()) && newDesc.equals(trip.description() == null ? "" : trip.description())) {
-            return;
-        }
-        Trip updated = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newDesc);
-        store.saveTrip(updated);
+        Optional<Trip> updated = new TripDetailsDialog(store).showAndWait(trip);
+        if (updated.isEmpty()) return;
+        store.saveTrip(updated.get());
         addPending(trip.ref().path(), UPDATE);
         reloadTrips(trip.year());
-        tripCombo.getSelectionModel().select(
-                tripCombo.getItems().stream().filter(t -> t.slug().equals(trip.slug())).findFirst().orElse(null));
+        tripCombo.getSelectionModel().select(findTrip(trip.slug()));
         status("Updated trip " + trip.ref().path());
     }
 
@@ -610,82 +461,7 @@ public class MainController {
     public void onExportDiary() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
-        String exported;
-        try {
-            exported = diaryExporter.exportTrip(trip);
-        } catch (RuntimeException e) {
-            error("Export failed: " + e.getMessage());
-            return;
-        }
-
-        TextArea ta = new TextArea(exported);
-        ta.setEditable(false);
-        ta.setWrapText(false);
-        ta.setStyle("-fx-font-family: 'monospace';");
-        ta.setPrefRowCount(28);
-        ta.setPrefColumnCount(90);
-
-        AppSettings settings = settingsStore.load();
-        boolean impressionsConfigured = !settings.getImpressionsFilePattern().isBlank();
-        boolean favesConfigured = !settings.getImpressionsFaveFilePattern().isBlank();
-        ImpressionsMode defaultMode = impressionsConfigured
-                ? ImpressionsMode.ALL
-                : (favesConfigured ? ImpressionsMode.FAVES : ImpressionsMode.NONE);
-
-        ComboBox<ImpressionsMode> impressionsCombo = new ComboBox<>(
-                FXCollections.observableArrayList(ImpressionsMode.NONE, ImpressionsMode.FAVES, ImpressionsMode.ALL));
-        impressionsCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(ImpressionsMode m) {
-                if (m == null) return "";
-                return switch (m) {
-                    case NONE -> "None";
-                    case FAVES -> "Fave Impressions";
-                    case ALL -> "All Impressions";
-                };
-            }
-            @Override public ImpressionsMode fromString(String s) { return null; }
-        });
-        impressionsCombo.setValue(defaultMode);
-
-        HBox impressionsBox = new HBox(8, new Label("Images:"), impressionsCombo);
-        impressionsBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-        VBox contentBox = new VBox(8, ta, impressionsBox);
-
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Export Diary");
-        dlg.setHeaderText(trip.name());
-        dlg.setResizable(true);
-        dlg.getDialogPane().setContent(contentBox);
-        applyStylesheet(dlg.getDialogPane());
-
-        ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
-        ButtonType previewType = new ButtonType("Preview in Browser", ButtonBar.ButtonData.OTHER);
-        dlg.getDialogPane().getButtonTypes().setAll(copyType, previewType, ButtonType.CLOSE);
-
-        Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
-        copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(exported);
-            Clipboard.getSystemClipboard().setContent(cc);
-            status("Diary copied to clipboard");
-            ev.consume();
-        });
-
-        Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
-        previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
-            try {
-                String html = diaryExporter.exportTripAsHtml(trip, impressionsCombo.getValue());
-                Path tmp = newExportTempFile("export-", ".html");
-                Files.writeString(tmp, html, java.nio.charset.StandardCharsets.UTF_8);
-                openInBrowser(tmp.toUri().toString());
-            } catch (IOException ex) {
-                error("Preview failed: " + ex.getMessage());
-            }
-            ev.consume();
-        });
-
-        dlg.showAndWait();
+        exportDiaryDialog.show(trip);
     }
 
     @FXML
@@ -693,58 +469,7 @@ public class MainController {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) { error("No entry selected"); return; }
-        String source;
-        try {
-            source = store.readEntrySource(trip.ref(), date);
-        } catch (RuntimeException e) {
-            error("Failed to read source: " + e.getMessage());
-            return;
-        }
-
-        TextArea ta = new TextArea(source);
-        ta.setEditable(false);
-        ta.setWrapText(true);
-        ta.setStyle("-fx-font-family: 'monospace';");
-        ta.setPrefRowCount(28);
-        ta.setPrefColumnCount(70);
-
-        Path fullPath = store.entryFile(trip.ref(), date);
-        Path relativePath = store.dataDir().relativize(fullPath);
-
-        Label pathLabel = new Label("File: " + relativePath);
-        Button copyPathBtn = new Button("📋");
-        copyPathBtn.setTooltip(new Tooltip("Copy full path to clipboard"));
-        copyPathBtn.setOnAction(ev -> {
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(fullPath.toString());
-            Clipboard.getSystemClipboard().setContent(cc);
-            status("Full path copied to clipboard");
-        });
-        HBox header = new HBox(10, pathLabel, copyPathBtn);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(10));
-        HBox.setHgrow(pathLabel, Priority.ALWAYS);
-
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("View Source");
-        dlg.getDialogPane().setHeader(header);
-        dlg.setResizable(true);
-        dlg.getDialogPane().setContent(ta);
-        applyStylesheet(dlg.getDialogPane());
-
-        ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.LEFT);
-        dlg.getDialogPane().getButtonTypes().setAll(copyType, ButtonType.CLOSE);
-
-        Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
-        copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(source);
-            Clipboard.getSystemClipboard().setContent(cc);
-            status("Source copied to clipboard");
-            ev.consume();
-        });
-
-        dlg.showAndWait();
+        new ViewSourceDialog(store, this).show(trip.ref(), date);
     }
 
     @FXML
@@ -850,34 +575,28 @@ public class MainController {
 
     private void updateImpressionsButton(Trip trip, LocalDate date) {
         if (impressionsButton == null) return;
-        String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
-        List<Path> images = pattern == null || date == null
-                ? List.of()
-                : impressionsResolver.resolve(pattern, trip, date);
-        if (images.isEmpty()) {
-            impressionsButton.setText("No Impressions");
-            impressionsButton.setDisable(true);
-        } else {
-            impressionsButton.setText("🖼 " + images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
-            impressionsButton.setDisable(false);
-        }
-        if (impressionsMenuItem != null) impressionsMenuItem.setDisable(images.isEmpty());
+        int count = resolveImpressions(settingsStore.load().getImpressionsFilePattern(), trip, date).size();
+        impressionsButton.setText(count == 0
+                ? "No Impressions"
+                : "🖼 " + count + " Impression" + (count == 1 ? "" : "s") + " ›");
+        impressionsButton.setDisable(count == 0);
+        if (impressionsMenuItem != null) impressionsMenuItem.setDisable(count == 0);
     }
 
     private void updateFavesButton(Trip trip, LocalDate date) {
         if (favesButton == null) return;
-        String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
-        List<Path> images = pattern == null || date == null
-                ? List.of()
-                : impressionsResolver.resolve(pattern, trip, date);
-        if (images.isEmpty()) {
-            favesButton.setText("No Faves");
-            favesButton.setDisable(true);
-        } else {
-            favesButton.setText("🖼 " + images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
-            favesButton.setDisable(false);
-        }
-        if (favesMenuItem != null) favesMenuItem.setDisable(images.isEmpty());
+        int count = resolveImpressions(settingsStore.load().getImpressionsFaveFilePattern(), trip, date).size();
+        favesButton.setText(count == 0
+                ? "No Faves"
+                : "🖼 " + count + " Fave" + (count == 1 ? "" : "s") + " ›");
+        favesButton.setDisable(count == 0);
+        if (favesMenuItem != null) favesMenuItem.setDisable(count == 0);
+    }
+
+    /** Images matching a configured pattern for this trip/date; empty when anything is missing. */
+    private List<Path> resolveImpressions(String pattern, Trip trip, LocalDate date) {
+        if (pattern == null || pattern.isBlank() || trip == null || date == null) return List.of();
+        return impressionsResolver.resolve(pattern, trip, date);
     }
 
     private void updateCoordinatesButton() {
@@ -893,7 +612,7 @@ public class MainController {
     @FXML
     public void onOpenCoordinates() {
         if (startLat == null || startLon == null) return;
-        openInBrowser("https://www.google.com/maps?q=" + startLat + "," + startLon);
+        browser.open("https://www.google.com/maps?q=" + startLat + "," + startLon);
     }
 
     private void updateViewSourceMenuItem(boolean exists) {
@@ -962,32 +681,33 @@ public class MainController {
                 save, discard, ButtonType.CANCEL);
         alert.setTitle("Unsaved Changes");
         alert.setHeaderText("Unsaved changes");
-        applyStylesheet(alert.getDialogPane());
+        Dialogs.applyStylesheet(alert.getDialogPane());
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isEmpty() || result.get() == ButtonType.CANCEL) {
             navigating = true;
             try { revert.run(); } finally { navigating = false; }
             return false;
         }
-        if (result.get() == save && target != null) {
-            boolean valid = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
-            if (valid) {
-                doSave(target.trip(), target.date());
-            }
+        if (result.get() == save && target != null && isValidEntry()) {
+            doSave(target.trip(), target.date());
         }
         return true;
     }
 
+    /** An entry needs at least a title and some tale text before it can be written. */
+    private boolean isValidEntry() {
+        return !titleField.getText().isBlank() && !talesArea.getText().isBlank();
+    }
+
     private void updateDirty() {
-        boolean dirty = isDirty();
-        boolean validEntry = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
+        boolean saveEnabled = isDirty() && isValidEntry();
         String saveLabel = entryExists ? "💾 Save Tale" : "📝 Create Tale";
         if (saveButton != null) {
-            saveButton.setDisable(!dirty || !validEntry);
+            saveButton.setDisable(!saveEnabled);
             saveButton.setText(saveLabel);
         }
         if (saveMenuItem != null) {
-            saveMenuItem.setDisable(!dirty || !validEntry);
+            saveMenuItem.setDisable(!saveEnabled);
             saveMenuItem.setText(saveLabel);
         }
         boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
@@ -999,7 +719,7 @@ public class MainController {
             copyMenuItem.setDisable(!hasContent);
         }
         if (openTrackUrlButton != null) {
-            openTrackUrlButton.setDisable(!isValidHttpUrl(trackUrlField.getText()));
+            openTrackUrlButton.setDisable(!UiText.isValidHttpUrl(trackUrlField.getText()));
         }
         updateCommitButton();
     }
@@ -1142,9 +862,7 @@ public class MainController {
             sb.append(title).append("\n\n");
         }
         if (tales != null) sb.append(tales);
-        ClipboardContent cc = new ClipboardContent();
-        cc.putString(sb.toString());
-        Clipboard.getSystemClipboard().setContent(cc);
+        Clipboards.putString(sb.toString());
     }
 
     @FXML
@@ -1203,15 +921,15 @@ public class MainController {
             if (connected == null) {
                 connectivityButton.getStyleClass().add(CONN_CHECKING);
                 connectivityButton.setText(CONN_ICON_CHECKING);
-                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Checking connectivity…"));
+                connectivityButton.setTooltip(new Tooltip("Checking connectivity…"));
             } else if (connected) {
                 connectivityButton.getStyleClass().add(CONN_CONNECTED);
                 connectivityButton.setText(CONN_ICON_CONNECTED);
-                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Connected — click to recheck"));
+                connectivityButton.setTooltip(new Tooltip("Connected — click to recheck"));
             } else {
                 connectivityButton.getStyleClass().add(CONN_DISCONNECTED);
                 connectivityButton.setText(CONN_ICON_DISCONNECTED);
-                connectivityButton.setTooltip(new javafx.scene.control.Tooltip("Offline — click to recheck"));
+                connectivityButton.setTooltip(new Tooltip("Offline — click to recheck"));
             }
         }
         // Gray out push/pull when offline or no remote configured
@@ -1240,6 +958,7 @@ public class MainController {
                     ButtonType.OK, ButtonType.CANCEL);
             confirm.setTitle("Pull");
             confirm.setHeaderText("Uncommitted changes");
+            Dialogs.applyStylesheet(confirm.getDialogPane());
             Optional<ButtonType> result = confirm.showAndWait();
             if (result.isEmpty() || result.get() != ButtonType.OK) return;
         }
@@ -1249,7 +968,7 @@ public class MainController {
             loadEntry();
             status("Pulled from remote");
         } catch (RuntimeException e) {
-            error(describe(e));
+            error(UiText.describe(e));
         }
     }
 
@@ -1259,132 +978,27 @@ public class MainController {
             gitService.push();
             status("Pushed to remote");
         } catch (RuntimeException e) {
-            error(describe(e));
+            error(UiText.describe(e));
         }
     }
 
-    /**
-     * All-in-one remote sync: commits any outstanding changes (in-memory pending
-     * saves as well as any changes made to the data dir outside the app), then
-     * fetches and rebases onto the remote branch, then pushes. Runs the git
-     * operations on a background thread and shows a small progress popup that
-     * tracks the current step; the popup closes automatically on success, or
-     * stays open showing the failed step and error if something goes wrong.
-     */
     @FXML
     public void onSync() {
-        String dataDir = settingsStore.load().resolvedDataDir()
-                .map(Path::toString).orElse("(not configured)");
-        String remoteUrl;
-        try {
-            remoteUrl = gitService.remoteUrl();
-        } catch (RuntimeException e) {
-            remoteUrl = "";
-        }
-        String remoteDisplay = remoteUrl.isBlank() ? "(no remote)" : remoteUrl;
-
-        javafx.scene.control.ProgressIndicator spinner = new javafx.scene.control.ProgressIndicator();
-        spinner.setPrefSize(22, 22);
-        spinner.setMinSize(22, 22);
-        Label opLabel = new Label("Starting sync…");
-        opLabel.setWrapText(true);
-        opLabel.setMaxWidth(Double.MAX_VALUE);
-        HBox stepRow = new HBox(10, spinner, opLabel);
-        stepRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        HBox.setHgrow(opLabel, javafx.scene.layout.Priority.ALWAYS);
-
-        Label contextLabel = new Label("Data dir: " + dataDir + "\nRemote: " + remoteDisplay);
-        contextLabel.setWrapText(true);
-        contextLabel.setMaxWidth(Double.MAX_VALUE);
-        contextLabel.setStyle("-fx-font-size: 11; -fx-opacity: 0.7;");
-
-        VBox content = new VBox(10, stepRow, contextLabel);
-        content.setPadding(new Insets(16));
-        content.setMinWidth(480);
-        content.setPrefWidth(520);
-
-        Dialog<Void> progress = new Dialog<>();
-        progress.setTitle("Sync");
-        progress.getDialogPane().setContent(content);
-        progress.getDialogPane().setMinWidth(520);
-        progress.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        Node closeButton = progress.getDialogPane().lookupButton(ButtonType.CLOSE);
-        closeButton.setVisible(false);
-        closeButton.setManaged(false);
-        applyStylesheet(progress.getDialogPane());
-        progress.show();
-
-        String remoteForMessages = remoteDisplay;
-        Thread worker = new Thread(() -> {
-            String step = "Commit";
-            try {
-                Platform.runLater(() -> opLabel.setText("Committing outstanding changes in " + dataDir + "…"));
-                String message = pending.isEmpty() ? "Sync: external changes" : buildCommitMessage();
-                String sha = gitService.commitAll(message);
-
-                step = "Rebase";
-                Platform.runLater(() -> opLabel.setText("Fetching & rebasing from " + remoteForMessages + "…"));
-                gitService.fetchAndRebase();
-
-                step = "Push";
-                Platform.runLater(() -> opLabel.setText("Pushing to " + remoteForMessages + "…"));
-                gitService.push();
-
-                String finalSha = sha;
-                Platform.runLater(() -> {
-                    if (finalSha != null) {
-                        pending.clear();
-                        updateCommitButton();
-                    }
-                    reloadAll();
-                    loadEntry();
-                    String suffix = finalSha != null ? " (committed " + finalSha + ")" : "";
-                    status("Synced with remote" + suffix);
-                    progress.close();
-                });
-            } catch (RuntimeException e) {
-                String failedStep = step;
-                Platform.runLater(() -> {
-                    spinner.setVisible(false);
-                    spinner.setManaged(false);
-                    opLabel.setText(failedStep + " failed: " + describe(e));
-                    closeButton.setVisible(true);
-                    closeButton.setManaged(true);
-                });
+        String message = pending.isEmpty() ? "Sync: external changes" : buildCommitMessage();
+        new SyncProgressDialog(gitService, settingsStore).start(message, sha -> {
+            if (sha != null) {
+                pending.clear();
+                updateCommitButton();
             }
-        }, "sync-worker");
-        worker.setDaemon(true);
-        worker.start();
+            reloadAll();
+            loadEntry();
+            status("Synced with remote" + (sha != null ? " (committed " + sha + ")" : ""));
+        });
     }
 
     @FXML
     public void onRemoteInfo() {
-        String actualRemote;
-        try {
-            actualRemote = gitService.remoteUrl();
-        } catch (RuntimeException e) {
-            actualRemote = "(error: " + e.getMessage() + ")";
-        }
-        AppSettings settings = settingsStore.load();
-        String authorName = settings.getGit().getAuthorName();
-        String authorEmail = settings.getGit().getAuthorEmail();
-        String authorDisplay = (authorName.isBlank() && authorEmail.isBlank())
-                ? "(system git config)"
-                : (authorName + " <" + authorEmail + ">");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(6);
-        grid.setPadding(new Insets(10));
-        int row = 0;
-        grid.add(new Label("Data dir:"), 0, row);
-        grid.add(new Label(settings.resolvedDataDir().map(Path::toString).orElse("(not configured)")), 1, row++);
-        grid.add(new Label("Origin URL:"), 0, row);
-        grid.add(new Label(actualRemote.isBlank() ? "(none)" : actualRemote), 1, row++);
-        grid.add(new Label("Author:"), 0, row);
-        grid.add(new Label(authorDisplay), 1, row);
-
-        showInfoDialog("Remote Info", "Git configuration", grid);
+        new RemoteInfoDialog(gitService, settingsStore).show();
     }
 
     @FXML
@@ -1411,7 +1025,7 @@ public class MainController {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, body.toString(),
                 commitAndExit, exitAnyway, ButtonType.CANCEL);
         confirm.setTitle("Exit " + appName);
-        applyStylesheet(confirm.getDialogPane());
+        Dialogs.applyStylesheet(confirm.getDialogPane());
         confirm.setHeaderText(dirty && hasPending
                 ? "Unsaved and uncommitted changes"
                 : (dirty ? "Unsaved changes" : "Uncommitted changes"));
@@ -1434,145 +1048,23 @@ public class MainController {
 
     @FXML
     public void onAbout() {
-        String version = buildProperties != null ? buildProperties.getVersion() : "dev";
-        String builtAt = (buildProperties != null && buildProperties.getTime() != null)
-                ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                        .withZone(ZoneId.systemDefault())
-                        .format(buildProperties.getTime())
-                : "—";
-        String javaVersion = System.getProperty("java.version", "?");
-        String javafxVersion = System.getProperty("javafx.runtime.version",
-                System.getProperty("javafx.version", "?"));
-        String repoUrl = "https://github.com/tillkuhn/triptale";
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(6);
-        grid.setPadding(new Insets(10));
-        int row = 0;
-
-        Label desc = new Label("Offline-first cycling and hiking trip diary with git sync");
-        desc.setWrapText(true);
-        desc.setMaxWidth(360);
-        grid.add(desc, 0, row++, 2, 1);
-
-        grid.add(new Label("Version:"), 0, row);
-        grid.add(new Label(version), 1, row++);
-        grid.add(new Label("Built:"), 0, row);
-        grid.add(new Label(builtAt), 1, row++);
-        grid.add(new Label("Runtime:"), 0, row);
-        grid.add(new Label("Java " + javaVersion + "  ·  JavaFX " + javafxVersion), 1, row++);
-        Runtime runtime = Runtime.getRuntime();
-        long usedBytes = runtime.totalMemory() - runtime.freeMemory();
-        String usedMemory = String.format(Locale.ROOT, "%.0f MB", usedBytes / (1024.0 * 1024.0));
-        grid.add(new Label("Memory:"), 0, row);
-        grid.add(new Label(usedMemory), 1, row++);
-        grid.add(new Label("License:"), 0, row);
-        grid.add(new Label("Apache 2.0"), 1, row++);
-        grid.add(new Label("Source:"), 0, row);
-        Hyperlink link = new Hyperlink("github.com/tillkuhn/triptale");
-        link.setOnAction(e -> openInBrowser(repoUrl));
-        grid.add(link, 1, row);
-
-        showInfoDialog("About " + appName, appName, grid);
-    }
-
-    /**
-     * Shared layout for static info popups (Remote Info, About, ...): title bar text,
-     * a bold heading with the platform "i" icon, and arbitrary content below.
-     */
-    private void showInfoDialog(String title, String headerText, Node content) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(headerText);
-        alert.getDialogPane().setContent(content);
-        alert.getButtonTypes().setAll(ButtonType.CLOSE);
-        applyStylesheet(alert.getDialogPane());
-        alert.showAndWait();
+        aboutDialog.show();
     }
 
     @FXML
     public void onOpenTrackUrl() {
         String url = trackUrlField.getText();
-        if (isValidHttpUrl(url)) openInBrowser(url.trim());
+        if (UiText.isValidHttpUrl(url)) browser.open(url.trim());
     }
 
     @FXML
     public void onCoordinates() {
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Start Point Coordinates");
-        dlg.setHeaderText("Start point coordinates");
-
-        TextField latField = new TextField(startLat == null ? "" : startLat.toString());
-        TextField lonField = new TextField(startLon == null ? "" : startLon.toString());
-        Label ddmLabel = new Label("—");
-        TextArea parseArea = new TextArea();
-        parseArea.setPromptText("Paste a Google Maps URL, GPX <trkpt>, or GeoJSON [lon, lat] array");
-        parseArea.setPrefRowCount(3);
-        parseArea.setWrapText(true);
-        Label parseHintLabel = new Label();
-        parseHintLabel.getStyleClass().add("hint-label");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(14));
-        grid.getStyleClass().add("card");
-        grid.add(new Label("DDM:"), 0, 0);
-        grid.add(ddmLabel, 1, 0);
-        grid.add(new Label("Latitude:"), 0, 1);
-        grid.add(latField, 1, 1);
-        grid.add(new Label("Longitude:"), 0, 2);
-        grid.add(lonField, 1, 2);
-        grid.add(new Label("Parse from:"), 0, 3);
-        grid.add(parseArea, 1, 3);
-        grid.add(parseHintLabel, 1, 4);
-
-        ButtonType clearType = new ButtonType("Clear", ButtonBar.ButtonData.OTHER);
-        ButtonType parseType = new ButtonType("Parse", ButtonBar.ButtonData.OTHER);
-        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
-        dlg.getDialogPane().setContent(grid);
-        // ButtonType.CANCEL also re-enables the dialog window's native close (X) button —
-        // JavaFX disables it unless a CANCEL_CLOSE-data button is present.
-        dlg.getDialogPane().getButtonTypes().addAll(clearType, parseType, ButtonType.CANCEL, saveType);
-        applyStylesheet(dlg.getDialogPane());
-
-        Node saveButtonNode = dlg.getDialogPane().lookupButton(saveType);
-        Runnable refresh = () -> {
-            Double lat = silentParseDouble(latField.getText());
-            Double lon = silentParseDouble(lonField.getText());
-            boolean valid = lat != null && lon != null && Coordinates.isValid(lat, lon);
-            ddmLabel.setText(valid ? Coordinates.toDdm(lat, lon) : "—");
-            saveButtonNode.setDisable(!valid);
-        };
-        latField.textProperty().addListener((o, a, b) -> refresh.run());
-        lonField.textProperty().addListener((o, a, b) -> refresh.run());
-        refresh.run();
-
-        Node parseButtonNode = dlg.getDialogPane().lookupButton(parseType);
-        parseButtonNode.addEventFilter(ActionEvent.ACTION, ev -> {
-            Optional<Coordinates.LatLon> parsed = Coordinates.tryParse(parseArea.getText());
-            if (parsed.isPresent()) {
-                latField.setText(Double.toString(parsed.get().lat()));
-                lonField.setText(Double.toString(parsed.get().lon()));
-                parseHintLabel.setText("");
-            } else {
-                parseHintLabel.setText("Couldn't parse coordinates from input.");
-            }
-            ev.consume();
-        });
-
-        Optional<ButtonType> result = dlg.showAndWait();
+        Optional<CoordinatesDialog.Result> result =
+                new CoordinatesDialog().showAndWait(startLat, startLon);
         if (result.isEmpty()) return;
-        if (result.get() == clearType) {
-            startLat = null;
-            startLon = null;
-        } else if (result.get() == saveType) {
-            startLat = silentParseDouble(latField.getText());
-            startLon = silentParseDouble(lonField.getText());
-        } else {
-            return;
-        }
+        Coordinates.LatLon coords = result.get().coords();
+        startLat = coords == null ? null : coords.lat();
+        startLon = coords == null ? null : coords.lon();
         updateCoordinatesButton();
         updateDirty();
     }
@@ -1581,77 +1073,15 @@ public class MainController {
     public void onEditSettings() {
         AppSettings settings = settingsStore.load();
         String previousDataDir = settings.getDataDir();
-
-        Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Edit Settings");
-        dlg.setHeaderText("App-wide settings — File: " + settingsStore.settingsFile());
-
-        TextField dataDirField = new TextField(settings.getDataDir());
-        dataDirField.setPromptText("e.g. ${HOME}/git/triptale-data");
-        dataDirField.setPrefColumnCount(36);
-        TextField authorNameField = new TextField(settings.getGit().getAuthorName());
-        authorNameField.setPrefColumnCount(36);
-        TextField authorEmailField = new TextField(settings.getGit().getAuthorEmail());
-        authorEmailField.setPrefColumnCount(36);
-        TextField patternField = new TextField(settings.getImpressionsFilePattern());
-        patternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/output/${DATE}*.jpg");
-        patternField.setPrefColumnCount(36);
-        TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
-        columnsField.setPrefColumnCount(4);
-        TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
-        favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
-        favePatternField.setPrefColumnCount(36);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(14));
-        grid.getStyleClass().add("card");
-        int row = 0;
-        grid.add(new Label("Data directory:"), 0, row);
-        grid.add(dataDirField, 1, row++);
-        grid.add(new Label("Git author name:"), 0, row);
-        grid.add(authorNameField, 1, row++);
-        grid.add(new Label("Git author email:"), 0, row);
-        grid.add(authorEmailField, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
-        row++;
-        grid.add(new Label("Impressions file pattern:"), 0, row);
-        grid.add(patternField, 1, row++);
-        grid.add(new Label("Impressions grid columns:"), 0, row);
-        grid.add(columnsField, 1, row++);
-        grid.add(new Label("Faves file pattern:"), 0, row);
-        grid.add(favePatternField, 1, row);
-
-        dlg.getDialogPane().setContent(grid);
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        applyStylesheet(dlg.getDialogPane());
-
-        Optional<ButtonType> result = dlg.showAndWait();
-        if (result.isEmpty() || result.get() != ButtonType.OK) return;
-
-        int columns;
-        try {
-            columns = Integer.parseInt(columnsField.getText().trim());
-            if (columns < 1) columns = 1;
-        } catch (NumberFormatException nfe) {
-            columns = 2;
-        }
-        String newDataDir = dataDirField.getText().trim();
-        AppSettings.Git git = new AppSettings.Git();
-        git.setAuthorName(authorNameField.getText().trim());
-        git.setAuthorEmail(authorEmailField.getText().trim());
-        settings.setDataDir(newDataDir);
-        settings.setGit(git);
-        settings.setImpressionsFilePattern(patternField.getText().trim());
-        settings.setImpressionsGridColumns(columns);
-        settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
-        settingsStore.save(settings);
+        Optional<AppSettings> edited =
+                new EditSettingsDialog().showAndWait(settings, settingsStore.settingsFile());
+        if (edited.isEmpty()) return;
+        settingsStore.save(edited.get());
 
         updateImpressionsButton(tripCombo.getValue(), datePicker.getValue());
         updateFavesButton(tripCombo.getValue(), datePicker.getValue());
 
-        if (!newDataDir.equals(previousDataDir)) {
+        if (!edited.get().getDataDir().equals(previousDataDir)) {
             status("Settings saved — restart " + appName + " for the new data directory to take effect");
         } else {
             status("Settings saved");
@@ -1660,308 +1090,40 @@ public class MainController {
 
     @FXML
     public void onShowImpressions() {
-        Trip trip = tripCombo.getValue();
-        LocalDate date = datePicker.getValue();
-        if (trip == null || date == null) return;
-        String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
-        if (pattern == null) return;
-        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
-        if (images.isEmpty()) return;
-        showImagePopup("Impressions", images, date);
+        showImpressions("Impressions", settingsStore.load().getImpressionsFilePattern());
     }
 
     @FXML
     public void onShowFaves() {
-        Trip trip = tripCombo.getValue();
+        showImpressions("Faves", settingsStore.load().getImpressionsFaveFilePattern());
+    }
+
+    private void showImpressions(String title, String pattern) {
         LocalDate date = datePicker.getValue();
-        if (trip == null || date == null) return;
-        String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
-        if (pattern == null) return;
-        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
+        List<Path> images = resolveImpressions(pattern, tripCombo.getValue(), date);
         if (images.isEmpty()) return;
-        showImagePopup("Faves", images, date);
-    }
-
-    private void showImagePopup(String title, List<Path> images, LocalDate date) {
-        int[] index = {0};
-        Map<Path, ExifInfo> exifCache = new HashMap<>();
-
-        ImageView imageView = new ImageView();
-        imageView.setPreserveRatio(true);
-        imageView.setFitWidth(640);
-        imageView.setFitHeight(480);
-        // With preserveRatio=true, ImageView's own layout size shrinks to the actual scaled
-        // image dimensions (e.g. a landscape photo ends up shorter than a portrait one), which
-        // shifts everything else in the VBox up/down between images. Wrapping it in a
-        // fixed-size, centered box keeps the layout footprint constant at 640x480 regardless of
-        // the photo's aspect ratio, so nothing above/below it ever moves.
-        StackPane imageBox = new StackPane(imageView);
-        imageBox.setAlignment(javafx.geometry.Pos.CENTER);
-        imageBox.setMinSize(640, 480);
-        imageBox.setPrefSize(640, 480);
-        imageBox.setMaxSize(640, 480);
-        Label counter = new Label();
-
-        Label pathLabel = new Label();
-        pathLabel.setStyle("-fx-font-weight: bold;");
-        pathLabel.setWrapText(false);
-        // Center ellipsis keeps a bit of the directory (start) and the full filename tail
-        // (end) visible, cutting only the middle — and capping the width well below the
-        // 640px image width keeps the line short instead of stretching to fill it.
-        pathLabel.setTextOverrun(javafx.scene.control.OverrunStyle.CENTER_ELLIPSIS);
-        pathLabel.setAlignment(javafx.geometry.Pos.CENTER);
-        pathLabel.setMaxWidth(420);
-
-        Button copyDirBtn = new Button("📋");
-        copyDirBtn.setTooltip(new Tooltip("Copy directory to clipboard"));
-        copyDirBtn.setOnAction(ev -> {
-            Path dir = images.get(index[0]).getParent();
-            ClipboardContent cc = new ClipboardContent();
-            cc.putString(dir.toString());
-            Clipboard.getSystemClipboard().setContent(cc);
-            status("Directory copied to clipboard");
-        });
-
-        HBox pathRow = new HBox(6, pathLabel, copyDirBtn);
-        pathRow.setAlignment(javafx.geometry.Pos.CENTER);
-        pathRow.setMaxWidth(640);
-        pathRow.setMinWidth(640);
-        pathRow.setPrefWidth(640);
-
-        Label metaLabel = new Label();
-        // Fixed width matching the image, with ellipsis instead of wrapping/growing - otherwise
-        // a longer/shorter EXIF string changes the label's preferred width on every navigation,
-        // which grows/shrinks the whole dialog and reads as a flicker even though the vertical
-        // position is already locked.
-        metaLabel.setMaxWidth(640);
-        metaLabel.setMinWidth(640);
-        metaLabel.setPrefWidth(640);
-        metaLabel.setWrapText(false);
-        metaLabel.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
-        metaLabel.setAlignment(javafx.geometry.Pos.CENTER);
-
-        VBox topInfo = new VBox(2, pathRow, metaLabel);
-        topInfo.setAlignment(javafx.geometry.Pos.CENTER);
-        // Fixed 2-line height so the image never shifts vertically once EXIF data is
-        // populated (or when it's missing/short) - avoids the flicker/reflow on navigation.
-        topInfo.setMinHeight(36);
-        topInfo.setPrefHeight(36);
-        topInfo.setMaxHeight(36);
-
-        Button firstBtn = new Button("⏮");
-        Button prevBtn = new Button("◀");
-        Button nextBtn = new Button("▶");
-        Button lastBtn = new Button("⏭");
-
-        ButtonType mapButtonType = new ButtonType("Open in Maps", ButtonBar.ButtonData.RIGHT);
-
-        Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle(title);
-        dlg.setResizable(true);
-        dlg.getDialogPane().getStyleClass().add("image-viewer-dialog");
-        dlg.getDialogPane().getButtonTypes().add(mapButtonType);
-        dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-
-        Button mapButton = (Button) dlg.getDialogPane().lookupButton(mapButtonType);
-        Tooltip mapTooltip = new Tooltip();
-        Tooltip.install(mapButton, mapTooltip);
-
-        Runnable refresh = () -> {
-            Path p = images.get(index[0]);
-            imageView.setImage(new Image(p.toUri().toString(), 640, 480, true, true, true));
-            counter.setText((index[0] + 1) + " / " + images.size());
-            firstBtn.setDisable(index[0] == 0);
-            prevBtn.setDisable(index[0] == 0);
-            nextBtn.setDisable(index[0] == images.size() - 1);
-            lastBtn.setDisable(index[0] == images.size() - 1);
-
-            pathLabel.setText(homeRelative(p));
-            ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
-            StringBuilder sb = new StringBuilder();
-            if (exif.hasCameraData()) {
-                if (exif.cameraModel() != null) sb.append(exif.cameraModel());
-                if (exif.aperture() != null) {
-                    if (sb.length() > 0) sb.append(" · ");
-                    sb.append(exif.aperture());
-                }
-                if (exif.iso() != null) {
-                    if (sb.length() > 0) sb.append(" · ");
-                    sb.append(exif.iso());
-                }
-                if (exif.exposureTime() != null) {
-                    if (sb.length() > 0) sb.append(" · ");
-                    sb.append(exif.exposureTime());
-                }
-            } else {
-                sb.append("No camera data");
-            }
-            if (exif.dimensions() != null) {
-                sb.append(" · ").append(exif.dimensions());
-            }
-            if (exif.hasLocation()) {
-                sb.append(" · 📍 ").append(Coordinates.toDdm(exif.latitude(), exif.longitude()));
-            } else {
-                sb.append(" · 📍 Uncharted");
-            }
-            metaLabel.setText(sb.toString());
-
-            if (exif.hasLocation()) {
-                mapButton.setDisable(false);
-                mapTooltip.setText("Open coordinates in Google Maps");
-            } else {
-                mapButton.setDisable(true);
-                mapTooltip.setText("No geo data");
-            }
-        };
-        firstBtn.setOnAction(ev -> { index[0] = 0; refresh.run(); });
-        prevBtn.setOnAction(ev -> { if (index[0] > 0) index[0]--; refresh.run(); });
-        nextBtn.setOnAction(ev -> { if (index[0] < images.size() - 1) index[0]++; refresh.run(); });
-        lastBtn.setOnAction(ev -> { index[0] = images.size() - 1; refresh.run(); });
-
-        mapButton.addEventFilter(ActionEvent.ACTION, ev -> {
-            ExifInfo exif = exifCache.get(images.get(index[0]));
-            if (exif != null && exif.hasLocation()) {
-                openInBrowser(exif.mapsUrl());
-            }
-            ev.consume();
-        });
-
-        refresh.run();
-
-        HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn);
-        nav.setAlignment(javafx.geometry.Pos.CENTER);
-        nav.setPadding(new Insets(0, 0, 4, 0));
-        VBox content = new VBox(4, topInfo, imageBox, nav);
-        content.setAlignment(javafx.geometry.Pos.CENTER);
-        content.setMinWidth(640);
-        content.setPrefWidth(640);
-        content.setMaxWidth(640);
-        // Lock the dialog's initial width so it can't grow/shrink between images (which would
-        // look like a flicker) - the content is fixed at 640, the dialog pane just adds its own
-        // padding. Still resizable by the user afterwards since we only set the preferred width.
-        dlg.getDialogPane().setPrefWidth(680);
-
-        // Date is shown in the window title only - it's redundant above the image and was
-        // taking up a whole header row of vertical space.
-        dlg.setTitle(title + " of " + friendlyDate(date));
-        dlg.getDialogPane().setContent(content);
-        dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
-            if (ev.getCode() == KeyCode.LEFT) {
-                if (index[0] > 0) { index[0]--; refresh.run(); }
-                ev.consume();
-            } else if (ev.getCode() == KeyCode.RIGHT) {
-                if (index[0] < images.size() - 1) { index[0]++; refresh.run(); }
-                ev.consume();
-            }
-        });
-        applyStylesheet(dlg.getDialogPane());
-        dlg.showAndWait();
-    }
-
-    /** True when the value is a well-formed absolute http(s) URL. */
-    private static boolean isValidHttpUrl(String value) {
-        if (value == null || value.isBlank()) return false;
-        try {
-            java.net.URI uri = java.net.URI.create(value.trim());
-            String scheme = uri.getScheme();
-            return uri.isAbsolute()
-                    && scheme != null
-                    && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
-                    && uri.getHost() != null;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private void openInBrowser(String url) {
-        try {
-            if (hostServices != null) {
-                hostServices.showDocument(url);
-            } else {
-                log.warn("HostServices not available; cannot open {}", url);
-            }        } catch (Exception ex) {
-            log.warn("Could not open browser for {}: {}", url, ex.getMessage());
-        }
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
-    }
-
-    /** Renders a path with the user's home directory prefix collapsed to {@code ~}. */
-    private static String homeRelative(Path p) {
-        String home = System.getProperty("user.home", "");
-        String s = p.toString();
-        return (!home.isEmpty() && s.startsWith(home)) ? "~" + s.substring(home.length()) : s;
-    }
-
-    /** e.g. "Friday, Aug 21st, 2026" — friendlier than a bare ISO date for a dialog title. */
-    private static String friendlyDate(LocalDate date) {
-        if (date == null) return "";
-        String weekday = date.format(DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH));
-        String month = date.format(DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH));
-        int day = date.getDayOfMonth();
-        return weekday + ", " + month + " " + day + daySuffix(day) + ", " + date.getYear();
-    }
-
-    private static String daySuffix(int day) {
-        if (day >= 11 && day <= 13) return "th";
-        return switch (day % 10) {
-            case 1 -> "st";
-            case 2 -> "nd";
-            case 3 -> "rd";
-            default -> "th";
-        };
+        imageViewerDialog.show(title, images, date);
     }
 
     private Double parseDouble(String s, String field) {
         if (s == null || s.isBlank()) return null;
-        try {
-            return Double.parseDouble(s.trim().replace(',', '.'));
-        } catch (NumberFormatException nfe) {
-            error("Invalid " + field + ": " + s);
-            return null;
-        }
+        Double value = UiText.parseDecimal(s);
+        if (value == null) error("Invalid " + field + ": " + s);
+        return value;
     }
 
-    /** Same decimal parsing as {@link #parseDouble}, but silent — for live-validation listeners. */
-    private static Double silentParseDouble(String s) {
-        if (s == null || s.isBlank()) return null;
-        try {
-            return Double.parseDouble(s.trim().replace(',', '.'));
-        } catch (NumberFormatException nfe) {
-            return null;
-        }
-    }
-
-    private void status(String msg) {
+    @Override
+    public void status(String msg) {
         log.info(msg);
         if (statusLabel != null) statusLabel.setText(msg);
     }
 
-    private void error(String msg) {
+    @Override
+    public void error(String msg) {
         log.warn(msg);
         if (statusLabel != null) statusLabel.setText(msg);
         Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
-        applyStylesheet(a.getDialogPane());
+        Dialogs.applyStylesheet(a.getDialogPane());
         a.showAndWait();
-    }
-
-    private static String describe(Throwable e) {
-        StringBuilder sb = new StringBuilder();
-        Throwable t = e;
-        while (t != null) {
-            if (sb.length() > 0) sb.append(" — caused by ");
-            String m = t.getMessage();
-            sb.append(t.getClass().getSimpleName())
-                    .append(m == null ? "" : ": " + m);
-            t = t.getCause();
-        }
-        return sb.toString();
-    }
-
-    private void applyStylesheet(javafx.scene.control.DialogPane pane) {
-        pane.getStylesheets().add(
-                getClass().getResource("/fxml/triptale.css").toExternalForm());
     }
 }

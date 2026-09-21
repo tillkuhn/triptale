@@ -69,8 +69,13 @@ JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, and `d
 ui.MainController ──► storage.MarkdownStore ──► config.TripTaleProperties
                   ├── git.GitService ───────────────────┘
                   ├── export.DiaryExporter ──► MarkdownStore
-                  └── ui.ConnectivityService
+                  ├── export.ExportTempFiles
+                  ├── ui.ConnectivityService
+                  └── ui.dialog.* ──► the services each dialog needs
 ```
+
+Dialogs never depend back on `MainController` — they take a `ui.StatusSink` (the status line)
+and return their result as data. See **UI structure** below.
 
 ---
 
@@ -151,11 +156,35 @@ Five Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded 
 
 ---
 
+## UI structure
+
+`MainController` owns only the single main window: trip/year/date navigation, the entry form
+and its dirty tracking, and the toolbar/menu git actions. **Every modal dialog lives in its own
+class under `ui/dialog/`** — put new ones there rather than growing the controller.
+
+A dialog class is a plain object (not a Spring bean) constructed with the services it needs;
+`MainController` news it up in the handler, or holds it as a field when the controller has no
+other use for its dependencies (`ExportDiaryDialog`, `ImageViewerDialog`, `AboutDialog`).
+
+The contract: **a dialog returns its outcome as data and never mutates controller state.**
+`NewTripDialog` → `Optional<Spec>`, `TripDetailsDialog` → `Optional<Trip>`,
+`CoordinatesDialog` → `Optional<Result>` (a null `coords()` means the user pressed Clear;
+`Optional.empty()` means Cancel). Persisting, `addPending(...)`, and combo reselection stay in
+the controller. `SyncProgressDialog` inverts this — it owns the worker thread and takes an
+`onSuccess` callback that runs on the FX thread.
+
+Shared UI helpers, all in `ui/`:
+
+- `Dialogs` — `applyStylesheet`, `formGrid()`, `infoGrid()`, `showInfo(...)`
+- `UiText` — `homeRelative`, `friendlyDate`, `describe` (flattens a cause chain), `isValidHttpUrl`, `parseDecimal`
+- `Clipboards.putString`, `BrowserLauncher.open`, `StatusSink`
+
 ## UI gotchas
 
-- Every new `Alert` or `Dialog` must call `applyStylesheet(dialogPane)` to inherit the dark theme.
-- `BuildProperties` (version/build-date in About) and JavaFX `HostServices` (opening URLs in the system browser) are both `@Autowired(required = false)` on `MainController`. `BuildProperties` is absent unless the `spring-boot-maven-plugin:build-info` goal has run (happens during `mvn package`/`verify`, not `compile`).
-- Decimal input (`parseDouble`) accepts both `.` and `,` as separators.
+- Every new `Alert` or `Dialog` must call `Dialogs.applyStylesheet(dialogPane)` to inherit the dark theme. Going through `Dialogs.showInfo(...)` instead of `new Alert(...)` makes that impossible to forget.
+- `BuildProperties` (version/build-date in About) and JavaFX `HostServices` (opening URLs in the system browser) are both resolved via `ObjectProvider` on `MainController` and may be null. `BuildProperties` is absent unless the `spring-boot-maven-plugin:build-info` goal has run (happens during `mvn package`/`verify`, not `compile`). `HostServices` is wrapped in `ui.BrowserLauncher`, which degrades to a log warning when absent.
+- Decimal input (`UiText.parseDecimal`) accepts both `.` and `,` as separators. `MainController.parseDouble` is the same parse plus an error alert, for save-time validation.
+- Export previews go through `export.ExportTempFiles` (`newFile` / `sweep`), not `Files.createTempFile` directly — `sweep()` runs once from `initialize()` to clear files left by crashed sessions.
 
 ---
 
