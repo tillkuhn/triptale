@@ -19,6 +19,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ButtonBar;
@@ -1525,6 +1526,8 @@ public class MainController {
         grid.add(authorNameField, 1, row++);
         grid.add(new Label("Git author email:"), 0, row);
         grid.add(authorEmailField, 1, row++);
+        grid.add(new Separator(), 0, row, 2, 1);
+        row++;
         grid.add(new Label("Impressions file pattern:"), 0, row);
         grid.add(patternField, 1, row++);
         grid.add(new Label("Impressions grid columns:"), 0, row);
