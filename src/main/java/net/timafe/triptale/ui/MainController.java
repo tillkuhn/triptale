@@ -1617,12 +1617,12 @@ public class MainController {
         Label pathLabel = new Label();
         pathLabel.setStyle("-fx-font-weight: bold;");
         pathLabel.setWrapText(false);
-        // Leading (not trailing) ellipsis: the filename at the end of the path is what matters
-        // most, so a long directory prefix truncates from the front instead of hiding the name.
-        pathLabel.setTextOverrun(javafx.scene.control.OverrunStyle.LEADING_ELLIPSIS);
-        pathLabel.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        pathLabel.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(pathLabel, Priority.ALWAYS);
+        // Center ellipsis keeps a bit of the directory (start) and the full filename tail
+        // (end) visible, cutting only the middle — and capping the width well below the
+        // 640px image width keeps the line short instead of stretching to fill it.
+        pathLabel.setTextOverrun(javafx.scene.control.OverrunStyle.CENTER_ELLIPSIS);
+        pathLabel.setAlignment(javafx.geometry.Pos.CENTER);
+        pathLabel.setMaxWidth(420);
 
         Button copyDirBtn = new Button("📋");
         copyDirBtn.setTooltip(new Tooltip("Copy directory to clipboard"));
