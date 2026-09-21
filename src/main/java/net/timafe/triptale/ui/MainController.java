@@ -199,6 +199,8 @@ public class MainController {
 
     private static final DateTimeFormatter DATE_DISPLAY =
             DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE_ISO =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
 
     @FXML
     public void initialize() {
@@ -452,6 +454,13 @@ public class MainController {
         nameField.setPromptText("Trip name");
         nameField.setPrefColumnCount(28);
         DatePicker startField = new DatePicker(LocalDate.now());
+        startField.setConverter(new StringConverter<>() {
+            @Override public String toString(LocalDate d) { return d == null ? "" : DATE_ISO.format(d); }
+            @Override public LocalDate fromString(String s) {
+                if (s == null || s.isBlank()) return null;
+                try { return LocalDate.parse(s.trim(), DATE_ISO); } catch (Exception e) { return null; }
+            }
+        });
         TextArea descArea = new TextArea();
         descArea.setPromptText("Optional description");
         descArea.setPrefRowCount(3);
