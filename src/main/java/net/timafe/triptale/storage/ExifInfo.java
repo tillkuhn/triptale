@@ -4,16 +4,16 @@ import java.util.Locale;
 
 /**
  * Plain DTO holding the subset of EXIF metadata the UI cares about for the impressions
- * viewer: camera model, aperture, exposure time, and GPS coordinates.
+ * viewer: camera model, aperture, exposure time, GPS coordinates, and pixel dimensions.
  *
  * <p>Any field may be {@code null} when the source image doesn't carry that tag (or has no
  * EXIF data at all). No JavaFX dependency — kept in the {@code storage} package per the
  * project's package boundary rule.
  */
 public record ExifInfo(String cameraModel, String aperture, String exposureTime, String iso,
-                        Double latitude, Double longitude) {
+                        Double latitude, Double longitude, String dimensions) {
 
-    private static final ExifInfo EMPTY = new ExifInfo(null, null, null, null, null, null);
+    private static final ExifInfo EMPTY = new ExifInfo(null, null, null, null, null, null, null);
 
     public static ExifInfo empty() {
         return EMPTY;

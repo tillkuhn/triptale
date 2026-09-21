@@ -8,14 +8,12 @@ see docs/15_start_point_coordinates.md for the full design (from a grill-me sess
 the GeoJSON coordinate-order fix, button placement, Save-validation pairing, popup
 persistence model, Google Maps URL parsing scope, and parse-failure UX).
 
-## 14 template variables for settings paths
+## DONE 14 template variables for settings paths
 
-Generalize `ImpressionsResolver`'s existing `${HOME}`/`${DATE}` placeholder substitution into
-a shared, reusable resolver, add `${TRIP_SLUG}` (and rename/extend `${DATE}` towards a
-`${TALE_DATE}`-style name if it helps clarity), and apply it beyond impressions patterns to
-other settings paths (e.g. `dataDir`). Expansion happens at runtime when the value is actually
-used (writing an entry file, locating images), not at settings-save time. Follow-up to todo 13
-— see docs/13_settings_handling.md non-goals section.
+see docs/14_template_variables_for_settings_paths.md for the full design (from a grill-me session
+covering directory-level (not just filename) globbing, the ambiguous-match/"first + warn" policy,
+TRIP_MONTH/TRIP_YEAR sourced from trip startDate vs. entry date, the per-(pattern, trip) session
+cache, and extracting a generic reusable resolver now).
 
 ## DONE 21 introduce h1 title, derive from route in frontmatter
 

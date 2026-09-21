@@ -38,7 +38,7 @@ class DiaryExporterTest {
         settings.setDataDir(dataDir.toString());
         settingsStore.save(settings);
         store = new MarkdownStore(settingsStore);
-        exporter = new DiaryExporter(store, new ImpressionsResolver(), settingsStore);
+        exporter = new DiaryExporter(store, new ImpressionsResolver(new net.timafe.triptale.storage.PathPatternResolver()), settingsStore);
     }
 
     private void setImpressionsFilePattern(String pattern) {

@@ -313,3 +313,9 @@
     -fx-font-size: 14px;
     -fx-padding: 4 10 4 10;
 }
+
+/* ── Separator (dialog section divider) ──────────────────── */
+.separator .line {
+    -fx-border-color: #3a5050;
+    -fx-opacity: 0.6;
+}

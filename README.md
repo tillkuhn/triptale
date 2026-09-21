@@ -95,6 +95,56 @@ This also means you can keep writing offline for weeks — every save is a local
 
 The **File → Export Diary** menu renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to clipboard and paste anywhere. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output format.
 
+## Impressions & Faves 📸
+
+Two optional settings (Settings dialog, or `impressionsFilePattern` / `impressionsFaveFilePattern`
+in `settings.yml`) let TripTale find that day's photos on disk — shown as an "N Impressions" /
+"N Faves" button per entry, and embeddable as an image grid in HTML export.
+
+Each pattern is a filesystem path containing `${VAR}` placeholders:
+
+| Variable         | Expands to                                  | Example              |
+|------------------|----------------------------------------------|-----------------------|
+| `${HOME}`        | user home directory                          | `/Users/alice`        |
+| `${DATE}`        | the entry's date, `yyyyMMdd`                 | `20260807`            |
+| `${TRIP_SLUG}`   | the active trip's slug                       | `iceland-roadtrip`    |
+| `${TRIP_YEAR}`   | the active trip's start-date year            | `2026`                |
+| `${TRIP_MONTH}`  | the active trip's start-date month, 2-digit  | `06`                  |
+
+After substitution, the pattern is split on `/` and matched one directory level at a time —
+**every** segment may contain wildcards, not just the filename:
+
+- `*` matches any run of characters, `?` matches exactly one — both only within a single
+  segment, never across a `/`.
+- A segment with no wildcard must match an existing file/directory exactly.
+- A segment with a wildcard is matched against that directory's children; if more than one
+  matches, the first one (sorted by name) is used and a warning is logged — it doesn't fail.
+- The resolved directory is cached for as long as a trip stays open, so only the final
+  filename glob is re-evaluated as you navigate between days.
+
+Expansion happens at the moment images are actually looked up, not when settings are saved —
+so pointing at a USB drive or NAS that isn't always mounted just yields "No Impressions"
+rather than an error.
+
+Examples, from simplest to most specific:
+
+```
+${HOME}/Pictures/00_Faves/output/${DATE}*.jpg
+```
+One shared folder for every trip; photos are matched purely by date.
+
+```
+${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/output/${DATE}*.jpg
+```
+A per-trip folder, e.g. `Pictures/2026/06_ab_iceland-roadtrip/output/` — the `??` absorbs two
+extra characters you typed by hand between month and slug when naming the folder.
+
+```
+${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_??_${TRIP_SLUG}/output/${DATE}*.jpg
+```
+Same idea, but year/month/slug combined into one directory name instead of nested folders,
+e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
+
 ## Run it 🛠️
 
 Requires **Java 25** and Maven (uses `mvnd` by default).
