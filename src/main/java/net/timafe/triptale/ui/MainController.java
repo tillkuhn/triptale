@@ -814,7 +814,7 @@ public class MainController {
     private void updateCoordinatesButton() {
         boolean set = startLat != null && startLon != null;
         if (coordinatesButton != null) {
-            coordinatesButton.setText(set ? "🗺️ " + Coordinates.toDdm(startLat, startLon) : "🗺️ Uncharted");
+            coordinatesButton.setText(set ? "📍 " + Coordinates.toDdm(startLat, startLon) : "📍 Uncharted");
         }
         if (openCoordinatesButton != null) {
             openCoordinatesButton.setDisable(!set);
@@ -1709,6 +1709,11 @@ public class MainController {
             }
             if (exif.dimensions() != null) {
                 sb.append(" · ").append(exif.dimensions());
+            }
+            if (exif.hasLocation()) {
+                sb.append(" · 📍 ").append(Coordinates.toDdm(exif.latitude(), exif.longitude()));
+            } else {
+                sb.append(" · 📍 Uncharted");
             }
             metaLabel.setText(sb.toString());
 
