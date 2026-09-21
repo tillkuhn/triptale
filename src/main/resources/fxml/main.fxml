@@ -38,16 +38,36 @@
                             <MenuItem fx:id="quitMenuItem" onAction="#onExit"/>
                         </items>
                     </Menu>
-                    <Menu text="File">
+                    <Menu text="My Trips">
                         <items>
                             <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
+                            <MenuItem text="ℹ Edit Trip…" onAction="#onTripDetails"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                         </items>
                     </Menu>
-                    <Menu text="View">
+                    <Menu text="Tale Entries">
                         <items>
                             <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
+                            <MenuItem fx:id="prevDayMenuItem" text="◀ Previous Day" onAction="#onPrevDay"/>
+                            <MenuItem text="▶ Next Day" onAction="#onNextDay"/>
+                            <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
+                            <MenuItem fx:id="favesMenuItem" text="🖼 Show Faves" onAction="#onShowFaves" disable="true"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true"/>
+                            <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                        </items>
+                    </Menu>
+                    <Menu text="View">
+                        <items>
+                            <MenuItem text="🔍 Zoom In" onAction="#onZoomIn"/>
+                            <MenuItem text="🔎 Zoom Out" onAction="#onZoomOut"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem text="↺ Reset View" onAction="#onResetView"/>
                         </items>
                     </Menu>
                     <Menu text="Repository">
@@ -56,6 +76,8 @@
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="pushMenuItem" text="↑ Push" onAction="#onPush"/>
                             <MenuItem fx:id="pullMenuItem" text="↓ Pull" onAction="#onPull"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                             <SeparatorMenuItem/>

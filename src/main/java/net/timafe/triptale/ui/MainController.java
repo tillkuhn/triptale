@@ -115,7 +115,15 @@ public class MainController {
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem syncMenuItem;
+    @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
+    @FXML private MenuItem firstDayMenuItem;
+    @FXML private MenuItem prevDayMenuItem;
+    @FXML private MenuItem todayMenuItem;
+    @FXML private MenuItem impressionsMenuItem;
+    @FXML private MenuItem favesMenuItem;
+    @FXML private MenuItem saveMenuItem;
+    @FXML private MenuItem copyMenuItem;
     @FXML private Menu appMenu;
     @FXML private MenuItem aboutMenuItem;
     @FXML private MenuItem quitMenuItem;
@@ -123,6 +131,12 @@ public class MainController {
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
+
+    private static final String TALE_FONT_SIZE_STATE_KEY = "taleFontSizePx";
+    private static final int TALE_FONT_SIZE_DEFAULT_PX = 13;
+    private static final int TALE_FONT_SIZE_MIN_PX = 10;
+    private static final int TALE_FONT_SIZE_MAX_PX = 28;
+    private static final int TALE_FONT_SIZE_STEP_PX = 1;
 
     // Connectivity button style classes
     private static final String CONN_CHECKING     = "connectivity-checking";
@@ -143,6 +157,7 @@ public class MainController {
     private Double startLon;
     private boolean entryExists;
     private Instant talesUpdatedAt;
+    private int taleFontSizePx = TALE_FONT_SIZE_DEFAULT_PX;
 
     /** Guard flag to prevent listener re-entrancy when reverting a navigation on Cancel. */
     private boolean navigating = false;
@@ -190,6 +205,8 @@ public class MainController {
         appMenu.setText(appName);
         aboutMenuItem.setText("ⓘ About " + appName);
         quitMenuItem.setText("⏻ Quit " + appName);
+        loadTaleFontSize();
+        applyTaleFontSize();
         datePicker.setConverter(new StringConverter<>() {
             @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
             @Override public LocalDate fromString(String s) {
@@ -350,7 +367,7 @@ public class MainController {
     private boolean performStartupChecks() {
         if (!gitService.isConfigured()) {
             Alert warn = new Alert(Alert.AlertType.WARNING,
-                    "No data directory is configured yet. Open File → Edit Settings… to set one.",
+                    "No data directory is configured yet. Open " + appName + " → Edit Settings… to set one.",
                     ButtonType.OK);
             warn.setTitle(appName);
             warn.setHeaderText("Data directory not configured");
@@ -748,6 +765,53 @@ public class MainController {
         }
     }
 
+    @FXML
+    public void onZoomIn() {
+        setTaleFontSize(taleFontSizePx + TALE_FONT_SIZE_STEP_PX);
+    }
+
+    @FXML
+    public void onZoomOut() {
+        setTaleFontSize(taleFontSizePx - TALE_FONT_SIZE_STEP_PX);
+    }
+
+    /** Resets all View-menu display settings to their defaults. Currently just tale text zoom; extend here as more are added. */
+    @FXML
+    public void onResetView() {
+        setTaleFontSize(TALE_FONT_SIZE_DEFAULT_PX);
+        status("View reset to defaults");
+    }
+
+    /** Reads the persisted tale text font size from .state.yml, falling back to the default if unset or unconfigured. */
+    private void loadTaleFontSize() {
+        try {
+            Object stored = store.loadState().get(TALE_FONT_SIZE_STATE_KEY);
+            if (stored instanceof Number n) {
+                taleFontSizePx = clampTaleFontSize(n.intValue());
+            }
+        } catch (RuntimeException e) {
+            // Data dir not configured yet — keep the default size for this session.
+        }
+    }
+
+    private void setTaleFontSize(int px) {
+        taleFontSizePx = clampTaleFontSize(px);
+        applyTaleFontSize();
+        try {
+            store.saveState(TALE_FONT_SIZE_STATE_KEY, taleFontSizePx);
+        } catch (RuntimeException e) {
+            // Data dir not configured yet — zoom still works for this session, just isn't persisted.
+        }
+    }
+
+    private static int clampTaleFontSize(int px) {
+        return Math.max(TALE_FONT_SIZE_MIN_PX, Math.min(TALE_FONT_SIZE_MAX_PX, px));
+    }
+
+    private void applyTaleFontSize() {
+        talesArea.setStyle("-fx-font-size: " + taleFontSizePx + "px;");
+    }
+
     private void loadEntry() {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
@@ -778,12 +842,9 @@ public class MainController {
     private void updateImpressionsButton(Trip trip, LocalDate date) {
         if (impressionsButton == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
-        if (pattern == null || date == null) {
-            impressionsButton.setText("No Impressions");
-            impressionsButton.setDisable(true);
-            return;
-        }
-        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
+        List<Path> images = pattern == null || date == null
+                ? List.of()
+                : impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) {
             impressionsButton.setText("No Impressions");
             impressionsButton.setDisable(true);
@@ -791,17 +852,15 @@ public class MainController {
             impressionsButton.setText("🖼 " + images.size() + " Impression" + (images.size() == 1 ? "" : "s") + " ›");
             impressionsButton.setDisable(false);
         }
+        if (impressionsMenuItem != null) impressionsMenuItem.setDisable(images.isEmpty());
     }
 
     private void updateFavesButton(Trip trip, LocalDate date) {
         if (favesButton == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
-        if (pattern == null || date == null) {
-            favesButton.setText("No Faves");
-            favesButton.setDisable(true);
-            return;
-        }
-        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
+        List<Path> images = pattern == null || date == null
+                ? List.of()
+                : impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) {
             favesButton.setText("No Faves");
             favesButton.setDisable(true);
@@ -809,6 +868,7 @@ public class MainController {
             favesButton.setText("🖼 " + images.size() + " Fave" + (images.size() == 1 ? "" : "s") + " ›");
             favesButton.setDisable(false);
         }
+        if (favesMenuItem != null) favesMenuItem.setDisable(images.isEmpty());
     }
 
     private void updateCoordinatesButton() {
@@ -911,15 +971,23 @@ public class MainController {
 
     private void updateDirty() {
         boolean dirty = isDirty();
+        boolean validEntry = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
+        String saveLabel = entryExists ? "💾 Save Tale" : "📝 Create Tale";
         if (saveButton != null) {
-            boolean valid = !titleField.getText().isBlank() && !talesArea.getText().isBlank();
-            saveButton.setDisable(!dirty || !valid);
-            saveButton.setText(entryExists ? "💾 Save Tale" : "📝 Create Tale");
+            saveButton.setDisable(!dirty || !validEntry);
+            saveButton.setText(saveLabel);
         }
+        if (saveMenuItem != null) {
+            saveMenuItem.setDisable(!dirty || !validEntry);
+            saveMenuItem.setText(saveLabel);
+        }
+        boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
+                && tripCombo.getValue() != null && datePicker.getValue() != null;
         if (copyButton != null) {
-            boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
-                    && tripCombo.getValue() != null && datePicker.getValue() != null;
             copyButton.setDisable(!hasContent);
+        }
+        if (copyMenuItem != null) {
+            copyMenuItem.setDisable(!hasContent);
         }
         if (openTrackUrlButton != null) {
             openTrackUrlButton.setDisable(!isValidHttpUrl(trackUrlField.getText()));
@@ -937,9 +1005,16 @@ public class MainController {
     }
 
     private void updateCommitButton() {
-        if (commitButton == null) return;
-        commitButton.setText("📦 Commit (" + pending.size() + ")");
-        commitButton.setDisable(!canCommit());
+        String label = "📦 Commit (" + pending.size() + ")";
+        boolean disable = !canCommit();
+        if (commitButton != null) {
+            commitButton.setText(label);
+            commitButton.setDisable(disable);
+        }
+        if (commitMenuItem != null) {
+            commitMenuItem.setText(label);
+            commitMenuItem.setDisable(disable);
+        }
     }
 
     private String buildCommitMessage() {
@@ -974,12 +1049,16 @@ public class MainController {
         }
         if (prevDayButton != null) prevDayButton.setDisable(prevDisabled);
         if (firstDayButton != null) firstDayButton.setDisable(prevDisabled);
-        if (todayButton != null) {
+        if (prevDayMenuItem != null) prevDayMenuItem.setDisable(prevDisabled);
+        if (firstDayMenuItem != null) firstDayMenuItem.setDisable(prevDisabled);
+        if (todayButton != null || todayMenuItem != null) {
             LocalDate target = LocalDate.now();
             if (trip != null && trip.startDate() != null && target.isBefore(trip.startDate())) {
                 target = trip.startDate();
             }
-            todayButton.setDisable(date == null || date.equals(target));
+            boolean todayDisabled = date == null || date.equals(target);
+            if (todayButton != null) todayButton.setDisable(todayDisabled);
+            if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }
     }
 
