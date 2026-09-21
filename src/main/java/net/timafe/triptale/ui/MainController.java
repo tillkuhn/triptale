@@ -80,6 +80,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 
 @Component
 public class MainController {
@@ -215,6 +216,7 @@ public class MainController {
                 }
             }
         });
+        cleanupExportTmpDir();
         boolean ready = performStartupChecks();
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
@@ -315,6 +317,35 @@ public class MainController {
      * JavaFX allows showing a {@link Dialog}/{@link Alert} here even though the primary stage
      * isn't visible yet.
      */
+    /** Dedicated subdirectory of the OS temp dir for export previews, so a single startup sweep can clear stale files from crashed/killed sessions. */
+    private static Path exportTmpDir() {
+        return Paths.get(System.getProperty("java.io.tmpdir"), "triptale");
+    }
+
+    /** Creates a fresh temp file under {@link #exportTmpDir()}, registered for best-effort deletion on clean shutdown. */
+    private static Path newExportTempFile(String prefix, String suffix) throws IOException {
+        Files.createDirectories(exportTmpDir());
+        Path tmp = Files.createTempFile(exportTmpDir(), prefix, suffix);
+        tmp.toFile().deleteOnExit();
+        return tmp;
+    }
+
+    private void cleanupExportTmpDir() {
+        Path dir = exportTmpDir();
+        if (!Files.isDirectory(dir)) return;
+        try (var files = Files.list(dir)) {
+            files.forEach(f -> {
+                try {
+                    Files.deleteIfExists(f);
+                } catch (IOException e) {
+                    log.warn("Could not delete stale temp file {}: {}", f, e.getMessage());
+                }
+            });
+        } catch (IOException e) {
+            log.warn("Could not clean temp dir {}: {}", dir, e.getMessage());
+        }
+    }
+
     private boolean performStartupChecks() {
         if (!gitService.isConfigured()) {
             Alert warn = new Alert(Alert.AlertType.WARNING,
@@ -618,9 +649,8 @@ public class MainController {
         previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             try {
                 String html = diaryExporter.exportTripAsHtml(trip, impressionsCombo.getValue());
-                java.nio.file.Path tmp = Files.createTempFile("triptale-export-", ".html");
+                Path tmp = newExportTempFile("export-", ".html");
                 Files.writeString(tmp, html, java.nio.charset.StandardCharsets.UTF_8);
-                tmp.toFile().deleteOnExit();
                 openInBrowser(tmp.toUri().toString());
             } catch (IOException ex) {
                 error("Preview failed: " + ex.getMessage());
