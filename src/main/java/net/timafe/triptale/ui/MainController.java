@@ -768,13 +768,13 @@ public class MainController {
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
         updateTalesLabel();
-        updateImpressionsButton(date);
-        updateFavesButton(date);
+        updateImpressionsButton(trip, date);
+        updateFavesButton(trip, date);
         snapshotBaseline();
         updateDirty();
     }
 
-    private void updateImpressionsButton(LocalDate date) {
+    private void updateImpressionsButton(Trip trip, LocalDate date) {
         if (impressionsButton == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
         if (pattern == null || date == null) {
@@ -782,7 +782,7 @@ public class MainController {
             impressionsButton.setDisable(true);
             return;
         }
-        List<Path> images = impressionsResolver.resolve(pattern, date);
+        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) {
             impressionsButton.setText("No Impressions");
             impressionsButton.setDisable(true);
@@ -792,7 +792,7 @@ public class MainController {
         }
     }
 
-    private void updateFavesButton(LocalDate date) {
+    private void updateFavesButton(Trip trip, LocalDate date) {
         if (favesButton == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
         if (pattern == null || date == null) {
@@ -800,7 +800,7 @@ public class MainController {
             favesButton.setDisable(true);
             return;
         }
-        List<Path> images = impressionsResolver.resolve(pattern, date);
+        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) {
             favesButton.setText("No Faves");
             favesButton.setDisable(true);
@@ -1505,12 +1505,12 @@ public class MainController {
         TextField authorEmailField = new TextField(settings.getGit().getAuthorEmail());
         authorEmailField.setPrefColumnCount(36);
         TextField patternField = new TextField(settings.getImpressionsFilePattern());
-        patternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/output/${DATE}*.jpg");
+        patternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/output/${DATE}*.jpg");
         patternField.setPrefColumnCount(36);
         TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);
         TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
-        favePatternField.setPromptText("e.g. ${HOME}/Pictures/00_Faves/${DATE}*.jpg");
+        favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
         favePatternField.setPrefColumnCount(36);
 
         GridPane grid = new GridPane();
@@ -1557,8 +1557,8 @@ public class MainController {
         settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
         settingsStore.save(settings);
 
-        updateImpressionsButton(datePicker.getValue());
-        updateFavesButton(datePicker.getValue());
+        updateImpressionsButton(tripCombo.getValue(), datePicker.getValue());
+        updateFavesButton(tripCombo.getValue(), datePicker.getValue());
 
         if (!newDataDir.equals(previousDataDir)) {
             status("Settings saved — restart " + appName + " for the new data directory to take effect");
@@ -1574,7 +1574,7 @@ public class MainController {
         if (trip == null || date == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFilePattern());
         if (pattern == null) return;
-        List<Path> images = impressionsResolver.resolve(pattern, date);
+        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) return;
         showImagePopup("Impressions", images, date);
     }
@@ -1586,7 +1586,7 @@ public class MainController {
         if (trip == null || date == null) return;
         String pattern = blankToNull(settingsStore.load().getImpressionsFaveFilePattern());
         if (pattern == null) return;
-        List<Path> images = impressionsResolver.resolve(pattern, date);
+        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) return;
         showImagePopup("Faves", images, date);
     }

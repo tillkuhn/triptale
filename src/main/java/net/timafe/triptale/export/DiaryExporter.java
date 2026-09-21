@@ -77,7 +77,7 @@ public class DiaryExporter {
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
         if (includeMarkers) {
-            bodyHtml = injectImpressions(bodyHtml, mode);
+            bodyHtml = injectImpressions(bodyHtml, trip, mode);
         }
         String title = trip.name() == null ? "" : escapeHtml(trip.name());
         return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
@@ -123,7 +123,7 @@ public class DiaryExporter {
     }
 
     /** Replaces embedded {@code <!--IMPRESSIONS:yyyy-MM-dd-->} markers with an image grid table. */
-    private String injectImpressions(String html, ImpressionsMode mode) {
+    private String injectImpressions(String html, Trip trip, ImpressionsMode mode) {
         AppSettings settings = settingsStore.load();
         String pattern = switch (mode) {
             case FAVES -> blankToNull(settings.getImpressionsFaveFilePattern());
@@ -135,15 +135,15 @@ public class DiaryExporter {
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
             LocalDate date = LocalDate.parse(m.group(1));
-            String replacement = pattern == null ? "" : renderImpressionsTable(pattern, date, columns);
+            String replacement = pattern == null ? "" : renderImpressionsTable(pattern, trip, date, columns);
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(sb);
         return sb.toString();
     }
 
-    private String renderImpressionsTable(String pattern, LocalDate date, int columns) {
-        List<Path> images = impressionsResolver.resolve(pattern, date);
+    private String renderImpressionsTable(String pattern, Trip trip, LocalDate date, int columns) {
+        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         sb.append("<table class=\"impressions\">\n");
