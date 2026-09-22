@@ -1,6 +1,35 @@
 # ToDos for this app
 
-## Next Todo: 23
+## Next Todo: 24
+
+## 23 Support import gpx
+
+New trip should support import of info from gpx file
+Either import button in the existing new trip dialogue, 
+or new menu item that launches a file picket first, and then opens the new trip dialogue with prefilled values, check what's better.
+Either way, new trip is still the entry point that actually saves the trip and user can overwrite preset values.
+in case of gpx import, name shall be derived from gpx->trk->name element 
+and the date yyyy-mm-dd can be derived from the time of the first `trkpt` entry in the first `trkseg` segment
+
+```
+<?xml version='1.0' encoding='UTF-8'?>
+<gpx>
+  <trk>
+    <name>🍷🚵 RheinRaufTour #1</name>
+    <type>touring_bicycle</type>
+    <trkseg>
+      <trkpt lat="50.352114" lon="7.589085">
+        <ele>116.469940</ele>
+        <time>2025-04-18T09:57:50.374Z</time>
+      </trkpt>
+(...)
+```
+Since user would typcially use the gpx file of the first segment to init the trip, we could optionally also open the first entry (day 1) from the new trip dialogue,
+irrespective of whether the trip was entered manually or via import.
+Suggest to create a new boolean field named "Init first Tale Entry on trip creation".
+In case of manual entry, we can derive name and date from the corresponding trip fields (name -> 1st day entry title, startDate -> 1st day date).
+In case of import, we can use the coordinates of the first trkprt for startlat / startlon, date is the same as stardate, and title should be the name mentioned in the gpx file (not the one of the trip that might've been overwritten by the user to a more generic context).
+Use ~/tmp/rheinrauf.gpx as sample file 
 
 ## DONE 22 End Trip
 

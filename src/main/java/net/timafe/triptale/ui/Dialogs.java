@@ -6,6 +6,11 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.layout.GridPane;
+import javafx.util.StringConverter;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 /**
  * Shared dialog chrome. Every {@link Alert} and {@link javafx.scene.control.Dialog} in the app
@@ -31,6 +36,20 @@ public final class Dialogs {
         grid.setPadding(new Insets(14));
         grid.getStyleClass().add("card");
         return grid;
+    }
+
+    private static final DateTimeFormatter DATE_ISO =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
+
+    /** Renders a {@link javafx.scene.control.DatePicker} as {@code yyyy-MM-dd} instead of the locale default. */
+    public static StringConverter<LocalDate> isoDateConverter() {
+        return new StringConverter<>() {
+            @Override public String toString(LocalDate d) { return d == null ? "" : DATE_ISO.format(d); }
+            @Override public LocalDate fromString(String s) {
+                if (s == null || s.isBlank()) return null;
+                try { return LocalDate.parse(s.trim(), DATE_ISO); } catch (Exception e) { return null; }
+            }
+        };
     }
 
     /** A denser grid for read-only key/value popups (Remote Info, About). */

@@ -92,6 +92,7 @@ public final class TripDetailsDialog {
         descArea.setPrefColumnCount(40);
 
         DatePicker endField = new DatePicker(trip.endDate());
+        endField.setConverter(Dialogs.isoDateConverter());
         Button endTripButton = new Button("End Trip");
         endTripButton.setDisable(maxEntryDate == null);
         endTripButton.setOnAction(ev -> endField.setValue(maxEntryDate));

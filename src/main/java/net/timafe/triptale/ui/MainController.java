@@ -450,6 +450,15 @@ public class MainController implements StatusSink {
         }
         store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description()));
         addPending(ref.path(), CREATE);
+        spec.get().firstEntry().ifPresent(fe -> {
+            DiaryEntry entry = DiaryEntry.builder(start)
+                    .title(fe.title())
+                    .startLat(fe.lat())
+                    .startLon(fe.lon())
+                    .build();
+            store.saveEntry(ref, entry);
+            addPending(ref.path() + "/" + start, CREATE);
+        });
         reloadYears();
         yearCombo.setValue(year);
         reloadTrips(year);
