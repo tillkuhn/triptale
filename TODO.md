@@ -8,6 +8,9 @@ see docs/22_end_trip.md for the full design (from a grill-me session covering th
 start_date/end_date frontmatter rename, validation boundaries, the End Trip button, and
 forward-navigation/last-day UI mirroring the existing first-day logic).
 
+curl -su ":$(cat ~/.secret/dsv/ado-till-pat-data-analytics-ro)" \
+  "https://dev.azure.com/DSV-Data-Analytics/APP-ID-6820-COE/_apis/git/repositories/configurations/items?scopePath=%2F&api-version=7.1"
+
 ## DONE 21 introduce h1 title, derive from route in frontmatter
 
 to align the md layout more with tolaria, we want to introduce a strong "title" per markdown and store as h1 headline on top of the md file.
