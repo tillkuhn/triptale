@@ -462,6 +462,8 @@ public class MainController implements StatusSink {
                     .title(fe.title())
                     .startLat(fe.lat())
                     .startLon(fe.lon())
+                    .distance(fe.distanceKm())
+                    .altitudeMeters(fe.altitudeGainM())
                     .build();
             store.saveEntry(ref, entry);
             addPending(ref.path() + "/" + start, CREATE);
@@ -522,7 +524,7 @@ public class MainController implements StatusSink {
         }
         if (store.entryExists(trip.ref(), p.date())) {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Entry for " + p.date() + " already exists. Overwrite title and start coordinates from GPX?",
+                    "Entry for " + p.date() + " already exists. Overwrite title and geo track data from GPX?",
                     ButtonType.YES, ButtonType.NO);
             confirm.setTitle(appName);
             confirm.setHeaderText("Overwrite entry");
@@ -534,6 +536,10 @@ public class MainController implements StatusSink {
         titleField.setText(p.name());
         startLat = p.lat();
         startLon = p.lon();
+        distanceField.setText(String.valueOf(p.distanceKm()));
+        if (p.altitudeGainM() != null) {
+            altField.setText(String.valueOf(p.altitudeGainM()));
+        }
         updateCoordinatesButton();
         updateDirty();
         status("Imported \"" + p.name() + "\" for " + p.date());

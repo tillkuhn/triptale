@@ -48,6 +48,72 @@ class GpxImportTest {
     }
 
     @Test
+    void computesDistanceAndAltitudeGainAcrossAllPoints() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Two segments, one climb</name>
+                    <trkseg>
+                      <trkpt lat="50.0000" lon="7.0000">
+                        <ele>100.0</ele>
+                        <time>2025-04-18T09:00:00Z</time>
+                      </trkpt>
+                      <trkpt lat="50.0010" lon="7.0000">
+                        <ele>105.0</ele>
+                        <time>2025-04-18T09:01:00Z</time>
+                      </trkpt>
+                    </trkseg>
+                    <trkseg>
+                      <trkpt lat="50.0020" lon="7.0000">
+                        <ele>103.0</ele>
+                        <time>2025-04-18T09:02:00Z</time>
+                      </trkpt>
+                      <trkpt lat="50.0030" lon="7.0000">
+                        <ele>110.0</ele>
+                        <time>2025-04-18T09:03:00Z</time>
+                      </trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        // ~0.111 km per 0.001 deg latitude step, three steps
+        assertEquals(0.333, result.get().distanceKm(), 0.01);
+        // +5 (100->105), -2 discarded as noise-relative-to-105 (103, |delta|=2 < 1? no wait 103-105=-2 >=1 -> counted as no gain),
+        // then 103->110 = +7 counted. Total gain = 5 + 7 = 12
+        assertEquals(12.0, result.get().altitudeGainM());
+    }
+
+    @Test
+    void altitudeGainIsNullWhenAnyPointLacksElevation() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>No elevation on second point</name>
+                    <trkseg>
+                      <trkpt lat="50.0000" lon="7.0000">
+                        <ele>100.0</ele>
+                        <time>2025-04-18T09:00:00Z</time>
+                      </trkpt>
+                      <trkpt lat="50.0010" lon="7.0000">
+                        <time>2025-04-18T09:01:00Z</time>
+                      </trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals(null, result.get().altitudeGainM());
+        assertTrue(result.get().distanceKm() > 0);
+    }
+
+    @Test
     void emptyWhenTrackNameMissing() throws IOException {
         Path file = writeGpx("""
                 <gpx>

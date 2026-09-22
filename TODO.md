@@ -1,6 +1,48 @@
 # ToDos for this app
 
-## Next Todo: 27
+## Next Todo: 28
+
+## DONE 27 Capture distance and altitude (Höhenmeter) when importing GPX
+
+Todos 23/24 import title/date/start-coordinates from a GPX file but leave `distance` and
+`altitude` untouched. Both are derivable from the full track and should be filled in too.
+
+Extend `GpxImport` to walk every `trkpt` in every `trkseg` (not just the first point) and add
+two fields to `Parsed`: `distanceKm` (total haversine distance across consecutive points) and
+`altitudeGainM` (total climbed, i.e. "Höhenmeter" as cyclists/hikers use the term — total
+ascent, NOT net elevation change; 500m up + 490m down is 500m of altitude, not 10m).
+
+Elevation gain algorithm (pin this down, don't leave it to implementation-time guessing):
+maintain a running "last significant elevation" reference starting at the first trkpt's `ele`.
+For each subsequent point, compute delta against that reference; if `abs(delta) >= 1.0m`, add
+the positive deltas to the gain total and move the reference to the new point's elevation
+(discard sub-1m deltas as GPS noise, don't accumulate them). The 1.0m threshold is a fixed
+constant in `GpxImport`, not a configurable property.
+
+Missing `<ele>` on any point → treat as if the file were unparseable for altitude purposes
+(matches `GpxImport`'s existing all-or-nothing failure style); distance can presumably still be
+computed independently since it doesn't need `ele`. Sample file: `~/tmp/rheinrauf.gpx`
+(~73.5 km, ~474 m gain, computed by rough script during a prior conversation).
+
+Affects both call sites:
+
+1. **New Trip import (todo 23), "Init first Tale Entry" checkbox** — the first entry's
+   `distance`/`altitudeMeters` should be set from the GPX totals, same as `title`/`startLat`/
+   `startLon` are today (`MainController.onNewTrip`, `NewTripDialog.FirstEntry`). One GPX file
+   is assumed to cover that one day's stage — same assumption todo 23 already makes for
+   title/date.
+
+2. **Direct Tale Entry import (todo 24), `onImportGpx`** — after `loadEntry()`, also patch
+   `distanceField`/`altField` from the GPX totals, in addition to `titleField`/`startLat`/
+   `startLon`. This is a scope change from todo 24 decision 6, which left distance/altitude
+   untouched on overwrite — now they're overwritten too, gated by the same existing
+   confirmation prompt. Update the confirmation wording to describe the fields as a group
+   (e.g. "geo track data") rather than enumerating title/coordinates/distance/altitude
+   individually, so the copy doesn't need to keep changing as fields are added.
+
+Non-goals: no UI to preview computed values before confirming overwrite (computing stats twice
+— once for the confirm dialog, once to apply — isn't worth it for a yes/no prompt); no change
+to `GpxImport`'s first-trkpt-only date/name/coords logic, only additive fields.
 
 ## 26 Show no of objects and repo size, optionally run gc
 
