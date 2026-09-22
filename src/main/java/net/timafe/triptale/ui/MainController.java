@@ -106,8 +106,10 @@ public class MainController implements StatusSink {
     @FXML private Button commitButton;
     @FXML private Button syncButton;
     @FXML private Button prevDayButton;
+    @FXML private Button nextDayButton;
     @FXML private Button firstDayButton;
     @FXML private Button todayButton;
+    @FXML private Button lastDayButton;
     @FXML private Button connectivityButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
@@ -236,6 +238,11 @@ public class MainController implements StatusSink {
                     setDisable(true);
                     setStyle("-fx-background-color: #f0f0f0;");
                 }
+                if (!empty && item != null && trip != null && trip.endDate() != null
+                        && item.isAfter(trip.endDate())) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #f0f0f0;");
+                }
             }
         });
         exportTempFiles.sweep();
@@ -284,6 +291,12 @@ public class MainController implements StatusSink {
                     && sel.isBefore(trip.startDate())) {
                 datePicker.setValue(trip.startDate());
                 status("Snapped to day 1 (" + trip.startDate() + ")");
+                return;
+            }
+            if (sel != null && trip != null && trip.endDate() != null
+                    && sel.isAfter(trip.endDate())) {
+                datePicker.setValue(trip.endDate());
+                status("Snapped to last day (" + trip.endDate() + ")");
                 return;
             }
             SaveTarget saveTarget = trip != null && old != null
@@ -435,7 +448,7 @@ public class MainController implements StatusSink {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        store.saveTrip(new Trip(year, slug, name, start, spec.get().description()));
+        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description()));
         addPending(ref.path(), CREATE);
         reloadYears();
         yearCombo.setValue(year);
@@ -478,6 +491,14 @@ public class MainController implements StatusSink {
         if (trip == null || trip.startDate() == null) return;
         datePicker.setValue(trip.startDate());
         status("Snapped to day 1 (" + trip.startDate() + ")");
+    }
+
+    @FXML
+    public void onLastDay() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null || trip.endDate() == null) return;
+        datePicker.setValue(trip.endDate());
+        status("Snapped to last day (" + trip.endDate() + ")");
     }
 
     @FXML
@@ -789,6 +810,14 @@ public class MainController implements StatusSink {
             if (todayButton != null) todayButton.setDisable(todayDisabled);
             if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }
+        boolean nextDisabled;
+        if (trip == null || trip.endDate() == null || date == null) {
+            nextDisabled = false;
+        } else {
+            nextDisabled = !date.isBefore(trip.endDate());
+        }
+        if (nextDayButton != null) nextDayButton.setDisable(nextDisabled);
+        if (lastDayButton != null) lastDayButton.setDisable(trip == null || trip.endDate() == null);
     }
 
     private void updateTourDay(Trip trip, LocalDate date) {
@@ -798,10 +827,11 @@ public class MainController implements StatusSink {
             return;
         }
         long day = ChronoUnit.DAYS.between(trip.startDate(), date) + 1;
-        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(date, day) + ")");
+        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(trip, date, day) + ")");
     }
 
-    private static String relativeDayLabel(LocalDate date, long tourDay) {
+    private static String relativeDayLabel(Trip trip, LocalDate date, long tourDay) {
+        if (trip.endDate() != null && date.equals(trip.endDate())) return "last day";
         long delta = ChronoUnit.DAYS.between(LocalDate.now(), date);
         if (delta == 0) return "today";
         if (delta == -1) return "yesterday";

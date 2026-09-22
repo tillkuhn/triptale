@@ -100,9 +100,12 @@
                         <tooltip><Tooltip text="Go to day 1"/></tooltip>
                     </Button>
                     <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
-                    <Button text="▶" onAction="#onNextDay"/>
+                    <Button fx:id="nextDayButton" text="▶" onAction="#onNextDay"/>
                     <Button fx:id="todayButton" text="◉" onAction="#onToday">
                         <tooltip><Tooltip text="Go to today"/></tooltip>
+                    </Button>
+                    <Button fx:id="lastDayButton" text="⏭" onAction="#onLastDay">
+                        <tooltip><Tooltip text="Go to last day"/></tooltip>
                     </Button>
                 </HBox>
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>

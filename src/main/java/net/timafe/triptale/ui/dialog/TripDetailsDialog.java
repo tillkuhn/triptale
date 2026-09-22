@@ -1,12 +1,16 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
@@ -15,6 +19,7 @@ import net.timafe.triptale.ui.Dialogs;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -71,10 +76,12 @@ public final class TripDetailsDialog {
         return new Stats(dates.size(), totalDistance, activeDays, totalAltitude, activeAltitudeDays);
     }
 
-    /** Empty when cancelled or when neither name nor description changed. */
+    /** Empty when cancelled or when nothing changed. */
     public Optional<Trip> showAndWait(Trip trip) {
         Stats stats = collectStats(trip);
         String originalDesc = trip.description() == null ? "" : trip.description();
+        List<LocalDate> dates = store.listEntryDates(trip.ref());
+        LocalDate maxEntryDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
 
         TextField nameField = new TextField(trip.name());
         nameField.setPromptText("Trip name");
@@ -84,6 +91,15 @@ public final class TripDetailsDialog {
         descArea.setPrefRowCount(4);
         descArea.setPrefColumnCount(40);
 
+        DatePicker endField = new DatePicker(trip.endDate());
+        Button endTripButton = new Button("End Trip");
+        endTripButton.setDisable(maxEntryDate == null);
+        endTripButton.setOnAction(ev -> endField.setValue(maxEntryDate));
+        HBox dateBox = new HBox(10,
+                new Label(trip.startDate() == null ? "—" : trip.startDate().toString()),
+                endField, endTripButton);
+        dateBox.setAlignment(Pos.CENTER_LEFT);
+
         GridPane grid = Dialogs.formGrid();
         int row = 0;
         grid.add(new Label("Name:"), 0, row);
@@ -92,8 +108,8 @@ public final class TripDetailsDialog {
         grid.add(new Label(trip.slug()), 1, row++);
         grid.add(new Label("Year:"), 0, row);
         grid.add(new Label(Integer.toString(trip.year())), 1, row++);
-        grid.add(new Label("Start date:"), 0, row);
-        grid.add(new Label(trip.startDate() == null ? "—" : trip.startDate().toString()), 1, row++);
+        grid.add(new Label("Start / end date:"), 0, row);
+        grid.add(dateBox, 1, row++);
         grid.add(new Label("Entries:"), 0, row);
         grid.add(new Label(Integer.toString(stats.entries())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
@@ -111,20 +127,33 @@ public final class TripDetailsDialog {
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
-        Runnable refreshOk = () -> okButton.setDisable(
-                nameField.getText().isBlank()
-                        || (nameField.getText().trim().equals(trip.name())
-                            && descArea.getText().equals(originalDesc)));
+        Runnable refreshOk = () -> {
+            LocalDate newEnd = endField.getValue();
+            boolean endInvalid = newEnd != null
+                    && ((trip.startDate() != null && newEnd.isBefore(trip.startDate()))
+                            || (maxEntryDate != null && newEnd.isBefore(maxEntryDate)));
+            okButton.setDisable(
+                    nameField.getText().isBlank()
+                            || endInvalid
+                            || (nameField.getText().trim().equals(trip.name())
+                                    && descArea.getText().equals(originalDesc)
+                                    && Objects.equals(newEnd, trip.endDate())));
+        };
         refreshOk.run();
         nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
+        endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
         String newName = nameField.getText().trim();
         String newDesc = descArea.getText();
-        if (newName.equals(trip.name()) && newDesc.equals(originalDesc)) return Optional.empty();
+        LocalDate newEnd = endField.getValue();
+        if (newName.equals(trip.name()) && newDesc.equals(originalDesc)
+                && Objects.equals(newEnd, trip.endDate())) {
+            return Optional.empty();
+        }
         // Slug and year are immutable — a rename never moves the directory.
-        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newDesc));
+        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc));
     }
 }

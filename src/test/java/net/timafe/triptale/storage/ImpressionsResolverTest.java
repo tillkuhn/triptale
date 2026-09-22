@@ -22,7 +22,7 @@ class ImpressionsResolverTest {
     private final ImpressionsResolver resolver = new ImpressionsResolver(new PathPatternResolver());
 
     private static final Trip TRIP = new Trip(2026, "iceland-roadtrip", "Iceland Roadtrip",
-            LocalDate.of(2026, 6, 4), "");
+            LocalDate.of(2026, 6, 4), null, "");
 
     @BeforeEach
     void setUp() throws IOException {

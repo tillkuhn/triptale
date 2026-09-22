@@ -7,6 +7,7 @@ public record Trip(
         String slug,
         String name,
         LocalDate startDate,
+        LocalDate endDate,
         String description
 ) {
     public TripRef ref() {

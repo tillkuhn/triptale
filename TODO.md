@@ -1,6 +1,12 @@
 # ToDos for this app
 
-## Next Todo: 22
+## Next Todo: 23
+
+## DONE 22 End Trip
+
+see docs/22_end_trip.md for the full design (from a grill-me session covering the
+start_date/end_date frontmatter rename, validation boundaries, the End Trip button, and
+forward-navigation/last-day UI mirroring the existing first-day logic).
 
 ## DONE 15 store optional start point coordinates per trip entry
 
@@ -54,7 +60,6 @@ tough climb ...
 much better ...
 
 ```
-
 
 ## DONE 20 Support Tolaria belongs_to references
 
