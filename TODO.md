@@ -1,6 +1,33 @@
 # ToDos for this app
 
-## Next Todo: 24
+## Next Todo: 27
+
+## 26 Show no of objects and repo size, optionally run gc
+
+in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
+also maybe add housekeeping task that calls "git gc" and capture output
+
+## 25 Delete Tale Entry / Trip
+
+There is currently no delete capability anywhere in the app, for trips or for individual tale
+entries. Surfaced during the todo 24 grill-me session: a GPX import that lands on the wrong
+day (or is imported into the wrong trip) has no in-app way to undo once saved — the user would
+have to go to the filesystem/git directly. Scope: at minimum, delete a single Tale Entry; also
+consider delete-trip (including all its entries). See docs/24_gpx_import_tale_entry.md decision
+3 for the context that raised this.
+
+## 24 Support import gpx for Trip Entries
+
+see docs/24_gpx_import_tale_entry.md for the full design (from a grill-me session covering the
+menu placement/enablement, all-or-nothing overwrite confirmation gated on disk state (not form
+dirty state), reuse of the existing datePicker navigate-away guard, prefill-only/no-auto-save
+semantics, and the todo 25 delete-capability gap it surfaced).
+
+similar to todo 23 it should be possible to fill values for a trip tale entry via gpx.
+Trigger: Menu link in "Tale Entries" Group ".
+Let's skip a dedicated button in the UI, since it is fixed to particular day, and the import derives the day from the first trkpt element
+Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
+If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
 
 ## 23 Support import gpx
 

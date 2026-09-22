@@ -49,6 +49,7 @@
                     <Menu text="Tale Entries">
                         <items>
                             <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
+                            <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
                             <MenuItem fx:id="prevDayMenuItem" text="◀ Previous Day" onAction="#onPrevDay"/>
@@ -196,8 +197,8 @@
                     <Circle radius="9" styleClass="scallop-bump"/>
                 </VBox>
             </StackPane>
-            <HBox spacing="10" alignment="CENTER_RIGHT">
-                <HBox styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
+            <HBox fx:id="statusRow" spacing="10" alignment="CENTER_RIGHT">
+                <HBox fx:id="statusBar" styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
                     <Label text="&#9432;" styleClass="status-icon"/>
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>

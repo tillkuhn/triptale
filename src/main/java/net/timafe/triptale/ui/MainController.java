@@ -22,6 +22,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.Node;
+import javafx.scene.layout.HBox;
+import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -46,6 +48,7 @@ import net.timafe.triptale.ui.dialog.SyncProgressDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.Coordinates;
+import net.timafe.triptale.util.GpxImport;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
@@ -57,6 +60,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -100,6 +104,7 @@ public class MainController implements StatusSink {
     @FXML private TextArea talesArea;
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
+    @FXML private HBox statusRow;
     @FXML private Label tourDayLabel;
     @FXML private Button copyButton;
     @FXML private Button saveButton;
@@ -116,6 +121,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
+    @FXML private MenuItem importGpxMenuItem;
     @FXML private MenuItem firstDayMenuItem;
     @FXML private MenuItem prevDayMenuItem;
     @FXML private MenuItem todayMenuItem;
@@ -213,6 +219,7 @@ public class MainController implements StatusSink {
         quitMenuItem.setText("⏻ Quit " + appName);
         loadTaleFontSize();
         applyTaleFontSize();
+        statusLabel.maxWidthProperty().bind(statusRow.widthProperty().multiply(0.5));
         datePicker.setConverter(new StringConverter<>() {
             @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
             @Override public LocalDate fromString(String s) {
@@ -495,6 +502,44 @@ public class MainController implements StatusSink {
     }
 
     @FXML
+    public void onImportGpx() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+        FileChooser chooser = new FileChooser();
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("GPX files", "*.gpx"));
+        File file = chooser.showOpenDialog(null);
+        if (file == null) return;
+        Optional<GpxImport.Parsed> parsed = GpxImport.parse(file);
+        if (parsed.isEmpty()) {
+            error("Couldn't parse a track name/point from this file.");
+            return;
+        }
+        GpxImport.Parsed p = parsed.get();
+        if (trip.startDate() != null && p.date().isBefore(trip.startDate())
+                || trip.endDate() != null && p.date().isAfter(trip.endDate())) {
+            error("GPX date " + p.date() + " is outside " + trip.ref().path() + "'s date range");
+            return;
+        }
+        if (store.entryExists(trip.ref(), p.date())) {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Entry for " + p.date() + " already exists. Overwrite title and start coordinates from GPX?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle(appName);
+            confirm.setHeaderText("Overwrite entry");
+            Dialogs.applyStylesheet(confirm.getDialogPane());
+            Optional<ButtonType> result = confirm.showAndWait();
+            if (result.isEmpty() || result.get() != ButtonType.YES) return;
+        }
+        datePicker.setValue(p.date());
+        titleField.setText(p.name());
+        startLat = p.lat();
+        startLon = p.lon();
+        updateCoordinatesButton();
+        updateDirty();
+        status("Imported \"" + p.name() + "\" for " + p.date());
+    }
+
+    @FXML
     public void onFirstDay() {
         Trip trip = tripCombo.getValue();
         if (trip == null || trip.startDate() == null) return;
@@ -580,6 +625,7 @@ public class MainController implements StatusSink {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         updateTourDay(trip, date);
+        if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
             return;
