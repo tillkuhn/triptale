@@ -115,11 +115,11 @@ public class MarkdownStore {
         try {
             String content = Files.readString(readme);
             if (!content.startsWith(FRONTMATTER_DELIM)) {
-                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, content));
+                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, null, content));
             }
             int end = content.indexOf("\n" + FRONTMATTER_DELIM, FRONTMATTER_DELIM.length());
             if (end < 0) {
-                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, content));
+                return Optional.of(new Trip(ref.year(), ref.slug(), null, null, null, content));
             }
             String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
             String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
@@ -135,7 +135,8 @@ public class MarkdownStore {
                     ref.year(),
                     ref.slug(),
                     name,
-                    asDate(data.get("startDate")),
+                    asDate(data.get("start_date")),
+                    asDate(data.get("end_date")),
                     description
             ));
         } catch (IOException e) {
@@ -149,7 +150,8 @@ public class MarkdownStore {
         ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
-        fm.put("startDate", trip.startDate() == null ? null : trip.startDate().toString());
+        if (trip.endDate() != null) fm.put("end_date", trip.endDate().toString());
+        fm.put("start_date", trip.startDate() == null ? null : trip.startDate().toString());
         fm.put("type", TRIP_TYPE);
         try {
             String description = trip.description() == null ? "" : trip.description();

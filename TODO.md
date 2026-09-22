@@ -1,8 +1,14 @@
 # ToDos for this app
 
-## Next Todo: 22
+## Next Todo: 23
 
-## 21 introduce h1 title, derive from route in frontmatter
+## 22 End Trip
+
+see docs/22_end_trip.md for the full design (from a grill-me session covering the
+start_date/end_date frontmatter rename, validation boundaries, the End Trip button, and
+forward-navigation/last-day UI mirroring the existing first-day logic).
+
+## DONE 21 introduce h1 title, derive from route in frontmatter
 
 to align the md layout more with tolaria, we want to introduce a strong "title" per markdown and store as h1 headline on top of the md file.
 currently the "route" property in the yaml frontmatter acts as a kind of title, so we can retire it and derive the title from it
@@ -41,7 +47,6 @@ tough climb ...
 much better ...
 
 ```
-
 
 ## DONE 20 Support Tolaria belongs_to references
 

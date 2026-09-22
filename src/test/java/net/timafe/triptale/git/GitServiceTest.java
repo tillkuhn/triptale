@@ -143,7 +143,7 @@ class GitServiceTest {
     @Test
     void commitAllCommitsStagedChanges() {
         gitService.initRepo();
-        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), "test"));
+        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), null, "test"));
         String sha = gitService.commitAll("add trip");
         assertNotNull(sha);
         assertEquals(7, sha.length());

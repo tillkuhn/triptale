@@ -104,8 +104,10 @@ public class MainController {
     @FXML private Button commitButton;
     @FXML private Button syncButton;
     @FXML private Button prevDayButton;
+    @FXML private Button nextDayButton;
     @FXML private Button firstDayButton;
     @FXML private Button todayButton;
+    @FXML private Button lastDayButton;
     @FXML private Button connectivityButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
@@ -206,6 +208,11 @@ public class MainController {
                     setDisable(true);
                     setStyle("-fx-background-color: #f0f0f0;");
                 }
+                if (!empty && item != null && trip != null && trip.endDate() != null
+                        && item.isAfter(trip.endDate())) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #f0f0f0;");
+                }
             }
         });
         boolean ready = performStartupChecks();
@@ -253,6 +260,12 @@ public class MainController {
                     && sel.isBefore(trip.startDate())) {
                 datePicker.setValue(trip.startDate());
                 status("Snapped to day 1 (" + trip.startDate() + ")");
+                return;
+            }
+            if (sel != null && trip != null && trip.endDate() != null
+                    && sel.isAfter(trip.endDate())) {
+                datePicker.setValue(trip.endDate());
+                status("Snapped to last day (" + trip.endDate() + ")");
                 return;
             }
             SaveTarget saveTarget = trip != null && old != null
@@ -437,7 +450,7 @@ public class MainController {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        Trip trip = new Trip(year, slug, name, start, desc);
+        Trip trip = new Trip(year, slug, name, start, null, desc);
         store.saveTrip(trip);
         addPending(ref.path(), CREATE);
         reloadYears();
@@ -478,6 +491,12 @@ public class MainController {
         descArea.setPrefRowCount(4);
         descArea.setPrefColumnCount(40);
 
+        LocalDate maxEntryDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
+        DatePicker endField = new DatePicker(trip.endDate());
+        Button endTripButton = new Button("End Trip");
+        endTripButton.setDisable(maxEntryDate == null);
+        endTripButton.setOnAction(ev -> endField.setValue(maxEntryDate));
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
@@ -490,8 +509,12 @@ public class MainController {
         grid.add(new Label(trip.slug()), 1, row++);
         grid.add(new Label("Year:"), 0, row);
         grid.add(new Label(Integer.toString(trip.year())), 1, row++);
-        grid.add(new Label("Start date:"), 0, row);
-        grid.add(new Label(trip.startDate() == null ? "—" : trip.startDate().toString()), 1, row++);
+        grid.add(new Label("Start / end date:"), 0, row);
+        HBox dateBox = new HBox(10,
+                new Label(trip.startDate() == null ? "—" : trip.startDate().toString()),
+                endField, endTripButton);
+        dateBox.setAlignment(Pos.CENTER_LEFT);
+        grid.add(dateBox, 1, row++);
         grid.add(new Label("Entries:"), 0, row);
         grid.add(new Label(Integer.toString(dates.size())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
@@ -518,21 +541,33 @@ public class MainController {
 
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
         String originalDesc = trip.description() == null ? "" : trip.description();
-        Runnable refreshOk = () -> okButton.setDisable(
-                nameField.getText().isBlank()
-                        || (nameField.getText().trim().equals(trip.name()) && descArea.getText().equals(originalDesc)));
+        Runnable refreshOk = () -> {
+            LocalDate newEnd = endField.getValue();
+            boolean endInvalid = newEnd != null
+                    && ((trip.startDate() != null && newEnd.isBefore(trip.startDate()))
+                            || (maxEntryDate != null && newEnd.isBefore(maxEntryDate)));
+            okButton.setDisable(
+                    nameField.getText().isBlank()
+                            || endInvalid
+                            || (nameField.getText().trim().equals(trip.name())
+                                    && descArea.getText().equals(originalDesc)
+                                    && java.util.Objects.equals(newEnd, trip.endDate())));
+        };
         refreshOk.run();
         nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
+        endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
         String newName = nameField.getText().trim();
         String newDesc = descArea.getText();
-        if (newName.equals(trip.name()) && newDesc.equals(trip.description() == null ? "" : trip.description())) {
+        LocalDate newEnd = endField.getValue();
+        if (newName.equals(trip.name()) && newDesc.equals(trip.description() == null ? "" : trip.description())
+                && java.util.Objects.equals(newEnd, trip.endDate())) {
             return;
         }
-        Trip updated = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newDesc);
+        Trip updated = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc);
         store.saveTrip(updated);
         addPending(trip.ref().path(), UPDATE);
         reloadTrips(trip.year());
@@ -689,6 +724,14 @@ public class MainController {
         if (trip == null || trip.startDate() == null) return;
         datePicker.setValue(trip.startDate());
         status("Snapped to day 1 (" + trip.startDate() + ")");
+    }
+
+    @FXML
+    public void onLastDay() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null || trip.endDate() == null) return;
+        datePicker.setValue(trip.endDate());
+        status("Snapped to last day (" + trip.endDate() + ")");
     }
 
     @FXML
@@ -920,6 +963,14 @@ public class MainController {
             }
             todayButton.setDisable(date == null || date.equals(target));
         }
+        boolean nextDisabled;
+        if (trip == null || trip.endDate() == null || date == null) {
+            nextDisabled = false;
+        } else {
+            nextDisabled = !date.isBefore(trip.endDate());
+        }
+        if (nextDayButton != null) nextDayButton.setDisable(nextDisabled);
+        if (lastDayButton != null) lastDayButton.setDisable(trip == null || trip.endDate() == null);
     }
 
     private void updateTourDay(Trip trip, LocalDate date) {
@@ -929,10 +980,11 @@ public class MainController {
             return;
         }
         long day = ChronoUnit.DAYS.between(trip.startDate(), date) + 1;
-        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(date, day) + ")");
+        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(trip, date, day) + ")");
     }
 
-    private static String relativeDayLabel(LocalDate date, long tourDay) {
+    private static String relativeDayLabel(Trip trip, LocalDate date, long tourDay) {
+        if (trip.endDate() != null && date.equals(trip.endDate())) return "last day";
         long delta = ChronoUnit.DAYS.between(LocalDate.now(), date);
         if (delta == 0) return "today";
         if (delta == -1) return "yesterday";
