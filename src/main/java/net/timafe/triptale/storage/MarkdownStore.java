@@ -186,6 +186,14 @@ public class MarkdownStore {
         }
     }
 
+    public void deleteEntry(TripRef ref, LocalDate date) {
+        try {
+            Files.delete(entryFile(ref, date));
+        } catch (IOException e) {
+            throw new StorageException("Failed to delete entry: " + ref.path() + "/" + date, e);
+        }
+    }
+
     public void saveEntry(TripRef ref, DiaryEntry entry) {
         ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.

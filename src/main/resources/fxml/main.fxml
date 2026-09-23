@@ -61,6 +61,8 @@
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true"/>
                             <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>
                         </items>
                     </Menu>
                     <Menu text="View">

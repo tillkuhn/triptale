@@ -129,12 +129,14 @@ public class MainController implements StatusSink {
     @FXML private MenuItem favesMenuItem;
     @FXML private MenuItem saveMenuItem;
     @FXML private MenuItem copyMenuItem;
+    @FXML private MenuItem deleteEntryMenuItem;
     @FXML private Menu appMenu;
     @FXML private MenuItem aboutMenuItem;
     @FXML private MenuItem quitMenuItem;
 
     private static final String CREATE = "Create";
     private static final String UPDATE = "Update";
+    private static final String DELETE = "Delete";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
 
     private static final String TALE_FONT_SIZE_STATE_KEY = "taleFontSizePx";
@@ -641,10 +643,12 @@ public class MainController implements StatusSink {
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
+            updateDeleteEntryMenuItem(false);
             return;
         }
         entryExists = store.entryExists(trip.ref(), date);
         updateViewSourceMenuItem(entryExists);
+        updateDeleteEntryMenuItem(entryExists);
         DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
@@ -707,6 +711,11 @@ public class MainController implements StatusSink {
     private void updateViewSourceMenuItem(boolean exists) {
         if (viewSourceMenuItem == null) return;
         viewSourceMenuItem.setDisable(!exists);
+    }
+
+    private void updateDeleteEntryMenuItem(boolean exists) {
+        if (deleteEntryMenuItem == null) return;
+        deleteEntryMenuItem.setDisable(!exists);
     }
 
     private Instant readTalesLastModified(Trip trip, LocalDate date) {
@@ -840,13 +849,21 @@ public class MainController implements StatusSink {
         if (total <= COMMIT_MSG_INLINE_LIMIT) {
             List<String> creates = new ArrayList<>();
             List<String> updates = new ArrayList<>();
-            pending.forEach((label, action) ->
-                    (CREATE.equals(action) ? creates : updates).add(label));
+            List<String> deletes = new ArrayList<>();
+            pending.forEach((label, action) -> {
+                if (CREATE.equals(action)) creates.add(label);
+                else if (DELETE.equals(action)) deletes.add(label);
+                else updates.add(label);
+            });
             StringBuilder sb = new StringBuilder();
             if (!creates.isEmpty()) sb.append(CREATE).append(": ").append(String.join(", ", creates));
             if (!updates.isEmpty()) {
                 if (sb.length() > 0) sb.append(" | ");
                 sb.append(UPDATE).append(": ").append(String.join(", ", updates));
+            }
+            if (!deletes.isEmpty()) {
+                if (sb.length() > 0) sb.append(" | ");
+                sb.append(DELETE).append(": ").append(String.join(", ", deletes));
             }
             return sb.toString();
         }
@@ -949,6 +966,43 @@ public class MainController implements StatusSink {
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.path() + "/" + date);
+    }
+
+    @FXML
+    public void onDeleteTaleEntry() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null || !entryExists) return;
+
+        String title = titleField.getText();
+        String titleLine = title == null || title.isBlank() || title.equals(DiaryEntry.DEFAULT_TITLE)
+                ? ""
+                : "\n\"" + title + "\"";
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete the Tale Entry for " + date + "?" + titleLine
+                        + "\n\nThis cannot be undone.",
+                ButtonType.YES, ButtonType.NO);
+        confirm.setTitle(appName);
+        confirm.setHeaderText("Delete Tale Entry");
+        Dialogs.applyStylesheet(confirm.getDialogPane());
+        confirm.getDialogPane().setMinWidth(420);
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.YES) return;
+
+        TripRef ref = trip.ref();
+        Path file = store.entryFile(ref, date);
+        String label = ref.path() + "/" + date;
+        store.deleteEntry(ref, date);
+        if (CREATE.equals(pending.remove(label))) {
+            // Never committed — git never tracked it, nothing to unstage.
+        } else {
+            gitService.remove(file);
+            pending.put(label, DELETE);
+        }
+        updateCommitButton();
+
+        loadEntry();
+        status("Deleted entry " + label);
     }
 
     @FXML

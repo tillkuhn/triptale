@@ -49,14 +49,12 @@ to `GpxImport`'s first-trkpt-only date/name/coords logic, only additive fields.
 in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
 also maybe add housekeeping task that calls "git gc" and capture output
 
-## 25 Delete Tale Entry / Trip
+## DONE 25 Delete Tale Entry / Trip
 
-There is currently no delete capability anywhere in the app, for trips or for individual tale
-entries. Surfaced during the todo 24 grill-me session: a GPX import that lands on the wrong
-day (or is imported into the wrong trip) has no in-app way to undo once saved — the user would
-have to go to the filesystem/git directly. Scope: at minimum, delete a single Tale Entry; also
-consider delete-trip (including all its entries). See docs/24_gpx_import_tale_entry.md decision
-3 for the context that raised this.
+see docs/25_delete_tale_entry.md for the full design (from a grill-me session covering scope
+(entry-only, delete-trip deferred), the JGit `git rm`/staging gotcha, the pending-commit DELETE
+action and its collision with an uncommitted CREATE, and reusing the existing empty-state
+`loadEntry()` path for post-delete UI reset).
 
 ## 24 Support import gpx for Trip Entries
 

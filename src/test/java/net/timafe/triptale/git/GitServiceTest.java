@@ -168,6 +168,40 @@ class GitServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // remove — stages deletion of an already-tracked file
+    // -------------------------------------------------------------------------
+
+    @Test
+    void removeStagesDeletionOfTrackedFileForNextCommit() {
+        gitService.initRepo();
+        TripRef ref = new TripRef(2025, "tour");
+        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), null, ""));
+        store.saveEntry(ref, DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
+        assertNotNull(gitService.commitAll("add entry"));
+
+        Path entryFile = store.entryFile(ref, LocalDate.of(2025, 6, 1));
+        store.deleteEntry(ref, LocalDate.of(2025, 6, 1));
+        gitService.remove(entryFile);
+
+        String sha = gitService.commitAll("delete entry");
+        assertNotNull(sha, "removal should be staged and committed, not a no-op");
+    }
+
+    @Test
+    void removeDoesNotThrowWhenFileAlreadyMissingFromDisk() {
+        gitService.initRepo();
+        TripRef ref = new TripRef(2025, "tour");
+        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), null, ""));
+        store.saveEntry(ref, DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
+        gitService.commitAll("add entry");
+
+        Path entryFile = store.entryFile(ref, LocalDate.of(2025, 6, 1));
+        store.deleteEntry(ref, LocalDate.of(2025, 6, 1));
+
+        assertDoesNotThrow(() -> gitService.remove(entryFile));
+    }
+
+    // -------------------------------------------------------------------------
     // remoteUrl — no remote configured
     // -------------------------------------------------------------------------
 

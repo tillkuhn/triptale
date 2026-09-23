@@ -358,6 +358,23 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void deleteEntryRemovesFileFromDisk() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("x").build());
+        assertTrue(store.entryExists(ALPS_2025, LocalDate.of(2025, 7, 4)));
+
+        store.deleteEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+
+        assertFalse(store.entryExists(ALPS_2025, LocalDate.of(2025, 7, 4)));
+    }
+
+    @Test
+    void deleteEntryThrowsWhenFileMissing() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        assertThrows(StorageException.class, () -> store.deleteEntry(ALPS_2025, LocalDate.of(2025, 7, 4)));
+    }
+
+    @Test
     void listEntryDatesReturnsSortedDates() {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 3)).build());

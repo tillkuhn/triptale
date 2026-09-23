@@ -161,6 +161,23 @@ public class GitService {
         }
     }
 
+    /**
+     * Stages the removal of an already-tracked file from the git index (JGit's {@code RmCommand},
+     * index-only via {@code setCached(true)} — the caller has already deleted the file from disk,
+     * so there's nothing left for a working-tree removal to do). {@code commitAll()}'s plain
+     * {@code add(".")} does not pick up deletions of tracked files on its own, so a delete feature
+     * must call this explicitly for the removal to actually leave the git history.
+     */
+    public void remove(Path file) {
+        Path root = store.dataDir();
+        String relative = root.relativize(file).toString().replace(java.io.File.separatorChar, '/');
+        try (Git git = Git.open(root.toFile())) {
+            git.rm().setCached(true).addFilepattern(relative).call();
+        } catch (GitAPIException | IOException e) {
+            throw new GitException("Failed to stage removal of " + relative, e);
+        }
+    }
+
     public String remoteUrl() {
         try (Git git = Git.open(store.dataDir().toFile())) {
             String url = git.getRepository().getConfig().getString("remote", "origin", "url");
