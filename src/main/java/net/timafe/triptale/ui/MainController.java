@@ -412,9 +412,16 @@ public class MainController implements StatusSink {
 
     /** Refreshes years and the current year's trips after external changes (pull/sync), preserving selection. */
     private void reloadAll() {
+        Trip previouslySelected = tripCombo.getValue();
         reloadYears();
         Integer year = yearCombo.getValue();
         if (year != null) reloadTrips(year);
+        if (previouslySelected != null) {
+            Trip toReselect = findTrip(previouslySelected.slug());
+            if (toReselect != null) {
+                tripCombo.getSelectionModel().select(toReselect);
+            }
+        }
     }
 
     /** Restores the cached (year, trip) selection on startup, defaulting to the current year. */
