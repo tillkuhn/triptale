@@ -12,6 +12,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
@@ -23,6 +24,7 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.Node;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
@@ -67,6 +69,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -102,6 +105,8 @@ public class MainController implements StatusSink {
     @FXML private Button impressionsButton;
     @FXML private Button favesButton;
     @FXML private TextArea talesArea;
+    @FXML private VBox taleEmptyOverlay;
+    @FXML private Hyperlink createTaleLink;
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
     @FXML private HBox statusRow;
@@ -167,6 +172,8 @@ public class MainController implements StatusSink {
     private Double stopLat;
     private Double stopLon;
     private boolean entryExists;
+    /** True once the user has clicked through the "here be dragons" placeholder for a new entry. */
+    private boolean taleUnlocked;
     private Instant talesUpdatedAt;
     private int taleFontSizePx = TALE_FONT_SIZE_DEFAULT_PX;
 
@@ -655,12 +662,13 @@ public class MainController implements StatusSink {
             return;
         }
         entryExists = store.entryExists(trip.ref(), date);
+        taleUnlocked = entryExists;
         updateViewSourceMenuItem(entryExists);
         updateDeleteEntryMenuItem(entryExists);
         DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
-        titleField.setText(e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title());
+        titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
         trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
         startLat = e.startLat();
         startLon = e.startLon();
@@ -670,10 +678,48 @@ public class MainController implements StatusSink {
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
         updateTalesLabel();
+        updateEmptyState();
         updateImpressionsButton(trip, date);
         updateFavesButton(trip, date);
         snapshotBaseline();
         updateDirty();
+    }
+
+    /**
+     * Toggles the "here be dragons" placeholder for a date with no entry file yet, so it reads as
+     * genuinely absent rather than as an existing-but-incomplete entry.
+     */
+    private void updateEmptyState() {
+        boolean showEmpty = !entryExists && !taleUnlocked;
+        if (taleEmptyOverlay != null) {
+            taleEmptyOverlay.setVisible(showEmpty);
+            taleEmptyOverlay.setManaged(showEmpty);
+        }
+        talesArea.setDisable(showEmpty);
+        titleField.setDisable(showEmpty);
+        distanceField.setDisable(showEmpty);
+        altField.setDisable(showEmpty);
+        trackUrlField.setDisable(showEmpty);
+        if (showEmpty) {
+            if (!talesArea.getStyleClass().contains("tale-text-empty")) {
+                talesArea.getStyleClass().add("tale-text-empty");
+            }
+        } else {
+            talesArea.getStyleClass().remove("tale-text-empty");
+        }
+    }
+
+    @FXML
+    public void onCreateTaleLink() {
+        taleUnlocked = true;
+        updateEmptyState();
+        updateTalesLabel();
+        LocalDate date = datePicker.getValue();
+        if (date != null && titleField.getText().isBlank()) {
+            titleField.setText(date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH));
+        }
+        titleField.requestFocus();
+        titleField.selectAll();
     }
 
     private void updateImpressionsButton(Trip trip, LocalDate date) {
@@ -738,6 +784,10 @@ public class MainController implements StatusSink {
 
     private void updateTalesLabel() {
         if (talesLabel == null) return;
+        if (!entryExists && !taleUnlocked) {
+            talesLabel.setText("🐉 Tales");
+            return;
+        }
         String text = talesArea.getText();
         if (text == null || text.isBlank()) {
             talesLabel.setText("🐉 Tales · here be dragons");
@@ -813,7 +863,7 @@ public class MainController implements StatusSink {
 
     private void updateDirty() {
         boolean saveEnabled = isDirty() && isValidEntry();
-        String saveLabel = entryExists ? "💾 Save Tale" : "📝 Create Tale";
+        String saveLabel = "💾 Save Tale";
         if (saveButton != null) {
             saveButton.setDisable(!saveEnabled);
             saveButton.setText(saveLabel);
@@ -974,9 +1024,11 @@ public class MainController implements StatusSink {
         boolean wasNew = !entryExists;
         store.saveEntry(trip, entry);
         entryExists = true;
+        taleUnlocked = true;
         updateViewSourceMenuItem(true);
         talesUpdatedAt = Instant.now();
         updateTalesLabel();
+        updateEmptyState();
         addPending(trip.path() + "/" + date, wasNew ? CREATE : UPDATE);
         talesArea.setText(Markdown.demoteH1(talesArea.getText()));
         snapshotBaseline();

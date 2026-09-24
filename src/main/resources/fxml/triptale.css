@@ -106,6 +106,37 @@
     -fx-fill: #1e2a2a;
 }
 
+/* ── Tale text (no entry yet — muted, matches app background) ── */
+.text-area.tale-text-empty,
+.text-area.tale-text-empty .content {
+    -fx-background-color: #1e2a2a;
+    -fx-border-color: #1e2a2a;
+}
+.text-area.tale-text-empty:disabled {
+    -fx-opacity: 1;
+}
+
+/* ── "Here be dragons" placeholder overlay for a date with no entry yet ── */
+.tale-empty-overlay {
+    -fx-background-color: #1e2a2a;
+}
+.tale-empty-dragon {
+    -fx-font-size: 64px;
+}
+.tale-empty-heading {
+    -fx-text-fill: #7a9490;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+.tale-empty-link, .tale-empty-link:visited {
+    -fx-text-fill: #4ec9b0;
+    -fx-font-size: 14px;
+    -fx-border-color: transparent;
+}
+.tale-empty-link:hover {
+    -fx-text-fill: #6fe0c8;
+}
+
 /* ── DatePicker ───────────────────────────────────────── */
 .date-picker {
     -fx-background-color: transparent;

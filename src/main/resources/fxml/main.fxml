@@ -3,6 +3,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
@@ -157,6 +158,13 @@
             <Label fx:id="talesLabel" text="Tales" styleClass="section-label"/>
             <StackPane VBox.vgrow="ALWAYS">
                 <TextArea fx:id="talesArea" styleClass="tale-text" wrapText="true"/>
+                <VBox fx:id="taleEmptyOverlay" styleClass="tale-empty-overlay" alignment="CENTER" spacing="14"
+                      visible="false" managed="false">
+                    <Label text="🐉" styleClass="tale-empty-dragon"/>
+                    <Label text="Here be dragons" styleClass="tale-empty-heading"/>
+                    <Hyperlink fx:id="createTaleLink" text="👉 Click here to create a tale" onAction="#onCreateTaleLink"
+                               styleClass="tale-empty-link"/>
+                </VBox>
                 <VBox fx:id="scallopColumn" styleClass="scallop-edge" alignment="TOP_CENTER" spacing="0" translateX="-9"
                       prefWidth="18" maxWidth="18" minWidth="18" minHeight="0" prefHeight="0"
                       mouseTransparent="true" pickOnBounds="false" StackPane.alignment="CENTER_LEFT">
