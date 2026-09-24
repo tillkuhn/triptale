@@ -125,6 +125,67 @@
     -fx-background-color: #16201f;
 }
 
+/* The calendar popup is an unattached PopupControl — style it explicitly rather
+   than relying on JavaFX's default Modena skin, whose month/year header renders
+   low-contrast (pale text on a near-white pane) against a dark theme. */
+.date-picker-popup {
+    -fx-background-color: #16201f;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 10, 0, 2, 4);
+}
+.date-picker-popup > .month-year-pane {
+    -fx-background-color: #202e2e;
+}
+.date-picker-popup > .month-year-pane > .label,
+.date-picker-popup > .month-year-pane .spinner > .label {
+    -fx-text-fill: #e8f4f1;
+    -fx-font-weight: bold;
+}
+.date-picker-popup > .month-year-pane .spinner .button > .left-arrow,
+.date-picker-popup > .month-year-pane .spinner .button > .right-arrow {
+    -fx-background-color: #4ec9b0;
+}
+.date-picker-popup > .month-year-pane .spinner .button:hover {
+    -fx-background-color: #2e4040;
+}
+.date-picker-popup > .calendar-grid {
+    -fx-background-color: #16201f;
+}
+.date-picker-popup > .calendar-grid > .day-name-cell {
+    -fx-background-color: #202e2e;
+    -fx-text-fill: #4ec9b0;
+}
+.date-picker-popup .day-cell {
+    -fx-background-color: #1e2a2a;
+    -fx-text-fill: #c8deda;
+}
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #2fb8a3;
+    -fx-text-fill: #0d1414;
+}
+.date-picker-popup .day-cell.previous-month,
+.date-picker-popup .day-cell.next-month {
+    -fx-text-fill: #4a6868;
+}
+.date-picker-popup .day-cell:hover.previous-month,
+.date-picker-popup .day-cell:hover.next-month {
+    -fx-text-fill: #0d1414;
+}
+.date-picker-popup .day-cell.today {
+    -fx-background-color: #2e4040;
+    -fx-text-fill: #4ec9b0;
+    -fx-font-weight: bold;
+}
+.date-picker-popup .day-cell.today:hover {
+    -fx-text-fill: #0d1414;
+}
+.date-picker-popup .day-cell:selected {
+    -fx-background-color: #4ec9b0;
+    -fx-text-fill: #0d1414;
+    -fx-font-weight: bold;
+}
+
 /* ── ComboBox ─────────────────────────────────────────── */
 .combo-box {
     -fx-background-color: #172020;
