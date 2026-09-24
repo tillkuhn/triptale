@@ -48,6 +48,7 @@ import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SyncProgressDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
+import net.timafe.triptale.ui.dialog.TripMapDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
@@ -102,6 +103,7 @@ public class MainController implements StatusSink {
     @FXML private Button openTrackUrlButton;
     @FXML private Button coordinatesButton;
     @FXML private Button openCoordinatesButton;
+    @FXML private Button tripMapButton;
     @FXML private Button impressionsButton;
     @FXML private Button favesButton;
     @FXML private TextArea talesArea;
@@ -198,6 +200,7 @@ public class MainController implements StatusSink {
     private final ExportDiaryDialog exportDiaryDialog;
     private final ImageViewerDialog imageViewerDialog;
     private final AboutDialog aboutDialog;
+    private final TripMapDialog tripMapDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
@@ -220,6 +223,7 @@ public class MainController implements StatusSink {
         this.imageViewerDialog = new ImageViewerDialog(exifReader, browser, this);
         this.aboutDialog =
                 new AboutDialog(appName, buildPropertiesProvider.getIfAvailable(), browser);
+        this.tripMapDialog = new TripMapDialog(new MapboxService(settingsStore));
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -762,6 +766,31 @@ public class MainController implements StatusSink {
     public void onOpenCoordinates() {
         if (startLat == null || startLon == null) return;
         browser.open("https://www.google.com/maps?q=" + startLat + "," + startLon);
+    }
+
+    @FXML
+    public void onShowTripMap() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) {
+            status("Select a trip first");
+            return;
+        }
+        List<LocalDate> dates = store.listEntryDates(trip.ref());
+        List<double[]> startPoints = new ArrayList<>();
+        double[] endPoint = null;
+        for (int i = 0; i < dates.size(); i++) {
+            DiaryEntry entry = store.loadEntry(trip.ref(), dates.get(i));
+            if (entry.startLat() != null && entry.startLon() != null) {
+                startPoints.add(new double[]{entry.startLon(), entry.startLat()});
+            }
+            // Only the latest day's stop point — a multi-day trip's daily stop is usually the
+            // next day's start (redundant); a one-way trip's final destination otherwise never
+            // appears on the map at all.
+            if (i == dates.size() - 1 && entry.stopLat() != null && entry.stopLon() != null) {
+                endPoint = new double[]{entry.stopLon(), entry.stopLat()};
+            }
+        }
+        tripMapDialog.show(trip.name(), startPoints, endPoint);
     }
 
     private void updateViewSourceMenuItem(boolean exists) {

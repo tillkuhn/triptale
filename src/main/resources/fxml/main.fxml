@@ -152,6 +152,9 @@
                         <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">
                             <tooltip><Tooltip text="Open start point in Google Maps"/></tooltip>
                         </Button>
+                        <Button fx:id="tripMapButton" text="🗺 Trip Map" onAction="#onShowTripMap">
+                            <tooltip><Tooltip text="Show all start points for this trip on a map"/></tooltip>
+                        </Button>
                     </HBox>
                 </GridPane>
             </VBox>

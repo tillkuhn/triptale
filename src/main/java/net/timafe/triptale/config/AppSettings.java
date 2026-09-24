@@ -20,6 +20,7 @@ public class AppSettings {
     private String impressionsFilePattern = "";
     private int impressionsGridColumns = 2;
     private String impressionsFaveFilePattern = "";
+    private String mapboxToken = "";
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -48,6 +49,8 @@ public class AppSettings {
     public void setImpressionsGridColumns(int impressionsGridColumns) { this.impressionsGridColumns = impressionsGridColumns; }
     public String getImpressionsFaveFilePattern() { return impressionsFaveFilePattern; }
     public void setImpressionsFaveFilePattern(String impressionsFaveFilePattern) { this.impressionsFaveFilePattern = impressionsFaveFilePattern; }
+    public String getMapboxToken() { return mapboxToken; }
+    public void setMapboxToken(String mapboxToken) { this.mapboxToken = mapboxToken; }
 
     public static class Git {
         private String authorName = "";
