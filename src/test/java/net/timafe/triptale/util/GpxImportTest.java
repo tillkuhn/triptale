@@ -18,7 +18,7 @@ class GpxImportTest {
     Path tempDir;
 
     @Test
-    void parsesNameDateAndFirstTrackPoint() throws IOException {
+    void parsesNameDateAndFirstAndLastTrackPoint() throws IOException {
         Path file = writeGpx("""
                 <?xml version='1.0' encoding='UTF-8'?>
                 <gpx>
@@ -45,6 +45,8 @@ class GpxImportTest {
         assertEquals(LocalDate.of(2025, 4, 18), result.get().date());
         assertEquals(50.352114, result.get().lat());
         assertEquals(7.589085, result.get().lon());
+        assertEquals(50.352063, result.get().stopLat());
+        assertEquals(7.588966, result.get().stopLon());
     }
 
     @Test

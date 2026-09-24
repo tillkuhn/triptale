@@ -159,9 +159,13 @@ public class MainController implements StatusSink {
     private String baselineTrackUrl = "";
     private Double baselineStartLat;
     private Double baselineStartLon;
+    private Double baselineStopLat;
+    private Double baselineStopLon;
     private String baselineTales = "";
     private Double startLat;
     private Double startLon;
+    private Double stopLat;
+    private Double stopLon;
     private boolean entryExists;
     private Instant talesUpdatedAt;
     private int taleFontSizePx = TALE_FONT_SIZE_DEFAULT_PX;
@@ -471,6 +475,8 @@ public class MainController implements StatusSink {
                     .title(fe.title())
                     .startLat(fe.lat())
                     .startLon(fe.lon())
+                    .stopLat(fe.stopLat())
+                    .stopLon(fe.stopLon())
                     .distance(fe.distanceKm())
                     .altitudeMeters(fe.altitudeGainM())
                     .build();
@@ -545,6 +551,8 @@ public class MainController implements StatusSink {
         titleField.setText(p.name());
         startLat = p.lat();
         startLon = p.lon();
+        stopLat = p.stopLat();
+        stopLon = p.stopLon();
         distanceField.setText(String.valueOf(p.distanceKm()));
         if (p.altitudeGainM() != null) {
             altField.setText(String.valueOf(p.altitudeGainM()));
@@ -656,6 +664,8 @@ public class MainController implements StatusSink {
         trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
         startLat = e.startLat();
         startLon = e.startLon();
+        stopLat = e.stopLat();
+        stopLon = e.stopLon();
         updateCoordinatesButton();
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
@@ -745,6 +755,8 @@ public class MainController implements StatusSink {
         baselineTrackUrl = trackUrlField.getText();
         baselineStartLat = startLat;
         baselineStartLon = startLon;
+        baselineStopLat = stopLat;
+        baselineStopLon = stopLon;
         baselineTales = talesArea.getText();
     }
 
@@ -755,6 +767,8 @@ public class MainController implements StatusSink {
                 || !Objects.equals(trackUrlField.getText(), baselineTrackUrl)
                 || !Objects.equals(startLat, baselineStartLat)
                 || !Objects.equals(startLon, baselineStartLon)
+                || !Objects.equals(stopLat, baselineStopLat)
+                || !Objects.equals(stopLon, baselineStopLon)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
@@ -953,6 +967,8 @@ public class MainController implements StatusSink {
                 .trackUrl(trackUrlField.getText())
                 .startLat(startLat)
                 .startLon(startLon)
+                .stopLat(stopLat)
+                .stopLon(stopLon)
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;

@@ -122,7 +122,9 @@ e.g. `trip.md`/`type.md`/`.git`).
 **Default data dir:** `application.yml` sets `~/Pictures/triptale-data`. `TripTaleProperties` Java field defaults to `~/.triptale` but is overridden at runtime. The `application.yml` value wins.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
-- `altitude`, `date`, `distance`, `route`, `trackurl`, `type` (all lowercase)
+- Entries: `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `trackurl`, `type`
+- Trips (`README.md`): `end_date`, `start_date`, `type`
+- Single-word keys stay flat lowercase (`altitude`, `trackurl`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
 - Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initOnStartup()` creates all three if missing, alongside `.gitignore` setup.
 - Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.

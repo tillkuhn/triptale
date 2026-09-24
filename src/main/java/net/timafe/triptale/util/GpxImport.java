@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Reads a track's name, first track point's coordinates/date, and whole-track
+ * Reads a track's name, first/last track point coordinates, first point's date, and whole-track
  * distance/altitude-gain totals out of a GPX file, for prefilling {@code NewTripDialog} and
  * the Tale Entry import. Only {@code trk/trkseg/trkpt} is read (no {@code rte}).
  */
@@ -26,6 +26,7 @@ public final class GpxImport {
     private static final double EARTH_RADIUS_M = 6_371_000.0;
 
     public record Parsed(String name, LocalDate date, double lat, double lon,
+                          double stopLat, double stopLon,
                           double distanceKm, Double altitudeGainM) {}
 
     private record TrkPt(double lat, double lon, Double ele) {}
@@ -46,6 +47,7 @@ public final class GpxImport {
             List<TrkPt> points = readTrackPoints(trk);
             if (points.isEmpty()) return Optional.empty();
             TrkPt first = points.get(0);
+            TrkPt last = points.get(points.size() - 1);
 
             Element firstTrkseg = firstChildElement(trk, "trkseg");
             Element firstTrkpt = firstTrkseg == null ? null : firstChildElement(firstTrkseg, "trkpt");
@@ -61,7 +63,7 @@ public final class GpxImport {
             if (altitudeGainM != null) altitudeGainM = round2(altitudeGainM);
 
             return Optional.of(new Parsed(name.getTextContent().trim(), date,
-                    first.lat(), first.lon(), distanceKm, altitudeGainM));
+                    first.lat(), first.lon(), last.lat(), last.lon(), distanceKm, altitudeGainM));
         } catch (Exception e) {
             return Optional.empty();
         }

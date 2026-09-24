@@ -27,7 +27,8 @@ public final class NewTripDialog {
     public record Spec(String name, LocalDate startDate, String description, Optional<FirstEntry> firstEntry) {}
 
     /** All fields but {@code title} are null unless the trip was created from a GPX import. */
-    public record FirstEntry(String title, Double lat, Double lon, Double distanceKm, Double altitudeGainM) {}
+    public record FirstEntry(String title, Double lat, Double lon, Double stopLat, Double stopLon,
+                              Double distanceKm, Double altitudeGainM) {}
 
     /** Empty when the user cancelled. */
     public Optional<Spec> showAndWait() {
@@ -55,6 +56,8 @@ public final class NewTripDialog {
         String[] gpxName = new String[1];
         Double[] gpxLat = new Double[1];
         Double[] gpxLon = new Double[1];
+        Double[] gpxStopLat = new Double[1];
+        Double[] gpxStopLon = new Double[1];
         Double[] gpxDistanceKm = new Double[1];
         Double[] gpxAltitudeGainM = new Double[1];
 
@@ -91,6 +94,8 @@ public final class NewTripDialog {
                     gpxName[0] = p.name();
                     gpxLat[0] = p.lat();
                     gpxLon[0] = p.lon();
+                    gpxStopLat[0] = p.stopLat();
+                    gpxStopLon[0] = p.stopLon();
                     gpxDistanceKm[0] = p.distanceKm();
                     gpxAltitudeGainM[0] = p.altitudeGainM();
                     initFirstEntryCheck.setSelected(true);
@@ -114,8 +119,9 @@ public final class NewTripDialog {
         Optional<FirstEntry> firstEntry = Optional.empty();
         if (initFirstEntryCheck.isSelected()) {
             firstEntry = Optional.of(gpxName[0] != null
-                    ? new FirstEntry(gpxName[0], gpxLat[0], gpxLon[0], gpxDistanceKm[0], gpxAltitudeGainM[0])
-                    : new FirstEntry(name, null, null, null, null));
+                    ? new FirstEntry(gpxName[0], gpxLat[0], gpxLon[0], gpxStopLat[0], gpxStopLon[0],
+                            gpxDistanceKm[0], gpxAltitudeGainM[0])
+                    : new FirstEntry(name, null, null, null, null, null, null));
         }
         return Optional.of(new Spec(name, startField.getValue(), descArea.getText(), firstEntry));
     }

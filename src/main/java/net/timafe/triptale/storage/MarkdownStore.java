@@ -202,8 +202,10 @@ public class MarkdownStore {
         fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
         if (entry.distance() != null) fm.put("distance", entry.distance());
-        if (entry.startLat() != null) fm.put("startlat", entry.startLat());
-        if (entry.startLon() != null) fm.put("startlon", entry.startLon());
+        if (entry.startLat() != null) fm.put("start_lat", entry.startLat());
+        if (entry.startLon() != null) fm.put("start_lon", entry.startLon());
+        if (entry.stopLat() != null) fm.put("stop_lat", entry.stopLat());
+        if (entry.stopLon() != null) fm.put("stop_lon", entry.stopLon());
         if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
         fm.put("type", ENTRY_TYPE);
         try {
@@ -316,8 +318,10 @@ public class MarkdownStore {
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .title(title)
                 .trackUrl(asString(data.get("trackurl")))
-                .startLat(asDouble(data.get("startlat")))
-                .startLon(asDouble(data.get("startlon")))
+                .startLat(asDouble(data.get("start_lat")))
+                .startLon(asDouble(data.get("start_lon")))
+                .stopLat(asDouble(data.get("stop_lat")))
+                .stopLon(asDouble(data.get("stop_lon")))
                 .tales(tales)
                 .build();
     }
