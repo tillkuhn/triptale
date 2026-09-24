@@ -16,3 +16,5 @@ target/jpackage-input/
 
 *.log
 triptale-*.jar
+
+.env
