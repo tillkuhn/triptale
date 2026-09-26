@@ -2,6 +2,62 @@
 
 ## Next Todo: 28
 
+## 32 Smart Sync
+
+We currently have 3 operations to persist trip enty data: Save Tale (to local disk), commit (git commit for saved unstaged data) and Sync (kind of all in one for commit, pull / rebase and push) which could be confusing since you typcially don't want to bother with Git Operations.
+Suggested Improvement:
+- Keep Save as cheap local "store to file system" operations
+- Remove Commit as a button (but keep it in the menu for "power users") and rebrand Sync as "Smart Sync" for the new interactive operation to interact with the repo
+- Store lastRemotePull date in .state.yml (but only if successful) 
+- Introduce new setting suggestedPullIntervalMins to store the number of minutes since last pull after which the smart sync dialogue should suggest a pull (default checked)
+
+Smart Sync Dialogue Details row by row (as opposed to current sync, it will require user interaction):
+Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
+Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this
+Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
+Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
+Fixed spaced for in progress area showing spinner, current action and result of interaction. 
+
+Buttons should be only Close (close window w/o acttion() or Sync. When sync is used, update the progress area. Leave the window open so the user can see the results, and need to close manually
+
+Since Sync will now also handle local commits, the button in the main window needs to be active even if offline.  
+
+
+## 31 Git Housekeeping
+
+Add a new action to the repository menu group called "Run Housekeeping" or similar, it should run "git gc" on the data repo and show the results
+Example (...)
+Writing objects: 100% (1027/1027), done.
+Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0
+
+
+## 30 Localization for Trip Language
+
+The single language for the application (e.g. menu entries, labels etc.) will remain english.
+But since the contributed trip tales are potentially in a different language and the exporter adds some words such as "Distance, Day etc." we should add support for i18n. 
+Add a new setting defaultTripLanguage, possible values fpr locales are German and English, default is English.
+Add support for properties to translate certain values, but should always default to english. 
+Current content for german translation:
+
+Day = Tag
+Distance = Distanz
+Altitude = Höhenmeter
+
+also the Date formats should honor this settings, e.g. currently the current day displays as 20xx-xx-xx Saturday, and if trip language is german it should be "Samstag" (if necessary we need to add those weekdays to the translation).
+In Export Diary, use these values instead of the current hardcoded english versions, let me know if I forgot anything
+
+## 29 implement delete (entire) trip
+
+we already have delete tale, but should be also possible to delete entire trip, which requires recursive delete of the folder in the git repo.
+add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
+
+## 28 store git revsion and add update check
+
+Triptale -> About currently only shows the maven version which we don't maintain. It should show the git revision instead, derived from latest tag. 
+Add "Check for updates" function in Triptale left menu. Should to the github source (which is already in the system and public) and check for most recent release. If equal or older to current (older is possible since a local version could be ahead), show that the app is up2date.
+If there is a newer version (all should be semver), show a text with the new version and a hyperlink where to download.
+Use the dynamic dialogue from "Sync" while checking the remote with the spinner. If that is not a reusable dialogue yet, do it now since we have further future use cases that should show verbosely that there is interaction with a remote page
+
 ## DONE 27 Capture distance and altitude (Höhenmeter) when importing GPX
 
 Todos 23/24 import title/date/start-coordinates from a GPX file but leave `distance` and
