@@ -757,18 +757,28 @@ public class MainController implements StatusSink {
 
     private void updateCoordinatesButton() {
         boolean set = startLat != null && startLon != null;
+        boolean stopSet = set && stopLat != null && stopLon != null;
         if (coordinatesButton != null) {
-            coordinatesButton.setText(set ? "📍 " + Coordinates.toDdm(startLat, startLon) : "📍 Uncharted");
+            coordinatesButton.setText(set
+                    ? "📍 " + Coordinates.toDdm(startLat, startLon) + (stopSet ? " ⇢ 🏁" : "")
+                    : "📍 Uncharted");
+            coordinatesButton.setTooltip(new Tooltip(stopSet
+                    ? "Start " + Coordinates.toDdm(startLat, startLon) + " · End " + Coordinates.toDdm(stopLat, stopLon)
+                    : "Set start and end point"));
         }
         if (openCoordinatesButton != null) {
             openCoordinatesButton.setDisable(!set);
+            openCoordinatesButton.setTooltip(new Tooltip(stopSet
+                    ? "Show route start → end on Google Maps"
+                    : "Show start point on Google Maps"));
         }
     }
 
     @FXML
     public void onOpenCoordinates() {
         if (startLat == null || startLon == null) return;
-        browser.open("https://www.google.com/maps?q=" + startLat + "," + startLon);
+        Coordinates.LatLon stop = stopLat == null || stopLon == null ? null : new Coordinates.LatLon(stopLat, stopLon);
+        browser.open(Coordinates.googleMapsUrl(new Coordinates.LatLon(startLat, startLon), stop));
     }
 
     private void updateViewSourceMenuItem(boolean exists) {
@@ -1295,11 +1305,14 @@ public class MainController implements StatusSink {
     @FXML
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
-                new CoordinatesDialog().showAndWait(startLat, startLon);
+                new CoordinatesDialog().showAndWait(startLat, startLon, stopLat, stopLon);
         if (result.isEmpty()) return;
-        Coordinates.LatLon coords = result.get().coords();
-        startLat = coords == null ? null : coords.lat();
-        startLon = coords == null ? null : coords.lon();
+        Coordinates.LatLon start = result.get().start();
+        Coordinates.LatLon stop = result.get().stop();
+        startLat = start == null ? null : start.lat();
+        startLon = start == null ? null : start.lon();
+        stopLat = stop == null ? null : stop.lat();
+        stopLon = stop == null ? null : stop.lon();
         updateCoordinatesButton();
         updateDirty();
     }

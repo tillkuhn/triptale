@@ -10,24 +10,78 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CoordinatesTest {
 
     @Test
-    void formatsDdmWithHemisphereLetters() {
-        assertEquals("51° 29.3' N 0° 0.8' W", Coordinates.toDdm(51.488, -0.013));
+    void formatsDegreesAndWholePaddedMinutes() {
+        assertEquals("51°29′N 0°01′W", Coordinates.toDdm(51.488, -0.013));
     }
 
     @Test
     void formatsSouthAndEastHemispheres() {
-        assertEquals("43° 30.2' S 16° 25.8' E", Coordinates.toDdm(-43.503, 16.430));
+        assertEquals("43°30′S 16°26′E", Coordinates.toDdm(-43.503, 16.430));
     }
 
     @Test
     void carriesRoundedMinutesIntoNextDegree() {
-        // 59.99 minutes rounds to 60.0, which must carry into the next whole degree.
-        assertEquals("1° 0.0' N 0° 0.0' E", Coordinates.toDdm(0.9999833, 0.0));
+        // 59.99 minutes rounds to 60, which must carry into the next whole degree.
+        assertEquals("1°00′N 0°00′E", Coordinates.toDdm(0.9999, 0.0));
     }
 
     @Test
     void treatsZeroAsPositiveHemisphere() {
-        assertEquals("0° 0.0' N 0° 0.0' E", Coordinates.toDdm(0.0, 0.0));
+        assertEquals("0°00′N 0°00′E", Coordinates.toDdm(0.0, 0.0));
+    }
+
+    @Test
+    void mapsUrlIsPinWithoutStop() {
+        assertEquals("https://www.google.com/maps?q=51.4,8.3",
+                Coordinates.googleMapsUrl(new Coordinates.LatLon(51.4, 8.3), null));
+    }
+
+    @Test
+    void mapsUrlIsDirectionsWithStop() {
+        assertEquals("https://www.google.com/maps/dir/?api=1&origin=51.4,8.3&destination=51.5,7.9",
+                Coordinates.googleMapsUrl(new Coordinates.LatLon(51.4, 8.3), new Coordinates.LatLon(51.5, 7.9)));
+    }
+
+    @Test
+    void parsesFirstAndLastOfSeveralGpxTrkpts() {
+        String gpx = "<trkpt lat=\"51.1\" lon=\"7.1\"></trkpt><trkpt lat=\"51.2\" lon=\"7.2\"></trkpt>"
+                + "<trkpt lat=\"51.3\" lon=\"7.3\"></trkpt>";
+        assertEquals(Optional.of(new Coordinates.LatLon(51.1, 7.1)), Coordinates.tryParse(gpx));
+        assertEquals(Optional.of(new Coordinates.LatLon(51.3, 7.3)), Coordinates.tryParseLast(gpx));
+    }
+
+    @Test
+    void parsesDirectionsUrlStopsNotViewCentre() {
+        String url = "https://www.google.com/maps/dir/51.478536,8.336688/51.5123,+7.912/@51.49,8.1,11z/data=!3m1!4b1";
+        assertEquals(Optional.of(new Coordinates.LatLon(51.478536, 8.336688)), Coordinates.tryParse(url));
+        assertEquals(Optional.of(new Coordinates.LatLon(51.5123, 7.912)), Coordinates.tryParseLast(url));
+    }
+
+    @Test
+    void parsesFirstAndLastOfSeveralDirectionsStops() {
+        String url = "https://www.google.com/maps/dir/51.1,7.1/51.2,7.2/51.3,7.3/";
+        assertEquals(Optional.of(new Coordinates.LatLon(51.1, 7.1)), Coordinates.tryParse(url));
+        assertEquals(Optional.of(new Coordinates.LatLon(51.3, 7.3)), Coordinates.tryParseLast(url));
+    }
+
+    @Test
+    void rejectsDirectionsStopGivenAsPlaceName() {
+        String url = "https://www.google.com/maps/dir/Werl/51.5123,7.912/@51.49,8.1,11z";
+        assertTrue(Coordinates.tryParse(url).isEmpty());
+        assertEquals(Optional.of(new Coordinates.LatLon(51.5123, 7.912)), Coordinates.tryParseLast(url));
+    }
+
+    @Test
+    void roundTripsOwnDirectionsUrl() {
+        String url = Coordinates.googleMapsUrl(new Coordinates.LatLon(51.4, 8.3), new Coordinates.LatLon(51.5, 7.9));
+        assertEquals(Optional.of(new Coordinates.LatLon(51.4, 8.3)), Coordinates.tryParse(url));
+        assertEquals(Optional.of(new Coordinates.LatLon(51.5, 7.9)), Coordinates.tryParseLast(url));
+    }
+
+    @Test
+    void lastEqualsFirstForSinglePointFormats() {
+        String url = "https://maps.google.com/maps?q=48.8566,2.3522&z=10";
+        assertEquals(Coordinates.tryParse(url), Coordinates.tryParseLast(url));
     }
 
     @Test

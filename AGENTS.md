@@ -170,7 +170,7 @@ other use for its dependencies (`ExportDiaryDialog`, `ImageViewerDialog`, `About
 
 The contract: **a dialog returns its outcome as data and never mutates controller state.**
 `NewTripDialog` → `Optional<Spec>`, `TripDetailsDialog` → `Optional<Trip>`,
-`CoordinatesDialog` → `Optional<Result>` (a null `coords()` means the user pressed Clear;
+`CoordinatesDialog` → `Optional<Result>` (`start()`/`stop()`, a null point means "unset";
 `Optional.empty()` means Cancel). Persisting, `addPending(...)`, and combo reselection stay in
 the controller. `SyncProgressDialog` inverts this — it owns the worker thread and takes an
 `onSuccess` callback that runs on the FX thread.

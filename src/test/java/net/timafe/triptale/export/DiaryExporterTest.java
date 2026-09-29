@@ -130,7 +130,7 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("Start: 51° 29.3' N 0° 0.8' W"));
+        assertTrue(out.contains("Start: 51°29′N 0°01′W"));
     }
 
     @Test

@@ -12,6 +12,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.Locale;
+
 @SpringBootApplication
 @EnableConfigurationProperties(TripTaleProperties.class)
 public class TripTaleApplication extends Application {
@@ -19,6 +21,12 @@ public class TripTaleApplication extends Application {
     private ConfigurableApplicationContext spring;
 
     public static void main(String[] args) {
+        // All our labels are English, so JavaFX's built-in texts (Cancel, Yes, ...) must be too.
+        // Keeping the system region preserves regional conventions like the first day of week.
+        Locale.setDefault(new Locale.Builder()
+                .setLanguage("en")
+                .setRegion(Locale.getDefault().getCountry())
+                .build());
         Application.launch(TripTaleApplication.class, args);
     }
 

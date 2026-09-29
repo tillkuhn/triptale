@@ -147,10 +147,10 @@
                             <tooltip><Tooltip text="Open track URL in browser"/></tooltip>
                         </Button>
                         <Button fx:id="coordinatesButton" text="🗺️ Uncharted" onAction="#onCoordinates">
-                            <tooltip><Tooltip text="Set start point coordinates"/></tooltip>
+                            <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
                         <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">
-                            <tooltip><Tooltip text="Open start point in Google Maps"/></tooltip>
+                            <tooltip><Tooltip text="Show start point on Google Maps"/></tooltip>
                         </Button>
                     </HBox>
                 </GridPane>
