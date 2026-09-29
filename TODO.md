@@ -1,6 +1,30 @@
 # ToDos for this app
 
-## Next Todo: 39
+## Next Todo: 41
+
+## 40 add "Re-init Repository" action to Repository menu
+
+`GitService.initRepo()` is currently only invoked on startup (`MainController.performStartupChecks()`),
+either silently (repo already exists) or after a confirmation prompt (no repo found yet). Add a new
+menu item in the Repository menu group, e.g. "Re-init Repository", that lets the user re-run
+`initRepo()` on demand without restarting the app. Useful after manually deleting one of the managed
+files (`trip.md`/`tale.md`/`type.md`/`.gitignore` entry) to have it recreated immediately, or after
+todo 39 changes the managed file contents on disk. Since `ensureFile()` only writes files that don't
+already exist, re-running it won't overwrite files that are already present — clarify in the UI
+(status line message / tooltip) that it only fills in what's missing, it does not refresh existing
+content.
+
+## 39 move managed markdown templates (trip.md/tale.md/type.md) out of GitService into files
+
+`GitService.java` currently hardcodes the content of `trip.md`, `tale.md` and `type.md` as Java text
+block constants (`TRIP_MD`, `TALE_MD`, `TYPE_MD`). Move these to actual template files under the
+project (e.g. `src/main/resources/git/` or similar, loaded via `getResourceAsStream` like the export
+templates in `export/`) so they're easier to review/edit outside a Java file. Keep `.gitignore`
+handling (`ensureGitignore`/`GITIGNORE_ENTRY`) as-is/inline — that one is fine since users may
+legitimately want to add their own entries beyond `.state.yml`, so it isn't a good fit for a static
+template file. Keep `ensureFile()`'s "only write if missing" semantics — this todo is only about
+where the content is authored, not about syncing existing data dirs when the templates change (see
+todo 40 for a related manual re-run trigger).
 
 ## DONE 38 show day of total days, add day suffix to tile
 
