@@ -1,6 +1,12 @@
 # ToDos for this app
 
-## Next Todo: 28
+## Next Todo: 34
+
+## 33 Object storage for trip attachments 
+
+I would like to use some kind of cloud storage for stuff that I don't want to store in the git repo (which should continue focus on versioned *.md files), for example to import images that match our impressions pattern, or store gpx files along with a trip entry. First thing that came to my mind was AWS S3, I also have a subscription, but the Java SDK Is very fat and the integration seems a bit overkill. Google Drive would be also nice since we're already using it to keep other travel files, but not sure if it can be used trough an API. Other suggestions welcome as long as they are fee for say ~1-2GB, since I don't want another subscription besides AWS.
+
+[Plan](docs/33_object_storage_for_trip_attachments.md)
 
 ## 32 Smart Sync
 
