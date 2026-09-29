@@ -1,6 +1,12 @@
 # ToDos for this app
 
-## Next Todo: 38
+## Next Todo: 39
+
+## 38 show day of total days, add day suffix to tile
+
+Current day display on to right corner shows : Day X (Y days ago). We should add the number of total days. If the trip has an end date, we can simply say Day 5/10 (day 5 of 10 total), everything else should remain the same. If there's no end date, replace the number by the infinity character. Any other suffixes like (Y days ago, first day, last day) can remain as is. ALso the title field should emphasize more that this is the title for a particular day. So instead of plain "Title:" it should be "Title Day X:"
+But to preserve space, only show the day number without slash and remarks in brackets.
+
 
 ## DONE 37 shortcuts for zoom in / zoom out in View Menu group
 

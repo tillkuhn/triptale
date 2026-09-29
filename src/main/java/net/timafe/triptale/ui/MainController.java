@@ -109,6 +109,7 @@ public class MainController implements StatusSink {
     @FXML private Label statusLabel;
     @FXML private HBox statusRow;
     @FXML private Label tourDayLabel;
+    @FXML private Label titleLabel;
     @FXML private Button copyButton;
     @FXML private Button saveButton;
     @FXML private Button commitButton;
@@ -977,12 +978,20 @@ public class MainController implements StatusSink {
 
     private void updateTourDay(Trip trip, LocalDate date) {
         if (tourDayLabel == null) return;
-        if (trip == null || trip.startDate() == null || date == null) {
+        Long day = trip == null ? null : trip.dayNumber(date);
+        if (day == null) {
             tourDayLabel.setText("");
+            tourDayLabel.setTooltip(null);
+            if (titleLabel != null) titleLabel.setText("Title:");
             return;
         }
-        long day = ChronoUnit.DAYS.between(trip.startDate(), date) + 1;
-        tourDayLabel.setText("Day " + day + " (" + relativeDayLabel(trip, date, day) + ")");
+        Long total = trip.totalDays();
+        tourDayLabel.setText("Day " + day + " / " + (total == null ? "∞" : total)
+                + " (" + relativeDayLabel(trip, date, day) + ")");
+        tourDayLabel.setTooltip(new Tooltip(total == null
+                ? "Day " + day + " — no end date set (edit in Trip Details)"
+                : "Day " + day + " of " + total));
+        if (titleLabel != null) titleLabel.setText("Title Day " + day + ":");
     }
 
     private static String relativeDayLabel(Trip trip, LocalDate date, long tourDay) {
