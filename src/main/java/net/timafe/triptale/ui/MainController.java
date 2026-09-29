@@ -19,8 +19,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.Node;
 import javafx.scene.layout.HBox;
@@ -129,6 +127,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem importGpxMenuItem;
     @FXML private MenuItem firstDayMenuItem;
     @FXML private MenuItem prevDayMenuItem;
+    @FXML private MenuItem nextDayMenuItem;
     @FXML private MenuItem todayMenuItem;
     @FXML private MenuItem impressionsMenuItem;
     @FXML private MenuItem favesMenuItem;
@@ -336,22 +335,11 @@ public class MainController implements StatusSink {
         }
         updateDirty();
         updatePrevButtonState();
-        saveButton.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN),
-                        () -> { if (isDirty()) onSave(); });
-                newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN),
-                        () -> { if (canCommit()) onCommit(); });
-                newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN),
-                        this::onPrevDay);
-                newScene.getAccelerators().put(
-                        new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN),
-                        this::onNextDay);
-            }
-        });
+        // Keyboard shortcuts are menu item accelerators in main.fxml; they only fire while the item is enabled.
+        installShortcutTooltip(prevDayButton, "Previous day", prevDayMenuItem);
+        installShortcutTooltip(nextDayButton, "Next day", nextDayMenuItem);
+        installShortcutTooltip(saveButton, "Save tale", saveMenuItem);
+        installShortcutTooltip(commitButton, "Commit pending changes", commitMenuItem);
         updateCommitButton();
         if (ready) {
             status("Data dir: " + settingsStore.load().resolvedDataDir()
@@ -606,12 +594,30 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onZoomIn() {
-        setTaleFontSize(taleFontSizePx + TALE_FONT_SIZE_STEP_PX);
+        zoomTaleFont(TALE_FONT_SIZE_STEP_PX);
     }
 
     @FXML
     public void onZoomOut() {
-        setTaleFontSize(taleFontSizePx - TALE_FONT_SIZE_STEP_PX);
+        zoomTaleFont(-TALE_FONT_SIZE_STEP_PX);
+    }
+
+    /** Changes the tale text size and reports the result, so a no-op at the min/max limit is still visible. */
+    private void zoomTaleFont(int deltaPx) {
+        setTaleFontSize(taleFontSizePx + deltaPx);
+        String note;
+        if (taleFontSizePx == TALE_FONT_SIZE_MAX_PX) note = "maximum";
+        else if (taleFontSizePx == TALE_FONT_SIZE_MIN_PX) note = "minimum";
+        else if (taleFontSizePx == TALE_FONT_SIZE_DEFAULT_PX) note = "default";
+        else note = "default " + TALE_FONT_SIZE_DEFAULT_PX + "px";
+        status("Tale text size: " + taleFontSizePx + "px (" + note + ")");
+    }
+
+    /** Advertises {@code menuItem}'s accelerator on {@code button}, so each shortcut is defined only once (in main.fxml). */
+    private static void installShortcutTooltip(Button button, String text, MenuItem menuItem) {
+        KeyCombination accelerator = menuItem.getAccelerator();
+        String suffix = accelerator == null ? "" : " (" + accelerator.getDisplayText() + ")";
+        button.setTooltip(new Tooltip(text + suffix));
     }
 
     /** Resets all View-menu display settings to their defaults. Currently just tale text zoom; extend here as more are added. */

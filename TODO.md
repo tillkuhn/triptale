@@ -1,6 +1,27 @@
 # ToDos for this app
 
-## Next Todo: 28
+## Next Todo: 38
+
+## DONE 37 shortcuts for zoom in / zoom out in View Menu group
+
+see docs/done/37_zoom_shortcuts.md
+
+## 36 improved event / log dialogue in bottom left corner
+
+currently it's only a limited single most recent message with limited space.
+goal is to have a stack of messages (start with limit 50), so if you click on a magnifying glass icon you'll get a scrollable popup with the X most recent UI messages, showing severity, time (not date) and message
+
+## 35 visualize end coordinates and make them editable
+
+we have then in the frontmatter since they'll be grapped from gpx imports, but there's no way to set them manually yet, and the only way to visualize them is via "view source"
+
+## 34 support html export for trip entries
+
+## 33 support refactor trip slug
+
+trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
+add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
+and walks through all trip YYYY subdirectories and update references to reflect the new path. Report back with "x references updated" or similar 
 
 ## 32 Smart Sync
 
@@ -34,8 +55,8 @@ Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0
 ## 30 Localization for Trip Language
 
 The single language for the application (e.g. menu entries, labels etc.) will remain english.
-But since the contributed trip tales are potentially in a different language and the exporter adds some words such as "Distance, Day etc." we should add support for i18n. 
-Add a new setting defaultTripLanguage, possible values fpr locales are German and English, default is English.
+But since the contributed trip tales are potentially in a different language, and the exporter adds some words such as "Distance, Day etc." we should add support for i18n as far as derived trip entry content is affected. 
+Add a new setting defaultTripLanguage, possible values for locales are right now  German (de) and English (en), default is English.
 Add support for properties to translate certain values, but should always default to english. 
 Current content for german translation:
 
@@ -43,8 +64,7 @@ Day = Tag
 Distance = Distanz
 Altitude = Höhenmeter
 
-also the Date formats should honor this settings, e.g. currently the current day displays as 20xx-xx-xx Saturday, and if trip language is german it should be "Samstag" (if necessary we need to add those weekdays to the translation).
-In Export Diary, use these values instead of the current hardcoded english versions, let me know if I forgot anything
+In Export Diary, use these values instead of the current hardcoded english versions when template content is written, let me know if I forgot anything
 
 ## 29 implement delete (entire) trip
 
