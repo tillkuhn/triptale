@@ -2,26 +2,15 @@
 
 ## Next Todo: 39
 
-## DONE 38 show day of total days, add day suffix to tile
-
-Current day display on to right corner shows : Day X (Y days ago). We should add the number of total days. If the trip has an end date, we can simply say Day 5/10 (day 5 of 10 total), everything else should remain the same. If there's no end date, replace the number by the infinity character. Any other suffixes like (Y days ago, first day, last day) can remain as is. ALso the title field should emphasize more that this is the title for a particular day. So instead of plain "Title:" it should be "Title Day X:"
-But to preserve space, only show the day number without slash and remarks in brackets.
-
-
-## DONE 37 shortcuts for zoom in / zoom out in View Menu group
-
-see docs/done/37_zoom_shortcuts.md
 
 ## 36 improved event / log dialogue in bottom left corner
 
 currently it's only a limited single most recent message with limited space.
 goal is to have a stack of messages (start with limit 50), so if you click on a magnifying glass icon you'll get a scrollable popup with the X most recent UI messages, showing severity, time (not date) and message
 
-## 35 visualize end coordinates and make them editable
-
-we have then in the frontmatter since they'll be grapped from gpx imports, but there's no way to set them manually yet, and the only way to visualize them is via "view source"
-
 ## 34 support html export for trip entries
+
+Similar to entire trip, but only for current day
 
 ## 33 support refactor trip slug
 
@@ -40,7 +29,8 @@ Suggested Improvement:
 
 Smart Sync Dialogue Details row by row (as opposed to current sync, it will require user interaction):
 Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
-Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this
+Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this. I could imagine: if the in memory counter for queued changes is > 0 anyway, no need to check with git for unstaged changes just activate commit dialogue. If the app is however not aware of any changes, the smart sync dialogue should check if the repo is dirty, and only then commit part should be active
+
 Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
 Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
 Fixed spaced for in progress area showing spinner, current action and result of interaction. 
@@ -84,6 +74,77 @@ Add "Check for updates" function in Triptale left menu. Should to the github sou
 If there is a newer version (all should be semver), show a text with the new version and a hyperlink where to download.
 Use the dynamic dialogue from "Sync" while checking the remote with the spinner. If that is not a reusable dialogue yet, do it now since we have further future use cases that should show verbosely that there is interaction with a remote page
 
+
+## 26 Show no of objects and repo size, optionally run gc
+
+in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`. also maybe add housekeeping task that calls "git gc" and capture output
+
+## 24 Support import gpx for Trip Entries
+
+see docs/24_gpx_import_tale_entry.md for the full design (from a grill-me session covering the
+menu placement/enablement, all-or-nothing overwrite confirmation gated on disk state (not form
+dirty state), reuse of the existing datePicker navigate-away guard, prefill-only/no-auto-save
+semantics, and the todo 25 delete-capability gap it surfaced).
+
+similar to todo 23 it should be possible to fill values for a trip tale entry via gpx.
+Trigger: Menu link in "Tale Entries" Group ".
+Let's skip a dedicated button in the UI, since it is fixed to particular day, and the import derives the day from the first trkpt element
+Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
+If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
+
+---
+
+## DONE 35 visualize end coordinates and make them editable
+
+we have then in the frontmatter since they'll be grapped from gpx imports, but there's no way to set them manually yet, and the only way to visualize them is via "view source"
+
+## DONE 23 Support import gpx
+
+New trip should support import of info from gpx file
+Either import button in the existing new trip dialogue, 
+or new menu item that launches a file picket first, and then opens the new trip dialogue with prefilled values, check what's better.
+Either way, new trip is still the entry point that actually saves the trip and user can overwrite preset values.
+in case of gpx import, name shall be derived from gpx->trk->name element 
+and the date yyyy-mm-dd can be derived from the time of the first `trkpt` entry in the first `trkseg` segment
+
+```
+<?xml version='1.0' encoding='UTF-8'?>
+<gpx>
+  <trk>
+    <name>🍷🚵 RheinRaufTour #1</name>
+    <type>touring_bicycle</type>
+    <trkseg>
+      <trkpt lat="50.352114" lon="7.589085">
+        <ele>116.469940</ele>
+        <time>2025-04-18T09:57:50.374Z</time>
+      </trkpt>
+(...)
+```
+Since user would typcially use the gpx file of the first segment to init the trip, we could optionally also open the first entry (day 1) from the new trip dialogue,
+irrespective of whether the trip was entered manually or via import.
+Suggest to create a new boolean field named "Init first Tale Entry on trip creation".
+In case of manual entry, we can derive name and date from the corresponding trip fields (name -> 1st day entry title, startDate -> 1st day date).
+In case of import, we can use the coordinates of the first trkprt for startlat / startlon, date is the same as stardate, and title should be the name mentioned in the gpx file (not the one of the trip that might've been overwritten by the user to a more generic context).
+Use ~/tmp/rheinrauf.gpx as sample file 
+
+## DONE 25 Delete Tale Entry / Trip
+
+see docs/25_delete_tale_entry.md for the full design (from a grill-me session covering scope
+(entry-only, delete-trip deferred), the JGit `git rm`/staging gotcha, the pending-commit DELETE
+action and its collision with an uncommitted CREATE, and reusing the existing empty-state
+`loadEntry()` path for post-delete UI reset).
+
+
+## DONE 38 show day of total days, add day suffix to tile
+
+Current day display on to right corner shows : Day X (Y days ago). We should add the number of total days. If the trip has an end date, we can simply say Day 5/10 (day 5 of 10 total), everything else should remain the same. If there's no end date, replace the number by the infinity character. Any other suffixes like (Y days ago, first day, last day) can remain as is. ALso the title field should emphasize more that this is the title for a particular day. So instead of plain "Title:" it should be "Title Day X:"
+But to preserve space, only show the day number without slash and remarks in brackets.
+
+
+## DONE 37 shortcuts for zoom in / zoom out in View Menu group
+
+see docs/done/37_zoom_shortcuts.md
+
 ## DONE 27 Capture distance and altitude (Höhenmeter) when importing GPX
 
 Todos 23/24 import title/date/start-coordinates from a GPX file but leave `distance` and
@@ -126,59 +187,6 @@ Non-goals: no UI to preview computed values before confirming overwrite (computi
 — once for the confirm dialog, once to apply — isn't worth it for a yes/no prompt); no change
 to `GpxImport`'s first-trkpt-only date/name/coords logic, only additive fields.
 
-## 26 Show no of objects and repo size, optionally run gc
-
-in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
-also maybe add housekeeping task that calls "git gc" and capture output
-
-## DONE 25 Delete Tale Entry / Trip
-
-see docs/25_delete_tale_entry.md for the full design (from a grill-me session covering scope
-(entry-only, delete-trip deferred), the JGit `git rm`/staging gotcha, the pending-commit DELETE
-action and its collision with an uncommitted CREATE, and reusing the existing empty-state
-`loadEntry()` path for post-delete UI reset).
-
-## 24 Support import gpx for Trip Entries
-
-see docs/24_gpx_import_tale_entry.md for the full design (from a grill-me session covering the
-menu placement/enablement, all-or-nothing overwrite confirmation gated on disk state (not form
-dirty state), reuse of the existing datePicker navigate-away guard, prefill-only/no-auto-save
-semantics, and the todo 25 delete-capability gap it surfaced).
-
-similar to todo 23 it should be possible to fill values for a trip tale entry via gpx.
-Trigger: Menu link in "Tale Entries" Group ".
-Let's skip a dedicated button in the UI, since it is fixed to particular day, and the import derives the day from the first trkpt element
-Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
-If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
-
-## 23 Support import gpx
-
-New trip should support import of info from gpx file
-Either import button in the existing new trip dialogue, 
-or new menu item that launches a file picket first, and then opens the new trip dialogue with prefilled values, check what's better.
-Either way, new trip is still the entry point that actually saves the trip and user can overwrite preset values.
-in case of gpx import, name shall be derived from gpx->trk->name element 
-and the date yyyy-mm-dd can be derived from the time of the first `trkpt` entry in the first `trkseg` segment
-
-```
-<?xml version='1.0' encoding='UTF-8'?>
-<gpx>
-  <trk>
-    <name>🍷🚵 RheinRaufTour #1</name>
-    <type>touring_bicycle</type>
-    <trkseg>
-      <trkpt lat="50.352114" lon="7.589085">
-        <ele>116.469940</ele>
-        <time>2025-04-18T09:57:50.374Z</time>
-      </trkpt>
-(...)
-```
-Since user would typcially use the gpx file of the first segment to init the trip, we could optionally also open the first entry (day 1) from the new trip dialogue,
-irrespective of whether the trip was entered manually or via import.
-Suggest to create a new boolean field named "Init first Tale Entry on trip creation".
-In case of manual entry, we can derive name and date from the corresponding trip fields (name -> 1st day entry title, startDate -> 1st day date).
-In case of import, we can use the coordinates of the first trkprt for startlat / startlon, date is the same as stardate, and title should be the name mentioned in the gpx file (not the one of the trip that might've been overwritten by the user to a more generic context).
-Use ~/tmp/rheinrauf.gpx as sample file 
 
 ## DONE 22 End Trip
 
