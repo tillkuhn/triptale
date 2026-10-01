@@ -1,6 +1,6 @@
 # Todo 33 — Object storage for trip attachments
 
-Status: **decisions D1 + D2 made — not implemented yet.** Next step is a
+Status: **decisions D1–D5 made, AWS resources provisioned (D5) — app side not implemented yet.** Next step is a
 grill-me session on the open questions below.
 
 ## Decisions
@@ -63,6 +63,23 @@ copy is named `<YYYY-MM-DD>-<original file name>.gpx`, using the date the import
 from the GPX (`util.GpxImport`). An existing file with the same name is overwritten, since
 re-importing the same track is the usual reason for a clash and the file is only local until
 the next sync. No checkbox and no separate "Add attachment" step for GPX.
+
+**D5 — S3 Standard on AWS, provisioned with OpenTofu, dedicated bucket-only key (2026-10-02).**
+The storage behind our own S3 client (D2) is **AWS S3** for now, not R2:
+- Bucket **`triptale-attachments`** in **`eu-central-1`**: private (all public access blocked),
+  SSE-S3 encryption, no versioning, Standard storage class.
+- The app gets its **own IAM user `triptale-app`**, not the owner's admin credentials. Its
+  inline policy allows only `ListBucket`/`ListBucketMultipartUploads`/`GetBucketLocation` on
+  the bucket and `GetObject`/`PutObject`/`DeleteObject`/multipart actions on its objects.
+  Nothing else in the account.
+- All of this lives in **`terraform/`** (OpenTofu, see `terraform/README.md`). The repo stays
+  generic: account-specific values (region, admin profile, state bucket) go in a gitignored
+  `*.auto.tfvars`, and the bucket and user names derive from `app` (default `triptale`).
+- State is remote in the existing state bucket under `triptale/terraform.tfstate`, with S3
+  native locking. **The state holds the secret access key**, so `make key` in `terraform/`
+  is how you get the key ID and secret back to fill in the app settings.
+- Client consequences: endpoint `https://s3.eu-central-1.amazonaws.com`, signing region
+  `eu-central-1`, no `x-amz-storage-class` header.
 
 ## Problem
 
@@ -304,6 +321,10 @@ is enough and no extra install matters more → our own S3 client.
   (presigned URL / share link) instead of a local path?
 - ~~**Sync trigger:** manual menu item, part of Smart Sync (todo 32), or on save?~~ → D1: part
   of the Sync action. Still open: a separate checkbox/row in Smart Sync, or always included?
+- **Where the app reads the access key from:** `settings.yml` (machine-local, outside the
+  git data dir, editable in the settings dialog; recommended) or an AWS profile in
+  `~/.aws/credentials` that the settings only name? Either way, every machine (incl. the
+  Linux notebook) needs its own copy.
 - **Data-dir location:** could the attachment dir simply be a gitignored subfolder of the data
   dir (like `.state.yml`), or must it be completely separate?
 
@@ -317,3 +338,4 @@ is enough and no extra install matters more → our own S3 client.
 - `src/main/java/net/timafe/triptale/util/GpxImport.java`
 - `src/main/java/net/timafe/triptale/git/GitService.java` (`ProcessBuilder` precedent)
 - `src/main/java/net/timafe/triptale/storage/MarkdownStore.java` (frontmatter keys, `trackurl`)
+- `terraform/` (bucket + IAM user, D5)
