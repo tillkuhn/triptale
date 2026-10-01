@@ -1,8 +1,10 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.event.ActionEvent;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -41,6 +43,20 @@ public final class EditSettingsDialog {
         TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
         favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
         favePatternField.setPrefColumnCount(36);
+        AppSettings.Attachments attachments = settings.getAttachments();
+        TextField bucketUrlField = new TextField(attachments.getBucketUrl());
+        bucketUrlField.setPromptText("e.g. s3://triptale-attachments or s3://bucket/prefix");
+        bucketUrlField.setPrefColumnCount(36);
+        TextField regionField = new TextField(attachments.getRegion());
+        regionField.setPromptText("e.g. " + AppSettings.Attachments.DEFAULT_REGION);
+        regionField.setPrefColumnCount(16);
+        TextField accessKeyIdField = new TextField(attachments.getAccessKeyId());
+        accessKeyIdField.setPrefColumnCount(36);
+        PasswordField secretField = new PasswordField();
+        secretField.setText(attachments.getSecretAccessKey());
+        secretField.setPrefColumnCount(36);
+        Label errorLabel = new Label();
+        errorLabel.getStyleClass().add("form-error");
 
         GridPane grid = Dialogs.formGrid();
         int row = 0;
@@ -57,11 +73,30 @@ public final class EditSettingsDialog {
         grid.add(new Label("Impressions grid columns:"), 0, row);
         grid.add(columnsField, 1, row++);
         grid.add(new Label("Faves file pattern:"), 0, row);
-        grid.add(favePatternField, 1, row);
+        grid.add(favePatternField, 1, row++);
+        grid.add(new Separator(), 0, row, 2, 1);
+        row++;
+        grid.add(new Label("Attachments bucket URL:"), 0, row);
+        grid.add(bucketUrlField, 1, row++);
+        grid.add(new Label("Attachments region:"), 0, row);
+        grid.add(regionField, 1, row++);
+        grid.add(new Label("Access key ID:"), 0, row);
+        grid.add(accessKeyIdField, 1, row++);
+        grid.add(new Label("Secret access key:"), 0, row);
+        grid.add(secretField, 1, row++);
+        grid.add(errorLabel, 1, row);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         Dialogs.applyStylesheet(dlg.getDialogPane());
+
+        // Keep the dialog open while the attachment fields are malformed
+        dlg.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(ActionEvent.ACTION, ev -> {
+            Optional<String> error = readAttachments(bucketUrlField, regionField, accessKeyIdField, secretField)
+                    .validationError();
+            errorLabel.setText(error.orElse(""));
+            if (error.isPresent()) ev.consume();
+        });
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
@@ -74,7 +109,18 @@ public final class EditSettingsDialog {
         settings.setImpressionsFilePattern(patternField.getText().trim());
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
+        settings.setAttachments(readAttachments(bucketUrlField, regionField, accessKeyIdField, secretField));
         return Optional.of(settings);
+    }
+
+    private static AppSettings.Attachments readAttachments(TextField bucketUrlField, TextField regionField,
+                                                           TextField accessKeyIdField, PasswordField secretField) {
+        AppSettings.Attachments attachments = new AppSettings.Attachments();
+        attachments.setBucketUrl(bucketUrlField.getText().trim());
+        attachments.setRegion(regionField.getText().trim());
+        attachments.setAccessKeyId(accessKeyIdField.getText().trim());
+        attachments.setSecretAccessKey(secretField.getText().trim());
+        return attachments;
     }
 
     /** Garbage or a sub-1 value falls back rather than rejecting the whole save. */

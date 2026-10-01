@@ -1,6 +1,6 @@
 # Todo 33 — Object storage for trip attachments
 
-Status: **decisions D1–D5 made, AWS resources provisioned (D5) — app side not implemented yet.** Next step is a
+Status: **decisions D1–D6 made, AWS resources provisioned (D5), storage settings in the app (D6) — sync not implemented yet.** Next step is a
 grill-me session on the open questions below.
 
 ## Decisions
@@ -80,6 +80,28 @@ The storage behind our own S3 client (D2) is **AWS S3** for now, not R2:
   is how you get the key ID and secret back to fill in the app settings.
 - Client consequences: endpoint `https://s3.eu-central-1.amazonaws.com`, signing region
   `eu-central-1`, no `x-amz-storage-class` header.
+
+**D6 — Storage settings live in `settings.yml`, edited in the Settings dialog (2026-10-02).**
+A small first step so the provisioned credentials can be stored before any sync code exists.
+Nothing reads them yet.
+- The Settings dialog has an attachments section with four fields: **bucket URL**
+  (`s3://bucket` or `s3://bucket/prefix`), **region**, **access key ID** and **secret access
+  key** (masked `PasswordField`, no reveal toggle; `make key` in `terraform/` shows it again).
+- **AWS only, no provider selector.** SigV4 needs the region, which an `s3://` URL doesn't
+  carry, so region is its own field. It defaults to `eu-central-1` (the D5 bucket). R2 can
+  later add an optional endpoint field; "endpoint set" then means non-AWS, still without a
+  selector.
+- Stored as a nested group in `settings.yml`: `attachments: {bucketUrl, region, accessKeyId,
+  secretAccessKey}`. The URL is stored as typed. `config.BucketUrl` parses it into bucket and
+  prefix (scheme case-insensitive, slashes around the prefix dropped, S3 bucket naming rules).
+- **Validation:** a malformed bucket URL or region keeps the dialog open with an inline error.
+  Blank values are allowed, so the section can be filled in step by step. A blank bucket URL
+  will mean attachment sync is off.
+- **The secret is plain text in `settings.yml`**, which is machine-local and outside the git
+  data dir. `SettingsStore` keeps the file owner-only (`rw-------`) on POSIX systems, like
+  `~/.aws/credentials`. An OS keychain was rejected: platform-specific and not small.
+  An AWS profile in `~/.aws/credentials` was rejected too: it assumes the AWS CLI setup, and
+  the settings dialog is where the rest of the configuration already lives.
 
 ## Problem
 
@@ -321,10 +343,8 @@ is enough and no extra install matters more → our own S3 client.
   (presigned URL / share link) instead of a local path?
 - ~~**Sync trigger:** manual menu item, part of Smart Sync (todo 32), or on save?~~ → D1: part
   of the Sync action. Still open: a separate checkbox/row in Smart Sync, or always included?
-- **Where the app reads the access key from:** `settings.yml` (machine-local, outside the
-  git data dir, editable in the settings dialog; recommended) or an AWS profile in
-  `~/.aws/credentials` that the settings only name? Either way, every machine (incl. the
-  Linux notebook) needs its own copy.
+- ~~**Where the app reads the access key from:**~~ → D6: `settings.yml`, edited in the
+  Settings dialog.
 - **Data-dir location:** could the attachment dir simply be a gitignored subfolder of the data
   dir (like `.state.yml`), or must it be completely separate?
 
@@ -339,3 +359,4 @@ is enough and no extra install matters more → our own S3 client.
 - `src/main/java/net/timafe/triptale/git/GitService.java` (`ProcessBuilder` precedent)
 - `src/main/java/net/timafe/triptale/storage/MarkdownStore.java` (frontmatter keys, `trackurl`)
 - `terraform/` (bucket + IAM user, D5)
+- `src/main/java/net/timafe/triptale/config/BucketUrl.java` (D6)

@@ -3,6 +3,7 @@ package net.timafe.triptale.config;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * App-wide user settings, persisted as {@code settings.yml} under the resolved settings
@@ -20,6 +21,7 @@ public class AppSettings {
     private String impressionsFilePattern = "";
     private int impressionsGridColumns = 2;
     private String impressionsFaveFilePattern = "";
+    private Attachments attachments = new Attachments();
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -48,6 +50,8 @@ public class AppSettings {
     public void setImpressionsGridColumns(int impressionsGridColumns) { this.impressionsGridColumns = impressionsGridColumns; }
     public String getImpressionsFaveFilePattern() { return impressionsFaveFilePattern; }
     public void setImpressionsFaveFilePattern(String impressionsFaveFilePattern) { this.impressionsFaveFilePattern = impressionsFaveFilePattern; }
+    public Attachments getAttachments() { return attachments; }
+    public void setAttachments(Attachments attachments) { this.attachments = attachments; }
 
     public static class Git {
         private String authorName = "";
@@ -57,5 +61,48 @@ public class AppSettings {
         public void setAuthorName(String authorName) { this.authorName = authorName; }
         public String getAuthorEmail() { return authorEmail; }
         public void setAuthorEmail(String authorEmail) { this.authorEmail = authorEmail; }
+    }
+
+    /**
+     * S3 storage for trip attachments (todo 33, D6). Blank {@link #bucketUrl} means attachment
+     * sync is off. The secret is stored in plain text, which is why {@code SettingsStore}
+     * keeps {@code settings.yml} owner-only.
+     */
+    public static class Attachments {
+        public static final String DEFAULT_REGION = "eu-central-1";
+        // e.g. eu-central-1, us-gov-west-1, ap-southeast-2
+        private static final Pattern REGION = Pattern.compile("[a-z]{2}(-[a-z]+)+-\\d+");
+
+        private String bucketUrl = "";
+        private String region = DEFAULT_REGION;
+        private String accessKeyId = "";
+        private String secretAccessKey = "";
+
+        /**
+         * A user-facing message if {@link #bucketUrl} or {@link #region} is malformed, empty if
+         * they're valid. Blank values are allowed, so the section can be filled in step by step.
+         */
+        public Optional<String> validationError() {
+            if (bucketUrl != null && !bucketUrl.isBlank()) {
+                try {
+                    BucketUrl.parse(bucketUrl);
+                } catch (IllegalArgumentException e) {
+                    return Optional.of(e.getMessage());
+                }
+            }
+            if (region != null && !region.isBlank() && !REGION.matcher(region).matches()) {
+                return Optional.of("Invalid region '" + region + "' (e.g. " + DEFAULT_REGION + ")");
+            }
+            return Optional.empty();
+        }
+
+        public String getBucketUrl() { return bucketUrl; }
+        public void setBucketUrl(String bucketUrl) { this.bucketUrl = bucketUrl; }
+        public String getRegion() { return region; }
+        public void setRegion(String region) { this.region = region; }
+        public String getAccessKeyId() { return accessKeyId; }
+        public void setAccessKeyId(String accessKeyId) { this.accessKeyId = accessKeyId; }
+        public String getSecretAccessKey() { return secretAccessKey; }
+        public void setSecretAccessKey(String secretAccessKey) { this.secretAccessKey = secretAccessKey; }
     }
 }
