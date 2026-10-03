@@ -146,16 +146,12 @@ public class DiaryExporter {
         List<Path> images = impressionsResolver.resolve(pattern, trip, date);
         if (images.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
-        sb.append("<table class=\"impressions\">\n");
-        for (int i = 0; i < images.size(); i++) {
-            if (i % columns == 0) {
-                if (i > 0) sb.append("</tr>\n");
-                sb.append("<tr>\n");
-            }
-            String uri = images.get(i).toUri().toString();
-            sb.append("<td><img src=\"").append(escapeHtml(uri)).append("\" /></td>\n");
+        sb.append("<div class=\"impressions\" style=\"column-count: ").append(columns).append(";\">\n");
+        for (Path image : images) {
+            String uri = image.toUri().toString();
+            sb.append("<img src=\"").append(escapeHtml(uri)).append("\" />\n");
         }
-        sb.append("</tr>\n</table>\n");
+        sb.append("</div>\n");
         return sb.toString();
     }
 

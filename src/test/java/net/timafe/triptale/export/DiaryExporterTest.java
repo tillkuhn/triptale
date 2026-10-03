@@ -232,7 +232,7 @@ class DiaryExporterTest {
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
 
         assertFalse(html.contains("IMPRESSIONS"), "marker should be replaced");
-        assertTrue(html.contains("<table class=\"impressions\">"));
+        assertTrue(html.contains("<div class=\"impressions\" style=\"column-count: 2;\">"));
         assertTrue(html.contains("20250701_one.jpg"));
         assertTrue(html.contains("20250701_two.jpg"));
     }
@@ -251,7 +251,7 @@ class DiaryExporterTest {
 
         String html = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
 
-        assertTrue(html.contains("<table class=\"impressions\">"));
+        assertTrue(html.contains("<div class=\"impressions\""));
         assertTrue(html.contains("20250701_fave.jpg"));
         assertFalse(html.contains("20250701_all.jpg"));
     }
