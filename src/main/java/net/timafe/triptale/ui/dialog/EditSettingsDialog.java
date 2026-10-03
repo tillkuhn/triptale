@@ -41,6 +41,9 @@ public final class EditSettingsDialog {
         TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
         favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
         favePatternField.setPrefColumnCount(36);
+        TextField mapboxTokenField = new TextField(settings.getMapboxToken());
+        mapboxTokenField.setPromptText("pk.… (unrestricted public token)");
+        mapboxTokenField.setPrefColumnCount(36);
 
         GridPane grid = Dialogs.formGrid();
         int row = 0;
@@ -57,7 +60,11 @@ public final class EditSettingsDialog {
         grid.add(new Label("Impressions grid columns:"), 0, row);
         grid.add(columnsField, 1, row++);
         grid.add(new Label("Faves file pattern:"), 0, row);
-        grid.add(favePatternField, 1, row);
+        grid.add(favePatternField, 1, row++);
+        grid.add(new Separator(), 0, row, 2, 1);
+        row++;
+        grid.add(new Label("Mapbox token:"), 0, row);
+        grid.add(mapboxTokenField, 1, row);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -74,6 +81,7 @@ public final class EditSettingsDialog {
         settings.setImpressionsFilePattern(patternField.getText().trim());
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
+        settings.setMapboxToken(mapboxTokenField.getText().trim());
         return Optional.of(settings);
     }
 
