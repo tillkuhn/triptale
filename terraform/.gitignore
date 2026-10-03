@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+crash.log
+*.tfplan
+
+# machine/account-specific values stay out of git
+*.auto.tfvars
+terraform.tfvars

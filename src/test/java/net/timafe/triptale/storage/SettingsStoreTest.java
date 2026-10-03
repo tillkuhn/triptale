@@ -4,9 +4,13 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,6 +37,8 @@ class SettingsStoreTest {
         assertEquals("", settings.getImpressionsFilePattern());
         assertEquals(2, settings.getImpressionsGridColumns());
         assertEquals("", settings.getImpressionsFaveFilePattern());
+        assertEquals("", settings.getAttachments().getBucketUrl());
+        assertEquals("eu-central-1", settings.getAttachments().getRegion());
     }
 
     @Test
@@ -46,6 +52,12 @@ class SettingsStoreTest {
         settings.setImpressionsFilePattern("${HOME}/Pictures/output/${DATE}*.jpg");
         settings.setImpressionsGridColumns(4);
         settings.setImpressionsFaveFilePattern("${HOME}/Pictures/00_Faves/${DATE}*.jpg");
+        AppSettings.Attachments attachments = new AppSettings.Attachments();
+        attachments.setBucketUrl("s3://triptale-attachments/trips");
+        attachments.setRegion("us-east-1");
+        attachments.setAccessKeyId("AKIAEXAMPLE");
+        attachments.setSecretAccessKey("secret/with+chars");
+        settings.setAttachments(attachments);
 
         settingsStore.save(settings);
 
@@ -56,6 +68,46 @@ class SettingsStoreTest {
         assertEquals("${HOME}/Pictures/output/${DATE}*.jpg", loaded.getImpressionsFilePattern());
         assertEquals(4, loaded.getImpressionsGridColumns());
         assertEquals("${HOME}/Pictures/00_Faves/${DATE}*.jpg", loaded.getImpressionsFaveFilePattern());
+        assertEquals("s3://triptale-attachments/trips", loaded.getAttachments().getBucketUrl());
+        assertEquals("us-east-1", loaded.getAttachments().getRegion());
+        assertEquals("AKIAEXAMPLE", loaded.getAttachments().getAccessKeyId());
+        assertEquals("secret/with+chars", loaded.getAttachments().getSecretAccessKey());
+    }
+
+    @Test
+    void loadKeepsDefaultRegionWhenAttachmentsGroupMissing() throws Exception {
+        Files.writeString(settingsStore.settingsFile(), "dataDir: /some/data/dir\n");
+        assertEquals("eu-central-1", settingsStore.load().getAttachments().getRegion());
+    }
+
+    @Test
+    void syncModeIsWrittenLowercase() throws Exception {
+        AppSettings settings = new AppSettings();
+        settings.getAttachments().setSync(AppSettings.AttachmentSync.CLOUD);
+        settingsStore.save(settings);
+
+        assertTrue(Files.readString(settingsStore.settingsFile()).contains("sync: cloud"));
+        assertEquals(AppSettings.AttachmentSync.CLOUD, settingsStore.load().getAttachments().getSync());
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void saveMakesNewFileOwnerOnly() throws Exception {
+        settingsStore.save(new AppSettings());
+        assertEquals("rw-------",
+                PosixFilePermissions.toString(Files.getPosixFilePermissions(settingsStore.settingsFile())));
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void saveTightensExistingFileToOwnerOnly() throws Exception {
+        Path file = settingsStore.settingsFile();
+        Files.writeString(file, "dataDir: /some/data/dir\n");
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"));
+
+        settingsStore.save(settingsStore.load());
+
+        assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(file)));
     }
 
     @Test

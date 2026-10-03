@@ -13,11 +13,15 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 
 /**
  * Loads/saves {@code settings.yml} — app-wide, machine-local configuration (data dir, git
- * author, impressions patterns) — from the settings directory resolved by
- * {@link TripTaleProperties#resolvedSettingsDir()}.
+ * author, impressions patterns, attachment storage credentials) — from the settings directory
+ * resolved by {@link TripTaleProperties#resolvedSettingsDir()}. The file is kept owner-only
+ * ({@code rw-------}) where the file system supports POSIX permissions, since it holds a secret.
  *
  * <p>No JavaFX imports (storage package boundary rule).
  */
@@ -26,6 +30,7 @@ public class SettingsStore {
 
     private static final Logger log = LoggerFactory.getLogger(SettingsStore.class);
     private static final String SETTINGS_FILE = "settings.yml";
+    private static final Set<PosixFilePermission> OWNER_ONLY = PosixFilePermissions.fromString("rw-------");
 
     private final TripTaleProperties props;
     private final ObjectMapper yaml;
@@ -65,10 +70,21 @@ public class SettingsStore {
         try {
             Files.createDirectories(file.getParent());
             String content = yaml.writeValueAsString(settings);
+            restrictToOwner(file);
             Files.writeString(file, content);
             log.info("Saved settings to {}", file);
         } catch (IOException e) {
             log.warn("Could not write {}: {}", file, e.getMessage());
+        }
+    }
+
+    /** Creates the file owner-only, or tightens an existing one, before the secret is written. */
+    private static void restrictToOwner(Path file) throws IOException {
+        if (!file.getFileSystem().supportedFileAttributeViews().contains("posix")) return;
+        if (Files.notExists(file)) {
+            Files.createFile(file, PosixFilePermissions.asFileAttribute(OWNER_ONLY));
+        } else {
+            Files.setPosixFilePermissions(file, OWNER_ONLY);
         }
     }
 

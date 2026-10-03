@@ -59,6 +59,7 @@
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
                             <MenuItem fx:id="favesMenuItem" text="🖼 Show Faves" onAction="#onShowFaves" disable="true"/>
+                            <MenuItem fx:id="addAttachmentsMenuItem" text="📎 Add Attachments…" onAction="#onAddAttachments" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
                             <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
@@ -78,8 +79,9 @@
                         <items>
                             <MenuItem fx:id="syncMenuItem" text="⟲ Sync" onAction="#onSync"/>
                             <SeparatorMenuItem/>
-                            <MenuItem fx:id="pushMenuItem" text="↑ Push" onAction="#onPush"/>
-                            <MenuItem fx:id="pullMenuItem" text="↓ Pull" onAction="#onPull"/>
+                            <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
+                            <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
+                            <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true" accelerator="Shortcut+K"/>
                             <SeparatorMenuItem/>

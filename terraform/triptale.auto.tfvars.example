@@ -1,0 +1,5 @@
+# Copy to triptale.auto.tfvars (gitignored) and fill in.
+aws_region   = "eu-central-1"
+aws_profile  = "default"
+state_bucket = "my-terraform-state"
+# app = "triptale"   # bucket: <app>-attachments, IAM user: <app>-app, state key: <app>/terraform.tfstate
