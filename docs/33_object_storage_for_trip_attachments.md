@@ -51,7 +51,9 @@ notebook with **1 GB RAM in total**. That changes the trade-off:
   (existing AWS subscription, a few cents a month). Both work with the same client, only the
   settings differ.
 
-**D3 — Attachments are linked to entries by file name (2026-09-28).** Like impressions: every
+**D3 — Attachments are linked to entries by file name (2026-09-28).** *Replaced by todo 33a:
+one folder per day under `attachments/` in the data dir, see
+[33a](33a_attachments_mvp.md).* Like impressions: every
 file in the trip's attachment dir whose name starts with the entry's date belongs to that day,
 e.g. `2026-06-04-track.gpx`. No new frontmatter key and no `trackurl` reuse, so the `.md`
 files and the attachment dir can't drift apart. The prefix uses `YYYY-MM-DD` (same as the
@@ -345,7 +347,8 @@ is enough and no extra install matters more → our own S3 client.
   of the Sync action. Still open: a separate checkbox/row in Smart Sync, or always included?
 - ~~**Where the app reads the access key from:**~~ → D6: `settings.yml`, edited in the
   Settings dialog.
-- **Data-dir location:** could the attachment dir simply be a gitignored subfolder of the data
+- ~~**Data-dir location:**~~ → 33a: `attachments/` inside the data dir, its `.gitignore`
+  managed per sync mode. Original question: could the attachment dir simply be a gitignored subfolder of the data
   dir (like `.state.yml`), or must it be completely separate?
 
 ## Relevant files

@@ -59,7 +59,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Package boundary rule
 
-JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
+JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `attachments`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
 
 ---
 
@@ -70,6 +70,8 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
                   ├── git.GitService ───────────────────┘
                   ├── export.DiaryExporter ──► MarkdownStore
                   ├── export.ExportTempFiles
+                  ├── attachments.AttachmentsDir ──► MarkdownStore
+                  ├── attachments.AttachmentPusher ──► attachments.S3Client (SigV4, java.net.http)
                   ├── ui.ConnectivityService
                   └── ui.dialog.* ──► the services each dialog needs
 ```

@@ -27,7 +27,11 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
+import net.timafe.triptale.attachments.AttachmentPusher;
+import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.attachments.S3Client;
 import net.timafe.triptale.config.AppSettings;
+import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
@@ -123,6 +127,8 @@ public class MainController implements StatusSink {
     @FXML private Button connectivityButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
+    @FXML private MenuItem pushAttachmentsMenuItem;
+    @FXML private MenuItem addAttachmentsMenuItem;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
@@ -193,6 +199,9 @@ public class MainController implements StatusSink {
     private final ExportTempFiles exportTempFiles;
     private final BrowserLauncher browser;
     private final String appName;
+    private final AttachmentsDir attachmentsDir;
+    private boolean pushingAttachments;
+    private File lastAttachmentSourceDir;
 
     // Dialogs whose own dependencies this controller has no other use for.
     private final ExportDiaryDialog exportDiaryDialog;
@@ -204,6 +213,7 @@ public class MainController implements StatusSink {
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
                           ExportTempFiles exportTempFiles,
+                          AttachmentsDir attachmentsDir,
                           TripTaleProperties tripTaleProperties,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
@@ -213,6 +223,7 @@ public class MainController implements StatusSink {
         this.impressionsResolver = impressionsResolver;
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
+        this.attachmentsDir = attachmentsDir;
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
         this.exportDiaryDialog =
@@ -267,6 +278,7 @@ public class MainController implements StatusSink {
         });
         exportTempFiles.sweep();
         boolean ready = performStartupChecks();
+        if (ready) syncAttachmentsGitignore();
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
             reloadTrips(sel);
@@ -656,6 +668,7 @@ public class MainController implements StatusSink {
         LocalDate date = datePicker.getValue();
         updateTourDay(trip, date);
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
+        if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
             updateDeleteEntryMenuItem(false);
@@ -1158,6 +1171,10 @@ public class MainController implements StatusSink {
         if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
         if (syncMenuItem != null) syncMenuItem.setDisable(!remoteEnabled);
         if (syncButton != null) syncButton.setDisable(!remoteEnabled);
+        if (pushAttachmentsMenuItem != null) {
+            boolean cloud = settingsStore.load().getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
+            pushAttachmentsMenuItem.setDisable(!Boolean.TRUE.equals(connected) || !cloud || pushingAttachments);
+        }
     }
 
     private boolean hasRemoteConfigured() {
@@ -1199,6 +1216,80 @@ public class MainController implements StatusSink {
             status("Pushed to remote");
         } catch (RuntimeException e) {
             error(UiText.describe(e));
+        }
+    }
+
+    @FXML
+    public void onPushAttachments() {
+        AppSettings.Attachments settings = settingsStore.load().getAttachments();
+        Path root;
+        AttachmentPusher pusher;
+        String keyPrefix;
+        try {
+            root = attachmentsDir.root();
+            pusher = new AttachmentPusher(S3Client.from(settings));
+            keyPrefix = AttachmentPusher.keyPrefix(BucketUrl.parse(settings.getBucketUrl()));
+        } catch (RuntimeException e) {
+            error(UiText.describe(e));
+            return;
+        }
+        Task<AttachmentPusher.Result> task = new Task<>() {
+            @Override protected AttachmentPusher.Result call() {
+                return pusher.push(root, keyPrefix, (done, total, file) ->
+                        Platform.runLater(() -> status("Pushing attachments " + (done + 1) + "/" + total + ": " + file)));
+            }
+        };
+        task.setOnSucceeded(e -> {
+            setPushingAttachments(false);
+            AttachmentPusher.Result r = task.getValue();
+            status("Attachments pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged");
+        });
+        task.setOnFailed(e -> {
+            setPushingAttachments(false);
+            error("Push Attachments failed: " + UiText.describe(task.getException()));
+        });
+        setPushingAttachments(true);
+        status("Pushing attachments…");
+        Thread thread = new Thread(task, "push-attachments");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void setPushingAttachments(boolean running) {
+        pushingAttachments = running;
+        applyConnectivityState();
+    }
+
+    @FXML
+    public void onAddAttachments() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null) return;
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Add Attachments for " + DATE_DISPLAY.format(date));
+        if (lastAttachmentSourceDir != null && lastAttachmentSourceDir.isDirectory()) {
+            chooser.setInitialDirectory(lastAttachmentSourceDir);
+        }
+        List<File> files = chooser.showOpenMultipleDialog(null);
+        if (files == null || files.isEmpty()) return;
+        lastAttachmentSourceDir = files.getFirst().getParentFile();
+        try {
+            List<Path> copies = attachmentsDir.addFiles(trip.ref(), date, files.stream().map(File::toPath).toList());
+            status("Added " + copies.size() + " attachment" + (copies.size() == 1 ? "" : "s") + " to "
+                    + UiText.homeRelative(copies.getFirst().getParent()));
+        } catch (RuntimeException e) {
+            error(UiText.describe(e));
+        }
+    }
+
+    /** Rewrites attachments/.gitignore for the current sync mode; a change becomes a pending commit. */
+    private void syncAttachmentsGitignore() {
+        try {
+            if (attachmentsDir.ensureGitignore(settingsStore.load().getAttachments().getSync())) {
+                addPending(AttachmentsDir.GITIGNORE_LABEL, UPDATE);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not update {}: {}", AttachmentsDir.GITIGNORE_LABEL, e.getMessage());
         }
     }
 
@@ -1297,6 +1388,8 @@ public class MainController implements StatusSink {
                 new EditSettingsDialog().showAndWait(settings, settingsStore.settingsFile());
         if (edited.isEmpty()) return;
         settingsStore.save(edited.get());
+        syncAttachmentsGitignore();
+        applyConnectivityState();
 
         updateImpressionsButton(tripCombo.getValue(), datePicker.getValue());
         updateFavesButton(tripCombo.getValue(), datePicker.getValue());

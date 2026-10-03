@@ -81,6 +81,16 @@ class SettingsStoreTest {
     }
 
     @Test
+    void syncModeIsWrittenLowercase() throws Exception {
+        AppSettings settings = new AppSettings();
+        settings.getAttachments().setSync(AppSettings.AttachmentSync.CLOUD);
+        settingsStore.save(settings);
+
+        assertTrue(Files.readString(settingsStore.settingsFile()).contains("sync: cloud"));
+        assertEquals(AppSettings.AttachmentSync.CLOUD, settingsStore.load().getAttachments().getSync());
+    }
+
+    @Test
     @DisabledOnOs(OS.WINDOWS)
     void saveMakesNewFileOwnerOnly() throws Exception {
         settingsStore.save(new AppSettings());

@@ -2,12 +2,14 @@ package net.timafe.triptale.ui.dialog;
 
 import javafx.event.ActionEvent;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.ui.Dialogs;
 
@@ -44,6 +46,13 @@ public final class EditSettingsDialog {
         favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
         favePatternField.setPrefColumnCount(36);
         AppSettings.Attachments attachments = settings.getAttachments();
+        ComboBox<AppSettings.AttachmentSync> syncCombo = new ComboBox<>();
+        syncCombo.getItems().setAll(AppSettings.AttachmentSync.values());
+        syncCombo.setValue(attachments.getSync());
+        syncCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(AppSettings.AttachmentSync s) { return s == null ? "" : syncLabel(s); }
+            @Override public AppSettings.AttachmentSync fromString(String s) { return null; }
+        });
         TextField bucketUrlField = new TextField(attachments.getBucketUrl());
         bucketUrlField.setPromptText("e.g. s3://triptale-attachments or s3://bucket/prefix");
         bucketUrlField.setPrefColumnCount(36);
@@ -76,6 +85,8 @@ public final class EditSettingsDialog {
         grid.add(favePatternField, 1, row++);
         grid.add(new Separator(), 0, row, 2, 1);
         row++;
+        grid.add(new Label("Attachments sync:"), 0, row);
+        grid.add(syncCombo, 1, row++);
         grid.add(new Label("Attachments bucket URL:"), 0, row);
         grid.add(bucketUrlField, 1, row++);
         grid.add(new Label("Attachments region:"), 0, row);
@@ -92,7 +103,7 @@ public final class EditSettingsDialog {
 
         // Keep the dialog open while the attachment fields are malformed
         dlg.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(ActionEvent.ACTION, ev -> {
-            Optional<String> error = readAttachments(bucketUrlField, regionField, accessKeyIdField, secretField)
+            Optional<String> error = readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField)
                     .validationError();
             errorLabel.setText(error.orElse(""));
             if (error.isPresent()) ev.consume();
@@ -109,13 +120,23 @@ public final class EditSettingsDialog {
         settings.setImpressionsFilePattern(patternField.getText().trim());
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
-        settings.setAttachments(readAttachments(bucketUrlField, regionField, accessKeyIdField, secretField));
+        settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField));
         return Optional.of(settings);
     }
 
-    private static AppSettings.Attachments readAttachments(TextField bucketUrlField, TextField regionField,
+    private static String syncLabel(AppSettings.AttachmentSync sync) {
+        return switch (sync) {
+            case OFF -> "Off — local only, not in git";
+            case GIT -> "Git — committed with the tales";
+            case CLOUD -> "Cloud — pushed to the S3 bucket";
+        };
+    }
+
+    private static AppSettings.Attachments readAttachments(ComboBox<AppSettings.AttachmentSync> syncCombo,
+                                                           TextField bucketUrlField, TextField regionField,
                                                            TextField accessKeyIdField, PasswordField secretField) {
         AppSettings.Attachments attachments = new AppSettings.Attachments();
+        attachments.setSync(syncCombo.getValue());
         attachments.setBucketUrl(bucketUrlField.getText().trim());
         attachments.setRegion(regionField.getText().trim());
         attachments.setAccessKeyId(accessKeyIdField.getText().trim());

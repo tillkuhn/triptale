@@ -1,5 +1,7 @@
 package net.timafe.triptale.config;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -63,26 +65,42 @@ public class AppSettings {
         public void setAuthorEmail(String authorEmail) { this.authorEmail = authorEmail; }
     }
 
+    /** How the data dir's {@code attachments/} folder is synced (todo 33a). */
+    public enum AttachmentSync {
+        /** Local only — {@code attachments/} is gitignored. */
+        @JsonProperty("off") OFF,
+        /** Committed along with the {@code .md} files. */
+        @JsonProperty("git") GIT,
+        /** Gitignored locally, pushed to the S3 bucket. */
+        @JsonProperty("cloud") CLOUD
+    }
+
     /**
-     * S3 storage for trip attachments (todo 33, D6). Blank {@link #bucketUrl} means attachment
-     * sync is off. The secret is stored in plain text, which is why {@code SettingsStore}
-     * keeps {@code settings.yml} owner-only.
+     * Sync mode and S3 storage for trip attachments (todo 33, D6; todo 33a). The secret is
+     * stored in plain text, which is why {@code SettingsStore} keeps {@code settings.yml}
+     * owner-only.
      */
     public static class Attachments {
         public static final String DEFAULT_REGION = "eu-central-1";
         // e.g. eu-central-1, us-gov-west-1, ap-southeast-2
         private static final Pattern REGION = Pattern.compile("[a-z]{2}(-[a-z]+)+-\\d+");
 
+        private AttachmentSync sync = AttachmentSync.OFF;
         private String bucketUrl = "";
         private String region = DEFAULT_REGION;
         private String accessKeyId = "";
         private String secretAccessKey = "";
 
         /**
-         * A user-facing message if {@link #bucketUrl} or {@link #region} is malformed, empty if
-         * they're valid. Blank values are allowed, so the section can be filled in step by step.
+         * A user-facing message if {@link #bucketUrl} or {@link #region} is malformed, or if
+         * {@code cloud} sync is selected without a complete S3 config; empty if valid. Otherwise
+         * blank values are allowed, so the section can be filled in step by step.
          */
         public Optional<String> validationError() {
+            if (sync == AttachmentSync.CLOUD && (isBlank(bucketUrl) || isBlank(region)
+                    || isBlank(accessKeyId) || isBlank(secretAccessKey))) {
+                return Optional.of("Cloud sync needs bucket URL, region, access key ID and secret");
+            }
             if (bucketUrl != null && !bucketUrl.isBlank()) {
                 try {
                     BucketUrl.parse(bucketUrl);
@@ -96,6 +114,10 @@ public class AppSettings {
             return Optional.empty();
         }
 
+        private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+
+        public AttachmentSync getSync() { return sync; }
+        public void setSync(AttachmentSync sync) { this.sync = sync == null ? AttachmentSync.OFF : sync; }
         public String getBucketUrl() { return bucketUrl; }
         public void setBucketUrl(String bucketUrl) { this.bucketUrl = bucketUrl; }
         public String getRegion() { return region; }
