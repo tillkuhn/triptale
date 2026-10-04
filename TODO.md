@@ -100,6 +100,10 @@ Let's do a first minimal implementation to see if it works against the real stor
 Status 2026-10-03: implemented. Add Attachments… + Push Attachments tested against the real bucket (GPX upload OK).
 Still to check: a second push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gpx+xml` (currently stored as `application/octet-stream`).
 
+## 33b Attachment pull (download from cloud)
+
+Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions. Needs the open todo 33 decisions first (delete semantics, conflicts).
+
 ## 33 Object storage for trip attachments 
 
 I would like to use some kind of cloud storage for stuff that I don't want to store in the git repo (which should continue focus on versioned *.md files), for example to import images that match our impressions pattern, or store gpx files along with a trip entry. First thing that came to my mind was AWS S3, I also have a subscription, but the Java SDK Is very fat and the integration seems a bit overkill. Google Drive would be also nice since we're already using it to keep other travel files, but not sure if it can be used trough an API. Other suggestions welcome as long as they are fee for say ~1-2GB, since I don't want another subscription besides AWS.
@@ -109,32 +113,9 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 ## 32 Smart Sync for repository operations
 
-We currently have 3 operations to persist trip enty data: Save Tale (to local disk), commit (git commit for saved unstaged data) and Sync (kind of all in one for commit, pull / rebase and push) which could be confusing since you typically don't want to bother with Git Operations. Also we now have attachments sync in alpha mode, which adds another sync operation. 
-Goals for refactoring::
-* Sync becomes "Smart Sync" that handles independent sync operations in a smart way
-* Should still be flexible enough to allow user to opt in / opt out of operations when triggered (e.g avoid attachment sync when internet is slow)
-* Individual low level operations should remain in the menu (but not as buttons) for power users or odd cases
-* Effect and results of individual operations should be transparent to the users, which is not possible with the current single line log result in the lower left corner
+Replace Sync with an interactive **Smart Sync** dialog (`Cmd+K` → Enter): rows for Connectivity, Commit (editable message, decided by `git status`), Git Remote (fetch + rebase + push, with ahead/behind counts instead of a pull timer) and Attachments push (cloud mode only). Implicit save before the dialog opens, rebase conflicts skip the push but not attachments, Exit stays local. Commit button removed (menu only).
 
-Suggested Improvement (challenge!):
-- Rebrand Sync button and Sync trigger in menu becomes "smart sync" and will be enhanced as an interactive dialogue for committing, pushing and pulling changes 
-- Keep the "Save" Operation as cheap local "store to file system" operations, but calling Smart Sync should implicitly save if there are outstanding changes
-- Remove Commit as a button (but keep it in the menu for "power users") 
-- Store lastRemoteGitPull (and last lastRemoteAttachmentsPull if attachment sync is "cloud") date in .state.yml after  successful)pull, otherwise keep previous value 
-- Introduce new setting suggestedPullIntervalMins to store the number of minutes since last pull after which the smart sync dialogue should suggest a pull (default setting state is "active"), this would apply to both git pulls ans well as attachment pulls (if the latter is set to cloud)
-
-Suggested layout (challenge!):
-Smart Sync Dialogue Details row by row (as opposed to current sync, it will require user interaction):
-* Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
-* Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this. I could imagine: if the in memory counter for queued changes is > 0 anyway, no need to check with git for unstaged changes just activate commit dialogue. If the app is however not aware of any changes, the smart sync dialogue should check if the repo is dirty, and only then commit part should be active
-* Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
-* Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
-Fixed spaced for in progress area showing spinner, current action and result of interaction. 
-
-Buttons should be only Close (close window w/o action() or Sync. When sync is used, update the progress area. Leave the window open so the user can see the results, and need to close manually
-
-Since Sync will now also handle local commits, the button in the main window needs to be active even if offline.  
-
+[Plan](docs/32_smart_sync.md)
 
 ## 31 Git Housekeeping
 
