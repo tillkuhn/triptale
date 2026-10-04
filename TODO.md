@@ -299,6 +299,9 @@ covering directory-level (not just filename) globbing, the ambiguous-match/"firs
 TRIP_MONTH/TRIP_YEAR sourced from trip startDate vs. entry date, the per-(pattern, trip) session
 cache, and extracting a generic reusable resolver now).
 
+Added later (2026-10-04): `${TRIP_DAY}` (trip's start-date day, zero-padded), sourced the same
+way as `TRIP_MONTH`/`TRIP_YEAR`.
+
 ## DONE 21 introduce h1 title, derive from route in frontmatter
 
 to align the md layout more with tolaria, we want to introduce a strong "title" per markdown and store as h1 headline on top of the md file.
