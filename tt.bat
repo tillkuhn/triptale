@@ -1,2 +1,2 @@
 @echo off
-mvn -ntp javafx:run
+make -f C:\git\triptale\Makefile run-fast
