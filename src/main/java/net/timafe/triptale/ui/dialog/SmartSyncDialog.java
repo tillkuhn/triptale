@@ -19,8 +19,10 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Window;
 import net.timafe.triptale.attachments.AttachmentPusher;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.attachments.S3Client;
@@ -93,6 +95,7 @@ public final class SmartSyncDialog {
     private Path attachmentsRoot;
     private int preparing;
     private boolean running;
+    private Dialog<Void> dialog;
 
     public SmartSyncDialog(GitService gitService, SettingsStore settingsStore, AttachmentsDir attachmentsDir,
                            ConnectivityService connectivityService, BrowserLauncher browser) {
@@ -142,6 +145,7 @@ public final class SmartSyncDialog {
         remoteDetails.setWrapText(true);
         remoteDetailsPane = new TitledPane("Details", remoteDetails);
         remoteDetailsPane.setExpanded(false);
+        remoteDetailsPane.expandedProperty().addListener((obs, was, is) -> resize());
         showNode(remoteDetailsPane, false);
         revealButton = new Button("Reveal in Finder");
         revealButton.setOnAction(e -> settings.resolvedDataDir()
@@ -159,10 +163,11 @@ public final class SmartSyncDialog {
         Label context = new Label("Data dir: " + settings.resolvedDataDir().map(UiText::homeRelative)
                 .orElse("(not configured)") + "\nRemote: " + (remoteUrl.isBlank() ? "(none)" : remoteUrl));
         context.setWrapText(true);
+        context.setMinHeight(Region.USE_PREF_SIZE);
         context.setStyle("-fx-font-size: 11; -fx-opacity: 0.7;");
         grid.add(context, 0, r, 4, 1);
 
-        Dialog<Void> dialog = new Dialog<>();
+        dialog = new Dialog<>();
         dialog.setTitle("Smart Sync");
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().setPrefWidth(640);
@@ -209,8 +214,10 @@ public final class SmartSyncDialog {
         messageArea.setText(CommitMessage.compose(request.pendingMessage(), external));
         Label files = new Label(String.join("\n", dirtyFiles));
         files.setStyle("-fx-font-size: 11;");
+        files.setMinHeight(Region.USE_PREF_SIZE);
         TitledPane filesPane = new TitledPane(plural(dirtyFiles.size(), "changed file"), files);
         filesPane.setExpanded(false);
+        filesPane.expandedProperty().addListener((obs, was, is) -> resize());
         commitRow.extra.getChildren().addAll(messageArea, filesPane);
         commitRow.idle(plural(dirtyFiles.size(), "changed file")
                 + (external.isEmpty() ? "" : " (" + external.size() + " changed outside the app)"));
@@ -458,6 +465,16 @@ public final class SmartSyncDialog {
         remoteDetails.setText(text);
         showNode(remoteDetailsPane, true);
         showNode(revealButton, conflict);
+        resize();
+    }
+
+    /** Grows (or shrinks) the window to fit after rows expand, collapse or change their text. */
+    private void resize() {
+        Platform.runLater(() -> {
+            if (dialog == null || dialog.getDialogPane().getScene() == null) return;
+            Window window = dialog.getDialogPane().getScene().getWindow();
+            if (window != null) window.sizeToScene();
+        });
     }
 
     private String remoteUrl() {
@@ -507,6 +524,7 @@ public final class SmartSyncDialog {
             name.setStyle("-fx-font-weight: bold;");
             status.setWrapText(true);
             status.setMaxWidth(Double.MAX_VALUE);
+            status.setMinHeight(Region.USE_PREF_SIZE);
             spinner.setPrefSize(18, 18);
             spinner.setMaxSize(18, 18);
             check.selectedProperty().addListener((obs, was, is) -> {
@@ -541,6 +559,7 @@ public final class SmartSyncDialog {
             status.getStyleClass().setAll("label", "sync-status-idle");
             showNode(icon, false);
             showNode(spinner, true);
+            resize();
         }
 
         private void show(String text, String symbol, String styleClass) {
@@ -550,6 +569,7 @@ public final class SmartSyncDialog {
             icon.getStyleClass().setAll("label", styleClass);
             showNode(spinner, false);
             showNode(icon, true);
+            resize();
         }
     }
 }

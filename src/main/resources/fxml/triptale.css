@@ -433,3 +433,27 @@
 .status-icon.sync-conflict {
     -fx-text-fill: #e06c6c;
 }
+.titled-pane {
+    -fx-text-fill: #c8deda;
+}
+.titled-pane > .title {
+    -fx-background-color: #172020;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 9 4 9;
+}
+.titled-pane:expanded > .title {
+    -fx-border-radius: 6 6 0 0;
+    -fx-background-radius: 6 6 0 0;
+}
+.titled-pane > .title > .arrow-button > .arrow {
+    -fx-background-color: #4ec9b0;
+}
+.titled-pane > .content {
+    -fx-background-color: #172020;
+    -fx-border-color: #3a5050;
+    -fx-border-width: 0 1 1 1;
+    -fx-padding: 6 9 6 9;
+}
