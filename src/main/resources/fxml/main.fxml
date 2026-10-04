@@ -77,13 +77,14 @@
                     </Menu>
                     <Menu text="Repository">
                         <items>
-                            <MenuItem fx:id="syncMenuItem" text="⟲ Sync" onAction="#onSync"/>
+                            <MenuItem fx:id="syncMenuItem" text="🔄 Smart Sync…" onAction="#onSync" accelerator="Shortcut+K"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
                             <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
                             <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
+                            <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Attachments" onAction="#onPullAttachments" disable="true"/>
                             <SeparatorMenuItem/>
-                            <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true" accelerator="Shortcut+K"/>
+                            <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                             <SeparatorMenuItem/>
@@ -214,14 +215,13 @@
             </StackPane>
             <HBox fx:id="statusRow" spacing="10" alignment="CENTER_RIGHT">
                 <HBox fx:id="statusBar" styleClass="status-bar" spacing="6" alignment="CENTER_LEFT">
-                    <Label text="&#9432;" styleClass="status-icon"/>
+                    <Label fx:id="statusIcon" text="&#9432;" styleClass="status-icon"/>
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
                 <Button fx:id="copyButton" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
                 <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
-                <Button fx:id="commitButton" text="📦 Commit (0)" onAction="#onCommit" disable="true"/>
-                <Button fx:id="syncButton" text="🔄 Sync" onAction="#onSync" disable="true"/>
+                <Button fx:id="syncButton" text="🔄 Smart Sync" onAction="#onSync"/>
             </HBox>
         </VBox>
     </center>

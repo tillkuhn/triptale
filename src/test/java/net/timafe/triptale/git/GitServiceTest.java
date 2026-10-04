@@ -7,6 +7,8 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.URIish;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -292,5 +295,92 @@ class GitServiceTest {
     void needsInitTrueWhenConfiguredAndDataDirEmpty() throws Exception {
         Files.createDirectories(dataDir);
         assertTrue(gitService.needsInit());
+    }
+
+    // -------------------------------------------------------------------------
+    // dirtyFiles / aheadBehind / conflictPaths (todo 32 Smart Sync)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void dirtyFilesListsNewModifiedAndDeletedFiles() throws Exception {
+        gitService.initRepo();
+        TripRef ref = new TripRef(2025, "tour");
+        store.saveTrip(new Trip(2025, "tour", "Tour", LocalDate.of(2025, 6, 1), null, ""));
+        store.saveEntry(ref, DiaryEntry.builder(LocalDate.of(2025, 6, 1)).tales("day 1").build());
+        gitService.commitAll("initial");
+        assertEquals(List.of(), gitService.dirtyFiles());
+
+        Files.writeString(dataDir.resolve("2025/tour/README.md"), "# Tour\n\nedited outside the app\n");
+        Files.delete(store.entryFile(ref, LocalDate.of(2025, 6, 1)));
+        Files.writeString(dataDir.resolve("notes.md"), "new");
+        Files.writeString(dataDir.resolve(".state.yml"), "ignored: true");
+
+        assertEquals(List.of("2025/tour/2025-06-01-Sunday.md", "2025/tour/README.md", "notes.md"),
+                gitService.dirtyFiles());
+    }
+
+    @Test
+    void commitAllStagesFilesDeletedOutsideTheApp() throws Exception {
+        gitService.initRepo();
+        Files.writeString(dataDir.resolve("notes.md"), "x");
+        gitService.commitAll("initial");
+        Files.delete(dataDir.resolve("notes.md"));
+
+        assertNotNull(gitService.commitAll("delete notes"));
+        assertEquals(List.of(), gitService.dirtyFiles());
+    }
+
+    @Test
+    void aheadBehindEmptyWithoutRemoteBranch() {
+        gitService.initRepo();
+        gitService.commitAll("initial");
+        assertTrue(gitService.aheadBehind().isEmpty());
+    }
+
+    @Test
+    void aheadBehindCountsLocalAndRemoteCommits() throws Exception {
+        gitService.initRepo();
+        gitService.commitAll("initial");
+        Path bare = tempDir.resolve("remote.git");
+        Git.init().setBare(true).setDirectory(bare.toFile()).call().close();
+        try (Git local = Git.open(dataDir.toFile())) {
+            local.remoteAdd().setName("origin").setUri(new URIish(bare.toUri().toString())).call();
+            local.push().setRemote("origin").call();
+        }
+        assertEquals(new GitService.AheadBehind(0, 0), gitService.aheadBehind().orElseThrow());
+
+        // Another clone pushes two commits; we fetch them (behind 2) and commit locally (ahead 1).
+        Path other = tempDir.resolve("other");
+        try (Git clone = Git.cloneRepository().setURI(bare.toUri().toString()).setDirectory(other.toFile()).call()) {
+            for (String name : List.of("a.md", "b.md")) {
+                Files.writeString(other.resolve(name), name);
+                clone.add().addFilepattern(name).call();
+                clone.commit().setMessage(name).call();
+            }
+            clone.push().call();
+        }
+        try (Git local = Git.open(dataDir.toFile())) {
+            local.fetch().setRemote("origin").call();
+        }
+        Files.writeString(dataDir.resolve("local.md"), "x");
+        gitService.commitAll("local");
+
+        GitService.AheadBehind ab = gitService.aheadBehind().orElseThrow();
+        assertEquals(new GitService.AheadBehind(1, 2), ab);
+        assertFalse(ab.inSync());
+    }
+
+    @Test
+    void conflictPathsParsesGitRebaseOutput() {
+        String output = """
+                Auto-merging 2026/norway/README.md
+                CONFLICT (content): Merge conflict in 2026/norway/README.md
+                CONFLICT (modify/delete): 2026/norway/2026-06-04-Thursday.md deleted in HEAD and modified in abc. Version abc of 2026/norway/2026-06-04-Thursday.md left in tree.
+                CONFLICT (add/add): Merge conflict in notes.md
+                error: could not apply abc1234... local
+                """;
+        assertEquals(List.of("2026/norway/2026-06-04-Thursday.md", "2026/norway/README.md", "notes.md"),
+                GitService.conflictPaths(output));
+        assertEquals(List.of(), GitService.conflictPaths(null));
     }
 }

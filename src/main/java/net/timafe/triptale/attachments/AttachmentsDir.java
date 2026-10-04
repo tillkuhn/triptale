@@ -18,7 +18,8 @@ import java.util.List;
  * The data dir's {@code attachments/} folder (todo 33a): one folder per tale entry day, named
  * like the entry file without {@code .md}, e.g.
  * {@code attachments/2026/some-trip/2026-09-26-Saturday/}. The app owns the folder's
- * {@code .gitignore}, whose content follows the {@link AttachmentSync} mode.
+ * {@code .gitignore}, whose content follows the {@link AttachmentSync} mode, and its
+ * {@code .gitattributes}, which marks every attachment binary.
  *
  * <p>No JavaFX imports (package boundary rule).
  */
@@ -28,14 +29,26 @@ public class AttachmentsDir {
     public static final String DIR_NAME = "attachments";
     /** Path of the managed .gitignore relative to the data dir (used as pending-commit label). */
     public static final String GITIGNORE_LABEL = DIR_NAME + "/.gitignore";
+    /** Path of the managed .gitattributes relative to the data dir (used as pending-commit label). */
+    public static final String GITATTRIBUTES_LABEL = DIR_NAME + "/.gitattributes";
 
     static final String GITIGNORE_LOCAL = """
             # Managed by TripTale: attachments are not versioned in git (sync mode off or cloud)
             *
             !.gitignore
+            !.gitattributes
             """;
     static final String GITIGNORE_GIT = """
             # Managed by TripTale: attachments are versioned in git (sync mode git)
+            """;
+    /**
+     * Same in every mode: treat all attachments as binary, so git never converts line endings
+     * (e.g. {@code core.autocrlf} on Windows turning a GPX file's LF into CRLF). Keeps the bytes,
+     * and with them the MD5 that attachment push compares, identical on every OS.
+     */
+    static final String GITATTRIBUTES = """
+            # Managed by TripTale: attachments are binary, no line-ending conversion on any OS
+            * -text
             """;
 
     private final MarkdownStore store;
@@ -87,20 +100,30 @@ public class AttachmentsDir {
     }
 
     /**
-     * Writes {@code attachments/.gitignore} for the given mode, creating the folder if needed.
+     * Writes the app-managed {@code attachments/.gitignore} (content per mode) and
+     * {@code attachments/.gitattributes}, creating the folder if needed.
      *
-     * @return {@code true} if the file was created or its content changed
+     * @return the labels ({@link #GITIGNORE_LABEL}, {@link #GITATTRIBUTES_LABEL}) of the files that
+     *         were created or changed; empty if both were already up to date
      */
-    public boolean ensureGitignore(AttachmentSync mode) {
-        Path gitignore = root().resolve(".gitignore");
-        String content = mode == AttachmentSync.GIT ? GITIGNORE_GIT : GITIGNORE_LOCAL;
+    public List<String> ensureManagedFiles(AttachmentSync mode) {
+        List<String> changed = new ArrayList<>();
+        if (ensureFile(".gitignore", mode == AttachmentSync.GIT ? GITIGNORE_GIT : GITIGNORE_LOCAL)) {
+            changed.add(GITIGNORE_LABEL);
+        }
+        if (ensureFile(".gitattributes", GITATTRIBUTES)) changed.add(GITATTRIBUTES_LABEL);
+        return changed;
+    }
+
+    private boolean ensureFile(String name, String content) {
+        Path file = root().resolve(name);
         try {
-            if (Files.exists(gitignore) && Files.readString(gitignore).equals(content)) return false;
-            Files.createDirectories(gitignore.getParent());
-            Files.writeString(gitignore, content);
+            if (Files.exists(file) && Files.readString(file).equals(content)) return false;
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, content);
             return true;
         } catch (IOException e) {
-            throw new StorageException("Could not write " + gitignore, e);
+            throw new StorageException("Could not write " + file, e);
         }
     }
 }

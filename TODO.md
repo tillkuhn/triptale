@@ -1,8 +1,12 @@
 # ToDos for this app
 
-## Next Todo: 43
+## Next Todo: 44
 
-## 42 support refactor trip slug
+## 43 Spring Boot AOT Optimizations and other performance helpers
+
+As triptale app becomes bigger and bigger, check what could help to speed up startup time / lower memory footprints on smaller devices, e.g. https://docs.spring.io/spring-framework/reference/core/aot.html and  https://www.baeldung.com/spring-boot-startup-speed (Tips like -Xno-verify)
+
+## 42 support refactor trip slug to rename folders and references
 
 trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
 add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
@@ -96,6 +100,14 @@ Let's do a first minimal implementation to see if it works against the real stor
 Status 2026-10-03: implemented. Add Attachments… + Push Attachments tested against the real bucket (GPX upload OK).
 Still to check: a second push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gpx+xml` (currently stored as `application/octet-stream`).
 
+Update 2026-10-04 (cross-OS line endings): the app now also manages `attachments/.gitattributes` with `* -text` in every mode, so git never converts line endings in attachments (e.g. `core.autocrlf` on Windows turning a GPX file's LF into CRLF). Keeps bytes, and the MD5 that push compares, identical on Linux, macOS and Windows; matters when a repo switches from `git` to `cloud` mode. An existing Windows clone that already checked out text attachments with CRLF in `git` mode needs a one-time re-checkout of those files (`git checkout -- attachments` after deleting them locally).
+
+## DONE 33b Attachment pull (download from cloud)
+
+Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions.
+
+Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Tested against the real bucket 2026-10-04: 6 cloud-only files downloaded, second sync reports up to date.
+
 ## 33 Object storage for trip attachments 
 
 I would like to use some kind of cloud storage for stuff that I don't want to store in the git repo (which should continue focus on versioned *.md files), for example to import images that match our impressions pattern, or store gpx files along with a trip entry. First thing that came to my mind was AWS S3, I also have a subscription, but the Java SDK Is very fat and the integration seems a bit overkill. Google Drive would be also nice since we're already using it to keep other travel files, but not sure if it can be used trough an API. Other suggestions welcome as long as they are fee for say ~1-2GB, since I don't want another subscription besides AWS.
@@ -103,27 +115,11 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## 32 Smart Sync
+## DONE 32 Smart Sync for repository operations
 
-We currently have 3 operations to persist trip enty data: Save Tale (to local disk), commit (git commit for saved unstaged data) and Sync (kind of all in one for commit, pull / rebase and push) which could be confusing since you typcially don't want to bother with Git Operations.
-Suggested Improvement:
-- Keep Save as cheap local "store to file system" operations
-- Remove Commit as a button (but keep it in the menu for "power users") and rebrand Sync as "Smart Sync" for the new interactive operation to interact with the repo
-- Store lastRemotePull date in .state.yml (but only if successful) 
-- Introduce new setting suggestedPullIntervalMins to store the number of minutes since last pull after which the smart sync dialogue should suggest a pull (default checked)
+Replace Sync with an interactive **Smart Sync** dialog (`Cmd+K` → Enter): rows for Connectivity, Commit (editable message, decided by `git status`), Git Remote (fetch + rebase + push, with ahead/behind counts instead of a pull timer) and Attachments push (cloud mode only). Implicit save before the dialog opens, rebase conflicts skip the push but not attachments, Exit stays local. Commit button removed (menu only).
 
-Smart Sync Dialogue Details row by row (as opposed to current sync, it will require user interaction):
-Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
-Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this. I could imagine: if the in memory counter for queued changes is > 0 anyway, no need to check with git for unstaged changes just activate commit dialogue. If the app is however not aware of any changes, the smart sync dialogue should check if the repo is dirty, and only then commit part should be active
-
-Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
-Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
-Fixed spaced for in progress area showing spinner, current action and result of interaction. 
-
-Buttons should be only Close (close window w/o acttion() or Sync. When sync is used, update the progress area. Leave the window open so the user can see the results, and need to close manually
-
-Since Sync will now also handle local commits, the button in the main window needs to be active even if offline.  
-
+[Plan](docs/32_smart_sync.md)
 
 ## 31 Git Housekeeping
 

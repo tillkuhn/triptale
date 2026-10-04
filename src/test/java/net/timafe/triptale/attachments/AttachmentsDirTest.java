@@ -70,15 +70,33 @@ class AttachmentsDirTest {
     }
 
     @Test
-    void ensureGitignore_writesPerModeAndReportsChanges() throws Exception {
+    void ensureManagedFiles_writesPerModeAndReportsChanges() throws Exception {
         Path gitignore = dataDir.resolve("attachments/.gitignore");
+        Path gitattributes = dataDir.resolve("attachments/.gitattributes");
 
-        assertTrue(attachmentsDir.ensureGitignore(AttachmentSync.OFF));
+        assertEquals(List.of(AttachmentsDir.GITIGNORE_LABEL, AttachmentsDir.GITATTRIBUTES_LABEL),
+                attachmentsDir.ensureManagedFiles(AttachmentSync.OFF));
         assertEquals(AttachmentsDir.GITIGNORE_LOCAL, Files.readString(gitignore));
-        assertFalse(attachmentsDir.ensureGitignore(AttachmentSync.CLOUD), "off and cloud share the content");
+        assertEquals(AttachmentsDir.GITATTRIBUTES, Files.readString(gitattributes));
+        assertEquals(List.of(), attachmentsDir.ensureManagedFiles(AttachmentSync.CLOUD),
+                "off and cloud share the content");
 
-        assertTrue(attachmentsDir.ensureGitignore(AttachmentSync.GIT));
+        assertEquals(List.of(AttachmentsDir.GITIGNORE_LABEL), attachmentsDir.ensureManagedFiles(AttachmentSync.GIT));
         assertEquals(AttachmentsDir.GITIGNORE_GIT, Files.readString(gitignore));
-        assertFalse(attachmentsDir.ensureGitignore(AttachmentSync.GIT));
+        assertEquals(List.of(), attachmentsDir.ensureManagedFiles(AttachmentSync.GIT));
+    }
+
+    @Test
+    void ensureManagedFiles_localModeKeepsManagedFilesVisibleToGit() {
+        assertTrue(AttachmentsDir.GITIGNORE_LOCAL.contains("!.gitignore"));
+        assertTrue(AttachmentsDir.GITIGNORE_LOCAL.contains("!.gitattributes"));
+    }
+
+    @Test
+    void ensureManagedFiles_restoresEditedGitattributes() throws Exception {
+        attachmentsDir.ensureManagedFiles(AttachmentSync.CLOUD);
+        Files.writeString(dataDir.resolve("attachments/.gitattributes"), "*.gpx text eol=crlf\n");
+
+        assertEquals(List.of(AttachmentsDir.GITATTRIBUTES_LABEL), attachmentsDir.ensureManagedFiles(AttachmentSync.CLOUD));
     }
 }

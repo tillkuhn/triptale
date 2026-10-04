@@ -17,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -29,7 +30,7 @@ import java.util.TreeMap;
 
 /**
  * Minimal AWS S3 client over {@code java.net.http} with our own {@link SigV4} signing — just
- * {@code ListObjectsV2} and {@code PutObject} (todo 33, D2). Uses virtual-hosted URLs
+ * {@code ListObjectsV2}, {@code PutObject} and {@code GetObject} (todo 33, D2; 33b). Uses virtual-hosted URLs
  * ({@code https://<bucket>.s3.<region>.amazonaws.com}), so bucket names with dots aren't supported.
  */
 public final class S3Client implements ObjectStore {
@@ -37,6 +38,7 @@ public final class S3Client implements ObjectStore {
     private static final DateTimeFormatter AMZ_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
     private static final Duration LIST_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration PUT_TIMEOUT = Duration.ofMinutes(10);
+    private static final Duration GET_TIMEOUT = Duration.ofMinutes(10);
 
     private final String bucket;
     private final String region;
@@ -72,7 +74,9 @@ public final class S3Client implements ObjectStore {
             params.put("prefix", keyPrefix);
             if (token != null) params.put("continuation-token", token);
             HttpResponse<byte[]> resp = send("GET", "/", SigV4.canonicalQuery(params), Map.of(),
-                    SigV4.EMPTY_SHA256, HttpRequest.BodyPublishers.noBody(), LIST_TIMEOUT);
+                    SigV4.EMPTY_SHA256, HttpRequest.BodyPublishers.noBody(), LIST_TIMEOUT,
+                    HttpResponse.BodyHandlers.ofByteArray());
+            checkStatus("GET", "/", resp.statusCode(), resp.body());
             Document doc = parseXml(resp.body());
             NodeList contents = doc.getElementsByTagName("Contents");
             for (int i = 0; i < contents.getLength(); i++) {
@@ -101,11 +105,43 @@ public final class S3Client implements ObjectStore {
         Map<String, String> headers = Map.of(
                 "content-md5", Base64.getEncoder().encodeToString(md5),
                 "content-type", contentType == null ? "application/octet-stream" : contentType);
-        send("PUT", "/" + SigV4.uriEncode(key, false), "", headers, SigV4.UNSIGNED_PAYLOAD, body, PUT_TIMEOUT);
+        String path = "/" + SigV4.uriEncode(key, false);
+        HttpResponse<byte[]> resp = send("PUT", path, "", headers, SigV4.UNSIGNED_PAYLOAD, body, PUT_TIMEOUT,
+                HttpResponse.BodyHandlers.ofByteArray());
+        checkStatus("PUT", path, resp.statusCode(), resp.body());
     }
 
-    private HttpResponse<byte[]> send(String method, String path, String query, Map<String, String> extraHeaders,
-                                      String payloadHash, HttpRequest.BodyPublisher body, Duration timeout) {
+    /**
+     * Streams the object to a hidden {@code .part} file next to {@code target} (so memory stays
+     * flat for large photos), then moves it into place — an aborted download never leaves a
+     * truncated attachment. Hidden files are skipped by push, so a leftover part file is harmless.
+     */
+    @Override
+    public void get(String key, Path target) {
+        String path = "/" + SigV4.uriEncode(key, false);
+        Path part = target.resolveSibling("." + target.getFileName() + ".part");
+        try {
+            HttpResponse<Path> resp = send("GET", path, "", Map.of(), SigV4.EMPTY_SHA256,
+                    HttpRequest.BodyPublishers.noBody(), GET_TIMEOUT, HttpResponse.BodyHandlers.ofFile(part));
+            if (resp.statusCode() / 100 != 2) {
+                byte[] errorBody = Files.readAllBytes(part);
+                checkStatus("GET", path, resp.statusCode(), errorBody);
+            }
+            Files.move(part, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new AttachmentException("Could not write " + target, e);
+        } finally {
+            try {
+                Files.deleteIfExists(part);
+            } catch (IOException ignored) {
+                // best effort; push skips hidden files anyway
+            }
+        }
+    }
+
+    private <T> HttpResponse<T> send(String method, String path, String query, Map<String, String> extraHeaders,
+                                     String payloadHash, HttpRequest.BodyPublisher body, Duration timeout,
+                                     HttpResponse.BodyHandler<T> handler) {
         String amzDate = ZonedDateTime.now(ZoneOffset.UTC).format(AMZ_DATE);
         SortedMap<String, String> headers = new TreeMap<>(extraHeaders);
         headers.put("host", host);
@@ -122,20 +158,20 @@ public final class S3Client implements ObjectStore {
         // java.net.http derives Host from the URI and refuses to set it explicitly
         headers.forEach((k, v) -> { if (!k.equals("host")) req.header(k, v); });
 
-        HttpResponse<byte[]> resp;
         try {
-            resp = http.send(req.build(), HttpResponse.BodyHandlers.ofByteArray());
+            return http.send(req.build(), handler);
         } catch (IOException e) {
             throw new AttachmentException("S3 " + method + " to " + bucket + " failed: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new AttachmentException("S3 " + method + " interrupted", e);
         }
-        if (resp.statusCode() / 100 != 2) {
-            throw new AttachmentException("S3 " + method + " " + path + " → HTTP " + resp.statusCode()
-                    + errorDetail(resp.body()));
+    }
+
+    private static void checkStatus(String method, String path, int status, byte[] body) {
+        if (status / 100 != 2) {
+            throw new AttachmentException("S3 " + method + " " + path + " → HTTP " + status + errorDetail(body));
         }
-        return resp;
     }
 
     /** {@code ": <Code> – <Message>"} from an S3 XML error body, or "" if there's none. */
