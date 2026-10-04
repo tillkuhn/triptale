@@ -74,6 +74,17 @@ class ImpressionsResolverTest {
     }
 
     @Test
+    void substitutesTripDayVariable() throws IOException {
+        Path tripDir = Files.createDirectories(tempDir.resolve("2026-06-04-iceland-roadtrip"));
+        Files.createFile(tripDir.resolve("20260807_party.jpg"));
+
+        String pattern = tempDir + "/${TRIP_YEAR}-${TRIP_MONTH}-${TRIP_DAY}-${TRIP_SLUG}/${DATE}*.jpg";
+        List<Path> matches = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
+        assertEquals(1, matches.size());
+        assertEquals("20260807_party.jpg", matches.get(0).getFileName().toString());
+    }
+
+    @Test
     void returnsEmptyWhenTripVariableUsedWithNoTripInScope() {
         String pattern = tempDir + "/${TRIP_SLUG}/${DATE}*.jpg";
         assertTrue(resolver.resolve(pattern, null, LocalDate.of(2026, 8, 7)).isEmpty());

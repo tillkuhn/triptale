@@ -31,6 +31,7 @@ import java.util.stream.Stream;
  *     <li>{@code ${TRIP_SLUG}} — the active trip's slug</li>
  *     <li>{@code ${TRIP_YEAR}} — the active trip's start-date year, e.g. {@code 2026}</li>
  *     <li>{@code ${TRIP_MONTH}} — the active trip's start-date month, zero-padded, e.g. {@code 06}</li>
+ *     <li>{@code ${TRIP_DAY}} — the active trip's start-date day, zero-padded, e.g. {@code 04}</li>
  * </ul>
  *
  * <p>Variable substitution and directory-segment glob matching are delegated to
@@ -51,6 +52,7 @@ public class ImpressionsResolver {
     private static final Logger log = LoggerFactory.getLogger(ImpressionsResolver.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter TRIP_MONTH_FORMAT = DateTimeFormatter.ofPattern("MM");
+    private static final DateTimeFormatter TRIP_DAY_FORMAT = DateTimeFormatter.ofPattern("dd");
 
     private final PathPatternResolver pathPatternResolver;
     private final Map<String, Optional<Path>> resolvedDirectoryCache = new ConcurrentHashMap<>();
@@ -93,6 +95,7 @@ public class ImpressionsResolver {
             vars.put("TRIP_SLUG", trip.slug());
             vars.put("TRIP_YEAR", Integer.toString(trip.startDate().getYear()));
             vars.put("TRIP_MONTH", trip.startDate().format(TRIP_MONTH_FORMAT));
+            vars.put("TRIP_DAY", trip.startDate().format(TRIP_DAY_FORMAT));
         }
         return vars;
     }

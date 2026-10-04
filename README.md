@@ -138,6 +138,7 @@ Each pattern is a filesystem path containing `${VAR}` placeholders:
 | `${TRIP_SLUG}`   | the active trip's slug                       | `iceland-roadtrip`    |
 | `${TRIP_YEAR}`   | the active trip's start-date year            | `2026`                |
 | `${TRIP_MONTH}`  | the active trip's start-date month, 2-digit  | `06`                  |
+| `${TRIP_DAY}`    | the active trip's start-date day, 2-digit    | `04`                  |
 
 After substitution, the pattern is split on `/` and matched one directory level at a time —
 **every** segment may contain wildcards, not just the filename:
