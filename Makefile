@@ -32,7 +32,11 @@ endif
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
 	$(RUN_CMD)
 
-SOURCES := $(shell find src -type f) pom.xml
+# Pure-Make recursive file listing (no external `find`): on Windows, Git's PATH puts
+# System32's find.exe (the DOS text-search command) ahead of GNU find, so `find src -type f`
+# fails with "FIND: Parameterformat falsch". $(wildcard) is a Make built-in, immune to that.
+rwildcard = $(foreach d,$(wildcard $1*/),$(call rwildcard,$d,$2)) $(filter-out $(patsubst %/,%,$(wildcard $1*/)),$(wildcard $1$2))
+SOURCES := $(call rwildcard,src/,*) pom.xml
 
 $(JAR): $(SOURCES) ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
