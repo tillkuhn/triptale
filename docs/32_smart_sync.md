@@ -1,6 +1,6 @@
 # Todo 32 — Smart Sync
 
-Status: **agreed 2026-10-04 (grill-me session); implemented on `feature/32-smart-sync`, not yet verified in the UI.**
+Status: **agreed 2026-10-04 (grill-me session); implemented on `feature/32-smart-sync` and checked in the UI (git rows, attachments push). Attachment pull (33b) added the same day, not yet tested against the real bucket.**
 
 Today there are three ways to persist data: Save (to disk), Commit (git commit of saved
 changes) and Sync (commit + fetch/rebase + push, in one go), plus Push Attachments (todo 33a).
@@ -63,6 +63,9 @@ conflict questions are still open, so attachment pull is split out as **todo 33b
 - Incomplete S3 config (`validate()` error): row shown **disabled** with the message, not
   hidden.
 - When 33b lands, the same row does both directions; layout unchanged.
+- **Update (33b, 2026-10-04):** the row now pulls, then pushes. The plan shows
+  "↓ 6 to download (4.2 MB) · ↑ 2 to upload (1.1 MB)"; checked by default when either is > 0.
+  `AttachmentPusher` became `AttachmentSyncer`.
 
 **D6 — Exit stays cheap.** No network on exit. "Commit & Exit" stays as is (local commit). The
 only change: the warning also mentions committed-but-unpushed work, from a local ahead count
@@ -113,6 +116,6 @@ pattern stays (see AGENTS.md, UI structure).
 
 ## Out of scope
 
-- Attachment pull → todo 33b.
+- ~~Attachment pull → todo 33b.~~ Done, see D5 update.
 - Merge / conflict resolution UI.
 - Auto-sync / "don't ask again".

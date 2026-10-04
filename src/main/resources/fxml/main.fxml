@@ -82,6 +82,7 @@
                             <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
                             <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
                             <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
+                            <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Attachments" onAction="#onPullAttachments" disable="true"/>
                             <SeparatorMenuItem/>
                             <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                             <SeparatorMenuItem/>

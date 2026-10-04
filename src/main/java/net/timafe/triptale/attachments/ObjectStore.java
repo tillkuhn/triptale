@@ -3,7 +3,7 @@ package net.timafe.triptale.attachments;
 import java.nio.file.Path;
 import java.util.Map;
 
-/** The few bucket operations attachment push needs; {@link S3Client} is the real one. */
+/** The few bucket operations attachment sync needs; {@link S3Client} is the real one. */
 public interface ObjectStore {
 
     /** Size and ETag (without quotes) of a stored object. */
@@ -14,4 +14,7 @@ public interface ObjectStore {
 
     /** Uploads {@code file} as {@code key}; {@code md5} lets the store verify the upload. */
     void put(String key, Path file, byte[] md5);
+
+    /** Downloads {@code key} into {@code target} (overwritten); the parent directory must exist. */
+    void get(String key, Path target);
 }

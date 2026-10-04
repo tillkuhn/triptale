@@ -104,7 +104,9 @@ Update 2026-10-04 (cross-OS line endings): the app now also manages `attachments
 
 ## 33b Attachment pull (download from cloud)
 
-Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions. Needs the open todo 33 decisions first (delete semantics, conflicts).
+Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions.
+
+Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Not yet tested against the real bucket.
 
 ## 33 Object storage for trip attachments 
 

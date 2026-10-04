@@ -23,7 +23,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
-import net.timafe.triptale.attachments.AttachmentPusher;
+import net.timafe.triptale.attachments.AttachmentSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.attachments.S3Client;
 import net.timafe.triptale.config.AppSettings;
@@ -37,6 +37,7 @@ import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.CommitMessage;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -45,10 +46,11 @@ import java.util.function.Consumer;
 
 /**
  * Smart Sync (todo 32, see {@code docs/32_smart_sync.md}): one row per step — Connectivity,
- * Commit, Git Remote (fetch + rebase + push) and, in {@code cloud} mode, Attachments (push).
+ * Commit, Git Remote (fetch + rebase + push) and, in {@code cloud} mode, Attachments (pull
+ * missing files, then push new or changed ones).
  * <p>
  * On open the dialog only <em>looks</em>: git status, a connectivity check, a {@code git fetch}
- * for ahead/behind counts and an attachments upload plan, each on a daemon thread. Nothing is
+ * for ahead/behind counts and an attachments transfer plan, each on a daemon thread. Nothing is
  * changed until the user presses Sync; the checked steps then run in order on a worker thread,
  * each row showing progress and result. The dialog stays open afterwards so results can be read.
  * <p>
@@ -90,7 +92,7 @@ public final class SmartSyncDialog {
     private Button closeButton;
     private List<String> dirtyFiles = List.of();
     private boolean commitClean;
-    private AttachmentPusher pusher;
+    private AttachmentSyncer syncer;
     private String keyPrefix;
     private Path attachmentsRoot;
     private int preparing;
@@ -300,20 +302,22 @@ public final class SmartSyncDialog {
     private void preparePlan() {
         attachmentsRow.running("Comparing with bucket…");
         preparing++;
-        Task<AttachmentPusher.Plan> plan = new Task<>() {
-            @Override protected AttachmentPusher.Plan call() {
-                return pusher.plan(attachmentsRoot, keyPrefix);
+        Task<AttachmentSyncer.Plan> plan = new Task<>() {
+            @Override protected AttachmentSyncer.Plan call() {
+                return syncer.plan(attachmentsRoot, keyPrefix);
             }
         };
         plan.setOnSucceeded(e -> {
             preparing--;
-            AttachmentPusher.Plan p = plan.getValue();
-            String remoteOnly = p.remoteOnly() == 0 ? "" : " · " + p.remoteOnly() + " only in cloud";
+            AttachmentSyncer.Plan p = plan.getValue();
             if (p.upToDate()) {
-                attachmentsRow.idle("Up to date" + remoteOnly);
+                attachmentsRow.idle("Up to date");
                 attachmentsRow.setEnabled(true, false);
             } else {
-                attachmentsRow.idle("↑ " + p.toUpload() + " to upload (" + megabytes(p.uploadBytes()) + ")" + remoteOnly);
+                List<String> parts = new ArrayList<>();
+                if (p.toDownload() > 0) parts.add("↓ " + p.toDownload() + " to download (" + megabytes(p.downloadBytes()) + ")");
+                if (p.toUpload() > 0) parts.add("↑ " + p.toUpload() + " to upload (" + megabytes(p.uploadBytes()) + ")");
+                attachmentsRow.idle(String.join(" · ", parts));
                 attachmentsRow.setEnabled(true, true);
             }
             updateSyncButton();
@@ -327,15 +331,15 @@ public final class SmartSyncDialog {
         background("smart-sync-plan", plan);
     }
 
-    /** Validates the S3 config and builds the pusher; a message if attachments can't be synced. */
+    /** Validates the S3 config and builds the syncer; a message if attachments can't be synced. */
     private Optional<String> attachmentsProblem(AppSettings settings) {
         AppSettings.Attachments a = settings.getAttachments();
         Optional<String> invalid = a.validationError();
         if (invalid.isPresent()) return invalid;
         try {
             attachmentsRoot = attachmentsDir.root();
-            pusher = new AttachmentPusher(S3Client.from(a));
-            keyPrefix = AttachmentPusher.keyPrefix(BucketUrl.parse(a.getBucketUrl()));
+            syncer = new AttachmentSyncer(S3Client.from(a));
+            keyPrefix = AttachmentSyncer.keyPrefix(BucketUrl.parse(a.getBucketUrl()));
             return Optional.empty();
         } catch (RuntimeException e) {
             return Optional.of(UiText.describe(e));
@@ -437,14 +441,25 @@ public final class SmartSyncDialog {
         return RemoteOutcome.OK;
     }
 
+    /** Pull first, then push, mirroring git (todo 33b). */
     private void runAttachments() {
+        fx(() -> attachmentsRow.running("Downloading…"));
+        int downloaded;
+        try {
+            downloaded = syncer.pull(attachmentsRoot, keyPrefix, (done, total, file) ->
+                    fx(() -> attachmentsRow.running("Downloading " + (done + 1) + "/" + total + ": " + file)));
+        } catch (RuntimeException e) {
+            fx(() -> attachmentsRow.fail("Download failed: " + UiText.describe(e)));
+            return;
+        }
         fx(() -> attachmentsRow.running("Uploading…"));
         try {
-            AttachmentPusher.Result result = pusher.push(attachmentsRoot, keyPrefix, (done, total, file) ->
+            AttachmentSyncer.Result result = syncer.push(attachmentsRoot, keyPrefix, (done, total, file) ->
                     fx(() -> attachmentsRow.running("Uploading " + (done + 1) + "/" + total + ": " + file)));
-            fx(() -> attachmentsRow.ok(result.uploaded() + " uploaded, " + result.unchanged() + " unchanged"));
+            fx(() -> attachmentsRow.ok(downloaded + " downloaded, " + result.uploaded() + " uploaded, "
+                    + result.unchanged() + " unchanged"));
         } catch (RuntimeException e) {
-            fx(() -> attachmentsRow.fail("Upload failed: " + UiText.describe(e)));
+            fx(() -> attachmentsRow.fail("Upload failed (" + downloaded + " downloaded): " + UiText.describe(e)));
         }
     }
 

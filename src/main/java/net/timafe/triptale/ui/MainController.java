@@ -25,7 +25,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
-import net.timafe.triptale.attachments.AttachmentPusher;
+import net.timafe.triptale.attachments.AttachmentSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.attachments.S3Client;
 import net.timafe.triptale.config.AppSettings;
@@ -130,6 +130,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem pushAttachmentsMenuItem;
+    @FXML private MenuItem pullAttachmentsMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
@@ -206,7 +207,7 @@ public class MainController implements StatusSink {
     private final BrowserLauncher browser;
     private final String appName;
     private final AttachmentsDir attachmentsDir;
-    private boolean pushingAttachments;
+    private boolean transferringAttachments;
     private File lastAttachmentSourceDir;
 
     // Dialogs whose own dependencies this controller has no other use for.
@@ -1244,10 +1245,10 @@ public class MainController implements StatusSink {
         if (pushMenuItem != null) pushMenuItem.setDisable(!remoteEnabled);
         if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
         // Smart Sync stays enabled offline: it still commits locally (todo 32, D8).
-        if (pushAttachmentsMenuItem != null) {
-            boolean cloud = settingsStore.load().getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
-            pushAttachmentsMenuItem.setDisable(!Boolean.TRUE.equals(connected) || !cloud || pushingAttachments);
-        }
+        boolean cloud = settingsStore.load().getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
+        boolean attachmentsDisabled = !Boolean.TRUE.equals(connected) || !cloud || transferringAttachments;
+        if (pushAttachmentsMenuItem != null) pushAttachmentsMenuItem.setDisable(attachmentsDisabled);
+        if (pullAttachmentsMenuItem != null) pullAttachmentsMenuItem.setDisable(attachmentsDisabled);
     }
 
     private boolean hasRemoteConfigured() {
@@ -1294,42 +1295,63 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onPushAttachments() {
+        transferAttachments("Push", "push-attachments", (syncer, root, prefix) -> {
+            AttachmentSyncer.Result r = syncer.push(root, prefix, (done, total, file) ->
+                    Platform.runLater(() -> status("Pushing attachments " + (done + 1) + "/" + total + ": " + file)));
+            return "Attachments pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged";
+        });
+    }
+
+    @FXML
+    public void onPullAttachments() {
+        transferAttachments("Pull", "pull-attachments", (syncer, root, prefix) -> {
+            int n = syncer.pull(root, prefix, (done, total, file) ->
+                    Platform.runLater(() -> status("Pulling attachments " + (done + 1) + "/" + total + ": " + file)));
+            return "Attachments pulled: " + n + " downloaded";
+        });
+    }
+
+    /** One attachment transfer on a worker thread; returns the status message on success. */
+    @FunctionalInterface
+    private interface AttachmentTransfer {
+        String run(AttachmentSyncer syncer, Path root, String keyPrefix);
+    }
+
+    private void transferAttachments(String verb, String threadName, AttachmentTransfer transfer) {
         AppSettings.Attachments settings = settingsStore.load().getAttachments();
         Path root;
-        AttachmentPusher pusher;
+        AttachmentSyncer syncer;
         String keyPrefix;
         try {
             root = attachmentsDir.root();
-            pusher = new AttachmentPusher(S3Client.from(settings));
-            keyPrefix = AttachmentPusher.keyPrefix(BucketUrl.parse(settings.getBucketUrl()));
+            syncer = new AttachmentSyncer(S3Client.from(settings));
+            keyPrefix = AttachmentSyncer.keyPrefix(BucketUrl.parse(settings.getBucketUrl()));
         } catch (RuntimeException e) {
             error(UiText.describe(e));
             return;
         }
-        Task<AttachmentPusher.Result> task = new Task<>() {
-            @Override protected AttachmentPusher.Result call() {
-                return pusher.push(root, keyPrefix, (done, total, file) ->
-                        Platform.runLater(() -> status("Pushing attachments " + (done + 1) + "/" + total + ": " + file)));
+        Task<String> task = new Task<>() {
+            @Override protected String call() {
+                return transfer.run(syncer, root, keyPrefix);
             }
         };
         task.setOnSucceeded(e -> {
-            setPushingAttachments(false);
-            AttachmentPusher.Result r = task.getValue();
-            status("Attachments pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged");
+            setTransferringAttachments(false);
+            status(task.getValue());
         });
         task.setOnFailed(e -> {
-            setPushingAttachments(false);
-            error("Push Attachments failed: " + UiText.describe(task.getException()));
+            setTransferringAttachments(false);
+            error(verb + " Attachments failed: " + UiText.describe(task.getException()));
         });
-        setPushingAttachments(true);
-        status("Pushing attachments…");
-        Thread thread = new Thread(task, "push-attachments");
+        setTransferringAttachments(true);
+        status(verb + "ing attachments…");
+        Thread thread = new Thread(task, threadName);
         thread.setDaemon(true);
         thread.start();
     }
 
-    private void setPushingAttachments(boolean running) {
-        pushingAttachments = running;
+    private void setTransferringAttachments(boolean running) {
+        transferringAttachments = running;
         applyConnectivityState();
     }
 

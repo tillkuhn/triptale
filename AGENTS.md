@@ -71,7 +71,7 @@ ui.MainController ──► storage.MarkdownStore ──► config.TripTalePrope
                   ├── export.DiaryExporter ──► MarkdownStore
                   ├── export.ExportTempFiles
                   ├── attachments.AttachmentsDir ──► MarkdownStore
-                  ├── attachments.AttachmentPusher ──► attachments.S3Client (SigV4, java.net.http)
+                  ├── attachments.AttachmentSyncer ──► attachments.S3Client (SigV4, java.net.http)
                   ├── ui.ConnectivityService
                   └── ui.dialog.* ──► the services each dialog needs
 ```

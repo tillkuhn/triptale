@@ -321,8 +321,13 @@ is enough and no extra install matters more → our own S3 client.
 
 - ~~**What should the app do?** Upload only, or also download? Is it bidirectional?~~ → D1:
   two-way, during sync only.
-- **Delete semantics:** use `bisync` (deletes propagate) or copy-both-ways (deletes don't)?
-- **Conflicts:** same file changed on both sides — newer wins, keep both, or ask?
+- ~~**Delete semantics:** use `bisync` (deletes propagate) or copy-both-ways (deletes don't)?~~
+  → for now (33b, 2026-10-04): **copy both ways, never delete.** A file deleted locally comes
+  back on the next pull. Still open: an explicit "delete attachment" action that removes the
+  object from the bucket too.
+- ~~**Conflicts:** same file changed on both sides — newer wins, keep both, or ask?~~ → for now
+  (33b): **local wins.** Pull only downloads files missing locally; push uploads any local file
+  that differs from the bucket. Revisit if it bites (e.g. the same photo edited on two machines).
 - **Sync scope:** the whole attachment root, or only the active trip?
 - ~~**How are attachments linked to an entry?**~~ → D3: by file-name date prefix. Original
   options, for reference:
