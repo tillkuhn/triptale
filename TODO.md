@@ -102,11 +102,11 @@ Still to check: a second push reports "0 uploaded, N unchanged"; optionally map 
 
 Update 2026-10-04 (cross-OS line endings): the app now also manages `attachments/.gitattributes` with `* -text` in every mode, so git never converts line endings in attachments (e.g. `core.autocrlf` on Windows turning a GPX file's LF into CRLF). Keeps bytes, and the MD5 that push compares, identical on Linux, macOS and Windows; matters when a repo switches from `git` to `cloud` mode. An existing Windows clone that already checked out text attachments with CRLF in `git` mode needs a one-time re-checkout of those files (`git checkout -- attachments` after deleting them locally).
 
-## 33b Attachment pull (download from cloud)
+## DONE 33b Attachment pull (download from cloud)
 
 Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions.
 
-Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Not yet tested against the real bucket.
+Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Tested against the real bucket 2026-10-04: 6 cloud-only files downloaded, second sync reports up to date.
 
 ## 33 Object storage for trip attachments 
 
@@ -115,7 +115,7 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## 32 Smart Sync for repository operations
+## DONE 32 Smart Sync for repository operations
 
 Replace Sync with an interactive **Smart Sync** dialog (`Cmd+K` → Enter): rows for Connectivity, Commit (editable message, decided by `git status`), Git Remote (fetch + rebase + push, with ahead/behind counts instead of a pull timer) and Attachments push (cloud mode only). Implicit save before the dialog opens, rebase conflicts skip the push but not attachments, Exit stays local. Commit button removed (menu only).
 
