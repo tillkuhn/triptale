@@ -286,7 +286,7 @@ public class MainController implements StatusSink {
         });
         exportTempFiles.sweep();
         boolean ready = performStartupChecks();
-        if (ready) syncAttachmentsGitignore();
+        if (ready) syncAttachmentsGitFiles();
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
             reloadTrips(sel);
@@ -1355,14 +1355,16 @@ public class MainController implements StatusSink {
         }
     }
 
-    /** Rewrites attachments/.gitignore for the current sync mode; a change becomes a pending commit. */
-    private void syncAttachmentsGitignore() {
+    /**
+     * Rewrites attachments/.gitignore (for the current sync mode) and .gitattributes; each changed
+     * file becomes a pending commit.
+     */
+    private void syncAttachmentsGitFiles() {
         try {
-            if (attachmentsDir.ensureGitignore(settingsStore.load().getAttachments().getSync())) {
-                addPending(AttachmentsDir.GITIGNORE_LABEL, UPDATE);
-            }
+            attachmentsDir.ensureManagedFiles(settingsStore.load().getAttachments().getSync())
+                    .forEach(label -> addPending(label, UPDATE));
         } catch (RuntimeException e) {
-            log.warn("Could not update {}: {}", AttachmentsDir.GITIGNORE_LABEL, e.getMessage());
+            log.warn("Could not update {}/ git files: {}", AttachmentsDir.DIR_NAME, e.getMessage());
         }
     }
 
@@ -1510,7 +1512,7 @@ public class MainController implements StatusSink {
                 new EditSettingsDialog().showAndWait(settings, settingsStore.settingsFile());
         if (edited.isEmpty()) return;
         settingsStore.save(edited.get());
-        syncAttachmentsGitignore();
+        syncAttachmentsGitFiles();
         applyConnectivityState();
 
         updateImpressionsButton(tripCombo.getValue(), datePicker.getValue());

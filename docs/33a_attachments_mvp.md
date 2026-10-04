@@ -21,6 +21,11 @@ on demand. Replaces D3 of todo 33 (date prefix in a trip-level folder).
 | `git` (versioned with the `.md` files) | a comment only, everything is committed | disabled (git sync covers it) |
 | `cloud` (S3; R2 later) | same as `off` | enabled while online |
 
+- The app also owns `attachments/.gitattributes` (same in every mode): `* -text`, so git never
+  converts line endings in attachments. Without it, `core.autocrlf` on Windows would check out
+  text attachments (GPX is XML) with CRLF in `git` mode, and after a switch to `cloud` each OS
+  would see different MD5s and re-upload the other's copy. The local-mode `.gitignore` has
+  `!.gitattributes` so the file is still committed. *(Added 2026-10-04.)*
 - The app owns `attachments/` and its `.gitignore`: (re)written at startup and when settings
   are saved. When the content changes it goes into the pending commit (save → `addPending` →
   Commit). The `.gitignore` itself is committed, so a fresh clone ignores local files too.
