@@ -1,8 +1,12 @@
 # ToDos for this app
 
-## Next Todo: 43
+## Next Todo: 44
 
-## 42 support refactor trip slug
+## 43 Spring Boot AOT Optimizations and other performance helpers
+
+As triptale app becomes bigger and bigger, check what could help to speed up startup time / lower memory footprints on smaller devices, e.g. https://docs.spring.io/spring-framework/reference/core/aot.html and  https://www.baeldung.com/spring-boot-startup-speed (Tips like -Xno-verify)
+
+## 42 support refactor trip slug to rename folders and references
 
 trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
 add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
@@ -103,24 +107,31 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## 32 Smart Sync
+## 32 Smart Sync for repository operations
 
-We currently have 3 operations to persist trip enty data: Save Tale (to local disk), commit (git commit for saved unstaged data) and Sync (kind of all in one for commit, pull / rebase and push) which could be confusing since you typcially don't want to bother with Git Operations.
-Suggested Improvement:
-- Keep Save as cheap local "store to file system" operations
-- Remove Commit as a button (but keep it in the menu for "power users") and rebrand Sync as "Smart Sync" for the new interactive operation to interact with the repo
-- Store lastRemotePull date in .state.yml (but only if successful) 
-- Introduce new setting suggestedPullIntervalMins to store the number of minutes since last pull after which the smart sync dialogue should suggest a pull (default checked)
+We currently have 3 operations to persist trip enty data: Save Tale (to local disk), commit (git commit for saved unstaged data) and Sync (kind of all in one for commit, pull / rebase and push) which could be confusing since you typically don't want to bother with Git Operations. Also we now have attachments sync in alpha mode, which adds another sync operation. 
+Goals for refactoring::
+* Sync becomes "Smart Sync" that handles independent sync operations in a smart way
+* Should still be flexible enough to allow user to opt in / opt out of operations when triggered (e.g avoid attachment sync when internet is slow)
+* Individual low level operations should remain in the menu (but not as buttons) for power users or odd cases
+* Effect and results of individual operations should be transparent to the users, which is not possible with the current single line log result in the lower left corner
 
+Suggested Improvement (challenge!):
+- Rebrand Sync button and Sync trigger in menu becomes "smart sync" and will be enhanced as an interactive dialogue for committing, pushing and pulling changes 
+- Keep the "Save" Operation as cheap local "store to file system" operations, but calling Smart Sync should implicitly save if there are outstanding changes
+- Remove Commit as a button (but keep it in the menu for "power users") 
+- Store lastRemoteGitPull (and last lastRemoteAttachmentsPull if attachment sync is "cloud") date in .state.yml after  successful)pull, otherwise keep previous value 
+- Introduce new setting suggestedPullIntervalMins to store the number of minutes since last pull after which the smart sync dialogue should suggest a pull (default setting state is "active"), this would apply to both git pulls ans well as attachment pulls (if the latter is set to cloud)
+
+Suggested layout (challenge!):
 Smart Sync Dialogue Details row by row (as opposed to current sync, it will require user interaction):
-Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
-Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this. I could imagine: if the in memory counter for queued changes is > 0 anyway, no need to check with git for unstaged changes just activate commit dialogue. If the app is however not aware of any changes, the smart sync dialogue should check if the repo is dirty, and only then commit part should be active
-
-Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
-Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
+* Connectivity: Show either "Not connected" or "Online (github.com or whatever is the remote host)"  
+* Commit: Show and input field 2 lines (but expandable) with the default commit message (based on pending changes as currently) but allow user to overwride. To be discussed: There could bee a case were the system is not aware of pending changes but still files were changed on the file system e.g. by another app, so for git it's dirty. Discuss how to deal with this. I could imagine: if the in memory counter for queued changes is > 0 anyway, no need to check with git for unstaged changes just activate commit dialogue. If the app is however not aware of any changes, the smart sync dialogue should check if the repo is dirty, and only then commit part should be active
+* Remote Pull: [x] Boolean if sync should inclue a pull, defaults to true if the time since last sync is higher than suggestedPullIntervalMins. always display relative time of last sync behind (e.g. 5m, 10h). If not connected, it is false and read only since pull is not possible
+* Remote Push: [x] Boolean if data is pushed, enabled by default if online, otherwise same as remote pull (read only false) with a remark (Offline)
 Fixed spaced for in progress area showing spinner, current action and result of interaction. 
 
-Buttons should be only Close (close window w/o acttion() or Sync. When sync is used, update the progress area. Leave the window open so the user can see the results, and need to close manually
+Buttons should be only Close (close window w/o action() or Sync. When sync is used, update the progress area. Leave the window open so the user can see the results, and need to close manually
 
 Since Sync will now also handle local commits, the button in the main window needs to be active even if offline.  
 
