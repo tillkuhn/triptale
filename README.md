@@ -2,9 +2,9 @@
 
 > An offline-first diary for long cycling and hiking trips — your notes live as plain Markdown in a git repo you own.
 
-TripTale is a small JavaFX app for keeping a day-by-day journal of a trip: kilometres ridden, altitude climbed, and whatever notes you want to scribble. The twist: there is no cloud, no account, no database. Every entry is a plain Markdown file on disk, and the whole thing is a git repository — so you can sync between machines, hack it from the command line, or never touch the app again and just edit `.md` files in your favourite editor.
+TripTale is a small JavaFX app for keeping a day-by-day journal of a trip: kilometres ridden, altitude climbed, where you started and stopped, and whatever notes you want to scribble. The twist: there is no cloud, no account, no database. Every entry is a plain Markdown file on disk, and the whole thing is a git repository — so you can sync between machines, hack it from the command line, or never touch the app again and just edit `.md` files in your favourite editor.
 
-> ⚠️ **Status:** personal hobby project / early PoC. Works for me on macOS. No roadmap, no promises — but contributions and ideas are welcome.
+> ⚠️ **Status:** personal hobby project. Used daily on macOS; a prebuilt jar runs on Linux, Windows builds locally. No roadmap, no promises — but contributions and ideas are welcome.
 
 ## Why? 🤔
 
@@ -13,65 +13,72 @@ I wanted a trip diary that:
 - Works **without internet**, on a campsite, on a ferry, halfway up an Alpine pass.
 - Stores my notes in a format I'll still be able to read in 20 years (plain text > proprietary blobs).
 - Syncs between my laptop and desktop without me logging into yet another service.
-- Lets me edit entries from *anywhere* — the app on my laptop, `vim` on the road, Obsidian when I get home.
+- Lets me edit entries from *anywhere* — the app on my laptop, `vim` on the road, Obsidian or [Tolaria](https://github.com/refactoringhq/tolaria) when I get home.
 
 Git + Markdown turned out to be the answer. TripTale is just a friendly UI on top of that.
 
 ## Screenshot 📸
 
-<!-- TODO: drop a real screenshot here -->
-![](./preview.png)
+![TripTale main window](./preview.png)
 
-```
-+----------------------------------------------+
-|  TripTale — Alps 2026                        |
-|  ┌────────────────────────────────────────┐  |
-|  │  2026-06-04  ▼     km: 87   alt: 1840m │  |
-|  ├────────────────────────────────────────┤  |
-|  │  Crossed the Gotthard pass today.      │  |
-|  │  Strong headwind from the south, but   │  |
-|  │  the descent into Airolo was worth it. │  |
-|  └────────────────────────────────────────┘  |
-|  [ Save ]  [ Pull ]  [ Push ]                |
-+----------------------------------------------+
-```
+## Features ✨
+
+- **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, track URL and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
+- **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …).
+- **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a Mapbox static map (needs a Mapbox token in Settings).
+- **Impressions & Faves** — show that day's photos straight from your picture folders, see [below](#impressions--faves-).
+- **Export** — render a whole trip as one Markdown document (copy to clipboard) or as an HTML page with a photo gallery.
+- **Smart Sync** (`⌘K`) — commit, rebase onto the remote, push, and sync attachments in one dialog, see [below](#git--smart-sync-).
+- **Attachments** — keep GPX files, PDFs, tickets etc. next to each day, optionally synced to S3, see [below](#attachments-).
 
 ## How it stores your data 💾
 
-Everything lives under one directory (default `~/.triptale`), which is itself a git repo:
+Everything lives under one **data directory**, which is itself a git repo. You choose its location on first start (⚙ Edit Settings…); until then the app stays inert and reminds you on every launch.
 
 ```
-~/.triptale/                          # single git repo
-├── trip.md                           # Tolaria type definition for a trip
-├── tale.md                           # Tolaria type definition for a diary entry
-└── trips/
-    └── alps-2026/
-        ├── trip.yml                  # name, start date, description
-        └── entries/
-            └── 2026-06-04_Thursday.md
+triptale-data/                         # git repo
+├── .gitignore                         # ignores .state.yml
+├── .state.yml                         # app bookkeeping (last opened trip), never committed
+├── trip.md  tale.md  type.md          # Tolaria type definitions
+├── 2026/                              # year of the trip's start date
+│   └── alps-2026/                     # trip slug, fixed at creation
+│       ├── README.md                  # the trip: name, dates, description
+│       ├── 2026-06-04-Thursday.md     # one tale per day
+│       └── 2026-06-05-Friday.md
+└── attachments/                       # optional, see "Attachments"
+    └── 2026/alps-2026/2026-06-04-Thursday/
+        └── gotthard.gpx
 ```
 
-A diary entry is just Markdown with a YAML frontmatter block — structured fields on top, free notes below:
+A tale is just Markdown with a YAML frontmatter block — structured fields on top, the day's title as the first heading, free notes below:
 
 ```markdown
 ---
 altitude: 1840.0
+belongs_to: "[[2026/alps-2026/README]]"
 date: 2026-06-04
 distance: 87.0
-route: Andermatt → Airolo
+start_lat: 46.6356
+start_lon: 8.5939
+stop_lat: 46.5287
+stop_lon: 8.6097
 trackurl: https://www.strava.com/activities/123456
 type: Tale
 ---
+
+# Andermatt → Airolo
 
 Crossed the Gotthard pass today. Strong headwind from the south,
 but the descent into Airolo was worth it.
 ```
 
-Frontmatter keys are always written in alphabetical order, so saving an entry never produces a noisy diff.
+The trip's `README.md` works the same way: `start_date`, `end_date` and `type: Trip` in the frontmatter, the trip name as `# Heading`, the description below.
 
-The optional `trackurl` field links the day to an external tracking tool (Strava, Komoot, …). In the app it sits next to distance and altitude; when it holds a valid `http(s)` URL a 🔗 button opens it in your system browser.
-
-Every entry carries `type: Tale`, and the data dir gets `trip.md`/`tale.md` type-definition notes at its root. These make the whole data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault — an alternative Markdown-based editor/knowledge-graph app — so you can browse and edit your trips there too, in addition to TripTale and any plain text editor.
+- Frontmatter keys are always written in alphabetical order, so saving never produces a noisy diff.
+- Fields you didn't fill in are left out; `0` is a real measurement, a missing key means "not recorded".
+- `trackurl` links the day to an external tracking tool; when it holds a valid `http(s)` URL, a 🔗 button opens it in your browser.
+- `type: Tale` / `type: Trip`, the `belongs_to` wiki link and the `trip.md`/`tale.md`/`type.md` definitions make the data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault, so you can browse and edit your trips there too.
+- A trip's slug (its directory name) is derived from its name once and never changes, even if you rename the trip later.
 
 That's it. No database, no schema migrations. If TripTale disappears tomorrow, your trips remain a perfectly readable folder of Markdown.
 
@@ -80,26 +87,47 @@ That's it. No database, no schema migrations. If TripTale disappears tomorrow, y
 Because everything is just files, **you don't actually need the app to use TripTale.** A perfectly valid workflow is:
 
 ```bash
-cd ~/.triptale/trips/alps-2026/entries
-vim 2026-06-04_Thursday.md          # write your day
-cd ~/.triptale
+cd ~/triptale-data/2026/alps-2026
+vim 2026-06-04-Thursday.md          # write your day
 git add . && git commit -m "Day 4"
 git push                            # if you've set a remote
 ```
 
-The next time you open the JavaFX app, your entries are right there. Use the app when you want a nicer editing surface; use any editor when you don't. Both round-trip cleanly through git.
+The next time you open the app, your entries are right there. Use the app when you want a nicer editing surface; use any editor when you don't. Both round-trip cleanly through git — Smart Sync picks up files you changed outside the app, too.
 
-This also means you can keep writing offline for weeks — every save is a local git commit — and push the whole batch the moment you find Wi-Fi.
+## Git & Smart Sync 🔄
 
-## Export 📤
+Saving a tale (`⌘S`) writes the file to disk immediately but does **not** commit. Commits happen when you ask for them, so a day of small edits becomes one commit instead of twenty.
 
-The **File → Export Diary** menu renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to clipboard and paste anywhere. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output format.
+**🔄 Smart Sync** (`⌘K`, then `Enter`) is the "make my data safe" button. It saves the open tale first, then shows a dialog with one row per step, each of which you can untick:
 
-## Impressions & Faves 📸
+- **Commit** — everything git sees as changed, with a generated (editable) message.
+- **Git Remote** — fetch, rebase onto the remote, push. The row shows "↓ 3 incoming · ↑ 2 outgoing" before you start. On a rebase conflict nothing is lost: the rebase is aborted, push is skipped, and you resolve it by hand (terminal, Tolaria, …) and sync again.
+- **Attachments** — only in `cloud` mode, see below.
+
+You can keep writing offline for weeks and sync the whole batch the moment you find Wi-Fi. The toolbar shows whether the git host is reachable; online-only actions are disabled while it isn't. The low-level steps (Commit, Pull Git, Push Git, Remote Info) are still in the **Repository** menu.
+
+To enable push/pull, add a remote to the data dir: `git -C <data-dir> remote add origin <url>`. Push and pull use your OS `git` binary, so your usual SSH keys or credential helper apply.
+
+## Attachments 📎
+
+**📎 Add Attachments…** (Tale Entries menu) copies files into a folder for the current day: `attachments/<year>/<slug>/<day>/`. How they are synced is set by **Attachments sync** in Settings:
+
+| Mode | What happens |
+|---|---|
+| `off` (default) | Files stay on this machine only; `attachments/` is git-ignored so it doesn't weigh down the repo. |
+| `git` | Attachments are committed and synced with your Markdown files. Fine for a few small files. |
+| `cloud` | Files stay out of git and are synced with an **S3 bucket** — via Smart Sync or ☁ Push / ☁ Pull Attachments. |
+
+Cloud sync copies both ways and never deletes: pull downloads what's missing locally (never overwriting a local file), push uploads what's new or changed (by size and MD5). Object keys mirror the local layout (`<prefix>/attachments/<year>/<slug>/<day>/<file>`), so the bucket stays browsable.
+
+For `cloud` mode you need a bucket URL (`s3://bucket/optional-prefix/`), region, and an access key ID + secret. Use a dedicated IAM user restricted to that bucket (list, get, put) rather than your own credentials. TripTale talks to S3 directly (no AWS SDK, no extra tools). The keys are stored in `settings.yml`, which lives outside the data repo and is never committed. Background and design notes: [docs/33a_attachments_mvp.md](docs/33a_attachments_mvp.md).
+
+## Impressions & Faves 🖼️
 
 Two optional settings (Settings dialog, or `impressionsFilePattern` / `impressionsFaveFilePattern`
 in `settings.yml`) let TripTale find that day's photos on disk — shown as an "N Impressions" /
-"N Faves" button per entry, and embeddable as an image grid in HTML export.
+"N Faves" button per entry, and embeddable as an image gallery in HTML export.
 
 Each pattern is a filesystem path containing `${VAR}` placeholders:
 
@@ -145,66 +173,80 @@ ${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_??_${TRIP_SLUG}/output/${DATE}*.jpg
 Same idea, but year/month/slug combined into one directory name instead of nested folders,
 e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
 
+## Export 📤
+
+**⇧ Export Diary…** renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions as a photo gallery. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
+
 ## Run it 🛠️
 
-Requires **Java 25** and Maven (uses `mvnd` by default).
+Requires **Java 25**. Building also needs Maven (`make` uses `mvnd` if it's installed, plain `mvn` otherwise).
 
 ```bash
-make run        # or: mvnd javafx:run
-make build      # package without tests
+make run        # build + launch via Maven — best while developing
+make run-fast   # launch with a JDK AOT cache — ~1.5 s faster startup, best for daily use
+make build      # build target/triptale.jar without running tests
 make test       # run unit tests
+make app        # macOS only: build TripTale.app (target/dist/)
+make help       # list all targets
 ```
+
+`make run-fast` rebuilds the jar when the sources changed. On its first run (and after every rebuild or JDK upgrade) a window opens and **closes by itself** after a few seconds: that's a training run recording the cache. Let it finish; the real app opens right after. Details and measurements: [docs/43_startup_performance.md](docs/43_startup_performance.md).
+
+**A jar runs only on the OS it was built on** — it bundles that platform's JavaFX native libraries. On macOS and Windows, build it yourself.
+
+### Linux without Maven
+
+Every release on GitHub has a prebuilt `triptale-linux.jar` (x86_64). You only need a JDK 25:
+
+```bash
+java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -jar triptale-linux.jar
+```
+
+For the faster AOT startup there, see "Using it on a machine without Maven" in [docs/43_startup_performance.md](docs/43_startup_performance.md).
 
 ### Windows notes
 
-- The project uses platform-specific JavaFX native libraries. On macOS/Linux the default setup works without changes. On Windows the JVM needs the JavaFX native jars on the module-path; the repository includes a Windows-only Maven profile that copies the native jars and configures `spring-boot:run` accordingly.
-- On Windows use the system `mvn` (not `mvnd`). The `Makefile` detects this automatically and will call `mvn -Pwindows-javafx javafx:run` when run on Windows. You can also run directly:
+- `make` needs a POSIX shell (e.g. Git Bash) and uses plain `mvn` on Windows. `make run` automatically activates the `windows-javafx` Maven profile, which puts the JavaFX jars on the module path. Without `make`: `mvn -Pwindows-javafx javafx:run`.
+- `make run-jar` / `make run-fast` work the same as on macOS and Linux.
 
-```
-mvn -Pwindows-javafx spring-boot:run
-```
-
-- If you get module not found errors (e.g. "Module javafx.controls not found"), run with the Windows profile as shown above. If you prefer to run the jar directly after `make build`, use `make run-jar` which starts the prebuilt JAR with recommended JVM flags.
-
-- Java may warn about restricted native access or `sun.misc.Unsafe` usage when JavaFX native libs load; these are known warnings and the app continues to run. To silence the native-access warning you can add `--enable-native-access=javafx.graphics` to your JVM options.
-
-Point at a different data directory (e.g. a USB stick for travel):
-
-```bash
-mvn javafx:run -Dtriptale.data-dir=/Volumes/USB/triptale
-```
+Java may print warnings about restricted native access or `sun.misc.Unsafe` while JavaFX loads, and one about an "Unsupported JavaFX configuration". They're harmless; the `make` targets filter the latter.
 
 ## Configuration ⚙️
 
-Override defaults via `application.yml`, env vars, or `-D` flags:
+Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `settings.yml`:
 
-| Property                     | Default       | Notes                                       |
-|------------------------------|---------------|---------------------------------------------|
-| `triptale.data-dir`          | `~/.triptale` | Root directory; also the git repo root      |
-| `triptale.git.author-name`   | *(blank)*     | Falls back to system git config             |
-| `triptale.git.author-email`  | *(blank)*     | Falls back to system git config             |
+| Setting | Notes |
+|---|---|
+| `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data`. Changing it needs a restart. |
+| `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
+| `impressionsFilePattern`, `impressionsFaveFilePattern`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
+| `mapboxToken` | Public Mapbox token for the trip map. |
+| `attachments.*` | Sync mode and S3 settings, see [Attachments](#attachments-). |
 
-To enable push/pull, add a remote in the data dir: `git -C <data-dir> remote add origin <url>`.
+`settings.yml` lives in `$HOME/.config/triptale/` on macOS and Linux, and in `%APPDATA%\triptale\` on Windows. It belongs to the machine, not to the data repo. To use a different settings directory (e.g. a second profile, or one on a USB stick for travel), set `TRIPTALE_SETTINGS_DIR` or pass `-Dtriptale.settings-dir=/path`.
 
 ## Tech stack 🧰
 
 - **Java 25** with records for the domain types
 - **Spring Boot** (headless — `web-application-type: none`) for DI, config binding, and lifecycle
 - **JavaFX** for the UI, with FXML controllers resolved as Spring beans
-- **JGit** for in-process git operations (init, commit, status); `push`/`pull` delegate to the OS `git` binary via `ProcessBuilder`
-- **Jackson YAML** for reading and writing `trip.yml` and entry frontmatter
-- **Maven** as the build system; a thin `Makefile` wraps the common targets (uses `mvnd` by default)
+- **JGit** for in-process git operations (init, commit, status); `fetch`/`pull`/`push` use the OS `git` binary
+- **Jackson YAML** for frontmatter and settings
+- **commonmark** for HTML export, **metadata-extractor** for photo EXIF data
+- A small hand-rolled S3 client (SigV4 over `java.net.http`) for attachments
+- **Maven** as the build system; a thin `Makefile` wraps the common targets
 
-The interesting bit architecturally is that JavaFX's `Application.init()` boots Spring *before* `start()`, and the FXML loader uses `spring::getBean` as its controller factory — so controllers are real Spring beans with constructor-injected services. See `CLAUDE.md` for more on the layering.
+The interesting bit architecturally is that JavaFX's `Application.init()` boots Spring *before* `start()`, and the FXML loader uses `spring::getBean` as its controller factory — so controllers are real Spring beans with constructor-injected services. See [AGENTS.md](AGENTS.md) for the layering and conventions, and `docs/` for the design notes behind most features.
 
 ## Contributing 🤝
 
 This is a hobby project, but PRs, issues, and ideas are welcome. A few ground rules:
 
-- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, and `domain` packages.
+- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, `attachments`, and `domain` packages.
 - Domain types are records — keep them plain.
 - Constructor injection only, no field `@Autowired`.
-- New write operations should save first, then call `addPending(...)` in `MainController` — do not commit from inside the storage layer.
+- New write operations save to disk, then call `addPending(...)` in `MainController` — never commit from the storage layer.
+- New dialogs go into `ui/dialog/` and return their result as data.
 
 If you're thinking of something larger than a small fix, open an issue first so we can talk about it.
 

@@ -24,12 +24,12 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>23.0.1</javafx.version>
-        <!-- Platform classifier for JavaFX native libs. Change to 'linux' or 'mac' if needed. -->
-        <javafx.platform>win</javafx.platform>
         <jgit.version>7.0.0.202409031743-r</jgit.version>
         <commonmark.version>0.29.0</commonmark.version>
         <metadata-extractor.version>2.19.0</metadata-extractor.version>
-        <main.class>net.timafe.triptale.TripTaleApplication</main.class>
+        <!-- Launcher, not TripTaleApplication: an Application subclass as main class breaks
+             classpath launches (extracted jar / AOT cache), see Launcher's javadoc. -->
+        <main.class>net.timafe.triptale.Launcher</main.class>
     </properties>
 
     <dependencies>
@@ -38,29 +38,32 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
+        <!--
+          No <classifier> here on purpose: openjfx's own parent pom detects the build host's
+          OS/arch and pulls exactly one set of natives (mac, mac-aarch64, linux, win, ...).
+          A hard-coded classifier used to drag in a second, foreign set (the jar shipped both
+          -win and -mac natives). Consequence: the jar runs on the OS it was built on — CI's
+          release jar is built on ubuntu for Linux, macOS/Windows build locally.
+        -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
-            <classifier>${javafx.platform}</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
-            <classifier>${javafx.platform}</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
-            <classifier>${javafx.platform}</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
-            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <dependency>
@@ -152,6 +155,7 @@
                     <excludes>
                         <exclude>net/timafe/triptale/ui/**</exclude>
                         <exclude>net/timafe/triptale/TripTaleApplication.class</exclude>
+                        <exclude>net/timafe/triptale/Launcher.class</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -180,6 +184,9 @@
                     <family>Windows</family>
                 </os>
             </activation>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+            </properties>
             <build>
                 <plugins>
                     <plugin>

@@ -1,18 +1,18 @@
 package net.timafe.triptale;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import net.timafe.triptale.config.TripTaleProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
-
-import java.util.Locale;
 
 @SpringBootApplication
 @EnableConfigurationProperties(TripTaleProperties.class)
@@ -20,14 +20,15 @@ public class TripTaleApplication extends Application {
 
     private ConfigurableApplicationContext spring;
 
+    /**
+     * Set by {@code make aot-train}: the app quits on its own shortly after the window is shown,
+     * so the JVM exits normally and writes the AOT cache without anyone clicking anything.
+     */
+    static final String AOT_TRAINING_PROPERTY = "triptale.aot-training";
+
+    /** Kept for IDE run configs; the jar's real entry point is {@link Launcher}. */
     public static void main(String[] args) {
-        // All our labels are English, so JavaFX's built-in texts (Cancel, Yes, ...) must be too.
-        // Keeping the system region preserves regional conventions like the first day of week.
-        Locale.setDefault(new Locale.Builder()
-                .setLanguage("en")
-                .setRegion(Locale.getDefault().getCountry())
-                .build());
-        Application.launch(TripTaleApplication.class, args);
+        Launcher.main(args);
     }
 
     @Override
@@ -51,6 +52,11 @@ public class TripTaleApplication extends Application {
         stage.show();
         stage.toFront();
         stage.requestFocus();
+        if (Boolean.getBoolean(AOT_TRAINING_PROPERTY)) {
+            PauseTransition quit = new PauseTransition(Duration.seconds(3));
+            quit.setOnFinished(e -> Platform.exit());
+            quit.play();
+        }
     }
 
     @Override

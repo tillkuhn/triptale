@@ -8,8 +8,20 @@ endif
 MVNARGS ?= -e -ntp -T 1C
 JAR := target/triptale.jar
 JVMFLAGS := --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow
+# Filters a benign, unsuppressable JavaFX startup warning (JavaFX is loaded from the
+# classpath as an unnamed module — see AGENTS.md/CLAUDE.md if you ever revisit this).
+FXFILTER := grep --line-buffered -v -e "Unsupported JavaFX configuration" -e "com.sun.javafx.application.PlatformImpl startup"
 
-.PHONY: run run-jar help build compile test package clean format deps major minor patch
+# AOT cache (JDK 25, JEP 483/514/515): the jar is extracted to an exploded layout (a nested
+# fat jar can't be cached) and one training run records loaded/linked classes + profiles.
+# The cache file name embeds the exact JDK build, so a JDK upgrade retrains automatically;
+# a rebuilt jar retrains via the normal make dependency. See docs/43_startup_performance.md.
+AOT_DIR := target/aot
+AOT_JAR := $(AOT_DIR)/triptale.jar
+JDK_BUILD := $(shell java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/java.runtime.version/{print $$2}')
+AOT_CACHE := $(AOT_DIR)/app-jdk$(JDK_BUILD).aot
+
+.PHONY: run run-jar run-fast aot-train help build compile test package clean format deps major minor patch
 
 ifeq ($(OS),Windows_NT)
 RUN_CMD := $(MVN) $(MVNARGS) -Pwindows-javafx javafx:run
@@ -26,9 +38,24 @@ $(JAR): $(SOURCES) ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
 
 run-jar: $(JAR) ## Run the pre-built jar directly with java (no Maven required)
-	@# Filters a benign, unsuppressable JavaFX startup warning (fat jar loads JavaFX
-	@# as an unnamed module — see AGENTS.md/CLAUDE.md if you ever revisit this).
-	java $(JVMFLAGS) -Dlogging.level.net.timafe.triptale=INFO -jar $(JAR) 2>&1 | grep --line-buffered -v -e "Unsupported JavaFX configuration" -e "com.sun.javafx.application.PlatformImpl startup"
+	java $(JVMFLAGS) -Dlogging.level.net.timafe.triptale=INFO -jar $(JAR) 2>&1 | $(FXFILTER)
+
+$(AOT_JAR): $(JAR)
+	rm -rf $(AOT_DIR)
+	java -Djarmode=tools -jar $(JAR) extract --destination $(AOT_DIR)
+
+$(AOT_CACHE): $(AOT_JAR)
+	@echo "AOT training run: the window opens and closes by itself after a few seconds..."
+	rm -f $(AOT_DIR)/*.aot
+	java $(JVMFLAGS) -XX:AOTCacheOutput=$@ -Xlog:aot=error -Dtriptale.aot-training=true -jar $(AOT_JAR) 2>&1 | $(FXFILTER)
+	@test -f $@ || { echo "error: training run did not produce $@" >&2; exit 1; }
+
+aot-train: ## Force a fresh AOT training run (normally automatic, see run-fast)
+	rm -f $(AOT_DIR)/*.aot
+	$(MAKE) $(AOT_CACHE)
+
+run-fast: $(AOT_CACHE) ## Run with the JDK AOT cache (~1.5 s faster start; builds/trains on demand)
+	java $(JVMFLAGS) -XX:AOTCache=$(AOT_CACHE) -Dlogging.level.net.timafe.triptale=INFO -jar $(AOT_JAR) 2>&1 | $(FXFILTER)
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "TripTale — available targets:\n\n"} \

@@ -4,7 +4,18 @@
 
 ## 43 Spring Boot AOT Optimizations and other performance helpers
 
-As triptale app becomes bigger and bigger, check what could help to speed up startup time / lower memory footprints on smaller devices, e.g. https://docs.spring.io/spring-framework/reference/core/aot.html and  https://www.baeldung.com/spring-boot-startup-speed (Tips like -Xno-verify)
+Goals: Improve startup time, lower memory footprint.
+As triptale app becomes bigger and bigger, check what could help to speed up startup time / lower memory footprints on smaller devices, e.g. https://docs.spring.io/spring-framework/reference/core/aot.html and  https://www.baeldung.com/spring-boot-startup-speed (may be outdated since it's spring 2.x, contains Tips like -Xnoverify which apparently is also deprecated)
+
+Status (2026-10-04), details and measurements in `docs/43_startup_performance.md`:
+
+- Done: JDK 25 AOT cache via `make run-fast` (trains automatically, Spring 1.5 s → 0.55 s,
+  process ~4.2 s → ~2.8 s). Needed a new plain `Launcher` main class.
+- Done: dropped the hard-coded `win` JavaFX classifier — jars now carry only the build host's
+  natives (37 → 28 MB); CI still builds the Linux release jar.
+- Not worth it: lazy init, GC/heap flags (no RSS change), Spring AOT, native-image.
+- Open: start Spring in parallel with the JavaFX toolkit; analyse the ~650 MB RSS
+  (NMT, `-Xmx`).
 
 ## 42 support refactor trip slug to rename folders and references
 

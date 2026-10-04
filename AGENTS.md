@@ -10,6 +10,9 @@ See `CLAUDE.md` for the full architectural narrative. This file is the compresse
 
 ```bash
 make run          # launch the JavaFX app  (mvnd javafx:run)
+make run-jar      # run the built fat jar with plain java
+make run-fast     # run with the JDK 25 AOT cache (~1.5 s faster); extracts + trains on demand
+make aot-train    # force a fresh AOT training run (window opens and closes by itself)
 make build        # jar, skip tests        (mvnd -DskipTests package)
 make package      # jar + tests            (mvnd package)
 make test         # tests only             (mvnd test)
@@ -21,8 +24,8 @@ mvn test -Dtest=ClassName#method
 # e.g.
 mvn test -Dtest=SlugsTest#toSlug_stripsAccents
 
-# Override any triptale.* config property at launch
-mvnd javafx:run -Dtriptale.data-dir=/path/to/data
+# Use a different settings dir (where settings.yml, incl. dataDir, is read from)
+mvnd javafx:run -Dtriptale.settings-dir=/path/to/settings   # or TRIPTALE_SETTINGS_DIR=...
 
 # Run the built jar directly (no Maven)
 java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -jar target/triptale.jar
@@ -48,7 +51,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Boot sequence (unusual — read this)
 
-1. `main()` calls `Application.launch(TripTaleApplication.class, args)` — **not** `SpringApplication.run(...)`.
+1. The jar's main class is `Launcher` (a plain class, **not** an `Application` subclass — otherwise classpath launches such as the extracted jar used by `run-fast` fail with "JavaFX runtime components are missing"). `Launcher.main()` calls `Application.launch(TripTaleApplication.class, args)` — **not** `SpringApplication.run(...)`.
 2. JavaFX calls `init()` before `start()`. Spring is booted inside `init()` with `web-application-type: none`.
 3. `HostServices` is registered as a Spring singleton manually in `init()` (not a `@Bean`) — before context refresh.
 4. `start()` loads FXML with `loader.setControllerFactory(spring::getBean)`, making `MainController` a real Spring bean.
@@ -66,8 +69,8 @@ JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `attac
 ## Dependency direction
 
 ```
-ui.MainController ──► storage.MarkdownStore ──► config.TripTaleProperties
-                  ├── git.GitService ───────────────────┘
+ui.MainController ──► storage.MarkdownStore ──► storage.SettingsStore ──► config.TripTaleProperties
+                  ├── git.GitService ──────────────────────┘
                   ├── export.DiaryExporter ──► MarkdownStore
                   ├── export.ExportTempFiles
                   ├── attachments.AttachmentsDir ──► MarkdownStore
@@ -97,12 +100,12 @@ and return their result as data. See **UI structure** below.
 ## Storage model
 
 ```
-<data-dir>/              # also a git repo; default: ~/Pictures/triptale-data (from application.yml)
+<data-dir>/              # also a git repo; set as dataDir in settings.yml (no default)
 ├── .gitignore           # contains ".state.yml"
 ├── .state.yml           # gitignored; internal state (currently: lastTripPath, "<year>/<slug>")
-├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initOnStartup()
-├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initOnStartup()
-├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initOnStartup()
+├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initRepo()
+├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initRepo()
+├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initRepo()
 └── <year>/<slug>/
     ├── README.md                   # frontmatter: startDate (ISO string), type: Trip; body: "# {name}" heading + description
     └── YYYY-MM-DD-Weekday.md       # entries live directly in the trip folder (no entries/ subfolder); weekday in English locale, e.g. 2026-06-04-Thursday.md
@@ -121,14 +124,22 @@ existing after calling it. `listYears()` scans the data-dir root for 4-digit-nam
 directories; `listTrips(int year)` scans one year directory (both ignore non-matching entries,
 e.g. `trip.md`/`type.md`/`.git`).
 
-**Default data dir:** `application.yml` sets `~/Pictures/triptale-data`. `TripTaleProperties` Java field defaults to `~/.triptale` but is overridden at runtime. The `application.yml` value wins.
+**Data dir & settings:** there is **no default data dir**. It's `dataDir` in `settings.yml`
+(`config.AppSettings`, loaded/saved by `storage.SettingsStore`), edited at runtime in
+⚙ Edit Settings… and only applied after a restart. `settings.yml` lives in
+`$HOME/.config/triptale/` (macOS/Linux) or `%APPDATA%\triptale\` (Windows); the only Spring
+property left is `triptale.settings-dir` (`TripTaleProperties`) to move that directory. While
+`dataDir` is unset, `GitService.isConfigured()` is false and the storage/git layer stays inert
+(no dir creation, no `git init`); `MainController` warns on every launch. An empty/missing data
+dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/no prompt. See
+`docs/13_settings_handling.md`.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
 - Entries: `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `trackurl`, `type`
 - Trips (`README.md`): `end_date`, `start_date`, `type`
 - Single-word keys stay flat lowercase (`altitude`, `trackurl`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
-- Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initOnStartup()` creates all three if missing, alongside `.gitignore` setup.
+- Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initRepo()` creates all three if missing, alongside `.gitignore` setup.
 - Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.
 - Older data dirs may still have `trips/<slug>/trip.yml` from before the README.md migration — the app no longer reads it; migrate ad hoc (`name` becomes a `# {name}` heading, `startDate` into frontmatter, `description` as the body after the heading, add `type: Trip`, delete the old file).
 
@@ -196,9 +207,10 @@ Shared UI helpers, all in `ui/`:
 
 - **`build.yml`** — triggers on push/PR to `main`; runs `mvn -B -ntp verify` on `ubuntu-latest` with Temurin 25.
 - **`release.yml`** — triggers on `v*` tags; builds jar with `-DskipTests` on `ubuntu-latest` only (macOS runner was hanging with no available runner), publishes `triptale-linux.jar` as a GitHub Release asset.
+- **JavaFX natives follow the build host.** The JavaFX deps in `pom.xml` deliberately have no `<classifier>`; openjfx's parent pom picks the natives for the OS/arch Maven runs on. A jar runs only on the OS it was built on — the Linux release jar must therefore keep being built on a Linux runner. Don't re-add a hard-coded classifier (it used to bundle a second, foreign set). See `docs/43_startup_performance.md`.
 
 ---
 
 ## JaCoCo
 
-Coverage instrumented only for `net.timafe.triptale.*`. Excluded: `ui/**` and `TripTaleApplication.class` (headless-incompatible). Reports generated at `test` phase (HTML + XML in `target/site/jacoco/`).
+Coverage instrumented only for `net.timafe.triptale.*`. Excluded: `ui/**`, `TripTaleApplication.class` and `Launcher.class` (headless-incompatible). Reports generated at `test` phase (HTML + XML in `target/site/jacoco/`).
