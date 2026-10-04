@@ -499,6 +499,9 @@ public class MainController implements StatusSink {
                     .build();
             store.saveEntry(ref, entry);
             addPending(ref.path() + "/" + start, CREATE);
+            if (fe.gpxFile() != null) {
+                attachmentsDir.addFiles(ref, start, List.of(fe.gpxFile().toPath()));
+            }
         });
         reloadYears();
         yearCombo.setValue(year);
@@ -564,6 +567,13 @@ public class MainController implements StatusSink {
             Optional<ButtonType> result = confirm.showAndWait();
             if (result.isEmpty() || result.get() != ButtonType.YES) return;
         }
+        Path attachmentCopy;
+        try {
+            attachmentCopy = attachmentsDir.addFiles(trip.ref(), p.date(), List.of(file.toPath())).getFirst();
+        } catch (RuntimeException e) {
+            error(UiText.describe(e));
+            return;
+        }
         datePicker.setValue(p.date());
         titleField.setText(p.name());
         startLat = p.lat();
@@ -576,7 +586,8 @@ public class MainController implements StatusSink {
         }
         updateCoordinatesButton();
         updateDirty();
-        status("Imported \"" + p.name() + "\" for " + p.date());
+        status("Imported \"" + p.name() + "\" for " + p.date() + ", GPX saved to "
+                + UiText.homeRelative(attachmentCopy));
     }
 
     @FXML

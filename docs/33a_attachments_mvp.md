@@ -36,9 +36,14 @@ on demand. Replaces D3 of todo 33 (date prefix in a trip-level folder).
 (multi-select) and copies the picked files into the current day's folder, created on demand. A
 file with the same name is overwritten (like D4). The chooser remembers the last source folder
 for the session. Enabled when a trip and date are selected, in every mode, also for days
-without a saved tale. GPX import doesn't copy files yet (D4 later). *(First tried: an "Open
-Attachments" item that opened the day folder in Finder to drop files into. Rejected after
-testing: not discoverable, and selecting a file in that window just opens it.)*
+without a saved tale. *(First tried: an "Open Attachments" item that opened the day folder in
+Finder to drop files into. Rejected after testing: not discoverable, and selecting a file in
+that window just opens it.)*
+
+**GPX import** ("Import GPX…" on a tale entry, and the GPX import inside "New Trip…") now also
+copies the source `.gpx` file into the imported date's day folder via the same `addFiles`,
+closing D4 of todo 33. Same overwrite-on-same-name behavior as "Add Attachments…"; no separate
+checkbox or step. *(2026-10-04.)*
 
 **Push Attachments** (Repository menu; Push/Pull become "Push Git"/"Pull Git"):
 - Scope: the whole `attachments/` tree. Push only, nothing is downloaded or deleted.

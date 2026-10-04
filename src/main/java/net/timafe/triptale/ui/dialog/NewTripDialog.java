@@ -15,6 +15,7 @@ import javafx.stage.FileChooser;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.GpxImport;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -26,9 +27,12 @@ public final class NewTripDialog {
 
     public record Spec(String name, LocalDate startDate, String description, Optional<FirstEntry> firstEntry) {}
 
-    /** All fields but {@code title} are null unless the trip was created from a GPX import. */
+    /**
+     * All fields but {@code title} are null unless the trip was created from a GPX import;
+     * {@code gpxFile} is then the source file, to be saved as an attachment.
+     */
     public record FirstEntry(String title, Double lat, Double lon, Double stopLat, Double stopLon,
-                              Double distanceKm, Double altitudeGainM) {}
+                              Double distanceKm, Double altitudeGainM, File gpxFile) {}
 
     /** Empty when the user cancelled. */
     public Optional<Spec> showAndWait() {
@@ -60,6 +64,7 @@ public final class NewTripDialog {
         Double[] gpxStopLon = new Double[1];
         Double[] gpxDistanceKm = new Double[1];
         Double[] gpxAltitudeGainM = new Double[1];
+        File[] gpxFile = new File[1];
 
         GridPane grid = Dialogs.formGrid();
         grid.add(new Label("Name:"), 0, 0);
@@ -98,6 +103,7 @@ public final class NewTripDialog {
                     gpxStopLon[0] = p.stopLon();
                     gpxDistanceKm[0] = p.distanceKm();
                     gpxAltitudeGainM[0] = p.altitudeGainM();
+                    gpxFile[0] = file;
                     initFirstEntryCheck.setSelected(true);
                     importHintLabel.setText("Imported \"" + p.name() + "\"");
                 }
@@ -120,8 +126,8 @@ public final class NewTripDialog {
         if (initFirstEntryCheck.isSelected()) {
             firstEntry = Optional.of(gpxName[0] != null
                     ? new FirstEntry(gpxName[0], gpxLat[0], gpxLon[0], gpxStopLat[0], gpxStopLon[0],
-                            gpxDistanceKm[0], gpxAltitudeGainM[0])
-                    : new FirstEntry(name, null, null, null, null, null, null));
+                            gpxDistanceKm[0], gpxAltitudeGainM[0], gpxFile[0])
+                    : new FirstEntry(name, null, null, null, null, null, null, null));
         }
         return Optional.of(new Spec(name, startField.getValue(), descArea.getText(), firstEntry));
     }

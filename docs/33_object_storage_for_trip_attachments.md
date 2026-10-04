@@ -129,8 +129,9 @@ Constraints from the todo:
   `${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/output/${DATE}*.jpg`.
   The resolved directory is cached per `(pattern, trip)`.
 - **GPX files** are parsed by `util.GpxImport` (todos 23/24, see `docs/23_gpx_import.md` and
-  `docs/24_gpx_import_tale_entry.md`). Only the derived data is kept: name, date, start/stop
-  coordinates. The GPX file itself is not stored anywhere.
+  `docs/24_gpx_import_tale_entry.md`). The derived data (name, date, start/stop coordinates) is
+  kept, and the source file is also copied into the day's attachment folder (D4, see
+  `docs/33a_attachments_mvp.md`).
 - **Entries already have a `trackurl` frontmatter key** (see `docs/04_trackurl_plan.md`). A
   cloud link to a GPX file could reuse it.
 - **We already shell out to an OS binary:** `git push` / `git pull` run through `ProcessBuilder`
