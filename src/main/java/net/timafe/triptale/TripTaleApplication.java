@@ -12,6 +12,7 @@ import net.timafe.triptale.config.TripTaleProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
@@ -45,7 +46,9 @@ public class TripTaleApplication extends Application {
         loader.setControllerFactory(spring::getBean);
         Parent root = loader.load();
         String appName = spring.getBean(TripTaleProperties.class).getAppName();
-        stage.setTitle("🏔️🚴" + appName);
+        BuildProperties buildProperties = spring.getBeanProvider(BuildProperties.class).getIfAvailable();
+        String version = buildProperties != null ? " " + buildProperties.getVersion() : "";
+        stage.setTitle("🏔️🚴" + appName + version);
         stage.setScene(new Scene(root, 1150, 650));
         stage.setMinWidth(1100);
         stage.setMinHeight(550);

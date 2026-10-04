@@ -27,6 +27,7 @@
         <jgit.version>7.0.0.202409031743-r</jgit.version>
         <commonmark.version>0.29.0</commonmark.version>
         <metadata-extractor.version>2.19.0</metadata-extractor.version>
+        <git-commit-id.version>9.0.1</git-commit-id.version>
         <!-- Launcher, not TripTaleApplication: an Application subclass as main class breaks
              classpath launches (extracted jar / AOT cache), see Launcher's javadoc. -->
         <main.class>net.timafe.triptale.Launcher</main.class>
@@ -108,6 +109,34 @@
     <build>
         <finalName>triptale</finalName>
         <plugins>
+            <!--
+              Resolves the most recent reachable git tag (e.g. "v0.9.0" — no commit-distance
+              suffix, no dirty marker) so AboutDialog can show a real release version instead of
+              the Maven coordinate, which is never bumped. spring-boot-maven-plugin:build-info
+              (below) actually binds to generate-resources, not prepare-package as its own docs
+              imply — bind here to the same phase, declared first, so this plugin's property is
+              set before build-info reads it. This also means both plugins run on every
+              `make run`/`run-fast`, not just packaging builds (javafx:run forks the build up to
+              process-classes, which is after generate-resources) — acceptable since resolving
+              the closest tag is a cheap, local walk of already-loaded git objects.
+            -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>${git-commit-id.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <generateGitPropertiesFile>false</generateGitPropertiesFile>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -119,6 +148,11 @@
                         <goals>
                             <goal>build-info</goal>
                         </goals>
+                        <configuration>
+                            <additionalProperties>
+                                <version>${git.closest.tag.name}</version>
+                            </additionalProperties>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
