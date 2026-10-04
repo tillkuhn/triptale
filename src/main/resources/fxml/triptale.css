@@ -416,3 +416,20 @@
     -fx-border-color: #3a5050;
     -fx-opacity: 0.6;
 }
+
+/* ── Smart Sync dialog (todo 32) ──────────────────────── */
+.sync-status-idle {
+    -fx-text-fill: #e8f4f1;
+}
+.sync-status-muted {
+    -fx-text-fill: #6a9090;
+}
+.sync-status-ok {
+    -fx-text-fill: #4ec9b0;
+}
+.sync-status-error {
+    -fx-text-fill: #e06c6c;
+}
+.status-icon.sync-conflict {
+    -fx-text-fill: #e06c6c;
+}

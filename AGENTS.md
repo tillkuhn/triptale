@@ -140,7 +140,7 @@ e.g. `trip.md`/`type.md`/`.git`).
 
 - JGit for `init`, `add`, `commit`, `status`.
 - OS `git` binary via `ProcessBuilder` for `push` and `pull` (120 s timeout; requires `git` on PATH).
-- **Never commit from inside `MarkdownStore` or `GitService` after a save.** Saves go to disk immediately. `MainController` accumulates pending saves in a `Map<String, String>` and commits them in batch via the Commit button (`Cmd+K` / `Ctrl+K`). Follow this pattern for new write operations: save → `addPending(...)` → user triggers commit.
+- **Never commit from inside `MarkdownStore` or `GitService` after a save.** Saves go to disk immediately. `MainController` accumulates pending saves in a `Map<String, String>`; they are committed by Smart Sync (`Cmd+K` / `Ctrl+K`, `ui/dialog/SmartSyncDialog`) or the menu-only Commit. The pending map only shapes the commit message — whether there is anything to commit is decided by `GitService.dirtyFiles()` (git status), so external edits are caught too. Follow this pattern for new write operations: save → `addPending(...)` → user triggers sync/commit. See `docs/32_smart_sync.md`.
 
 ---
 
@@ -174,8 +174,8 @@ The contract: **a dialog returns its outcome as data and never mutates controlle
 `NewTripDialog` → `Optional<Spec>`, `TripDetailsDialog` → `Optional<Trip>`,
 `CoordinatesDialog` → `Optional<Result>` (`start()`/`stop()`, a null point means "unset";
 `Optional.empty()` means Cancel). Persisting, `addPending(...)`, and combo reselection stay in
-the controller. `SyncProgressDialog` inverts this — it owns the worker thread and takes an
-`onSuccess` callback that runs on the FX thread.
+the controller. `SmartSyncDialog` inverts this — it owns its worker threads and reports an
+`Outcome` through a callback that runs on the FX thread.
 
 Shared UI helpers, all in `ui/`:
 

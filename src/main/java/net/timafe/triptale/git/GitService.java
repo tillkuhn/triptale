@@ -3,9 +3,15 @@ package net.timafe.triptale.git;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.RevWalkUtils;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,7 +22,12 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Service
@@ -145,6 +156,8 @@ public class GitService {
         Path root = store.dataDir();
         try (Git git = Git.open(root.toFile())) {
             git.add().addFilepattern(".").call();
+            // add(".") alone ignores tracked files deleted outside the app; setUpdate stages those.
+            git.add().addFilepattern(".").setUpdate(true).call();
             if (git.status().call().isClean()) {
                 log.debug("Nothing to commit");
                 return null;
@@ -159,6 +172,77 @@ public class GitService {
         } catch (GitAPIException | IOException e) {
             throw new GitException("Failed to commit", e);
         }
+    }
+
+    /**
+     * Repo-relative paths ({@code /} separators) of everything {@code commitAll} would commit:
+     * staged, modified, deleted and untracked (not ignored) files. Sorted; empty when clean.
+     */
+    public List<String> dirtyFiles() {
+        try (Git git = Git.open(store.dataDir().toFile())) {
+            Status status = git.status().call();
+            TreeSet<String> files = new TreeSet<>();
+            files.addAll(status.getAdded());
+            files.addAll(status.getChanged());
+            files.addAll(status.getModified());
+            files.addAll(status.getRemoved());
+            files.addAll(status.getMissing());
+            files.addAll(status.getUntracked());
+            files.addAll(status.getConflicting());
+            return List.copyOf(files);
+        } catch (GitAPIException | IOException e) {
+            throw new GitException("Failed to read git status", e);
+        }
+    }
+
+    /** Commits on the local branch not on {@code origin/<branch>} (ahead), and vice versa (behind). */
+    public record AheadBehind(int ahead, int behind) {
+        public boolean inSync() { return ahead == 0 && behind == 0; }
+    }
+
+    /**
+     * Ahead/behind counts against the last fetched {@code origin/<branch>} — local only, no
+     * network; call {@link #fetch()} first for fresh numbers. Empty when the remote branch
+     * isn't known locally (never pushed or never fetched) or the branch has no commits yet.
+     */
+    public Optional<AheadBehind> aheadBehind() {
+        try (Git git = Git.open(store.dataDir().toFile())) {
+            Repository repo = git.getRepository();
+            ObjectId local = repo.resolve("HEAD");
+            ObjectId remote = repo.resolve("refs/remotes/origin/" + currentBranch());
+            if (local == null || remote == null) return Optional.empty();
+            try (RevWalk walk = new RevWalk(repo)) {
+                RevCommit localCommit = walk.parseCommit(local);
+                RevCommit remoteCommit = walk.parseCommit(remote);
+                walk.setRevFilter(RevFilter.MERGE_BASE);
+                walk.markStart(localCommit);
+                walk.markStart(remoteCommit);
+                RevCommit base = walk.next();
+                walk.reset();
+                walk.setRevFilter(RevFilter.ALL);
+                int ahead = RevWalkUtils.count(walk, localCommit, base);
+                walk.reset();
+                int behind = RevWalkUtils.count(walk, remoteCommit, base);
+                return Optional.of(new AheadBehind(ahead, behind));
+            }
+        } catch (IOException e) {
+            throw new GitException("Failed to compare with origin", e);
+        }
+    }
+
+    private static final Pattern CONFLICT = Pattern.compile(
+            "^CONFLICT \\([^)]*\\): (?:Merge conflict in (.+)|(\\S+) deleted in .*)$", Pattern.MULTILINE);
+
+    /**
+     * File paths from git's {@code CONFLICT (content): Merge conflict in <path>} and
+     * {@code CONFLICT (modify/delete): <path> deleted in …} output lines.
+     */
+    public static List<String> conflictPaths(String gitOutput) {
+        if (gitOutput == null) return List.of();
+        TreeSet<String> paths = new TreeSet<>();
+        Matcher m = CONFLICT.matcher(gitOutput);
+        while (m.find()) paths.add((m.group(1) != null ? m.group(1) : m.group(2)).trim());
+        return List.copyOf(paths);
     }
 
     /**
@@ -190,6 +274,11 @@ public class GitService {
     public String push() {
         requireOrigin();
         return runGit("push", "origin");
+    }
+
+    public String fetch() {
+        requireOrigin();
+        return runGit("fetch", "origin");
     }
 
     public String pull() {

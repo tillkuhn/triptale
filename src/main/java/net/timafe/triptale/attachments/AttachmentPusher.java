@@ -10,9 +10,11 @@ import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -23,6 +25,14 @@ import java.util.stream.Stream;
 public final class AttachmentPusher {
 
     public record Result(int uploaded, int unchanged) {}
+
+    /**
+     * What a push would do: {@code toUpload} files ({@code uploadBytes} in total), and
+     * {@code remoteOnly} objects in the store with no local file (nothing is downloaded yet).
+     */
+    public record Plan(int toUpload, long uploadBytes, int remoteOnly) {
+        public boolean upToDate() { return toUpload == 0; }
+    }
 
     /** Called before each file; {@code done} files of {@code total} are finished. */
     @FunctionalInterface
@@ -53,18 +63,40 @@ public final class AttachmentPusher {
             String relative = relativeKey(attachmentsRoot, file);
             progress.update(i, files.size(), relative);
             String key = keyPrefix + relative;
-            ObjectStore.ObjectInfo existing = remote.get(key);
-            long size = size(file);
-            if (existing != null && existing.size() == size) {
-                byte[] md5 = md5(file);
-                if (existing.etag().equalsIgnoreCase(HexFormat.of().formatHex(md5))) continue;
-                store.put(key, file, md5);
-            } else {
-                store.put(key, file, md5(file));
-            }
+            byte[] md5 = changedMd5(file, remote.get(key));
+            if (md5 == null) continue;
+            store.put(key, file, md5);
             uploaded++;
         }
         return new Result(uploaded, files.size() - uploaded);
+    }
+
+    /** Same comparison as {@link #push}, without uploading: one LIST plus local MD5s. */
+    public Plan plan(Path attachmentsRoot, String keyPrefix) {
+        Map<String, ObjectStore.ObjectInfo> remote = store.list(keyPrefix);
+        Set<String> remoteOnly = new HashSet<>(remote.keySet());
+        int toUpload = 0;
+        long bytes = 0;
+        for (Path file : localFiles(attachmentsRoot)) {
+            String key = keyPrefix + relativeKey(attachmentsRoot, file);
+            remoteOnly.remove(key);
+            ObjectStore.ObjectInfo existing = remote.get(key);
+            long size = size(file);
+            boolean changed = existing == null || existing.size() != size
+                    || !existing.etag().equalsIgnoreCase(HexFormat.of().formatHex(md5(file)));
+            if (changed) {
+                toUpload++;
+                bytes += size;
+            }
+        }
+        return new Plan(toUpload, bytes, remoteOnly.size());
+    }
+
+    /** The file's MD5 if it is missing remotely or differs in size or MD5, else {@code null}. */
+    private static byte[] changedMd5(Path file, ObjectStore.ObjectInfo existing) {
+        byte[] md5 = md5(file);
+        if (existing == null || existing.size() != size(file)) return md5;
+        return existing.etag().equalsIgnoreCase(HexFormat.of().formatHex(md5)) ? null : md5;
     }
 
     /** Regular files under {@code root}, sorted, without hidden files or anything in hidden folders. */

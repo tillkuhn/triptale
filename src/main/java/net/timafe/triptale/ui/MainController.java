@@ -48,10 +48,11 @@ import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
-import net.timafe.triptale.ui.dialog.SyncProgressDialog;
+import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.TripMapDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
+import net.timafe.triptale.util.CommitMessage;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
 import net.timafe.triptale.util.Markdown;
@@ -113,12 +114,12 @@ public class MainController implements StatusSink {
     @FXML private Hyperlink createTaleLink;
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
+    @FXML private Label statusIcon;
     @FXML private HBox statusRow;
     @FXML private Label tourDayLabel;
     @FXML private Label titleLabel;
     @FXML private Button copyButton;
     @FXML private Button saveButton;
-    @FXML private Button commitButton;
     @FXML private Button syncButton;
     @FXML private Button prevDayButton;
     @FXML private Button nextDayButton;
@@ -192,6 +193,9 @@ public class MainController implements StatusSink {
     private Boolean connected = null;
 
     private final Map<String, String> pending = new LinkedHashMap<>();
+
+    /** Last Smart Sync hit a rebase conflict; kept as a status bar marker until a sync succeeds (todo 32, D4). */
+    private boolean syncConflict;
 
     private final MarkdownStore store;
     private final GitService gitService;
@@ -356,7 +360,7 @@ public class MainController implements StatusSink {
         installShortcutTooltip(prevDayButton, "Previous day", prevDayMenuItem);
         installShortcutTooltip(nextDayButton, "Next day", nextDayMenuItem);
         installShortcutTooltip(saveButton, "Save tale", saveMenuItem);
-        installShortcutTooltip(commitButton, "Commit pending changes", commitMenuItem);
+        installShortcutTooltip(syncButton, "Smart Sync", syncMenuItem);
         updateCommitButton();
         if (ready) {
             status("Data dir: " + settingsStore.load().resolvedDataDir()
@@ -950,21 +954,34 @@ public class MainController implements StatusSink {
         updateCommitButton();
     }
 
-    private boolean canCommit() {
-        return !pending.isEmpty() && !isDirty();
+    /** Menu-only power-user Commit; saves unsaved edits first (todo 32, D3). */
+    private void updateCommitButton() {
+        if (commitMenuItem != null) {
+            commitMenuItem.setText("📦 Commit (" + pending.size() + ")");
+            commitMenuItem.setDisable(pending.isEmpty() && !isDirty());
+        }
     }
 
-    private void updateCommitButton() {
-        String label = "📦 Commit (" + pending.size() + ")";
-        boolean disable = !canCommit();
-        if (commitButton != null) {
-            commitButton.setText(label);
-            commitButton.setDisable(disable);
+    /**
+     * Saves the form first if it has unsaved edits (todo 32, D3), through the normal save path
+     * with its validation alerts. Returns false if there were edits and they didn't get saved.
+     */
+    private boolean saveIfDirty() {
+        if (!isDirty()) return true;
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null || !isValidEntry()) {
+            error("The current entry has unsaved edits that can't be saved yet "
+                    + "(a tale needs a title and some text). Complete or discard them first.");
+            return false;
         }
-        if (commitMenuItem != null) {
-            commitMenuItem.setText(label);
-            commitMenuItem.setDisable(disable);
+        try {
+            doSave(trip.ref(), date);
+        } catch (RuntimeException e) {
+            error(UiText.describe(e));
+            return false;
         }
+        return !isDirty();
     }
 
     private String buildCommitMessage() {
@@ -1154,20 +1171,23 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onCommit() {
-        if (!canCommit()) return;
-        String message = buildCommitMessage();
+        if (!saveIfDirty()) return;
         String sha;
+        int n;
         try {
-            sha = gitService.commitAll(message);
+            List<String> dirty = gitService.dirtyFiles();
+            n = dirty.size();
+            String pendingMessage = pending.isEmpty() ? "" : buildCommitMessage();
+            sha = gitService.commitAll(CommitMessage.compose(pendingMessage,
+                    CommitMessage.external(pending.keySet(), dirty)));
         } catch (RuntimeException e) {
-            error(e.getMessage());
+            error(UiText.describe(e));
             return;
         }
-        int n = pending.size();
         pending.clear();
         updateCommitButton();
-        String suffix = sha != null ? " (" + sha + ")" : "";
-        status("Committed " + n + " change" + (n == 1 ? "" : "s") + suffix);
+        status(sha == null ? "Nothing to commit"
+                : "Committed " + n + " file" + (n == 1 ? "" : "s") + " (" + sha + ")");
     }
 
     @FXML
@@ -1223,8 +1243,7 @@ public class MainController implements StatusSink {
         boolean remoteEnabled = Boolean.TRUE.equals(connected) && hasRemote;
         if (pushMenuItem != null) pushMenuItem.setDisable(!remoteEnabled);
         if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
-        if (syncMenuItem != null) syncMenuItem.setDisable(!remoteEnabled);
-        if (syncButton != null) syncButton.setDisable(!remoteEnabled);
+        // Smart Sync stays enabled offline: it still commits locally (todo 32, D8).
         if (pushAttachmentsMenuItem != null) {
             boolean cloud = settingsStore.load().getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
             pushAttachmentsMenuItem.setDisable(!Boolean.TRUE.equals(connected) || !cloud || pushingAttachments);
@@ -1349,16 +1368,47 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onSync() {
-        String message = pending.isEmpty() ? "Sync: external changes" : buildCommitMessage();
-        new SyncProgressDialog(gitService, settingsStore).start(message, sha -> {
-            if (sha != null) {
-                pending.clear();
-                updateCommitButton();
+        if (!saveIfDirty()) return;
+        var request = new SmartSyncDialog.Request(
+                pending.isEmpty() ? "" : buildCommitMessage(), List.copyOf(pending.keySet()));
+        new SmartSyncDialog(gitService, settingsStore, attachmentsDir, connectivityService, browser)
+                .show(request, this::onSyncFinished);
+    }
+
+    private void onSyncFinished(SmartSyncDialog.Outcome outcome) {
+        if (outcome.commitSettled()) {
+            pending.clear();
+            updateCommitButton();
+        }
+        switch (outcome.remote()) {
+            case OK -> {
+                setSyncConflict(false);
+                reloadAll();
+                loadEntry();
             }
-            reloadAll();
-            loadEntry();
-            status("Synced with remote" + (sha != null ? " (committed " + sha + ")" : ""));
-        });
+            case CONFLICT -> setSyncConflict(true);
+            default -> { }
+        }
+        List<String> parts = new ArrayList<>();
+        if (outcome.sha() != null) parts.add("committed " + outcome.sha());
+        switch (outcome.remote()) {
+            case OK -> parts.add("in sync with origin");
+            case CONFLICT -> parts.add("⚠ rebase conflict, unresolved");
+            case FAILED -> parts.add("remote sync failed");
+            case NOT_RUN -> { }
+        }
+        status("Smart Sync: " + (parts.isEmpty() ? "done" : String.join(", ", parts)));
+    }
+
+    private void setSyncConflict(boolean conflict) {
+        syncConflict = conflict;
+        if (statusIcon == null) return;
+        statusIcon.setText(conflict ? "⚠" : "\u24D8");
+        statusIcon.setTooltip(conflict
+                ? new Tooltip("Last Smart Sync hit a rebase conflict. Resolve it manually, then sync again.")
+                : null);
+        statusIcon.getStyleClass().remove("sync-conflict");
+        if (conflict) statusIcon.getStyleClass().add("sync-conflict");
     }
 
     @FXML
@@ -1383,6 +1433,12 @@ public class MainController implements StatusSink {
                     .append(pending.size() == 1 ? "" : "s")
                     .append(" not yet committed");
         }
+        int unpushed = unpushedCommits();
+        if (unpushed > 0) {
+            body.append("\nand ").append(unpushed).append(" commit").append(unpushed == 1 ? "" : "s")
+                    .append(" not yet pushed");
+        }
+        if (syncConflict) body.append("\n\nThe last Smart Sync hit an unresolved rebase conflict");
         body.append(".");
 
         ButtonType commitAndExit = new ButtonType("Commit & Exit");
@@ -1394,7 +1450,7 @@ public class MainController implements StatusSink {
         confirm.setHeaderText(dirty && hasPending
                 ? "Unsaved and uncommitted changes"
                 : (dirty ? "Unsaved changes" : "Uncommitted changes"));
-        // Same rule as the main Commit button: cannot commit while form is dirty.
+        // Exit stays cheap and local (todo 32, D6): no implicit save here, so no commit while dirty.
         Node commitBtn = confirm.getDialogPane().lookupButton(commitAndExit);
         if (commitBtn != null) commitBtn.setDisable(dirty || !hasPending);
 
@@ -1409,6 +1465,15 @@ public class MainController implements StatusSink {
             }
         }
         Platform.exit();
+    }
+
+    /** Local commits not on origin, from the last fetch — no network (todo 32, D6). */
+    private int unpushedCommits() {
+        try {
+            return gitService.aheadBehind().map(GitService.AheadBehind::ahead).orElse(0);
+        } catch (RuntimeException e) {
+            return 0;
+        }
     }
 
     @FXML

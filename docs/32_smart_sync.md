@@ -1,6 +1,6 @@
 # Todo 32 — Smart Sync
 
-Status: **agreed 2026-10-04 (grill-me session), not yet implemented.**
+Status: **agreed 2026-10-04 (grill-me session); implemented on `feature/32-smart-sync`, not yet verified in the UI.**
 
 Today there are three ways to persist data: Save (to disk), Commit (git commit of saved
 changes) and Sync (commit + fetch/rebase + push, in one go), plus Push Attachments (todo 33a).

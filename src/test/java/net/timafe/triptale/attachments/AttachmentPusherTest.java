@@ -87,6 +87,28 @@ class AttachmentPusherTest {
         assertEquals(new AttachmentPusher.Result(0, 0), result);
     }
 
+    @Test
+    void plan_countsUploadsBytesAndRemoteOnlyWithoutUploading() throws Exception {
+        Path same = write("2026/trip/day/same.jpg", "same");
+        write("2026/trip/day/new.jpg", "12345");
+        write("2026/trip/day/edited.jpg", "new!");
+        store.remote.put("attachments/2026/trip/day/same.jpg", info(same));
+        store.remote.put("attachments/2026/trip/day/edited.jpg", new ObjectStore.ObjectInfo(4, "00".repeat(16)));
+        store.remote.put("attachments/2026/trip/day/cloud-only.jpg", new ObjectStore.ObjectInfo(9, "x"));
+
+        AttachmentPusher.Plan plan = pusher.plan(root, PREFIX);
+
+        assertEquals(new AttachmentPusher.Plan(2, 9, 1), plan);
+        assertEquals(List.of(), store.putKeys);
+    }
+
+    @Test
+    void plan_upToDateWhenNothingToUpload() throws Exception {
+        Path same = write("a.txt", "a");
+        store.remote.put("attachments/a.txt", info(same));
+        assertTrue(pusher.plan(root, PREFIX).upToDate());
+    }
+
     private Path write(String relative, String content) throws Exception {
         Path file = root.resolve(relative);
         Files.createDirectories(file.getParent());

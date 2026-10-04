@@ -57,7 +57,7 @@ public class ConnectivityService {
      * Parses the hostname from {@code remoteUrl}. Falls back to {@value #FALLBACK_HOST}
      * if the URL is blank or cannot be parsed.
      */
-    static String resolveHost(String remoteUrl) {
+    public static String resolveHost(String remoteUrl) {
         if (remoteUrl == null || remoteUrl.isBlank()) {
             return FALLBACK_HOST;
         }
