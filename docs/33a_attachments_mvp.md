@@ -78,3 +78,25 @@ supported in the MVP.
 - `attachments.AttachmentPusher` — the diff + upload loop, behind the small `ObjectStore`
   interface so it's unit-testable without network
 - `config.AppSettings.Attachments` — `sync` mode, validation for `cloud`
+
+## Original request (moved from TODO.md)
+
+Let's do a first minimal implementation to see if it works against the real storage, a couple of requirements + ideas
+* We store them locally in the git repo itself in the folder attachments/ which aligns well with Tolarias stroage location (https://tolaria.md/concepts/files-and-media)
+* We introduce an attachments sync setting just ton top of the s3 config to control the sync to keep the app generic
+  * off (local only): attachments/.gitignore is set to ignore everything inside, to files remain local and won't add weight to the git repo
+  * git (version along files): a valid alternative option for those wo want everything in one repo, in that case the sub .gitgnore will just have a comment and include all files. no need of any further app support right now 
+  * cloud (AWS S3 / CF R2): this is the one we  are working right now. if set, settings dialogue requires s3 url, key and secret. 
+* to enable this, the app needs to control attachments dir creation and fully manage the .gitignore inside
+* File structure inside attachments derived from trip/tale, but one folder per day (name same as the day entry without .md extension). Creation is only on demand, i.e. if there's no attachment for a day entry, there should be no folder
+* Example: /2026/AltenbekenMoehneWerlRuhr/2026-09-26-Saturday.md Triptale -> /attachments/2026/AltenbekenMoehneWerlRuhr/2026-09-26-Saturday folder 
+* Eventually the attachment sync should be included with the existing git functionality, but there's already a refactoring Todo so let's git this git focussed for now. For first test, add a new "Push Attachments" menu group item in repository menu group, rename the existing Pull / Push to "Push Git" etc. to emphasize the distinction. It should be disabled unless attachment sync is explicitly set to cloud (with mode git, it would just sync along with the git sync, and if it's off it makes no sense since attachments stay local)
+* Question is scope: the entire attachments tree, or just the current day, or current trip. Discuss this, but remember this is first MVP so we want to keep it simple. 
+* Also tbd: what happens if attachments are already there, can we already easily do incremental sync like "aws s3 sync", using timestamps with some drift tolerance? of for first iteration just push everything?
+
+## Status log (moved from TODO.md)
+
+Status 2026-10-03: implemented. Add Attachments… + Push Attachments tested against the real bucket (GPX upload OK).
+Still to check: a second push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gpx+xml` (currently stored as `application/octet-stream`).
+
+Update 2026-10-04 (cross-OS line endings): the app now also manages `attachments/.gitattributes` with `* -text` in every mode, so git never converts line endings in attachments (e.g. `core.autocrlf` on Windows turning a GPX file's LF into CRLF). Keeps bytes, and the MD5 that push compares, identical on Linux, macOS and Windows; matters when a repo switches from `git` to `cloud` mode. An existing Windows clone that already checked out text attachments with CRLF in `git` mode needs a one-time re-checkout of those files (`git checkout -- attachments` after deleting them locally).

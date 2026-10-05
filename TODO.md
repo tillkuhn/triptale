@@ -5,7 +5,7 @@
 ## 44 Export trip as WordPress.com post
 
 Goal: ease writing articles on our wordpress.com blog — its rich-text editor is a pain.
-Doesn't have to be fully automated. Staged plan, details in `docs/44_wordpress_export.md`:
+Doesn't have to be fully automated. Staged plan:
 
 - Stage 1 (recommended start): new export target that renders Gutenberg block markup
   (headings, paragraphs, one Gallery block per day) to the clipboard, for pasting into the
@@ -13,6 +13,8 @@ Doesn't have to be fully automated. Staged plan, details in `docs/44_wordpress_e
 - Stage 2 (optional): "Publish draft to WordPress…" dialog using the WordPress.com REST API —
   uploads (resized) images to the media library and creates the post as a draft.
 - Open questions: can attachment URLs be public? Which WordPress.com plan (affects auth)?
+
+[Details](docs/44_wordpress_export.md)
 
 ## 43 Spring Boot AOT Optimizations and other performance helpers
 
@@ -37,37 +39,13 @@ and walks through all trip YYYY subdirectories and update references to reflect 
 
 ## 41 justified-row (Flickr/Google Photos-style) impressions gallery for HTML export
 
-The HTML diary export's impressions gallery (`DiaryExporter.renderImpressionsTable`,
-`table.impressions` in `html-shell.html`) was originally a fixed N-column `<table>`: each row's
-height is forced to its tallest cell, so mixing portrait and landscape images (impressions are
-usually 2:3 or 3:2, not a uniform ratio) left visible blank gaps below shorter images, and an odd
-image count left a half-empty trailing row. This was fixed as a quick win by switching to a CSS
-`column-count` masonry layout (images flow into whichever column is currently shortest, each kept
-at its natural aspect ratio via `break-inside: avoid`) — no Java changes, gaps gone. Trade-off:
-reading order goes top-to-bottom per column then jumps to the next column, so strict
-left-to-right/chronological photo order within a day is lost.
+Upgrade the HTML export's impressions gallery from the CSS `column-count` masonry layout
+(quick win, no gaps, but loses left-to-right photo order) to a justified-row gallery: full-width
+rows with one shared row height per row, zero gaps, chronological order preserved.
+Needs a packing algorithm, numeric image dimensions (`ExifReader.dimensions()` refactor),
+a static-HTML sizing strategy and a fallback for non-JPEG images.
 
-Longer term, consider upgrading to a true "justified row" gallery (Flickr/Google Photos-style):
-pack images into full-width rows where every image in a row is scaled to one shared row height,
-so rows always come out flush with zero gaps *and* chronological left-to-right order is
-preserved — this looks the most polished of the options discussed. It needs:
-
-- A packing algorithm (Java, in `DiaryExporter` or a new helper) that greedily fills a row with
-  images up to the target width (scaling each to a common row height from its aspect ratio), then
-  starts a new row, with a tolerance for the last row of a day (it won't exactly fill the width).
-- Real pixel dimensions per image to compute aspect ratio. `ExifReader`/`metadata-extractor`
-  already reads JPEG dimensions via the SOF marker (`ExifReader.dimensions()`) for the impressions
-  viewer, so that capability exists — but it currently returns a formatted `"W×H"` string for
-  display, not raw ints suitable for layout math; would need a small refactor (or a new method) to
-  expose width/height as numbers.
-- Decide how to render the computed layout in static HTML with no JS: either inline `style="width:
-  Npx; height: Npx"` per `<img>` computed server-side (simplest, but pixel-exact widths don't
-  reflow if the viewer resizes the window/zooms), or `flex-basis`/`flex-grow` percentages per row
-  (reflows better, more CSS work to get right).
-- Non-JPEG impressions (HEIC, PNG, etc., if the configured `impressionsFilePattern` ever matches
-  those) won't have a JPEG SOF marker — decide a fallback (skip dimension-based sizing and fall
-  back to the masonry/table layout for that image, or read dimensions via `ImageIO` instead of the
-  JPEG-specific path).
+[Details](docs/41_justified_row_impressions_gallery.md)
 
 ## 40 add "Re-init Repository" action to Repository menu
 
@@ -93,7 +71,6 @@ template file. Keep `ensureFile()`'s "only write if missing" semantics — this 
 where the content is authored, not about syncing existing data dirs when the templates change (see
 todo 40 for a related manual re-run trigger).
 
-
 ## 36 improved event / log dialogue in bottom left corner
 
 currently it's only a limited single most recent message with limited space.
@@ -105,31 +82,14 @@ Similar to entire trip, but only for current day
 
 ## 33a Object storage4trip attachments (track files & media) MVP
 
-Let's do a first minimal implementation to see if it works against the real storage, a couple of requirements + ideas
-* We store them locally in the git repo itself in the folder attachments/ which aligns well with Tolarias stroage location (https://tolaria.md/concepts/files-and-media)
-* We introduce an attachments sync setting just ton top of the s3 config to control the sync to keep the app generic
-  * off (local only): attachments/.gitignore is set to ignore everything inside, to files remain local and won't add weight to the git repo
-  * git (version along files): a valid alternative option for those wo want everything in one repo, in that case the sub .gitgnore will just have a comment and include all files. no need of any further app support right now 
-  * cloud (AWS S3 / CF R2): this is the one we  are working right now. if set, settings dialogue requires s3 url, key and secret. 
-* to enable this, the app needs to control attachments dir creation and fully manage the .gitignore inside
-* File structure inside attachments derived from trip/tale, but one folder per day (name same as the day entry without .md extension). Creation is only on demand, i.e. if there's no attachment for a day entry, there should be no folder
-* Example: /2026/AltenbekenMoehneWerlRuhr/2026-09-26-Saturday.md Triptale -> /attachments/2026/AltenbekenMoehneWerlRuhr/2026-09-26-Saturday folder 
-* Eventually the attachment sync should be included with the existing git functionality, but there's already a refactoring Todo so let's git this git focussed for now. For first test, add a new "Push Attachments" menu group item in repository menu group, rename the existing Pull / Push to "Push Git" etc. to emphasize the distinction. It should be disabled unless attachment sync is explicitly set to cloud (with mode git, it would just sync along with the git sync, and if it's off it makes no sense since attachments stay local)
-* Question is scope: the entire attachments tree, or just the current day, or current trip. Discuss this, but remember this is first MVP so we want to keep it simple. 
-* Also tbd: what happens if attachments are already there, can we already easily do incremental sync like "aws s3 sync", using timestamps with some drift tolerance? of for first iteration just push everything?
+First minimal attachments implementation against real S3: local `attachments/` folder in the
+data dir (one folder per day, created on demand), `attachments.sync` setting (`off`/`git`/`cloud`)
+with an app-managed `.gitignore`/`.gitattributes`, and a "Push Attachments" menu item.
+
+Status 2026-10-03: implemented, GPX upload to the real bucket works. Still to check: a second
+push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gpx+xml`.
 
 [Plan](docs/33a_attachments_mvp.md)
-
-Status 2026-10-03: implemented. Add Attachments… + Push Attachments tested against the real bucket (GPX upload OK).
-Still to check: a second push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gpx+xml` (currently stored as `application/octet-stream`).
-
-Update 2026-10-04 (cross-OS line endings): the app now also manages `attachments/.gitattributes` with `* -text` in every mode, so git never converts line endings in attachments (e.g. `core.autocrlf` on Windows turning a GPX file's LF into CRLF). Keeps bytes, and the MD5 that push compares, identical on Linux, macOS and Windows; matters when a repo switches from `git` to `cloud` mode. An existing Windows clone that already checked out text attachments with CRLF in `git` mode needs a one-time re-checkout of those files (`git checkout -- attachments` after deleting them locally).
-
-## DONE 33b Attachment pull (download from cloud)
-
-Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions.
-
-Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Tested against the real bucket 2026-10-04: 6 cloud-only files downloaded, second sync reports up to date.
 
 ## 33 Object storage for trip attachments 
 
@@ -138,19 +98,12 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## DONE 32 Smart Sync for repository operations
-
-Replace Sync with an interactive **Smart Sync** dialog (`Cmd+K` → Enter): rows for Connectivity, Commit (editable message, decided by `git status`), Git Remote (fetch + rebase + push, with ahead/behind counts instead of a pull timer) and Attachments push (cloud mode only). Implicit save before the dialog opens, rebase conflicts skip the push but not attachments, Exit stays local. Commit button removed (menu only).
-
-[Plan](docs/32_smart_sync.md)
-
 ## 31 Git Housekeeping
 
 Add a new action to the repository menu group called "Run Housekeeping" or similar, it should run "git gc" on the data repo and show the results
 Example (...)
 Writing objects: 100% (1027/1027), done.
 Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0
-
 
 ## 30 Localization for Trip Language
 
@@ -178,7 +131,6 @@ Add "Check for updates" function in Triptale left menu. Should to the github sou
 If there is a newer version (all should be semver), show a text with the new version and a hyperlink where to download.
 Use the dynamic dialogue from "Sync" while checking the remote with the spinner. If that is not a reusable dialogue yet, do it now since we have further future use cases that should show verbosely that there is interaction with a remote page
 
-
 ## 26 Show no of objects and repo size, optionally run gc
 
 in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`. also maybe add housekeeping task that calls "git gc" and capture output
@@ -196,7 +148,29 @@ Let's skip a dedicated button in the UI, since it is fixed to particular day, an
 Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
 If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
 
+## 19 DatePicker has no quick year navigation
+
+The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
+page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
+year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip while today is
+2026) means clicking through many months one at a time. JavaFX's DatePicker doesn't expose a
+year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
+Affects every DatePicker instance in the app, not just one dialog — worth checking all call
+sites for a consistent fix rather than patching one.
+
 ---
+
+## DONE 33b Attachment pull (download from cloud)
+
+Split out of todo 32 (D5): add `ObjectStore.get` and pull attachments, so the Smart Sync Attachments row covers both directions.
+
+Status 2026-10-04: implemented as "copy both ways, never delete": pull downloads only objects with no local file (never overwrites), push uploads new/changed local files (so local wins on content conflicts). Smart Sync's Attachments row runs pull, then push; "☁ Pull Attachments" added to the Repository menu. Downloads go to a hidden `.part` file first and are MD5-checked against the ETag. Still open (see todo 33): explicit delete of an attachment on both sides. Tested against the real bucket 2026-10-04: 6 cloud-only files downloaded, second sync reports up to date.
+
+## DONE 32 Smart Sync for repository operations
+
+Replace Sync with an interactive **Smart Sync** dialog (`Cmd+K` → Enter): rows for Connectivity, Commit (editable message, decided by `git status`), Git Remote (fetch + rebase + push, with ahead/behind counts instead of a pull timer) and Attachments push (cloud mode only). Implicit save before the dialog opens, rebase conflicts skip the push but not attachments, Exit stays local. Commit button removed (menu only).
+
+[Plan](docs/32_smart_sync.md)
 
 ## DONE 35 visualize end coordinates and make them editable
 
@@ -231,23 +205,21 @@ In case of manual entry, we can derive name and date from the corresponding trip
 In case of import, we can use the coordinates of the first trkprt for startlat / startlon, date is the same as stardate, and title should be the name mentioned in the gpx file (not the one of the trip that might've been overwritten by the user to a more generic context).
 Use ~/tmp/rheinrauf.gpx as sample file 
 
+## DONE 38 show day of total days, add day suffix to tile
+
+Current day display on to right corner shows : Day X (Y days ago). We should add the number of total days. If the trip has an end date, we can simply say Day 5/10 (day 5 of 10 total), everything else should remain the same. If there's no end date, replace the number by the infinity character. Any other suffixes like (Y days ago, first day, last day) can remain as is. ALso the title field should emphasize more that this is the title for a particular day. So instead of plain "Title:" it should be "Title Day X:"
+But to preserve space, only show the day number without slash and remarks in brackets.
+
+## DONE 37 shortcuts for zoom in / zoom out in View Menu group
+
+see docs/done/37_zoom_shortcuts.md
+
 ## DONE 25 Delete Tale Entry / Trip
 
 see docs/25_delete_tale_entry.md for the full design (from a grill-me session covering scope
 (entry-only, delete-trip deferred), the JGit `git rm`/staging gotcha, the pending-commit DELETE
 action and its collision with an uncommitted CREATE, and reusing the existing empty-state
 `loadEntry()` path for post-delete UI reset).
-
-
-## DONE 38 show day of total days, add day suffix to tile
-
-Current day display on to right corner shows : Day X (Y days ago). We should add the number of total days. If the trip has an end date, we can simply say Day 5/10 (day 5 of 10 total), everything else should remain the same. If there's no end date, replace the number by the infinity character. Any other suffixes like (Y days ago, first day, last day) can remain as is. ALso the title field should emphasize more that this is the title for a particular day. So instead of plain "Title:" it should be "Title Day X:"
-But to preserve space, only show the day number without slash and remarks in brackets.
-
-
-## DONE 37 shortcuts for zoom in / zoom out in View Menu group
-
-see docs/done/37_zoom_shortcuts.md
 
 ## DONE 27 Capture distance and altitude (Höhenmeter) when importing GPX
 
@@ -291,18 +263,11 @@ Non-goals: no UI to preview computed values before confirming overwrite (computi
 — once for the confirm dialog, once to apply — isn't worth it for a yes/no prompt); no change
 to `GpxImport`'s first-trkpt-only date/name/coords logic, only additive fields.
 
-
 ## DONE 22 End Trip
 
 see docs/22_end_trip.md for the full design (from a grill-me session covering the
 start_date/end_date frontmatter rename, validation boundaries, the End Trip button, and
 forward-navigation/last-day UI mirroring the existing first-day logic).
-
-## DONE 15 store optional start point coordinates per trip entry
-
-see docs/15_start_point_coordinates.md for the full design (from a grill-me session covering
-the GeoJSON coordinate-order fix, button placement, Save-validation pairing, popup
-persistence model, Google Maps URL parsing scope, and parse-failure UX).
 
 ## DONE 14 template variables for settings paths
 
@@ -313,6 +278,12 @@ cache, and extracting a generic reusable resolver now).
 
 Added later (2026-10-04): `${TRIP_DAY}` (trip's start-date day, zero-padded), sourced the same
 way as `TRIP_MONTH`/`TRIP_YEAR`.
+
+## DONE 15 store optional start point coordinates per trip entry
+
+see docs/15_start_point_coordinates.md for the full design (from a grill-me session covering
+the GeoJSON coordinate-order fix, button placement, Save-validation pairing, popup
+persistence model, Google Maps URL parsing scope, and parse-failure UX).
 
 ## DONE 21 introduce h1 title, derive from route in frontmatter
 
@@ -354,6 +325,38 @@ much better ...
 
 ```
 
+## DONE 18 new top level directories
+
+see docs/18_year_top_level_dirs.md for the full design (from a grill-me session covering the
+TripRef identity type, per-year slug uniqueness, year/trip dropdown UX, and the lastTripPath
+cache format).
+
+## DONE 11 supports faves & impressions
+
+extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
+also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images, it should re-use the samve image viewer.
+
+## DONE (WON'T DO) 09 New concept for storing links
+
+we need a flexible way to store multiple links. introduce new "links" array in frontmatter for trip entry.
+the actual link should have a mandatory "url" property. kind is optional and should allow any string value, but for the UI
+we should enforve an enumerated value, suggest to use short very. Initial list "drink, eat, sleep, hike, bike, dive" (list should sort alphabetically). title is just an optional string
+
+
+```
+---
+date: 2026-07-24
+route: 'Essen → München'
+links:
+  - url: https://muc1.com/
+    kind: hike
+    title: Nice GPX routed for Muc 
+  - url: https://bar.com/
+    kind: drink
+    title: best bar in town
+  - url: https://random.com/
+```
+
 ## DONE 20 Support Tolaria belongs_to references
 
 We are promoting tolaria as a drop in editor replacement. Tolaria supports references between notes.
@@ -376,22 +379,6 @@ Tale goes here
 
 Goal: Store this field on save using the path to the trip readme (w/o md).
 Do a one time migration (not part of the app) in ~/Pictures/triptale-data/  
-
-## TODO 19 DatePicker has no quick year navigation
-
-The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
-page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
-year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip while today is
-2026) means clicking through many months one at a time. JavaFX's DatePicker doesn't expose a
-year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
-Affects every DatePicker instance in the app, not just one dialog — worth checking all call
-sites for a consistent fix rather than patching one.
-
-## DONE 18 new top level directories
-
-see docs/18_year_top_level_dirs.md for the full design (from a grill-me session covering the
-TripRef identity type, per-year slug uniqueness, year/trip dropdown UX, and the lastTripPath
-cache format).
 
 ## DONE 17 Add view source
 
@@ -421,44 +408,14 @@ and settings dialog rework).
 Add a new sync operation to the Remote menu that performs all git operations necessary to sync the remote menu. Only active if there's connectivity. Suggest it performs a commit of outstanding changes first (even if none are store in memory, there may be changed performed outside the app), followed by a rebase from remote, followed by a push. But suggest better workflows if you can think of improvements.
 also switch to emojis in menu (like "export diary") since the current icons for pull, push etc. are hard to distinguish. Last but not least, add the sync button to the buttom panel right behind commit
 
-## DONE 11 supports faves & impressions
-
-extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
-also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images, it should re-use the samve image viewer.
-
 ## DONE 10 Impressions Feature
 
 see docs/done/10_impressions_feature.md
-
-## DONE (WON'T DO) 09 New concept for storing links
-
-we need a flexible way to store multiple links. introduce new "links" array in frontmatter for trip entry.
-the actual link should have a mandatory "url" property. kind is optional and should allow any string value, but for the UI
-we should enforve an enumerated value, suggest to use short very. Initial list "drink, eat, sleep, hike, bike, dive" (list should sort alphabetically). title is just an optional string
-
-
-```
----
-date: 2026-07-24
-route: 'Essen → München'
-links:
-  - url: https://muc1.com/
-    kind: hike
-    title: Nice GPX routed for Muc 
-  - url: https://bar.com/
-    kind: drink
-    title: best bar in town
-  - url: https://random.com/
-```
 
 ## DONE 08 Fix Save Bug when navigating away from unsaved entry
 
 When navigating from an unsaved entry to the next day, the system will show a confirmation that allows to discard changes or save them.
 But the app apparently already points to the next day, so the updated tale will be saved along with the wrong entry
-
-## DONE 07 Check feasability of HTML Preview for markdown export
-
-see docs/done/07_html-preview-export.md
 
 ## DONE 06 Enhance "Tales" Label
 
@@ -486,6 +443,10 @@ New code: pure util classes, no JavaFX imports, unit-testable (like `Slugs`/`Slu
 
 Wiring in `MainController`: update label at entry load and in `onSave()` alongside `snapshotBaseline()`.
 
+## DONE 07 Check feasability of HTML Preview for markdown export
+
+see docs/done/07_html-preview-export.md
+
 ## DONE 05 Tale testbox light background
 
 I like the overall darkmode look and we should keep it, but for the actual tale text I still prefer light background with dark font since it's easier to read.
@@ -497,10 +458,6 @@ Make suggestions
 this should be an url to an external tracking tool. if filled, there should be an icon bwhind it to open the URL in the System's browser
 Should be on the same line as kilometers and altitude
 
-## DONE 03 show current memory consumption in about -> info
-
-use whatever runtime memory feedback is appropriate for current usage, but I want only a single figure
-
 ## DONE 02 evaluate potential for native image
 
 see docs/01_native-image-eval.md
@@ -508,3 +465,7 @@ see docs/01_native-image-eval.md
 ## DONE 01 Fix unsaved changes when navigating thru entries
 
 otherwise changes will be lost
+
+## DONE 03 show current memory consumption in about -> info
+
+use whatever runtime memory feedback is appropriate for current usage, but I want only a single figure
