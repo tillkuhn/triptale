@@ -1,6 +1,18 @@
 # ToDos for this app
 
-## Next Todo: 44
+## Next Todo: 45
+
+## 44 Export trip as WordPress.com post
+
+Goal: ease writing articles on our wordpress.com blog — its rich-text editor is a pain.
+Doesn't have to be fully automated. Staged plan, details in `docs/44_wordpress_export.md`:
+
+- Stage 1 (recommended start): new export target that renders Gutenberg block markup
+  (headings, paragraphs, one Gallery block per day) to the clipboard, for pasting into the
+  block editor's Code editor. Images referenced via public `https://` URLs (S3 attachments).
+- Stage 2 (optional): "Publish draft to WordPress…" dialog using the WordPress.com REST API —
+  uploads (resized) images to the media library and creates the post as a draft.
+- Open questions: can attachment URLs be public? Which WordPress.com plan (affects auth)?
 
 ## 43 Spring Boot AOT Optimizations and other performance helpers
 
