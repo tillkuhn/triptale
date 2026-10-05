@@ -1,0 +1,29 @@
+# Travel wisdoms for the window title bar (see TravelWisdoms). One per line: "quote — author".
+# Keep them short: the macOS title bar is centered plain text and truncates with "…".
+# Blank lines and lines starting with # are ignored.
+
+Not all those who wander are lost. — J.R.R. Tolkien
+To travel is to live. — Hans Christian Andersen
+Travel far enough, you meet yourself. — David Mitchell
+The mountains are calling and I must go. — John Muir
+It is not the mountain we conquer, but ourselves. — Edmund Hillary
+Once a year, go someplace you've never been before. — Dalai Lama
+It never gets easier, you just go faster. — Greg LeMond
+Adventure is just bad planning. — Roald Amundsen
+Travel is glamorous only in retrospect. — Paul Theroux
+Shut up, legs! — Jens Voigt
+Don't buy upgrades, ride up grades. — Eddy Merckx
+Ride lots. — Eddy Merckx
+There's no bad weather, only soft people. — Bill Bowerman
+Take half the clothes and twice the money. — Susan Heller
+I haven't been everywhere, but it's on my list. — Susan Sontag
+Wherever you go, there you are. — Buckaroo Banzai
+I'm not lost, I'm exploring. — Anonymous
+A bad day on the bike beats a good day at the office. — Anonymous
+Travel: the only thing you buy that makes you richer. — Anonymous
+When in doubt, pedal it out. — Anonymous
+The best views come after the hardest climb. — Anonymous
+Jobs fill your pockets, adventures fill your soul. — Jamie Lyn Beatty
+Headwind builds character. Mostly in your legs. — TripTale
+Every climb has a downhill. Eventually. — TripTale
+Commit early, pedal often. — TripTale

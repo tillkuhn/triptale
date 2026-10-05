@@ -9,11 +9,14 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import net.timafe.triptale.config.TripTaleProperties;
+import net.timafe.triptale.util.TravelWisdoms;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.ConfigurableApplicationContext;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 @SpringBootApplication
 @EnableConfigurationProperties(TripTaleProperties.class)
@@ -48,7 +51,9 @@ public class TripTaleApplication extends Application {
         String appName = spring.getBean(TripTaleProperties.class).getAppName();
         BuildProperties buildProperties = spring.getBeanProvider(BuildProperties.class).getIfAvailable();
         String version = buildProperties != null ? " " + buildProperties.getVersion() : "";
-        stage.setTitle("🏔️🚴" + appName + version);
+        String wisdom = TravelWisdoms.load().random(ThreadLocalRandom.current())
+                .map(w -> "   ·   " + w).orElse("");
+        stage.setTitle("🏔️🚴" + appName + version + wisdom);
         stage.setScene(new Scene(root, 1150, 650));
         stage.setMinWidth(1100);
         stage.setMinHeight(550);

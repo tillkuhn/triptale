@@ -1,6 +1,16 @@
 # ToDos for this app
 
-## Next Todo: 45
+## Next Todo: 46
+
+## 45 Random travel wisdom in the window title bar
+
+Make the app a bit more fun: show a random travel quote in the (mostly empty) title bar, e.g.
+`🏔️🚴TripTale v0.9.0 — "Not all those who wander are lost." — Tolkien`.
+
+- Stage 1: bundled list `src/main/resources/wisdoms.txt` (one `quote — author` per line,
+  `#` comments), one random pick at launch. Keep quotes short — the macOS title bar is plain
+  text, centered, and truncated with "…" (~60–70 chars of room at 1150px).
+- Stage 2 (later): pick a new quote on trip switch; optionally a data-dir override list.
 
 ## 44 Export trip as WordPress.com post
 
