@@ -35,8 +35,11 @@ run: ## Launch the TripTale JavaFX app (via Maven plugin)
 # Pure-Make recursive file listing (no external `find`): on Windows, Git's PATH puts
 # System32's find.exe (the DOS text-search command) ahead of GNU find, so `find src -type f`
 # fails with "FIND: Parameterformat falsch". $(wildcard) is a Make built-in, immune to that.
-rwildcard = $(foreach d,$(wildcard $1*/),$(call rwildcard,$d,$2)) $(filter-out $(patsubst %/,%,$(wildcard $1*/)),$(wildcard $1$2))
-SOURCES := $(call rwildcard,src/,*) pom.xml
+# Don't match directories with a trailing-slash glob (`dir/*/`): GNU Make 3.81 (macOS
+# /usr/bin/make) also returns plain files for it, which recursed forever and segfaulted make.
+# Directories end up in the list too; harmless as prerequisites.
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+SOURCES := $(call rwildcard,src,*) pom.xml
 
 $(JAR): $(SOURCES) ## Build the fat jar (skips tests, only when sources change)
 	$(MVN) $(MVNARGS) -DskipTests package
