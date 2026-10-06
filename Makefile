@@ -23,10 +23,12 @@ AOT_CACHE := $(AOT_DIR)/app-jdk$(JDK_BUILD).aot
 
 .PHONY: run run-jar run-fast aot-train help build compile test package clean format deps major minor patch
 
+# -Dmvnd.rawStreams: mvnd otherwise prefixes every app log line with "[INFO] [stdout] ".
+# Plain mvn just sees an unused system property.
 ifeq ($(OS),Windows_NT)
-RUN_CMD := $(MVN) $(MVNARGS) -Pwindows-javafx javafx:run
+RUN_CMD := $(MVN) $(MVNARGS) -Dmvnd.rawStreams=true -Pwindows-javafx javafx:run
 else
-RUN_CMD := $(MVN) $(MVNARGS) javafx:run
+RUN_CMD := $(MVN) $(MVNARGS) -Dmvnd.rawStreams=true javafx:run
 endif
 
 run: ## Launch the TripTale JavaFX app (via Maven plugin)

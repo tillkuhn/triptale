@@ -135,6 +135,12 @@
                 <configuration>
                     <generateGitPropertiesFile>false</generateGitPropertiesFile>
                     <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <!-- Only the closest tag is consumed (build-info below); also silences the
+                         per-property "Collected …" / "including property …" INFO lines. -->
+                    <verbose>false</verbose>
+                    <includeOnlyProperties>
+                        <includeOnlyProperty>^git\.closest\.tag\.name$</includeOnlyProperty>
+                    </includeOnlyProperties>
                 </configuration>
             </plugin>
             <plugin>
