@@ -47,3 +47,5 @@ A reusable pool of favourite tracks in `<data-dir>/audio/`, playable while writi
 - **Trip soundtrack:** play all tracks linked from a trip's tales in tale order.
 - **📌 Insert current track** at the tale cursor.
 - **Export:** render track links as "Artist – Title" (`DiaryExporter`).
+  Optionally a "🎵 Soundtrack of the day" line per day in the diary/HTML export, reusable for
+  the WordPress export (todo 44).
