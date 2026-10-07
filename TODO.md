@@ -1,6 +1,23 @@
 # ToDos for this app
 
-## Next Todo: 46
+## Next Todo: 47
+
+## 46 Radio: play favourite tracks from a radio/ pool
+
+I listen to a lot of music on bike trips and often quote a small tracklist in a tale. Add a
+"radio": a reusable pool of favourite tracks in `<data-dir>/radio/` (not versioned in git,
+separate from attachments), playable from the app while writing.
+
+- Stage 1 (in progress, branch `feature/radio`): `javafx-media` playback, `radio.RadioLibrary`
+  + `ui.RadioPlayer`, Radio menu + 🎵 toolbar button: random track, play/pause, auto-next, stop,
+  open radio folder. Managed `radio/.gitignore`. Gated off by default behind a new "Enable Radio
+  (restart required)" setting until it's out of alpha.
+- Stage 2: cloud sync of `radio/` via its own S3 prefix (generalize `AttachmentSyncer`).
+- Stage 3: Tolaria-style wikilinks to tracks in tales (`Track` note type?), "Soundtrack of this
+  trip" playlist, 📌 insert `[[current track]]` at the cursor, export rendering.
+- Open: Linux playback depends on a supported system FFmpeg — test the release jar.
+
+[Details](docs/46_radio.md)
 
 ## 45 Random travel wisdom in the window title bar
 

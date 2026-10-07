@@ -66,6 +66,14 @@
             <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <!-- Radio (todo 46): MediaPlayer for MP3/AAC playback. Uses AVFoundation on macOS and the
+             bundled GStreamer-lite on Windows; on Linux it needs a supported system FFmpeg
+             (libavcodec/libavformat). See docs/46_radio.md. -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
@@ -201,7 +209,7 @@
                 <configuration>
                     <mainClass>${main.class}</mainClass>
                     <options>
-                        <option>--enable-native-access=javafx.graphics</option>
+                        <option>--enable-native-access=javafx.graphics,javafx.media</option>
                         <option>--sun-misc-unsafe-memory-access=allow</option>
                     </options>
                 </configuration>
@@ -237,7 +245,7 @@
                                 <configuration>
                                     <outputDirectory>${project.build.directory}/javafx-lib</outputDirectory>
                                     <includeGroupIds>org.openjfx</includeGroupIds>
-                                    <includeArtifactIds>javafx-controls,javafx-fxml,javafx-graphics,javafx-base</includeArtifactIds>
+                                    <includeArtifactIds>javafx-controls,javafx-fxml,javafx-graphics,javafx-base,javafx-media</includeArtifactIds>
                                     <includeClassifiers>${javafx.platform}</includeClassifiers>
                                     <stripVersion>false</stripVersion>
                                 </configuration>
@@ -251,7 +259,7 @@
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
                             <mainClass>${main.class}</mainClass>
-                            <jvmArguments>--module-path "${project.build.directory}/javafx-lib" --add-modules=javafx.controls,javafx.fxml</jvmArguments>
+                            <jvmArguments>--module-path "${project.build.directory}/javafx-lib" --add-modules=javafx.controls,javafx.fxml,javafx.media</jvmArguments>
                         </configuration>
                     </plugin>
                 </plugins>
