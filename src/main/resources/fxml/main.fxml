@@ -75,6 +75,15 @@
                             <MenuItem text="↺ Reset View" onAction="#onResetView" accelerator="Shortcut+0"/>
                         </items>
                     </Menu>
+                    <Menu text="Radio">
+                        <items>
+                            <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
+                            <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
+                            <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
+                            <SeparatorMenuItem/>
+                            <MenuItem text="📂 Open Audio Folder" onAction="#onOpenAudioFolder"/>
+                        </items>
+                    </Menu>
                     <Menu text="Repository">
                         <items>
                             <MenuItem fx:id="syncMenuItem" text="🔄 Smart Sync…" onAction="#onSync" accelerator="Shortcut+K"/>
@@ -117,6 +126,9 @@
                 </HBox>
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="radioButton" text="🎵" onAction="#onRadioToggle" styleClass="radio-button">
+                    <tooltip><Tooltip text="Radio — play a random track from audio/"/></tooltip>
+                </Button>
                 <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
                     <tooltip><Tooltip text="Check connectivity"/></tooltip>
                 </Button>

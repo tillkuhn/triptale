@@ -27,6 +27,7 @@ import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.attachments.AttachmentSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.audio.AudioLibrary;
 import net.timafe.triptale.attachments.S3Client;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
@@ -127,6 +128,7 @@ public class MainController implements StatusSink {
     @FXML private Button todayButton;
     @FXML private Button lastDayButton;
     @FXML private Button connectivityButton;
+    @FXML private Button radioButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem pushAttachmentsMenuItem;
@@ -208,6 +210,10 @@ public class MainController implements StatusSink {
     private final String appName;
     private final AttachmentsDir attachmentsDir;
     private boolean transferringAttachments;
+    private final AudioLibrary audioLibrary;
+    /** Created on first use, so javafx.media stays unloaded until the radio is touched (todo 46). */
+    private RadioPlayer radio;
+    private EqualizerIcon equalizerIcon;
     private File lastAttachmentSourceDir;
 
     // Dialogs whose own dependencies this controller has no other use for.
@@ -222,6 +228,7 @@ public class MainController implements StatusSink {
                           ConnectivityService connectivityService,
                           ExportTempFiles exportTempFiles,
                           AttachmentsDir attachmentsDir,
+                          AudioLibrary audioLibrary,
                           TripTaleProperties tripTaleProperties,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
                           ObjectProvider<HostServices> hostServicesProvider) {
@@ -232,6 +239,7 @@ public class MainController implements StatusSink {
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
         this.attachmentsDir = attachmentsDir;
+        this.audioLibrary = audioLibrary;
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
         this.exportDiaryDialog =
@@ -287,7 +295,11 @@ public class MainController implements StatusSink {
         });
         exportTempFiles.sweep();
         boolean ready = performStartupChecks();
-        if (ready) syncAttachmentsGitFiles();
+        radioButton.hoverProperty().addListener((obs, was, is) -> updateRadioButton());
+        if (ready) {
+            syncAttachmentsGitFiles();
+            syncAudioGitFiles();
+        }
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
             reloadTrips(sel);
@@ -1398,6 +1410,68 @@ public class MainController implements StatusSink {
                     .forEach(label -> addPending(label, UPDATE));
         } catch (RuntimeException e) {
             log.warn("Could not update {}/ git files: {}", AttachmentsDir.DIR_NAME, e.getMessage());
+        }
+    }
+
+    private void syncAudioGitFiles() {
+        try {
+            if (audioLibrary.ensureManagedFiles()) addPending(AudioLibrary.GITIGNORE_LABEL, UPDATE);
+        } catch (RuntimeException e) {
+            log.warn("Could not update {}/ git files: {}", AudioLibrary.DIR_NAME, e.getMessage());
+        }
+    }
+
+    // ── Radio (todo 46) ──────────────────────────────────────
+
+    private RadioPlayer radio() {
+        if (radio == null) radio = new RadioPlayer(audioLibrary, this, this::updateRadioButton);
+        return radio;
+    }
+
+    @FXML
+    public void onRadioToggle() {
+        radio().togglePause();
+    }
+
+    @FXML
+    public void onRadioRandom() {
+        radio().playRandom();
+    }
+
+    @FXML
+    public void onRadioStop() {
+        if (radio != null) radio.stop();
+        status("🎵 Radio stopped");
+    }
+
+    @FXML
+    public void onOpenAudioFolder() {
+        audioLibrary.ensureManagedFiles();
+        browser.open(audioLibrary.root().toUri().toString());
+    }
+
+    private void updateRadioButton() {
+        boolean playing = radio != null && radio.isPlaying();
+        if (playing) {
+            if (equalizerIcon == null) equalizerIcon = new EqualizerIcon();
+            equalizerIcon.start();
+        } else if (equalizerIcon != null) {
+            equalizerIcon.stop();
+        }
+        // While playing, the bars bounce; hovering reveals what a click does (pause).
+        if (playing && !radioButton.isHover()) {
+            radioButton.setText("");
+            radioButton.setGraphic(equalizerIcon);
+        } else {
+            radioButton.setGraphic(null);
+            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "🎵");
+        }
+        if (radio == null || !radio.isLoaded()) {
+            radioButton.setTooltip(new Tooltip("Radio — play a random track from audio/"));
+        } else if (playing) {
+            radioButton.setTooltip(new Tooltip("Now playing: " + radio.label() + " — click to pause"));
+        } else {
+            radioButton.setTooltip(new Tooltip("Paused: " + radio.label() + " — click to resume"));
         }
     }
 
