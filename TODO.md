@@ -1,6 +1,24 @@
 # ToDos for this app
 
-## Next Todo: 47
+## Next Todo: 48
+
+## 47 Impressions / exporter refactor: images as attachments
+
+Post images come from `impressionsFilePattern` — a machine-local photo folder — so exports
+only work on one machine and no image can be referenced by URL. Import images as attachments
+by selecting them, and give the exporters a switch: legacy filesystem location, or the
+attachments of the current entry (`attachments/<year>/<slug>/<date>-Weekday/`, already one
+folder per entry day and already synced to S3).
+
+- Model the source as an `ImpressionSource` interface (pattern / attachments), not a boolean
+  flag threaded through every exporter; keep it orthogonal to `ImpressionsMode` (NONE/FAVES/ALL).
+- Open: what does "FAVES" mean for attachments — subfolder, filename prefix, or frontmatter list?
+- Import is a write → copy, `addPending(...)`, commit via Smart Sync. Resize on import (git
+  sync mode would otherwise swallow 5–10 MB originals); decide filename-collision handling.
+- URLs must reuse `AttachmentSyncer`'s object-key logic + `publicAttachmentBaseUrl`.
+- Keep the legacy source; add a one-off "import this trip's impressions as attachments" action.
+
+[Details](docs/47_impressions_attachments_refactor.md)
 
 ## 46 Radio: play favourite tracks from a radio/ pool
 
@@ -39,7 +57,17 @@ Doesn't have to be fully automated. Staged plan:
   block editor's Code editor. Images referenced via public `https://` URLs (S3 attachments).
 - Stage 2 (optional): "Publish draft to WordPress…" dialog using the WordPress.com REST API —
   uploads (resized) images to the media library and creates the post as a draft.
-- Open questions: can attachment URLs be public? Which WordPress.com plan (affects auth)?
+- Image hosting: the bucket is private; **try CloudFront + OAC** over it, provisioned in the
+  existing `terraform/` OpenTofu setup behind an `enable_cdn` variable. Free tier should make
+  it cost €0 and the auto-generated `d….cloudfront.net` hostname comes with a TLS cert, so no
+  domain needed. Watch the bill; if it disappoints, destroy it and serve the images from the
+  webserver we already run (`rclone sync`, not a git clone — attachments aren't in git). The
+  app only ever sees a configured `publicAttachmentBaseUrl`, so switching is a settings change.
+- **Next concrete step:** get CloudFront working against the bucket's *current* content and
+  hand-craft one WP post against those URLs. If that works, hosting is solved; if not, look at
+  other hosting. How images get into the bucket is app work — todo 47, separate.
+- Open questions: post granularity (per trip or per day)? Which WordPress.com plan (affects
+  auth)?
 
 [Details](docs/44_wordpress_export.md)
 

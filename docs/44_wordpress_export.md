@@ -48,9 +48,14 @@ into the editor's **Code editor** (⋮ menu → Code editor, or Cmd + Opt + Shif
 - Reuse `DiaryExporter.buildMarkdown` / commonmark for the text, the impressions resolver for
   the per-day images (FAVES/ALL mode as in the HTML export), gallery columns from
   `impressionsGridColumns`.
-- Image URL mapping: local impressions path → public attachment URL. Needs a configurable
-  public base URL (setting) or a derivation from the bucket URL; images not present in the
-  bucket must be reported (status line), not silently dropped.
+- Image URL mapping: local impressions path → public attachment URL, via a new
+  `publicAttachmentBaseUrl` setting (see **Image hosting** below) — keeping it a plain
+  configured prefix makes every hosting variant the same code. Images not present at the
+  target must be reported (status line), not silently dropped.
+- Note the images in the HTML export come from `impressionsFilePattern` (the local photo
+  folder resolved by `ImpressionsResolver`), **not** from `attachments/` — so whatever hosts
+  the post images has to be fed from that folder, or the two sources have to be reconciled
+  first. Open point before implementation.
 - WordPress hotlinks those images; the Image block's "Upload to Media Library" toolbar action
   moves individual images into WordPress media when wanted.
 - Pure string generation → unit-testable with `@TempDir` like the other exporters.
@@ -74,13 +79,68 @@ MarsEdit, Ulysses, iA Writer publish Markdown to WordPress.com and upload local 
 themselves. TripTale would only need a Markdown export with `![](/local/path.jpg)` image
 links (the current Markdown export has none). Cheap, but adds a (possibly paid) tool.
 
+## Image hosting (decided 2026-10-08, to be trialled)
+
+The attachments bucket is private and stays private (`aws_s3_bucket_public_access_block`,
+all four flags true). WordPress does not care which host serves the images — `<img src>` is
+fetched by the reader's browser — but it must be **public HTTPS with a browser-trusted
+certificate** (the blog is HTTPS, so `http://` images are mixed content and get blocked), with
+no auth, no `Referer`-based hotlink protection, and a correct `Content-Type` (`image/jpeg`,
+not `application/octet-stream`).
+
+Variants considered:
+
+| Variant | Cost | Notes |
+| --- | --- | --- |
+| **CloudFront + OAC over the private bucket** | €0 in practice | Always-free tier covers 1 TB egress / 10M requests a month. Free auto-generated hostname (`d….cloudfront.net`) **with** a managed TLS cert — no domain purchase needed; a custom `img.…` CNAME is optional (ACM cert free). Bucket stays fully private. |
+| Public-read on one bucket prefix | ~€0 | Bucket policy granting `s3:GetObject` on `…/public/*` only; requires relaxing the public access block. No CDN, exposes the bucket name. |
+| Own webserver + `rclone sync` | €0 | Stable self-owned URLs, no AWS egress. **A git clone is not enough** — `attachments/` is gitignored outside `git` sync mode, and post images come from `impressionsFilePattern` anyway. |
+| WordPress media library | €0 (6 GB on the Personal plan) | Drag the day's photos into a Gallery block after pasting the text; no infrastructure, but manual per post. |
+
+**Decision: try CloudFront + OAC first**, provisioned in the existing `terraform/` OpenTofu
+setup (`make plan` / `make apply` there) alongside the bucket and the app IAM user. Reasons:
+the infra is already code, the free tier should make it cost nothing, and it is the variant
+that keeps the bucket private. Watch the actual bill for the first weeks; if it misbehaves or
+costs real money, `tofu destroy` just that distribution and fall back to the own-webserver
+variant — nothing in the app changes, since the exporter only ever sees
+`publicAttachmentBaseUrl`.
+
+Terraform sketch (new file in `terraform/`, guarded by a `enable_cdn` variable so it can be
+turned off without deleting code):
+
+- `aws_cloudfront_origin_access_control` (signing `sigv4`, always sign)
+- `aws_cloudfront_distribution` with the bucket's regional domain as origin, `PriceClass_100`
+  (Europe/North America — cheapest), default cache behaviour GET/HEAD only,
+  `viewer_protocol_policy = "redirect-to-https"`, the managed `CachingOptimized` policy
+- `aws_s3_bucket_policy` allowing `s3:GetObject` to `cloudfront.amazonaws.com` restricted by
+  `AWS:SourceArn` = the distribution ARN (works with the public access block left on)
+- output `cdn_domain_name`, to be pasted into `publicAttachmentBaseUrl` in `settings.yml`
+
+### Scope of the experiment
+
+The question to answer here is narrow: **can CloudFront serve the bucket's *current* content
+publicly over HTTPS, well enough to hand-craft a WordPress post against those URLs?** If yes,
+hosting is solved and the rest is app work. If not — cost surprises, OAC friction, broken
+content types — destroy it and evaluate the own-webserver variant instead.
+
+How images get into the bucket in the first place is explicitly **out of scope**: that is an
+app feature, tracked as todo 47 (`docs/47_impressions_attachments_refactor.md`). Validate the
+CDN with whatever is in the bucket today; a handcrafted post is a perfectly good test subject.
+
 ## Open questions
 
-1. Can attachment URLs be publicly readable (bucket policy / CDN)?
-2. Which WordPress.com plan? (Plugin-capable plans may simplify API auth.)
-3. Post granularity: one post per trip, or one per day/entry?
+1. Post granularity: one post per trip, or one per day/entry?
+2. Which WordPress.com plan? (Affects API auth for option 3; media storage for the fallback.)
+
+Resolved: post images are the synced `attachments/`, not the local impressions folder — the
+pipeline that gets them there is todo 47.
 
 ## Plan
 
-1. Implement option 2 (block markup → clipboard), behind a new export menu item.
-2. Revisit option 3 if posts become frequent; reuse the option 2 generator.
+1. **Now:** provision the CloudFront distribution in `terraform/` behind `enable_cdn`, verify
+   that an object already in the bucket loads over `https://d….cloudfront.net/…` in a browser,
+   hand-craft one WordPress post against those URLs, and watch Cost Explorer for a few weeks.
+   Decision point: keep it, or destroy it and use the own webserver.
+2. Implement option 2 (block markup → clipboard) behind a new export menu item, with
+   `publicAttachmentBaseUrl` in `settings.yml`. Depends on todo 47 for the images.
+3. Revisit option 3 if posts become frequent; reuse the option 2 generator.
