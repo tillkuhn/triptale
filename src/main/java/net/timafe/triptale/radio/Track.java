@@ -1,12 +1,12 @@
-package net.timafe.triptale.audio;
+package net.timafe.triptale.radio;
 
 import java.nio.file.Path;
 
 /**
- * One audio file in the data dir's {@code audio/} folder (todo 46).
+ * One audio file in the data dir's {@code radio/} folder (todo 46).
  *
  * @param file     absolute path of the audio file
- * @param relative path relative to {@code audio/}, with {@code /} separators on every OS
+ * @param relative path relative to {@code radio/}, with {@code /} separators on every OS
  */
 public record Track(Path file, String relative) {
 

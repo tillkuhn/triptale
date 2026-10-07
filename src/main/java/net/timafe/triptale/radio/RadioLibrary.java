@@ -1,4 +1,4 @@
-package net.timafe.triptale.audio;
+package net.timafe.triptale.radio;
 
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.StorageException;
@@ -16,16 +16,16 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Stream;
 
 /**
- * The data dir's {@code audio/} folder (todo 46): a reusable pool of the user's favourite
+ * The data dir's {@code radio/} folder (todo 46): a reusable pool of the user's favourite
  * tracks, independent of any trip. Like {@code attachments/}, its content is never versioned in
- * git; the app owns {@code audio/.gitignore}.
+ * git; the app owns {@code radio/.gitignore}.
  *
  * <p>No JavaFX imports (package boundary rule) — playback lives in {@code ui.RadioPlayer}.
  */
 @Component
-public class AudioLibrary {
+public class RadioLibrary {
 
-    public static final String DIR_NAME = "audio";
+    public static final String DIR_NAME = "radio";
     /** Path of the managed .gitignore relative to the data dir (used as pending-commit label). */
     public static final String GITIGNORE_LABEL = DIR_NAME + "/.gitignore";
 
@@ -33,14 +33,14 @@ public class AudioLibrary {
     static final Set<String> EXTENSIONS = Set.of("mp3", "m4a", "aac", "wav", "aif", "aiff");
 
     static final String GITIGNORE = """
-            # Managed by TripTale: audio tracks are not versioned in git
+            # Managed by TripTale: radio tracks are not versioned in git
             *
             !.gitignore
             """;
 
     private final MarkdownStore store;
 
-    public AudioLibrary(MarkdownStore store) {
+    public RadioLibrary(MarkdownStore store) {
         this.store = store;
     }
 
@@ -48,13 +48,13 @@ public class AudioLibrary {
         return store.dataDir().resolve(DIR_NAME);
     }
 
-    /** All playable tracks below {@code audio/} (recursive), sorted by relative path; empty if the folder is missing. */
+    /** All playable tracks below {@code radio/} (recursive), sorted by relative path; empty if the folder is missing. */
     public List<Track> listTracks() {
         Path root = root();
         if (!Files.isDirectory(root)) return List.of();
         try (Stream<Path> files = Files.walk(root)) {
             return files.filter(Files::isRegularFile)
-                    .filter(AudioLibrary::isPlayable)
+                    .filter(RadioLibrary::isPlayable)
                     .map(f -> new Track(f, root.relativize(f).toString().replace('\\', '/')))
                     .sorted(Comparator.comparing(Track::relative, String.CASE_INSENSITIVE_ORDER))
                     .toList();
@@ -77,7 +77,7 @@ public class AudioLibrary {
     }
 
     /**
-     * Writes the app-managed {@code audio/.gitignore}, creating the folder if needed.
+     * Writes the app-managed {@code radio/.gitignore}, creating the folder if needed.
      *
      * @return true if the file was created or changed
      */

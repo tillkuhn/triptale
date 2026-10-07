@@ -1,4 +1,4 @@
-package net.timafe.triptale.audio;
+package net.timafe.triptale.radio;
 
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -15,13 +15,13 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AudioLibraryTest {
+class RadioLibraryTest {
 
     @TempDir
     Path tempDir;
 
-    private Path audioDir;
-    private AudioLibrary library;
+    private Path radioDir;
+    private RadioLibrary library;
 
     @BeforeEach
     void setUp() {
@@ -32,8 +32,8 @@ class AudioLibraryTest {
         AppSettings settings = new AppSettings();
         settings.setDataDir(dataDir.toString());
         settingsStore.save(settings);
-        library = new AudioLibrary(new MarkdownStore(settingsStore));
-        audioDir = dataDir.resolve("audio");
+        library = new RadioLibrary(new MarkdownStore(settingsStore));
+        radioDir = dataDir.resolve("radio");
     }
 
     @Test
@@ -43,15 +43,15 @@ class AudioLibraryTest {
 
     @Test
     void listTracks_recursiveSortedAndFiltersByExtension() throws Exception {
-        Files.createDirectories(audioDir.resolve("Rock"));
-        Files.writeString(audioDir.resolve("b.MP3"), "");
-        Files.writeString(audioDir.resolve("Rock/Motörhead - Ace of Spades.mp3"), "");
-        Files.writeString(audioDir.resolve("a.m4a"), "");
-        Files.writeString(audioDir.resolve("Europe_-_Scandinavian_Eyes.mp3"), "");
-        Files.writeString(audioDir.resolve("cover.jpg"), "");
-        Files.writeString(audioDir.resolve("song.flac"), "");
-        Files.writeString(audioDir.resolve(".gitignore"), "");
-        Files.writeString(audioDir.resolve("._b.mp3"), "");
+        Files.createDirectories(radioDir.resolve("Rock"));
+        Files.writeString(radioDir.resolve("b.MP3"), "");
+        Files.writeString(radioDir.resolve("Rock/Motörhead - Ace of Spades.mp3"), "");
+        Files.writeString(radioDir.resolve("a.m4a"), "");
+        Files.writeString(radioDir.resolve("Europe_-_Scandinavian_Eyes.mp3"), "");
+        Files.writeString(radioDir.resolve("cover.jpg"), "");
+        Files.writeString(radioDir.resolve("song.flac"), "");
+        Files.writeString(radioDir.resolve(".gitignore"), "");
+        Files.writeString(radioDir.resolve("._b.mp3"), "");
 
         List<Track> tracks = library.listTracks();
 
@@ -69,12 +69,12 @@ class AudioLibraryTest {
 
     @Test
     void random_neverRepeatsPreviousUnlessOnlyTrack() throws Exception {
-        Files.createDirectories(audioDir);
-        Files.writeString(audioDir.resolve("one.mp3"), "");
+        Files.createDirectories(radioDir);
+        Files.writeString(radioDir.resolve("one.mp3"), "");
         Track one = library.listTracks().getFirst();
         assertEquals(one, library.random(new Random(1), one).orElseThrow());
 
-        Files.writeString(audioDir.resolve("two.mp3"), "");
+        Files.writeString(radioDir.resolve("two.mp3"), "");
         Random rnd = new Random(42);
         for (int i = 0; i < 20; i++) {
             assertEquals("two.mp3", library.random(rnd, one).orElseThrow().relative());
@@ -84,7 +84,7 @@ class AudioLibraryTest {
     @Test
     void ensureManagedFiles_writesGitignoreOnce() throws Exception {
         assertTrue(library.ensureManagedFiles());
-        assertEquals(AudioLibrary.GITIGNORE, Files.readString(audioDir.resolve(".gitignore")));
+        assertEquals(RadioLibrary.GITIGNORE, Files.readString(radioDir.resolve(".gitignore")));
         assertFalse(library.ensureManagedFiles());
     }
 }

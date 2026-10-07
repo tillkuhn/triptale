@@ -3,16 +3,16 @@ package net.timafe.triptale.ui;
 import javafx.collections.MapChangeListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import net.timafe.triptale.audio.AudioLibrary;
-import net.timafe.triptale.audio.Track;
+import net.timafe.triptale.radio.RadioLibrary;
+import net.timafe.triptale.radio.Track;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Plays random tracks from {@link AudioLibrary} (todo 46) — a thin wrapper around JavaFX
- * {@link MediaPlayer}; the track selection logic stays in the JavaFX-free {@code audio} package.
+ * Plays random tracks from {@link RadioLibrary} (todo 46) — a thin wrapper around JavaFX
+ * {@link MediaPlayer}; the track selection logic stays in the JavaFX-free {@code radio} package.
  *
  * <p>Created lazily by {@code MainController} on first use, so {@code javafx.media} (and its
  * native libraries) is never loaded at startup. All methods run on the FX thread; MediaPlayer
@@ -22,7 +22,7 @@ public class RadioPlayer {
 
     private static final Logger log = LoggerFactory.getLogger(RadioPlayer.class);
 
-    private final AudioLibrary library;
+    private final RadioLibrary library;
     private final StatusSink statusSink;
     private final Runnable onChange;
 
@@ -34,7 +34,7 @@ public class RadioPlayer {
      * @param onChange runs after every state change (track, play/pause, stop), e.g. to refresh
      *                 the toolbar button
      */
-    public RadioPlayer(AudioLibrary library, StatusSink statusSink, Runnable onChange) {
+    public RadioPlayer(RadioLibrary library, StatusSink statusSink, Runnable onChange) {
         this.library = library;
         this.statusSink = statusSink;
         this.onChange = onChange;

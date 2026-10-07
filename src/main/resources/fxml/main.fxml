@@ -81,7 +81,7 @@
                             <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
                             <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
                             <SeparatorMenuItem/>
-                            <MenuItem text="📂 Open Audio Folder" onAction="#onOpenAudioFolder"/>
+                            <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
                         </items>
                     </Menu>
                     <Menu text="Repository">
@@ -127,7 +127,7 @@
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button fx:id="radioButton" text="🎵" onAction="#onRadioToggle" styleClass="radio-button">
-                    <tooltip><Tooltip text="Radio — play a random track from audio/"/></tooltip>
+                    <tooltip><Tooltip text="Radio — play a random track from radio/"/></tooltip>
                 </Button>
                 <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
                     <tooltip><Tooltip text="Check connectivity"/></tooltip>
