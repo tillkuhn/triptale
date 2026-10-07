@@ -2,6 +2,7 @@ package net.timafe.triptale.ui.dialog;
 
 import javafx.event.ActionEvent;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -67,6 +68,8 @@ public final class EditSettingsDialog {
         PasswordField secretField = new PasswordField();
         secretField.setText(attachments.getSecretAccessKey());
         secretField.setPrefColumnCount(36);
+        CheckBox radioEnabledCheck = new CheckBox("Enable Radio (restart required)");
+        radioEnabledCheck.setSelected(settings.isRadioEnabled());
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("form-error");
 
@@ -102,6 +105,9 @@ public final class EditSettingsDialog {
         grid.add(accessKeyIdField, 1, row++);
         grid.add(new Label("Secret access key:"), 0, row);
         grid.add(secretField, 1, row++);
+        grid.add(new Separator(), 0, row, 2, 1);
+        row++;
+        grid.add(radioEnabledCheck, 1, row++);
         grid.add(errorLabel, 1, row);
 
         dlg.getDialogPane().setContent(grid);
@@ -129,6 +135,7 @@ public final class EditSettingsDialog {
         settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
         settings.setMapboxToken(mapboxTokenField.getText().trim());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField));
+        settings.setRadioEnabled(radioEnabledCheck.isSelected());
         return Optional.of(settings);
     }
 

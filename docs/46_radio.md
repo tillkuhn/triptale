@@ -2,6 +2,22 @@
 
 A reusable pool of favourite tracks in `<data-dir>/radio/`, playable while writing tales.
 
+## Feature gate
+
+Still alpha, so it's off by default behind `AppSettings.radioEnabled` (`settings.yml`:
+`radioEnabled: false`), set via a checkbox in ⚙ Edit Settings… ("Enable Radio (restart
+required)"). `MainController` reads it once in `initialize()` into the `radioEnabled` field —
+toggling it needs a restart, same as a changed data directory. When off:
+
+- The Radio menu and the 🎵 toolbar button are hidden (`setVisible`/`setManaged(false)`).
+- `syncRadioGitFiles()` (which calls `RadioLibrary.ensureManagedFiles()`, creating `radio/` and
+  its `.gitignore`) is skipped at startup, so an unconfigured user's data dir is left untouched.
+- The `onRadio*`/`onOpenRadioFolder` handlers no-op defensively even if somehow invoked.
+
+`RadioLibrary` itself stays a normal Spring bean either way — it does no I/O until a method is
+called, so leaving it wired up costs nothing. Once the feature leaves alpha, flip the default to
+`true` and drop the gate.
+
 ## Stage 1 — playback (done on `feature/radio`)
 
 - **Library:** `radio.RadioLibrary` scans `radio/` recursively for `mp3`, `m4a`, `aac`, `wav`,

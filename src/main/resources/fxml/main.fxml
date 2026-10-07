@@ -75,7 +75,7 @@
                             <MenuItem text="↺ Reset View" onAction="#onResetView" accelerator="Shortcut+0"/>
                         </items>
                     </Menu>
-                    <Menu text="Radio">
+                    <Menu fx:id="radioMenu" text="Radio">
                         <items>
                             <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
                             <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>

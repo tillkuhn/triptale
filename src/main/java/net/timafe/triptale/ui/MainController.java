@@ -148,6 +148,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem copyMenuItem;
     @FXML private MenuItem deleteEntryMenuItem;
     @FXML private Menu appMenu;
+    @FXML private Menu radioMenu;
     @FXML private MenuItem aboutMenuItem;
     @FXML private MenuItem quitMenuItem;
 
@@ -211,6 +212,8 @@ public class MainController implements StatusSink {
     private final AttachmentsDir attachmentsDir;
     private boolean transferringAttachments;
     private final RadioLibrary radioLibrary;
+    /** Read once at startup from settings; toggling the setting needs a restart (todo 46). */
+    private boolean radioEnabled;
     /** Created on first use, so javafx.media stays unloaded until the radio is touched (todo 46). */
     private RadioPlayer radio;
     private EqualizerIcon equalizerIcon;
@@ -294,11 +297,15 @@ public class MainController implements StatusSink {
             }
         });
         exportTempFiles.sweep();
+        radioEnabled = settingsStore.load().isRadioEnabled();
+        radioMenu.setVisible(radioEnabled);
+        radioButton.setVisible(radioEnabled);
+        radioButton.setManaged(radioEnabled);
         boolean ready = performStartupChecks();
         radioButton.hoverProperty().addListener((obs, was, is) -> updateRadioButton());
         if (ready) {
             syncAttachmentsGitFiles();
-            syncRadioGitFiles();
+            if (radioEnabled) syncRadioGitFiles();
         }
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
@@ -1430,22 +1437,26 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onRadioToggle() {
+        if (!radioEnabled) return;
         radio().togglePause();
     }
 
     @FXML
     public void onRadioRandom() {
+        if (!radioEnabled) return;
         radio().playRandom();
     }
 
     @FXML
     public void onRadioStop() {
+        if (!radioEnabled) return;
         if (radio != null) radio.stop();
         status("🎵 Radio stopped");
     }
 
     @FXML
     public void onOpenRadioFolder() {
+        if (!radioEnabled) return;
         radioLibrary.ensureManagedFiles();
         browser.open(radioLibrary.root().toUri().toString());
     }
