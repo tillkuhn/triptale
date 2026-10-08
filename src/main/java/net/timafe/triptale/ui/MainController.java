@@ -326,7 +326,7 @@ public class MainController implements StatusSink {
             if (radioEnabled) syncRadioGitFiles();
         }
         yearCombo.valueProperty().addListener((obs, old, sel) -> {
-            if (sel == null) return;
+            if (navigating || sel == null) return;
             reloadTrips(sel);
             if (!tripCombo.getItems().isEmpty()) {
                 tripCombo.getSelectionModel().select(0);
@@ -471,17 +471,29 @@ public class MainController implements StatusSink {
         tripCombo.setDisable(tripCombo.getItems().isEmpty());
     }
 
-    /** Refreshes years and the current year's trips after external changes (pull/sync), preserving selection. */
+    /**
+     * Refreshes years and the current year's trips after external changes (pull/sync), preserving
+     * selection. Reselection is silent (navigating), so the combo listeners don't treat the reloaded
+     * Trip instance as a newly picked trip and jump to its last entry; callers reload the entry.
+     */
     private void reloadAll() {
         Trip previouslySelected = tripCombo.getValue();
-        reloadYears();
-        Integer year = yearCombo.getValue();
-        if (year != null) reloadTrips(year);
-        if (previouslySelected != null) {
-            Trip toReselect = findTrip(previouslySelected.slug());
-            if (toReselect != null) {
-                tripCombo.getSelectionModel().select(toReselect);
+        Trip toReselect = null;
+        navigating = true;
+        try {
+            reloadYears();
+            Integer year = yearCombo.getValue();
+            if (year != null) reloadTrips(year);
+            if (previouslySelected != null) {
+                toReselect = findTrip(previouslySelected.slug());
+                if (toReselect != null) tripCombo.getSelectionModel().select(toReselect);
             }
+        } finally {
+            navigating = false;
+        }
+        // The trip vanished (e.g. deleted remotely): fall back to a regular selection.
+        if (previouslySelected != null && toReselect == null && !tripCombo.getItems().isEmpty()) {
+            tripCombo.getSelectionModel().select(0);
         }
     }
 

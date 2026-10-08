@@ -147,6 +147,9 @@ public final class SmartSyncDialog {
         remoteDetails.setWrapText(true);
         remoteDetailsPane = new TitledPane("Details", remoteDetails);
         remoteDetailsPane.setExpanded(false);
+        // Animated panes still report their collapsed height when resize() runs, so sizeToScene
+        // would leave the expanded content (and the button bar) cut off.
+        remoteDetailsPane.setAnimated(false);
         remoteDetailsPane.expandedProperty().addListener((obs, was, is) -> resize());
         showNode(remoteDetailsPane, false);
         revealButton = new Button("Reveal in Finder");
@@ -162,8 +165,8 @@ public final class SmartSyncDialog {
             attachmentsRow.addTo(grid, r++);
         }
 
-        Label context = new Label("Data dir: " + settings.resolvedDataDir().map(UiText::homeRelative)
-                .orElse("(not configured)") + "\nRemote: " + (remoteUrl.isBlank() ? "(none)" : remoteUrl));
+        Label context = new Label(settings.resolvedDataDir().map(UiText::homeRelative)
+                .orElse("(data dir not configured)") + "  →  " + (remoteUrl.isBlank() ? "(no remote)" : remoteUrl));
         context.setWrapText(true);
         context.setMinHeight(Region.USE_PREF_SIZE);
         context.setStyle("-fx-font-size: 11; -fx-opacity: 0.7;");
@@ -217,8 +220,10 @@ public final class SmartSyncDialog {
         Label files = new Label(String.join("\n", dirtyFiles));
         files.setStyle("-fx-font-size: 11;");
         files.setMinHeight(Region.USE_PREF_SIZE);
+        files.setMaxWidth(Double.MAX_VALUE);
         TitledPane filesPane = new TitledPane(plural(dirtyFiles.size(), "changed file"), files);
         filesPane.setExpanded(false);
+        filesPane.setAnimated(false);
         filesPane.expandedProperty().addListener((obs, was, is) -> resize());
         commitRow.extra.getChildren().addAll(messageArea, filesPane);
         commitRow.idle(plural(dirtyFiles.size(), "changed file")

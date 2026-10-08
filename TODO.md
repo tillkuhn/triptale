@@ -20,7 +20,7 @@ folder per entry day and already synced to S3).
 
 [Details](docs/47_impressions_attachments_refactor.md)
 
-## 46 Radio: play favourite tracks from a radio/ pool
+## 46 Radio: play favorite tracks from a radio/ pool
 
 I listen to a lot of music on bike trips and often quote a small tracklist in a tale. Add a
 "radio": a reusable pool of favourite tracks in `<data-dir>/radio/` (not versioned in git,
