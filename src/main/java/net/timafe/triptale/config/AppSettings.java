@@ -25,6 +25,7 @@ public class AppSettings {
     private String impressionsFaveFilePattern = "";
     private String mapboxToken = "";
     private Attachments attachments = new Attachments();
+    private boolean radioEnabled = false;
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -57,6 +58,9 @@ public class AppSettings {
     public void setMapboxToken(String mapboxToken) { this.mapboxToken = mapboxToken; }
     public Attachments getAttachments() { return attachments; }
     public void setAttachments(Attachments attachments) { this.attachments = attachments; }
+    /** Gates the Radio feature (todo 46): off by default, UI and folder stay untouched until a restart with this on. */
+    public boolean isRadioEnabled() { return radioEnabled; }
+    public void setRadioEnabled(boolean radioEnabled) { this.radioEnabled = radioEnabled; }
 
     public static class Git {
         private String authorName = "";

@@ -406,6 +406,22 @@
     -fx-padding: 4 10 4 10;
 }
 
+/* ── Radio button (todo 46) ───────────────────────────── */
+.radio-button {
+    -fx-text-fill: #4ec9b0;
+    -fx-border-color: #3a5050;
+    -fx-font-size: 14px;
+    -fx-padding: 4 0 4 0;
+    -fx-alignment: center;
+    /* Fixed width: 🎵 / ⏸ / ▶ / the equalizer differ in width. */
+    -fx-min-width: 40px;
+    -fx-pref-width: 40px;
+    -fx-max-width: 40px;
+}
+.equalizer-bar {
+    -fx-fill: #4ec9b0;
+}
+
 /* ── Inline validation message in dialogs ───────────────── */
 .form-error {
     -fx-text-fill: #e06c6c;
