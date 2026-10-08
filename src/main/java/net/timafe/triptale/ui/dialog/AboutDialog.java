@@ -5,6 +5,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
+import net.timafe.triptale.util.Greetings.Greeting;
 import org.springframework.boot.info.BuildProperties;
 
 import java.time.ZoneId;
@@ -32,9 +33,18 @@ public final class AboutDialog {
         this.browser = browser;
     }
 
-    public void show() {
+    /**
+     * @param greeting the one currently in the window title, repeated as the header with its
+     *                 language explained below; null falls back to the plain app name.
+     */
+    public void show(Greeting greeting) {
         GridPane grid = Dialogs.infoGrid();
         int row = 0;
+
+        String header = greeting != null ? greeting.text(appName) : appName;
+        if (greeting != null && !"English".equals(greeting.language())) {
+            header += "\n" + greeting.language() + " for “Welcome to " + appName + "”";
+        }
 
         Label desc = new Label("Offline-first cycling and hiking trip diary with git sync");
         desc.setWrapText(true);
@@ -57,7 +67,7 @@ public final class AboutDialog {
         link.setOnAction(e -> browser.open(REPO_URL));
         grid.add(link, 1, row);
 
-        Dialogs.showInfo("About " + appName, appName, grid);
+        Dialogs.showInfo("About " + appName, header, grid);
     }
 
     private String builtAt() {

@@ -1,0 +1,26 @@
+# Window title greetings (see Greetings). One per line: "Language | template", where {app}
+# stands for the app name so each language can place it naturally (e.g. Turkish suffixes it).
+# No right-to-left scripts: mixed with Latin text, the native title bar reorders them oddly.
+# Blank lines and lines starting with # are ignored.
+
+English | Welcome to {app}
+German | Willkommen bei {app}
+French | Bienvenue sur {app}
+Spanish | Bienvenido a {app}
+Italian | Benvenuti su {app}
+Portuguese | Bem-vindo ao {app}
+Dutch | Welkom bij {app}
+Danish | Velkommen til {app}
+Swedish | Välkommen till {app}
+Norwegian | Velkommen til {app}
+Icelandic | Velkomin í {app}
+Finnish | {app} toivottaa tervetulleeksi
+Polish | Witamy w {app}
+Czech | Vítejte v {app}
+Turkish | {app}'e Hoş Geldiniz
+Greek | Καλώς ήρθατε στο {app}
+Russian | Добро пожаловать в {app}
+Indonesian | Selamat datang di {app}
+Thai | ยินดีต้อนรับสู่ {app}
+Japanese | {app}へようこそ
+Korean | {app}에 오신 것을 환영합니다

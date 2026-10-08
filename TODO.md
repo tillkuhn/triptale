@@ -37,17 +37,7 @@ separate from attachments), playable from the app while writing.
 
 [Details](docs/46_radio.md)
 
-## 45 Random travel wisdom in the window title bar
-
-Make the app a bit more fun: show a random travel quote in the (mostly empty) title bar, e.g.
-`🏔️🚴TripTale v0.9.0 — "Not all those who wander are lost." — Tolkien`.
-
-- Stage 1: bundled list `src/main/resources/wisdoms.txt` (one `quote — author` per line,
-  `#` comments), one random pick at launch. Keep quotes short — the macOS title bar is plain
-  text, centered, and truncated with "…" (~60–70 chars of room at 1150px).
-- Stage 2 (later): pick a new quote on trip switch; optionally a data-dir override list.
-
-## 44 Export trip as WordPress.com post
+## 44 Support export trip as WordPress.com post (markup code)
 
 Goal: ease writing articles on our wordpress.com blog — its rich-text editor is a pain.
 Doesn't have to be fully automated. Staged plan:
@@ -90,7 +80,9 @@ Status (2026-10-04), details and measurements in `docs/43_startup_performance.md
 
 trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
 add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
-and walks through all trip YYYY subdirectories and update references to reflect the new path. Report back with "x references updated" or similar
+and walks through all trip YYYY subdirectories and update references to reflect the new path, including tolaria style wikilinks "[[path/file]]. 
+Report back with "x references updated" or similar.
+If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
 
 ## 41 justified-row (Flickr/Google Photos-style) impressions gallery for HTML export
 
@@ -214,6 +206,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 45 Random travel wisdom and greeting in the window title bar
+
+see docs/done/45_travel_wisdom_title.md
 
 ## DONE 33b Attachment pull (download from cloud)
 

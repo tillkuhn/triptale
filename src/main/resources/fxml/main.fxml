@@ -29,79 +29,83 @@
 
     <top>
         <VBox>
-            <MenuBar>
-                <menus>
-                    <Menu fx:id="appMenu">
-                        <items>
-                            <MenuItem fx:id="aboutMenuItem" onAction="#onAbout"/>
-                            <MenuItem text="⚙ Edit Settings…" onAction="#onEditSettings"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="quitMenuItem" onAction="#onExit"/>
-                        </items>
-                    </Menu>
-                    <Menu text="My Trips">
-                        <items>
-                            <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
-                            <MenuItem text="ℹ Edit Trip…" onAction="#onTripDetails"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
-                        </items>
-                    </Menu>
-                    <Menu text="Tale Entries">
-                        <items>
-                            <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
-                            <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
-                            <MenuItem fx:id="prevDayMenuItem" text="◀ Previous Day" onAction="#onPrevDay" accelerator="Shortcut+Alt+Left"/>
-                            <MenuItem fx:id="nextDayMenuItem" text="▶ Next Day" onAction="#onNextDay" accelerator="Shortcut+Alt+Right"/>
-                            <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
-                            <MenuItem fx:id="favesMenuItem" text="🖼 Show Faves" onAction="#onShowFaves" disable="true"/>
-                            <MenuItem fx:id="addAttachmentsMenuItem" text="📎 Add Attachments…" onAction="#onAddAttachments" disable="true"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
-                            <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>
-                        </items>
-                    </Menu>
-                    <Menu text="View">
-                        <items>
-                            <MenuItem text="🔍 Zoom In" onAction="#onZoomIn" accelerator="Shortcut+Plus"/>
-                            <MenuItem text="🔎 Zoom Out" onAction="#onZoomOut" accelerator="Shortcut+Minus"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="↺ Reset View" onAction="#onResetView" accelerator="Shortcut+0"/>
-                        </items>
-                    </Menu>
-                    <Menu fx:id="radioMenu" text="Radio">
-                        <items>
-                            <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
-                            <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
-                            <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
-                        </items>
-                    </Menu>
-                    <Menu text="Repository">
-                        <items>
-                            <MenuItem fx:id="syncMenuItem" text="🔄 Smart Sync…" onAction="#onSync" accelerator="Shortcut+K"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
-                            <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
-                            <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
-                            <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Attachments" onAction="#onPullAttachments" disable="true"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
-                        </items>
-                    </Menu>
-                </menus>
-            </MenuBar>
+            <StackPane>
+                <MenuBar>
+                    <menus>
+                        <Menu fx:id="appMenu">
+                            <items>
+                                <MenuItem fx:id="aboutMenuItem" onAction="#onAbout"/>
+                                <MenuItem text="⚙ Edit Settings…" onAction="#onEditSettings"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="quitMenuItem" onAction="#onExit"/>
+                            </items>
+                        </Menu>
+                        <Menu text="My Trips">
+                            <items>
+                                <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
+                                <MenuItem text="ℹ Edit Trip…" onAction="#onTripDetails"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
+                            </items>
+                        </Menu>
+                        <Menu text="Tale Entries">
+                            <items>
+                                <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
+                                <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
+                                <MenuItem fx:id="prevDayMenuItem" text="◀ Previous Day" onAction="#onPrevDay" accelerator="Shortcut+Alt+Left"/>
+                                <MenuItem fx:id="nextDayMenuItem" text="▶ Next Day" onAction="#onNextDay" accelerator="Shortcut+Alt+Right"/>
+                                <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
+                                <MenuItem fx:id="favesMenuItem" text="🖼 Show Faves" onAction="#onShowFaves" disable="true"/>
+                                <MenuItem fx:id="addAttachmentsMenuItem" text="📎 Add Attachments…" onAction="#onAddAttachments" disable="true"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
+                                <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>
+                            </items>
+                        </Menu>
+                        <Menu text="View">
+                            <items>
+                                <MenuItem text="🔍 Zoom In" onAction="#onZoomIn" accelerator="Shortcut+Plus"/>
+                                <MenuItem text="🔎 Zoom Out" onAction="#onZoomOut" accelerator="Shortcut+Minus"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem text="↺ Reset View" onAction="#onResetView" accelerator="Shortcut+0"/>
+                            </items>
+                        </Menu>
+                        <Menu fx:id="radioMenu" text="Radio">
+                            <items>
+                                <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
+                                <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
+                                <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
+                            </items>
+                        </Menu>
+                        <Menu text="Repository">
+                            <items>
+                                <MenuItem fx:id="syncMenuItem" text="🔄 Smart Sync…" onAction="#onSync" accelerator="Shortcut+K"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
+                                <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
+                                <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
+                                <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Attachments" onAction="#onPullAttachments" disable="true"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
+                            </items>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+                <Label fx:id="versionLabel" styleClass="version-label" mouseTransparent="true"
+                       StackPane.alignment="CENTER_RIGHT"/>
+            </StackPane>
             <HBox spacing="10" alignment="CENTER_LEFT" styleClass="toolbar-strip">
                 <padding><Insets top="10" right="12" bottom="10" left="12"/></padding>
                 <Label text="Trip:"/>

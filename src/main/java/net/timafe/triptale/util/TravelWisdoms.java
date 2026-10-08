@@ -47,8 +47,8 @@ public final class TravelWisdoms {
         return wisdoms;
     }
 
-    public Optional<String> random(RandomGenerator rnd) {
-        if (wisdoms.isEmpty()) return Optional.empty();
-        return Optional.of(wisdoms.get(rnd.nextInt(wisdoms.size())));
+    /** A random quote other than {@code previous} (if there is any other choice). */
+    public Optional<String> random(RandomGenerator rnd, String previous) {
+        return RandomPick.from(wisdoms, rnd, previous);
     }
 }

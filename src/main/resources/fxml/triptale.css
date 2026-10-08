@@ -24,6 +24,11 @@
 .menu-bar .menu:showing .label {
     -fx-text-fill: #4ec9b0;
 }
+.version-label {
+    -fx-text-fill: #5f7f7a;
+    -fx-font-size: 11px;
+    -fx-padding: 0 14 0 0;
+}
 .context-menu {
     -fx-background-color: #253333;
     -fx-border-color: #3a5050;

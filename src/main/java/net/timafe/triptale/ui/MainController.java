@@ -2,6 +2,8 @@ package net.timafe.triptale.ui;
 
 import javafx.application.HostServices;
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -56,11 +58,14 @@ import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.CommitMessage;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
+import net.timafe.triptale.util.Greetings;
+import net.timafe.triptale.util.Greetings.Greeting;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
 import net.timafe.triptale.util.Slugs;
 import net.timafe.triptale.util.TextStats;
+import net.timafe.triptale.util.TravelWisdoms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -84,6 +89,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Controller for the single main window: trip/date navigation, the entry form and its dirty
@@ -116,6 +122,7 @@ public class MainController implements StatusSink {
     @FXML private Label talesLabel;
     @FXML private Label statusLabel;
     @FXML private Label statusIcon;
+    @FXML private Label versionLabel;
     @FXML private HBox statusRow;
     @FXML private Label tourDayLabel;
     @FXML private Label titleLabel;
@@ -219,6 +226,14 @@ public class MainController implements StatusSink {
     private EqualizerIcon equalizerIcon;
     private File lastAttachmentSourceDir;
 
+    // Window title: greeting + travel quote, re-rolled on trip switch (todo 45).
+    private final Greetings greetings = Greetings.load();
+    private final TravelWisdoms wisdoms = TravelWisdoms.load();
+    private final ReadOnlyStringWrapper windowTitle = new ReadOnlyStringWrapper();
+    private Greeting greeting;
+    private String wisdom;
+    private final String version;
+
     // Dialogs whose own dependencies this controller has no other use for.
     private final ExportDiaryDialog exportDiaryDialog;
     private final ImageViewerDialog imageViewerDialog;
@@ -248,8 +263,9 @@ public class MainController implements StatusSink {
         this.exportDiaryDialog =
                 new ExportDiaryDialog(diaryExporter, settingsStore, exportTempFiles, browser, this);
         this.imageViewerDialog = new ImageViewerDialog(exifReader, browser, this);
-        this.aboutDialog =
-                new AboutDialog(appName, buildPropertiesProvider.getIfAvailable(), browser);
+        BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
+        this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
+        this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
         this.tripMapDialog = new TripMapDialog(new MapboxService(settingsStore));
     }
 
@@ -261,6 +277,8 @@ public class MainController implements StatusSink {
         appMenu.setText(appName);
         aboutMenuItem.setText("ⓘ About " + appName);
         quitMenuItem.setText("⏻ Quit " + appName);
+        versionLabel.setText(version);
+        rollWindowTitle();
         loadTaleFontSize();
         applyTaleFontSize();
         statusLabel.maxWidthProperty().bind(statusRow.widthProperty().multiply(0.5));
@@ -343,6 +361,7 @@ public class MainController implements StatusSink {
             loadEntry();
             updatePrevButtonState();
             status(reason);
+            if (old != null) rollWindowTitle();
         });
         datePicker.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
@@ -1596,9 +1615,24 @@ public class MainController implements StatusSink {
         }
     }
 
+    /** Bound to the stage title by {@code TripTaleApplication}. */
+    public ReadOnlyStringProperty windowTitleProperty() {
+        return windowTitle.getReadOnlyProperty();
+    }
+
+    /** Picks a new greeting and quote, never the same one twice in a row. */
+    private void rollWindowTitle() {
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        greeting = greetings.random(rnd, greeting).orElse(null);
+        wisdom = wisdoms.random(rnd, wisdom).orElse(null);
+        String title = "🐉 " + (greeting != null ? greeting.text(appName) : appName);
+        if (wisdom != null) title += " · " + wisdom;
+        windowTitle.set(title);
+    }
+
     @FXML
     public void onAbout() {
-        aboutDialog.show();
+        aboutDialog.show(greeting);
     }
 
     @FXML

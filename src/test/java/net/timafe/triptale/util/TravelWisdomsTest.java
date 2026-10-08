@@ -18,13 +18,13 @@ class TravelWisdomsTest {
 
     @Test
     void randomOnEmptyListIsEmpty() {
-        assertTrue(new TravelWisdoms(List.of()).random(new Random(1)).isEmpty());
+        assertTrue(new TravelWisdoms(List.of()).random(new Random(1), null).isEmpty());
     }
 
     @Test
     void randomPicksFromList() {
         TravelWisdoms wisdoms = new TravelWisdoms(List.of("A — B", "C — D"));
-        String pick = wisdoms.random(new Random(42)).orElseThrow();
+        String pick = wisdoms.random(new Random(42), null).orElseThrow();
         assertTrue(wisdoms.all().contains(pick));
     }
 
