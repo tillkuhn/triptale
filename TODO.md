@@ -1,6 +1,18 @@
 # ToDos for this app
 
-## Next Todo: 48
+## Next Todo: 49
+
+## 48 Internal paragraphs: hide private notes from exports
+
+A tale heading `internal` or `private` (any level, case-insensitive, exact word, optional
+trailing `:`) marks a private block, e.g. `## internal` followed by original distance/route
+notes. On export, drop the heading and everything up to the next heading of the **same or
+higher** level (subheadings stay inside the block), or to the end of the tale.
+
+- Strip centrally in `DiaryExporter` before `Markdown.shiftHeadings`, so every export format
+  is covered; the editor and the word count stay unchanged.
+- Ignore `#` lines inside fenced code blocks; a tale that ends up blank is treated as empty.
+- Unit tests: nesting, end of tale, `Private:` vs. `Private beach`, code fences.
 
 ## 47 Impressions / exporter refactor: images as attachments
 
