@@ -12,6 +12,7 @@ See `CLAUDE.md` for the full architectural narrative. This file is the compresse
 make run          # launch the JavaFX app  (mvnd javafx:run)
 make run-jar      # run the built fat jar with plain java
 make run-fast     # run with the JDK 25 AOT cache (~1.5 s faster); extracts + trains on demand
+make frun         # alias for run-fast
 make aot-train    # force a fresh AOT training run (window opens and closes by itself)
 make build        # jar, skip tests        (mvnd -DskipTests package)
 make package      # jar + tests            (mvnd package)

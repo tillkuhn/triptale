@@ -21,7 +21,7 @@ AOT_JAR := $(AOT_DIR)/triptale.jar
 JDK_BUILD := $(shell java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/java.runtime.version/{print $$2}')
 AOT_CACHE := $(AOT_DIR)/app-jdk$(JDK_BUILD).aot
 
-.PHONY: run run-jar run-fast aot-train help build compile test package clean format deps major minor patch
+.PHONY: run run-jar run-fast frun aot-train help build compile test package clean format deps major minor patch
 
 # -Dmvnd.rawStreams: mvnd otherwise prefixes every app log line with "[INFO] [stdout] ".
 # Plain mvn just sees an unused system property.
@@ -65,6 +65,8 @@ aot-train: ## Force a fresh AOT training run (normally automatic, see run-fast)
 
 run-fast: $(AOT_CACHE) ## Run with the JDK AOT cache (~1.5 s faster start; builds/trains on demand)
 	java $(JVMFLAGS) -XX:AOTCache=$(AOT_CACHE) -Dlogging.level.net.timafe.triptale=INFO -jar $(AOT_JAR) 2>&1 | $(FXFILTER)
+
+frun: run-fast ## Alias for run-fast
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "TripTale — available targets:\n\n"} \
