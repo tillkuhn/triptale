@@ -116,6 +116,24 @@ turned off without deleting code):
   `AWS:SourceArn` = the distribution ARN (works with the public access block left on)
 - output `cdn_domain_name`, to be pasted into `publicAttachmentBaseUrl` in `settings.yml`
 
+**Provisioned 2026-10-10** (`terraform/cdn.tf`, `enable_cdn = true`), with two tightenings over
+the sketch above:
+
+- **Origin path `/attachments`**: the CDN root maps to `attachments/` in the bucket, so other
+  top-level keys (`radio/`, future backups) can't be reached through the CDN at all. URLs are
+  `https://<cdn>/<year>/<slug>/<day>/<file>.jpg`.
+- **Images only**: the bucket policy grants `s3:GetObject` on `attachments/*.{jpg,jpeg,png,webp}`
+  (lower and upper case) only, so GPX and PDF files answer 403.
+
+To expose another path later, add a second origin (same bucket, other or no origin path) plus
+an ordered cache behaviour such as `/radio/*`, and extend the bucket policy. Existing image URLs
+and their cache entries stay valid. Don't drop the origin path instead: that would add
+`attachments/` to every image URL and break links in published posts.
+
+Verified with curl right after deployment: image 200 `image/jpeg` (second request
+`Hit from cloudfront`), GPX 403, missing key 403, `http://` 301 to `https://`, a probe object at
+the bucket root unreachable (`/../` and `%2e%2e` give 400, direct 403), direct S3 URL 403.
+
 ### Scope of the experiment
 
 The question to answer here is narrow: **can CloudFront serve the bucket's *current* content

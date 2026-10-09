@@ -19,3 +19,9 @@ variable "state_bucket" {
   description = "Existing S3 bucket holding the OpenTofu state (key <app>/terraform.tfstate, same region as aws_region)."
   type        = string
 }
+
+variable "enable_cdn" {
+  description = "Serve backpack images (attachments/, image files only) through a CloudFront distribution (todo 44)."
+  type        = bool
+  default     = false
+}

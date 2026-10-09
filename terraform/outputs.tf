@@ -18,3 +18,8 @@ output "secret_access_key" {
   value     = aws_iam_access_key.app.secret
   sensitive = true
 }
+
+output "cdn_base_url" {
+  description = "Public base URL of backpack images (maps to attachments/ in the bucket); null without enable_cdn."
+  value       = var.enable_cdn ? "https://${aws_cloudfront_distribution.backpack[0].domain_name}/" : null
+}

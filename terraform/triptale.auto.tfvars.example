@@ -3,3 +3,4 @@ aws_region   = "eu-central-1"
 aws_profile  = "default"
 state_bucket = "my-terraform-state"
 # app = "triptale"   # bucket: <app>-backpack, IAM user: <app>-app, state key: <app>/terraform.tfstate
+# enable_cdn = true  # CloudFront for backpack images, see cdn.tf (todo 44)
