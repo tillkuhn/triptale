@@ -1,6 +1,13 @@
 # ToDos for this app
 
-## Next Todo: 49
+## Next Todo: 50
+
+## 49 Bulk import a whole trip's photo-lib impressions as attachments
+
+Split out of todo 47 (deferred there). Trip menu action that copies every day's photo-library
+images (base filter applied, optionally faves only) into the matching attachment day folders,
+with a confirmation showing counts per day and total size. Best after todo 33c, so a mistaken
+bulk import can be deleted everywhere.
 
 ## 33c Attachment delete propagation (sync base)
 
@@ -34,7 +41,7 @@ reduced by `impressionsBaseFilter` and optionally `impressionsFaveFilter` (filen
 The viewer imports selected images into the day's attachments; the Faves button is gone. Export
 gets a From/To entry range, an image source + "Faves only", and a per-entry "⇧ Export Tale".
 Status: implemented on `feature/47-impressions-refactor`, pending visual review. Deferred:
-resize on import, public URLs (todo 44), bulk import of a whole trip.
+resize on import, public URLs (todo 44), bulk import of a whole trip (todo 49).
 
 [Details](docs/47_impressions_attachments_refactor.md)
 
@@ -142,10 +149,6 @@ todo 40 for a related manual re-run trigger).
 currently it's only a limited single most recent message with limited space.
 goal is to have a stack of messages (start with limit 50), so if you click on a magnifying glass icon you'll get a scrollable popup with the X most recent UI messages, showing severity, time (not date) and message
 
-## 34 support html export for trip entries
-
-Similar to entire trip, but only for current day
-
 ## 33a Object storage4trip attachments (track files & media) MVP
 
 First minimal attachments implementation against real S3: local `attachments/` folder in the
@@ -225,6 +228,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 34 support html export for trip entries
+
+Similar to entire trip, but only for current day
+
+Covered by todo 47: "⇧ Export Tale" opens the export dialog for the current day (Preview in Browser renders HTML).
 
 ## DONE 45 Random travel wisdom and greeting in the window title bar
 

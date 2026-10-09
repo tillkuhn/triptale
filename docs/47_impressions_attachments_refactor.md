@@ -110,7 +110,7 @@ Supersedes the original "design points" list; the ideas above are the input, the
 - Resize on import → todo 44 stage 2 (ImageIO would drop EXIF incl. GPS).
 - Public S3/CDN URLs in exports (`publicAttachmentBaseUrl` doesn't exist yet) → todo 44.
 - One-off bulk "import the whole trip's photo lib impressions" action — per-day import in the
-  viewer covers migration for now.
+  viewer covers migration for now. Tracked as todo 49.
 
 ## Status (2026-10-09)
 
