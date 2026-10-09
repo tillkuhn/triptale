@@ -9,9 +9,11 @@ Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, C
 - Day heading wording for blog posts (currently the Markdown export's `2026-05-29 Friday
   Day 1: …`).
 - Watch the CloudFront bill in Cost Explorer for a few weeks; if it isn't ~€0, set
-  `enable_cdn = false` and host images via SFTP on the blog (Blogger plan has it).
-- Optional stage 2: create the post as a draft via the WordPress.com REST API; first check
-  which auth works on the Blogger plan (application passwords vs. OAuth2).
+  `enable_cdn = false` and host images on our own webserver (the blog is a Simple site, no SFTP).
+- Optional stage 2: create the post as a draft via the API. **Works** (2026-10-10): app
+  "TripTale" (id 150174) at developer.wordpress.com, OAuth2 token, `POST
+  public-api.wordpress.com/wp/v2/sites/timafe.wordpress.com/posts` with `status=draft`. Open:
+  browser login (no stored password) vs. password grant.
 
 [Background](docs/done/44_wordpress_export.md)
 

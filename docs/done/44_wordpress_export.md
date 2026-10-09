@@ -183,9 +183,9 @@ Resolved:
 
 - Post granularity (2026-10-10): bigger and fewer posts, usually a range of several days.
 - WordPress.com plan (2026-10-10): **Blogger**, running WordPress 7.2, so the list-item inner
-  blocks of the list block (WordPress 6.1+) are supported. The plan includes hosting features
-  (SFTP/SSH, database, GitHub deployments); SFTP would be a way to host images on the blog's
-  own server if CloudFront is dropped. API auth for option 3 is still to be checked.
+  blocks of the list block (WordPress 6.1+) are supported. The public API reports a Simple site
+  (`is_wpcom_atomic: false`), so the SFTP/SSH entries in the hosting settings are upgrade offers,
+  not usable features. Option 3 (draft via REST API) was verified on 2026-10-10, see todo 50.
 - Post images are the synced `attachments/`, not the local impressions folder — the
   pipeline that gets them there is todo 47.
 
