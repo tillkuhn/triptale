@@ -189,7 +189,7 @@ e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
 
 ## Export 📤
 
-**⇧ Export Diary…** renders the trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions (from the photo library or the backpack, all or faves only) as a photo gallery. A **From / To** range narrows it to some days, with totals for just those; **⇧ Export Tale** next to Save exports only the current day. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
+**⇧ Export Diary…** renders the trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions (from the photo library or the backpack, all or faves only) as a photo gallery. Switch **Format** to **WordPress** to get block markup for a blog post instead: day headings, distance and climb, the tales as editable blocks and a gallery per day. Paste it into the WordPress block editor's Code editor (Cmd + Opt + Shift + M). Gallery images are hotlinked from the backpack, so they need a **Backpack public URL** in Settings (e.g. a CloudFront distribution, see `terraform/README.md`) and a Smart Sync before you publish. A **From / To** range narrows it to some days, with totals for just those; **⇧ Export Tale** next to Save exports only the current day. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
 
 ## Run it 🛠️
 
@@ -235,7 +235,7 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 | `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
 | `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
 | `mapboxToken` | Public Mapbox token for the trip map. |
-| `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). |
+| `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. |
 
 `settings.yml` lives in `$HOME/.config/triptale/` on macOS and Linux, and in `%APPDATA%\triptale\` on Windows. It belongs to the machine, not to the data repo. To use a different settings directory (e.g. a second profile, or one on a USB stick for travel), set `TRIPTALE_SETTINGS_DIR` or pass `-Dtriptale.settings-dir=/path`.
 

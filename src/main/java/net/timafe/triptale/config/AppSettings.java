@@ -3,6 +3,8 @@ package net.timafe.triptale.config;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -109,6 +111,8 @@ public class AppSettings {
         private String region = DEFAULT_REGION;
         private String accessKeyId = "";
         private String secretAccessKey = "";
+        // Optional public HTTPS base URL that maps to attachments/, e.g. a CloudFront distribution (todo 44)
+        private String publicBaseUrl = "";
 
         /**
          * A user-facing message if {@link #bucketUrl} or {@link #region} is malformed, or if
@@ -130,10 +134,23 @@ public class AppSettings {
             if (region != null && !region.isBlank() && !REGION.matcher(region).matches()) {
                 return Optional.of("Invalid region '" + region + "' (e.g. " + DEFAULT_REGION + ")");
             }
+            if (!isBlank(publicBaseUrl) && !isHttpsUrl(publicBaseUrl)) {
+                return Optional.of("Backpack public URL must be an https:// URL, e.g. https://d123.cloudfront.net/");
+            }
             return Optional.empty();
         }
 
         private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+
+        private static boolean isHttpsUrl(String s) {
+            try {
+                URI uri = new URI(s.trim());
+                return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null
+                        && uri.getQuery() == null && uri.getFragment() == null;
+            } catch (URISyntaxException e) {
+                return false;
+            }
+        }
 
         public AttachmentSync getSync() { return sync; }
         public void setSync(AttachmentSync sync) { this.sync = sync == null ? AttachmentSync.OFF : sync; }
@@ -145,5 +162,7 @@ public class AppSettings {
         public void setAccessKeyId(String accessKeyId) { this.accessKeyId = accessKeyId; }
         public String getSecretAccessKey() { return secretAccessKey; }
         public void setSecretAccessKey(String secretAccessKey) { this.secretAccessKey = secretAccessKey; }
+        public String getPublicBaseUrl() { return publicBaseUrl; }
+        public void setPublicBaseUrl(String publicBaseUrl) { this.publicBaseUrl = publicBaseUrl == null ? "" : publicBaseUrl; }
     }
 }

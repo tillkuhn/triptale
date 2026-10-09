@@ -71,6 +71,9 @@ public final class EditSettingsDialog {
         PasswordField secretField = new PasswordField();
         secretField.setText(attachments.getSecretAccessKey());
         secretField.setPrefColumnCount(36);
+        TextField publicBaseUrlField = new TextField(attachments.getPublicBaseUrl());
+        publicBaseUrlField.setPromptText("optional, e.g. https://d123.cloudfront.net/ (WordPress export images)");
+        publicBaseUrlField.setPrefColumnCount(36);
         CheckBox radioEnabledCheck = new CheckBox("Enable Radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
         Label errorLabel = new Label();
@@ -110,6 +113,8 @@ public final class EditSettingsDialog {
         grid.add(accessKeyIdField, 1, row++);
         grid.add(new Label("Secret access key:"), 0, row);
         grid.add(secretField, 1, row++);
+        grid.add(new Label("Backpack public URL:"), 0, row);
+        grid.add(publicBaseUrlField, 1, row++);
         grid.add(new Separator(), 0, row, 2, 1);
         row++;
         grid.add(radioEnabledCheck, 1, row++);
@@ -121,7 +126,7 @@ public final class EditSettingsDialog {
 
         // Keep the dialog open while the attachment fields are malformed
         dlg.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(ActionEvent.ACTION, ev -> {
-            Optional<String> error = readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField)
+            Optional<String> error = readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField)
                     .validationError();
             errorLabel.setText(error.orElse(""));
             if (error.isPresent()) ev.consume();
@@ -140,7 +145,7 @@ public final class EditSettingsDialog {
         settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
         settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
         settings.setMapboxToken(mapboxTokenField.getText().trim());
-        settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField));
+        settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
         return Optional.of(settings);
     }
@@ -155,13 +160,15 @@ public final class EditSettingsDialog {
 
     private static AppSettings.Attachments readAttachments(ComboBox<AppSettings.AttachmentSync> syncCombo,
                                                            TextField bucketUrlField, TextField regionField,
-                                                           TextField accessKeyIdField, PasswordField secretField) {
+                                                           TextField accessKeyIdField, PasswordField secretField,
+                                                           TextField publicBaseUrlField) {
         AppSettings.Attachments attachments = new AppSettings.Attachments();
         attachments.setSync(syncCombo.getValue());
         attachments.setBucketUrl(bucketUrlField.getText().trim());
         attachments.setRegion(regionField.getText().trim());
         attachments.setAccessKeyId(accessKeyIdField.getText().trim());
         attachments.setSecretAccessKey(secretField.getText().trim());
+        attachments.setPublicBaseUrl(publicBaseUrlField.getText().trim());
         return attachments;
     }
 

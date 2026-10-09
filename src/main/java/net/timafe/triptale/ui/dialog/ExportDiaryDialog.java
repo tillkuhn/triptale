@@ -18,6 +18,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
+import net.timafe.triptale.export.WordPressExporter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.MarkdownStore;
@@ -37,11 +38,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Shows the Markdown export of a range of a trip's entries (the whole trip from the Trip menu,
- * a single day from Export Tale), with actions to copy it or render it as HTML and open that in
- * the system browser. The image source defaults to the richest one that has images (todo 47).
+ * Shows the export of a range of a trip's entries (the whole trip from the Trip menu, a single
+ * day from Export Tale) as Markdown or as WordPress block markup (todo 44), with actions to copy
+ * it or preview it in the system browser. The image source defaults to the richest one that has
+ * images (todo 47).
  */
 public final class ExportDiaryDialog {
+
+    private enum Format {
+        MARKDOWN("Markdown"),
+        WORDPRESS("WordPress");
+
+        final String label;
+        Format(String label) { this.label = label; }
+    }
 
     /** The image choices; the exporter has no ad-hoc folder source, it only renders content. */
     private enum Images {
@@ -55,15 +65,18 @@ public final class ExportDiaryDialog {
     }
 
     private final DiaryExporter diaryExporter;
+    private final WordPressExporter wordPressExporter;
     private final MarkdownStore store;
     private final ImpressionsService impressions;
     private final ExportTempFiles tempFiles;
     private final BrowserLauncher browser;
     private final StatusSink statusSink;
 
-    public ExportDiaryDialog(DiaryExporter diaryExporter, MarkdownStore store, ImpressionsService impressions,
-                             ExportTempFiles tempFiles, BrowserLauncher browser, StatusSink statusSink) {
+    public ExportDiaryDialog(DiaryExporter diaryExporter, WordPressExporter wordPressExporter, MarkdownStore store,
+                             ImpressionsService impressions, ExportTempFiles tempFiles, BrowserLauncher browser,
+                             StatusSink statusSink) {
         this.diaryExporter = diaryExporter;
+        this.wordPressExporter = wordPressExporter;
         this.store = store;
         this.impressions = impressions;
         this.tempFiles = tempFiles;
@@ -109,23 +122,6 @@ public final class ExportDiaryDialog {
         ta.setStyle("-fx-font-family: 'monospace';");
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
-        Runnable render = () -> {
-            try {
-                ta.setText(diaryExporter.exportTrip(trip, fromCombo.getValue(), toCombo.getValue()));
-            } catch (RuntimeException e) {
-                statusSink.error("Export failed: " + e.getMessage());
-            }
-        };
-        // Keep From <= To by dragging the other end along.
-        fromCombo.valueProperty().addListener((obs, old, d) -> {
-            if (d != null && toCombo.getValue() != null && d.isAfter(toCombo.getValue())) toCombo.setValue(d);
-            render.run();
-        });
-        toCombo.valueProperty().addListener((obs, old, d) -> {
-            if (d != null && fromCombo.getValue() != null && d.isBefore(fromCombo.getValue())) fromCombo.setValue(d);
-            render.run();
-        });
-        render.run();
 
         HBox rangeBox = new HBox(8, new Label("From:"), fromCombo, new Label("To:"), toCombo);
         rangeBox.setAlignment(Pos.CENTER_LEFT);
@@ -146,7 +142,48 @@ public final class ExportDiaryDialog {
             favesCheck.disableProperty().bind(imagesCombo.valueProperty().isEqualTo(Images.NONE));
         }
 
-        HBox imagesBox = new HBox(8, new Label("Images:"), imagesCombo, favesCheck);
+        ComboBox<Format> formatCombo = new ComboBox<>();
+        formatCombo.getItems().setAll(Format.values());
+        formatCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(Format f) { return f == null ? "" : f.label; }
+            @Override public Format fromString(String s) { return null; }
+        });
+        formatCombo.setValue(Format.MARKDOWN);
+        formatCombo.setTooltip(new Tooltip("WordPress: block markup for the block editor's Code editor"));
+
+        Runnable render = () -> {
+            try {
+                ta.setText(formatCombo.getValue() == Format.WORDPRESS
+                        ? wordPressExporter.export(trip, fromCombo.getValue(), toCombo.getValue(),
+                                imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected())
+                        : diaryExporter.exportTrip(trip, fromCombo.getValue(), toCombo.getValue()));
+            } catch (RuntimeException e) {
+                statusSink.error("Export failed: " + e.getMessage());
+            }
+        };
+        // Keep From <= To by dragging the other end along.
+        fromCombo.valueProperty().addListener((obs, old, d) -> {
+            if (d != null && toCombo.getValue() != null && d.isAfter(toCombo.getValue())) toCombo.setValue(d);
+            render.run();
+        });
+        toCombo.valueProperty().addListener((obs, old, d) -> {
+            if (d != null && fromCombo.getValue() != null && d.isBefore(fromCombo.getValue())) fromCombo.setValue(d);
+            render.run();
+        });
+        formatCombo.valueProperty().addListener((obs, old, f) -> {
+            offerImages(f, imagesCombo);
+            render.run();
+        });
+        // Images only change the WordPress text; the Markdown export has no images
+        imagesCombo.valueProperty().addListener((obs, old, i) -> {
+            if (formatCombo.getValue() == Format.WORDPRESS) render.run();
+        });
+        favesCheck.selectedProperty().addListener((obs, old, sel) -> {
+            if (formatCombo.getValue() == Format.WORDPRESS) render.run();
+        });
+        render.run();
+
+        HBox imagesBox = new HBox(8, new Label("Format:"), formatCombo, new Label("Images:"), imagesCombo, favesCheck);
         imagesBox.setAlignment(Pos.CENTER_LEFT);
 
         Dialog<ButtonType> dlg = new Dialog<>();
@@ -165,14 +202,20 @@ public final class ExportDiaryDialog {
         Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
         copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             Clipboards.putString(ta.getText());
-            statusSink.status("Diary copied to clipboard");
+            statusSink.status(formatCombo.getValue() == Format.WORDPRESS
+                    ? "WordPress markup copied: paste it into the block editor's Code editor"
+                    : "Diary copied to clipboard");
             ev.consume();
         });
 
         Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
         previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
-            previewInBrowser(trip, fromCombo.getValue(), toCombo.getValue(),
-                    imagesCombo.getValue().source, favesCheck.isSelected());
+            if (formatCombo.getValue() == Format.WORDPRESS) {
+                openInBrowser(wordPressExporter.previewHtml(trip.name(), ta.getText()));
+            } else {
+                previewInBrowser(trip, fromCombo.getValue(), toCombo.getValue(),
+                        imagesCombo.getValue().source, favesCheck.isSelected());
+            }
             ev.consume();
         });
 
@@ -181,12 +224,39 @@ public final class ExportDiaryDialog {
 
     private void previewInBrowser(Trip trip, LocalDate from, LocalDate to, ImpressionSource images, boolean favesOnly) {
         try {
-            String html = diaryExporter.exportTripAsHtml(trip, from, to, images, favesOnly);
+            openInBrowser(diaryExporter.exportTripAsHtml(trip, from, to, images, favesOnly));
+        } catch (RuntimeException ex) {
+            statusSink.error("Preview failed: " + ex.getMessage());
+        }
+    }
+
+    private void openInBrowser(String html) {
+        try {
             Path tmp = tempFiles.newFile("export-", ".html");
             Files.writeString(tmp, html, StandardCharsets.UTF_8);
             browser.open(tmp.toUri().toString());
         } catch (IOException | RuntimeException ex) {
             statusSink.error("Preview failed: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * WordPress can only hotlink backpack images, and only with a public base URL in Settings;
+     * Markdown offers every source. Keeps the current choice where it is still offered.
+     */
+    private void offerImages(Format format, ComboBox<Images> imagesCombo) {
+        Images current = imagesCombo.getValue();
+        if (format == Format.WORDPRESS) {
+            boolean available = wordPressExporter.imagesAvailable();
+            imagesCombo.getItems().setAll(available ? List.of(Images.NONE, Images.ATTACHMENTS) : List.of(Images.NONE));
+            imagesCombo.setTooltip(new Tooltip(available
+                    ? "Images are hotlinked from the backpack's public URL; run Smart Sync first"
+                    : "Set a Backpack public URL in Settings to include images"));
+            imagesCombo.setValue(available && current != Images.NONE ? Images.ATTACHMENTS : Images.NONE);
+        } else {
+            imagesCombo.getItems().setAll(Images.values());
+            imagesCombo.setTooltip(null);
+            imagesCombo.setValue(current);
         }
     }
 

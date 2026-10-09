@@ -53,6 +53,22 @@ class AppSettingsTest {
         assertTrue(attachments.validationError().isEmpty());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "https://d2khe61txkbz86.cloudfront.net/", "https://img.example.com/blog"})
+    void attachments_validPublicBaseUrl(String url) {
+        AppSettings.Attachments attachments = new AppSettings.Attachments();
+        attachments.setPublicBaseUrl(url);
+        assertTrue(attachments.validationError().isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://d123.cloudfront.net/", "d123.cloudfront.net", "s3://bucket", "https://x.net/?a=b", "https:// bad"})
+    void attachments_invalidPublicBaseUrl(String url) {
+        AppSettings.Attachments attachments = new AppSettings.Attachments();
+        attachments.setPublicBaseUrl(url);
+        assertTrue(attachments.validationError().orElseThrow().startsWith("Backpack public URL"));
+    }
+
     @Test
     void attachments_syncDefaultsToOffAndNullFallsBack() {
         AppSettings.Attachments attachments = new AppSettings.Attachments();

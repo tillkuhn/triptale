@@ -150,13 +150,44 @@ How images get into the bucket in the first place is explicitly **out of scope**
 app feature, tracked as todo 47 (`docs/47_impressions_attachments_refactor.md`). Validate the
 CDN with whatever is in the bucket today; a handcrafted post is a perfectly good test subject.
 
+## Stage 1 design (decided 2026-10-10)
+
+Posts are bigger and fewer: the usual case is a range of several days, not a whole trip and
+not a single day.
+
+- **UI:** a Format dropdown (Markdown / WordPress) in the Export Diary dialog, next to Images.
+  The text area shows the chosen output, Copy copies it, Preview in Browser renders it (for
+  WordPress, the block markup inside a simple preview shell). Same From/To range as before.
+- **Content: days only.** Per day: heading (existing entry heading format; the WordPress
+  wording is deferred), one stats paragraph `42.0 km · 650 m ↑ · Track` (each part only if
+  recorded, track as a link, no start coordinates), the tale, a gallery. No trip heading or
+  totals; the post title goes into WordPress's own title field.
+- **Tales map to core blocks** via commonmark: paragraph, heading (day = h2, tale headings
+  h3 and below), list (with list-item inner blocks), quote, code, separator; anything else
+  becomes a `wp:html` block.
+- **Images: backpack or none.** In WordPress format the Images dropdown offers only None and
+  🎒 Trip Backpack; Faves only still applies. Gallery columns from `impressionsGridColumns`,
+  cropped, not linked. Alt text derived from the filename, no visible captions.
+- **`attachments.publicBaseUrl`** in `settings.yml` ("Backpack public URL" in Settings) is
+  optional, so cloud sync works without any CDN. It maps to `attachments/`; an image's URL
+  is the base URL plus its path below `attachments/`, each segment percent-encoded. While
+  it's blank, WordPress export still works but without images.
+- **No bucket check:** unpushed images give broken images in the post; run Smart Sync first.
+- Private notes are todo 48, not part of this.
+
 ## Open questions
 
-1. Post granularity: one post per trip, or one per day/entry?
-2. Which WordPress.com plan? (Affects API auth for option 3; media storage for the fallback.)
+None open for stage 1.
 
-Resolved: post images are the synced `attachments/`, not the local impressions folder — the
-pipeline that gets them there is todo 47.
+Resolved:
+
+- Post granularity (2026-10-10): bigger and fewer posts, usually a range of several days.
+- WordPress.com plan (2026-10-10): **Blogger**, running WordPress 7.2, so the list-item inner
+  blocks of the list block (WordPress 6.1+) are supported. The plan includes hosting features
+  (SFTP/SSH, database, GitHub deployments); SFTP would be a way to host images on the blog's
+  own server if CloudFront is dropped. API auth for option 3 is still to be checked.
+- Post images are the synced `attachments/`, not the local impressions folder — the
+  pipeline that gets them there is todo 47.
 
 ## Plan
 

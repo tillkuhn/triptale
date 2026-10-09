@@ -166,22 +166,26 @@ public class DiaryExporter {
         return sb.toString();
     }
 
-    private static String escapeHtml(String s) {
+    static String escapeHtml(String s) {
         return s.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
     }
 
-    private String renderEntry(Trip trip, DiaryEntry e, boolean includeImpressionMarker) {
-        StringBuilder sb = new StringBuilder();
-
+    /** The entry heading line as in the Markdown export, e.g. {@code ## 2025-07-01 Tuesday Day 1: A → B}. */
+    static String headingLine(Trip trip, DiaryEntry e) {
         Map<String, String> h = new LinkedHashMap<>();
         h.put("date", e.date().format(ISO));
         h.put("weekday", e.date().format(WEEKDAY));
         h.put("daySegment", daySegment(trip.startDate(), e.date()));
         h.put("titleSegment", titleSegment(e.title()));
-        sb.append(substitute(load(ENTRY_HEADING), h).stripTrailing());
+        return substitute(load(ENTRY_HEADING), h).strip();
+    }
+
+    private String renderEntry(Trip trip, DiaryEntry e, boolean includeImpressionMarker) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(headingLine(trip, e));
 
         StringBuilder stats = new StringBuilder();
         if (e.distance() != null) {
@@ -235,11 +239,11 @@ public class DiaryExporter {
         return Long.toString(ChronoUnit.DAYS.between(startDate, endDate) + 1);
     }
 
-    private static String formatDistance(double v) {
+    static String formatDistance(double v) {
         return String.format(Locale.ROOT, "%.1f", v);
     }
 
-    private static String formatAltitude(double v) {
+    static String formatAltitude(double v) {
         return String.format(Locale.ROOT, "%.0f", v);
     }
 
