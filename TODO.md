@@ -1,6 +1,16 @@
 # ToDos for this app
 
-## Next Todo: 51
+## Next Todo: 52
+
+## 51 Reverse geocoding: place name and country from entry coordinates
+
+Placeholder. First build the lookup service (public Nominatim, see
+[ADR-0003](docs/adr/0003-reverse-geocoding-service.md)): non-UI, `java.net.http`, own
+User-Agent, ≤ 1 req/s, quick timeout, fails quietly. Credit OSM in the About dialog.
+
+What to do with it is decided once the service exists. Ideas so far: suggest a title like
+"Vechta → Bremen" instead of "Untitled", store place/country in frontmatter, run on
+Coordinates dialog OK / GPX import / an explicit "Look up" button.
 
 ## 50 WordPress export follow-ups
 
