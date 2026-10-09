@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -67,9 +68,9 @@ public final class ImageViewerDialog {
 
     /** The source combo's entries; {@link #FOLDER} gets its directory from the chooser. */
     private enum SourceChoice {
-        ATTACHMENTS(ImpressionSource.TRIP_ATTACHMENTS.label()),
-        PHOTO_LIB(ImpressionSource.PHOTO_LIBRARY.label()),
-        FOLDER("Pick Folder");
+        ATTACHMENTS("🎒 " + ImpressionSource.TRIP_ATTACHMENTS.label()),
+        PHOTO_LIB("🗂 " + ImpressionSource.PHOTO_LIBRARY.label()),
+        FOLDER("📁 Pick Folder");
 
         final String label;
         SourceChoice(String label) { this.label = label; }
@@ -128,6 +129,7 @@ public final class ImageViewerDialog {
         private final CheckBox selectCheck = new CheckBox("Select");
         private final ComboBox<SourceChoice> sourceCombo = new ComboBox<>();
         private final Label dirLabel = new Label();
+        private final Button copySourceDirBtn = new Button("📋");
         private final Button pickBtn = new Button("📂");
         private final CheckBox favesCheck = new CheckBox();
         private final Button selectAllBtn = new Button();
@@ -207,11 +209,23 @@ public final class ImageViewerDialog {
                 @Override public SourceChoice fromString(String s) { return null; }
             });
             dirLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
+            // The path is the least important part of the row: it shrinks first, the label and combo never do.
+            dirLabel.setMinWidth(0);
             dirLabel.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(dirLabel, Priority.ALWAYS);
             pickBtn.setTooltip(new Tooltip("Pick a different folder"));
             pickBtn.setOnAction(ev -> pickFolder());
-            HBox sourceRow = fixedWidth(new HBox(8, new Label("Source:"), sourceCombo, dirLabel, pickBtn));
+            copySourceDirBtn.setTooltip(new Tooltip("Copy folder path to clipboard"));
+            copySourceDirBtn.setOnAction(ev -> sourceDirectory().ifPresent(dir -> {
+                Clipboards.putString(dir.toString());
+                statusSink.status("Folder path copied to clipboard");
+            }));
+            Label sourceLabel = new Label("Source:");
+            sourceLabel.setMinWidth(Region.USE_PREF_SIZE);
+            sourceCombo.setMinWidth(Region.USE_PREF_SIZE);
+            copySourceDirBtn.setMinWidth(Region.USE_PREF_SIZE);
+            pickBtn.setMinWidth(Region.USE_PREF_SIZE);
+            HBox sourceRow = fixedWidth(new HBox(8, sourceLabel, sourceCombo, dirLabel, copySourceDirBtn, pickBtn));
             sourceRow.setAlignment(Pos.CENTER_LEFT);
 
             favesCheck.setOnAction(ev -> applyFaves());
@@ -316,13 +330,18 @@ public final class ImageViewerDialog {
             index = 0;
             dirLabel.setText(describeDirectory());
             dirLabel.setTooltip(new Tooltip(dirLabel.getText()));
+            copySourceDirBtn.setDisable(sourceDirectory().isEmpty());
             updateFavesCheck();
             applyFaves();
         }
 
+        private Optional<Path> sourceDirectory() {
+            return source == null ? Optional.empty() : impressions.directory(source, trip, date);
+        }
+
         private String describeDirectory() {
             if (source == null) return "No folder picked";
-            return impressions.directory(source, trip, date)
+            return sourceDirectory()
                     .map(UiText::homeRelative)
                     .orElse(switch (source) {
                         case ImpressionSource.PhotoLibrary p -> impressions.photoLibraryConfigured()

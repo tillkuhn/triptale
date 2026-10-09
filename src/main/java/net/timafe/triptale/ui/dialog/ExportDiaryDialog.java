@@ -46,8 +46,8 @@ public final class ExportDiaryDialog {
     /** The image choices; the exporter has no ad-hoc folder source, it only renders content. */
     private enum Images {
         NONE("None", null),
-        PHOTO_LIB(ImpressionSource.PHOTO_LIBRARY.label(), ImpressionSource.PHOTO_LIBRARY),
-        ATTACHMENTS(ImpressionSource.TRIP_ATTACHMENTS.label(), ImpressionSource.TRIP_ATTACHMENTS);
+        PHOTO_LIB("🗂 " + ImpressionSource.PHOTO_LIBRARY.label(), ImpressionSource.PHOTO_LIBRARY),
+        ATTACHMENTS("🎒 " + ImpressionSource.TRIP_ATTACHMENTS.label(), ImpressionSource.TRIP_ATTACHMENTS);
 
         final String label;
         final ImpressionSource source;
