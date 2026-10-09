@@ -4,7 +4,11 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.impressions.ImpressionSource;
+import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ImpressionsResolver;
+import net.timafe.triptale.storage.PathPatternResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +30,7 @@ class DiaryExporterTest {
     private MarkdownStore store;
     private SettingsStore settingsStore;
     private DiaryExporter exporter;
+    private AttachmentsDir attachmentsDir;
 
     @BeforeEach
     void setUp() {
@@ -38,7 +43,10 @@ class DiaryExporterTest {
         settings.setDataDir(dataDir.toString());
         settingsStore.save(settings);
         store = new MarkdownStore(settingsStore);
-        exporter = new DiaryExporter(store, new ImpressionsResolver(new net.timafe.triptale.storage.PathPatternResolver()), settingsStore);
+        attachmentsDir = new AttachmentsDir(store);
+        ImpressionsService impressions = new ImpressionsService(
+                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
+        exporter = new DiaryExporter(store, impressions, settingsStore);
     }
 
     private void setImpressionsFilePattern(String pattern) {
@@ -47,9 +55,9 @@ class DiaryExporterTest {
         settingsStore.save(settings);
     }
 
-    private void setImpressionsFaveFilePattern(String pattern) {
+    private void setImpressionsFaveFilter(String filter) {
         AppSettings settings = settingsStore.load();
-        settings.setImpressionsFaveFilePattern(pattern);
+        settings.setImpressionsFaveFilter(filter);
         settingsStore.save(settings);
     }
 
@@ -213,7 +221,7 @@ class DiaryExporterTest {
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
 
-        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.NONE);
+        String html = exporter.exportTripAsHtml(trip, null, null, null, false);
 
         assertFalse(html.contains("IMPRESSIONS"));
         assertFalse(html.contains("<table"));
@@ -229,7 +237,7 @@ class DiaryExporterTest {
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
         setImpressionsGridColumns(2);
 
-        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
+        String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, false);
 
         assertFalse(html.contains("IMPRESSIONS"), "marker should be replaced");
         assertTrue(html.contains("<div class=\"impressions\" style=\"column-count: 2;\">"));
@@ -238,22 +246,53 @@ class DiaryExporterTest {
     }
 
     @Test
-    void exportTripAsHtmlWithFavesModeUsesFavePattern() throws java.io.IOException {
+    void exportTripAsHtmlWithFavesOnlyAppliesFaveFilter() throws java.io.IOException {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_all.jpg"));
-        java.nio.file.Path faveDir = tempDir.resolve("faves");
-        java.nio.file.Files.createDirectory(faveDir);
-        java.nio.file.Files.createFile(faveDir.resolve("20250701_fave.jpg"));
+        java.nio.file.Files.createFile(tempDir.resolve("20250701_fave+.jpg"));
         setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
-        setImpressionsFaveFilePattern(faveDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFaveFilter("*+.*");
 
-        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
+        String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, true);
 
         assertTrue(html.contains("<div class=\"impressions\""));
-        assertTrue(html.contains("20250701_fave.jpg"));
+        assertTrue(html.contains("20250701_fave+.jpg"));
         assertFalse(html.contains("20250701_all.jpg"));
+    }
+
+    @Test
+    void exportTripAsHtmlFromAttachmentsUsesDayFolderAndBaseFilter() throws java.io.IOException {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        LocalDate day = LocalDate.of(2025, 7, 1);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(day).tales("hi").build());
+        java.nio.file.Path dir = attachmentsDir.ensureDayDir(trip.ref(), day);
+        java.nio.file.Files.createFile(dir.resolve("summit.JPG"));
+        java.nio.file.Files.createFile(dir.resolve("track.gpx"));
+
+        String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.TRIP_ATTACHMENTS, false);
+
+        assertTrue(html.contains("summit.JPG"));
+        assertFalse(html.contains("track.gpx"));
+    }
+
+    @Test
+    void exportTripRangeCoversOnlySelectedEntriesAndTotals() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("One").distance(10.0).tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2)).title("Two").distance(20.0).tales("b").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 3)).title("Three").distance(40.0).tales("c").build());
+
+        String out = exporter.exportTrip(trip, LocalDate.of(2025, 7, 2), LocalDate.of(2025, 7, 2));
+
+        assertTrue(out.contains("Day 2: Two"), out);
+        assertFalse(out.contains("One"), out);
+        assertFalse(out.contains("Three"), out);
+        assertTrue(out.contains("20.0"), out);
+        assertFalse(out.contains("70.0"), out);
     }
 
     @Test
@@ -261,14 +300,14 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
-        // No impressionsFilePattern or impressionsFaveFilePattern configured at all.
+        // No impressionsFilePattern or impressionsFaveFilter configured at all.
 
-        String html = exporter.exportTripAsHtml(trip, ImpressionsMode.ALL);
+        String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, false);
 
         assertFalse(html.contains("IMPRESSIONS"));
         assertFalse(html.contains("<table"));
 
-        String favesHtml = exporter.exportTripAsHtml(trip, ImpressionsMode.FAVES);
+        String favesHtml = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, true);
         assertFalse(favesHtml.contains("IMPRESSIONS"));
         assertFalse(favesHtml.contains("<table"));
     }

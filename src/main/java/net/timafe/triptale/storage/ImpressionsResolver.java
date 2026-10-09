@@ -68,24 +68,31 @@ public class ImpressionsResolver {
      * scope), or nothing matches.
      */
     public List<Path> resolve(String pattern, Trip trip, LocalDate date) {
-        if (pattern == null || pattern.isBlank() || date == null) return List.of();
+        if (date == null) return List.of();
+        Optional<Path> dir = resolveDirectory(pattern, trip);
+        if (dir.isEmpty()) return List.of();
 
+        String filenamePattern = pattern.substring(pattern.lastIndexOf('/') + 1);
+        String glob = PathPatternResolver.substitute(filenamePattern, Map.of("DATE", date.format(DATE_FORMAT)));
+        return matchFiles(dir.get(), glob);
+    }
+
+    /**
+     * Resolves the directory half of the pattern (everything before the last {@code /}) for the
+     * given trip; empty if the pattern is blank, has no directory segment, or doesn't resolve.
+     */
+    public Optional<Path> resolveDirectory(String pattern, Trip trip) {
+        if (pattern == null || pattern.isBlank()) return Optional.empty();
         int sep = pattern.lastIndexOf('/');
         if (sep < 0) {
             log.warn("Impressions pattern has no directory segment: {}", pattern);
-            return List.of();
+            return Optional.empty();
         }
         String directoryPattern = pattern.substring(0, sep);
-        String filenamePattern = pattern.substring(sep + 1);
-
         Map<String, String> vars = tripVariables(trip);
         String cacheKey = directoryPattern + "||" + tripCacheKey(trip);
-        Optional<Path> dir = resolvedDirectoryCache.computeIfAbsent(cacheKey,
+        return resolvedDirectoryCache.computeIfAbsent(cacheKey,
                 k -> pathPatternResolver.resolveDirectory(directoryPattern, vars));
-        if (dir.isEmpty()) return List.of();
-
-        String glob = PathPatternResolver.substitute(filenamePattern, Map.of("DATE", date.format(DATE_FORMAT)));
-        return matchFiles(dir.get(), glob);
     }
 
     private static Map<String, String> tripVariables(Trip trip) {

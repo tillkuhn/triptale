@@ -125,11 +125,24 @@ For `cloud` mode you need a bucket URL (`s3://bucket/optional-prefix/`), region,
 
 ## Impressions & Faves 🖼️
 
-Two optional settings (Settings dialog, or `impressionsFilePattern` / `impressionsFaveFilePattern`
-in `settings.yml`) let TripTale find that day's photos on disk — shown as an "N Impressions" /
-"N Faves" button per entry, and embeddable as an image gallery in HTML export.
+Each entry has a **🖼 Impressions 12 🗂 / 3 📎** button: that day's images in your local photo
+library (🗂) and in the day's attachments (📎). It opens a photo viewer where you choose the
+source — **Trip Attachments**, **Local Photo Lib**, or **Pick Folder** (any folder, e.g. a camera
+card) — narrow it to faves, tick images and **📎 Import Selected** them as attachments of that day.
+Imports copy the originals (EXIF included); a same-named attachment is overwritten. Attachments
+travel with the data dir (git or S3), so unlike the photo library they're available on every
+machine.
 
-Each pattern is a filesystem path containing `${VAR}` placeholders:
+Three settings shape what counts as an impression (Settings dialog or `settings.yml`):
+
+- `impressionsBaseFilter` — space-separated filename globs, default `*.jpg *.jpeg *.png`; applied
+  to every source first, so GPX tracks, PDFs etc. never show up.
+- `impressionsFaveFilter` — space-separated globs marking faves, e.g. `*+.*` for a `+` at the end
+  of the basename; enables the **Faves only** checkbox in the viewer and the export. Both filters
+  match the filename only and ignore case.
+- `impressionsFilePattern` — where the local photo library lives, see below.
+
+The photo library pattern is a filesystem path containing `${VAR}` placeholders:
 
 | Variable         | Expands to                                  | Example              |
 |------------------|----------------------------------------------|-----------------------|
@@ -152,7 +165,7 @@ After substitution, the pattern is split on `/` and matched one directory level 
   filename glob is re-evaluated as you navigate between days.
 
 Expansion happens at the moment images are actually looked up, not when settings are saved —
-so pointing at a USB drive or NAS that isn't always mounted just yields "No Impressions"
+so pointing at a USB drive or NAS that isn't always mounted just yields a count of 0
 rather than an error.
 
 Examples, from simplest to most specific:
@@ -176,7 +189,7 @@ e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
 
 ## Export 📤
 
-**⇧ Export Diary…** renders the entire trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions as a photo gallery. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
+**⇧ Export Diary…** renders the trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions (from the photo library or the attachments, all or faves only) as a photo gallery. A **From / To** range narrows it to some days, with totals for just those; **⇧ Export Tale** next to Save exports only the current day. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
 
 ## Run it 🛠️
 
@@ -220,7 +233,7 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 |---|---|
 | `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data`. Changing it needs a restart. |
 | `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
-| `impressionsFilePattern`, `impressionsFaveFilePattern`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
+| `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
 | `mapboxToken` | Public Mapbox token for the trip map. |
 | `attachments.*` | Sync mode and S3 settings, see [Attachments](#attachments-). |
 

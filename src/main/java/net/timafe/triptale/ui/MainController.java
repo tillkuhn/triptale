@@ -31,6 +31,8 @@ import net.timafe.triptale.attachments.AttachmentSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.radio.RadioLibrary;
 import net.timafe.triptale.attachments.S3Client;
+import net.timafe.triptale.impressions.ImpressionSource;
+import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -41,7 +43,6 @@ import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.ExifReader;
-import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.dialog.AboutDialog;
@@ -115,7 +116,6 @@ public class MainController implements StatusSink {
     @FXML private Button openCoordinatesButton;
     @FXML private Button tripMapButton;
     @FXML private Button impressionsButton;
-    @FXML private Button favesButton;
     @FXML private TextArea talesArea;
     @FXML private VBox taleEmptyOverlay;
     @FXML private Hyperlink createTaleLink;
@@ -126,7 +126,7 @@ public class MainController implements StatusSink {
     @FXML private HBox statusRow;
     @FXML private Label tourDayLabel;
     @FXML private Label titleLabel;
-    @FXML private Button copyButton;
+    @FXML private Button exportTaleButton;
     @FXML private Button saveButton;
     @FXML private Button syncButton;
     @FXML private Button prevDayButton;
@@ -150,7 +150,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem nextDayMenuItem;
     @FXML private MenuItem todayMenuItem;
     @FXML private MenuItem impressionsMenuItem;
-    @FXML private MenuItem favesMenuItem;
+    @FXML private MenuItem exportTaleMenuItem;
     @FXML private MenuItem saveMenuItem;
     @FXML private MenuItem copyMenuItem;
     @FXML private MenuItem deleteEntryMenuItem;
@@ -211,7 +211,7 @@ public class MainController implements StatusSink {
     private final MarkdownStore store;
     private final GitService gitService;
     private final SettingsStore settingsStore;
-    private final ImpressionsResolver impressionsResolver;
+    private final ImpressionsService impressions;
     private final ConnectivityService connectivityService;
     private final ExportTempFiles exportTempFiles;
     private final BrowserLauncher browser;
@@ -224,7 +224,7 @@ public class MainController implements StatusSink {
     /** Created on first use, so javafx.media stays unloaded until the radio is touched (todo 46). */
     private RadioPlayer radio;
     private EqualizerIcon equalizerIcon;
-    private File lastAttachmentSourceDir;
+    private final RecentFolder recentFolder = new RecentFolder();
 
     // Window title: greeting + travel quote, re-rolled on trip switch (todo 45).
     private final Greetings greetings = Greetings.load();
@@ -241,7 +241,7 @@ public class MainController implements StatusSink {
     private final TripMapDialog tripMapDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
-                          DiaryExporter diaryExporter, ImpressionsResolver impressionsResolver,
+                          DiaryExporter diaryExporter, ImpressionsService impressions,
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
                           ExportTempFiles exportTempFiles,
@@ -253,7 +253,7 @@ public class MainController implements StatusSink {
         this.store = store;
         this.gitService = gitService;
         this.settingsStore = settingsStore;
-        this.impressionsResolver = impressionsResolver;
+        this.impressions = impressions;
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
         this.attachmentsDir = attachmentsDir;
@@ -261,8 +261,8 @@ public class MainController implements StatusSink {
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
         this.exportDiaryDialog =
-                new ExportDiaryDialog(diaryExporter, settingsStore, exportTempFiles, browser, this);
-        this.imageViewerDialog = new ImageViewerDialog(exifReader, browser, this);
+                new ExportDiaryDialog(diaryExporter, store, impressions, exportTempFiles, browser, this);
+        this.imageViewerDialog = new ImageViewerDialog(impressions, exifReader, browser, this, recentFolder);
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
@@ -580,6 +580,15 @@ public class MainController implements StatusSink {
         exportDiaryDialog.show(trip);
     }
 
+    /** Exports just the current entry, saving pending edits first so the export sees them. */
+    @FXML
+    public void onExportTale() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null || !saveIfDirty() || !entryExists) return;
+        exportDiaryDialog.show(trip, date, date);
+    }
+
     @FXML
     public void onViewSource() {
         Trip trip = tripCombo.getValue();
@@ -770,7 +779,6 @@ public class MainController implements StatusSink {
         updateTalesLabel();
         updateEmptyState();
         updateImpressionsButton(trip, date);
-        updateFavesButton(trip, date);
         snapshotBaseline();
         updateDirty();
     }
@@ -812,30 +820,20 @@ public class MainController implements StatusSink {
         titleField.selectAll();
     }
 
+    /**
+     * Counts the day's images in the photo library and the attachments (base filter only, no
+     * fave filter). The viewer opens even when both are empty — it can also pick a folder.
+     */
     private void updateImpressionsButton(Trip trip, LocalDate date) {
         if (impressionsButton == null) return;
-        int count = resolveImpressions(settingsStore.load().getImpressionsFilePattern(), trip, date).size();
-        impressionsButton.setText(count == 0
-                ? "No Impressions"
-                : "🖼 " + count + " Impression" + (count == 1 ? "" : "s") + " ›");
-        impressionsButton.setDisable(count == 0);
-        if (impressionsMenuItem != null) impressionsMenuItem.setDisable(count == 0);
-    }
-
-    private void updateFavesButton(Trip trip, LocalDate date) {
-        if (favesButton == null) return;
-        int count = resolveImpressions(settingsStore.load().getImpressionsFaveFilePattern(), trip, date).size();
-        favesButton.setText(count == 0
-                ? "No Faves"
-                : "🖼 " + count + " Fave" + (count == 1 ? "" : "s") + " ›");
-        favesButton.setDisable(count == 0);
-        if (favesMenuItem != null) favesMenuItem.setDisable(count == 0);
-    }
-
-    /** Images matching a configured pattern for this trip/date; empty when anything is missing. */
-    private List<Path> resolveImpressions(String pattern, Trip trip, LocalDate date) {
-        if (pattern == null || pattern.isBlank() || trip == null || date == null) return List.of();
-        return impressionsResolver.resolve(pattern, trip, date);
+        boolean noDay = trip == null || date == null;
+        int photoLib = noDay ? 0 : impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date).size();
+        int attached = noDay ? 0 : impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).size();
+        impressionsButton.setText(photoLib == 0 && attached == 0
+                ? "🖼 Impressions: none – pick folder ›"
+                : "🖼 Impressions " + photoLib + " 🗂 / " + attached + " 📎 ›");
+        impressionsButton.setDisable(noDay);
+        if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
     private void updateCoordinatesButton() {
@@ -999,9 +997,11 @@ public class MainController implements StatusSink {
         }
         boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
                 && tripCombo.getValue() != null && datePicker.getValue() != null;
-        if (copyButton != null) {
-            copyButton.setDisable(!hasContent);
-        }
+        // Export Tale saves pending edits first, so a savable new entry counts as exportable.
+        boolean exportable = tripCombo.getValue() != null && datePicker.getValue() != null
+                && (entryExists || saveEnabled);
+        if (exportTaleButton != null) exportTaleButton.setDisable(!exportable);
+        if (exportTaleMenuItem != null) exportTaleMenuItem.setDisable(!exportable);
         if (copyMenuItem != null) {
             copyMenuItem.setDisable(!hasContent);
         }
@@ -1423,16 +1423,15 @@ public class MainController implements StatusSink {
         if (trip == null || date == null) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Add Attachments for " + DATE_DISPLAY.format(date));
-        if (lastAttachmentSourceDir != null && lastAttachmentSourceDir.isDirectory()) {
-            chooser.setInitialDirectory(lastAttachmentSourceDir);
-        }
+        chooser.setInitialDirectory(recentFolder.initial());
         List<File> files = chooser.showOpenMultipleDialog(null);
         if (files == null || files.isEmpty()) return;
-        lastAttachmentSourceDir = files.getFirst().getParentFile();
+        recentFolder.remember(files.getFirst().getParentFile());
         try {
             List<Path> copies = attachmentsDir.addFiles(trip.ref(), date, files.stream().map(File::toPath).toList());
             status("Added " + copies.size() + " attachment" + (copies.size() == 1 ? "" : "s") + " to "
                     + UiText.homeRelative(copies.getFirst().getParent()));
+            updateImpressionsButton(trip, date);
         } catch (RuntimeException e) {
             error(UiText.describe(e));
         }
@@ -1680,7 +1679,6 @@ public class MainController implements StatusSink {
         applyConnectivityState();
 
         updateImpressionsButton(tripCombo.getValue(), datePicker.getValue());
-        updateFavesButton(tripCombo.getValue(), datePicker.getValue());
 
         if (!edited.get().getDataDir().equals(previousDataDir)) {
             status("Settings saved — restart " + appName + " for the new data directory to take effect");
@@ -1691,19 +1689,10 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onShowImpressions() {
-        showImpressions("Impressions", settingsStore.load().getImpressionsFilePattern());
-    }
-
-    @FXML
-    public void onShowFaves() {
-        showImpressions("Faves", settingsStore.load().getImpressionsFaveFilePattern());
-    }
-
-    private void showImpressions(String title, String pattern) {
+        Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
-        List<Path> images = resolveImpressions(pattern, tripCombo.getValue(), date);
-        if (images.isEmpty()) return;
-        imageViewerDialog.show(title, images, date);
+        if (trip == null || date == null) return;
+        imageViewerDialog.show(trip, date, () -> updateImpressionsButton(trip, date));
     }
 
     private Double parseDouble(String s, String field) {

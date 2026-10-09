@@ -43,9 +43,12 @@ public final class EditSettingsDialog {
         patternField.setPrefColumnCount(36);
         TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);
-        TextField favePatternField = new TextField(settings.getImpressionsFaveFilePattern());
-        favePatternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/${DATE}*.jpg");
-        favePatternField.setPrefColumnCount(36);
+        TextField baseFilterField = new TextField(settings.getImpressionsBaseFilter());
+        baseFilterField.setPromptText("e.g. " + AppSettings.DEFAULT_IMPRESSIONS_BASE_FILTER);
+        baseFilterField.setPrefColumnCount(36);
+        TextField faveFilterField = new TextField(settings.getImpressionsFaveFilter());
+        faveFilterField.setPromptText("e.g. *+.* (space-separated, case-insensitive)");
+        faveFilterField.setPrefColumnCount(36);
         TextField mapboxTokenField = new TextField(settings.getMapboxToken());
         mapboxTokenField.setPromptText("pk.… (unrestricted public token)");
         mapboxTokenField.setPrefColumnCount(36);
@@ -87,8 +90,10 @@ public final class EditSettingsDialog {
         grid.add(patternField, 1, row++);
         grid.add(new Label("Impressions grid columns:"), 0, row);
         grid.add(columnsField, 1, row++);
-        grid.add(new Label("Faves file pattern:"), 0, row);
-        grid.add(favePatternField, 1, row++);
+        grid.add(new Label("Impressions base filter:"), 0, row);
+        grid.add(baseFilterField, 1, row++);
+        grid.add(new Label("Impressions fave filter:"), 0, row);
+        grid.add(faveFilterField, 1, row++);
         grid.add(new Separator(), 0, row, 2, 1);
         row++;
         grid.add(new Label("Mapbox token:"), 0, row);
@@ -132,7 +137,8 @@ public final class EditSettingsDialog {
         settings.setGit(git);
         settings.setImpressionsFilePattern(patternField.getText().trim());
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
-        settings.setImpressionsFaveFilePattern(favePatternField.getText().trim());
+        settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
+        settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
         settings.setMapboxToken(mapboxTokenField.getText().trim());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());

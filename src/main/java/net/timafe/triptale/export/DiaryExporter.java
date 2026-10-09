@@ -3,7 +3,9 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
-import net.timafe.triptale.storage.ImpressionsResolver;
+import net.timafe.triptale.impressions.ImageFilter;
+import net.timafe.triptale.impressions.ImpressionSource;
+import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.util.Coordinates;
@@ -47,45 +49,57 @@ public class DiaryExporter {
     private static final Pattern IMPRESSIONS_MARKER = Pattern.compile("<!--IMPRESSIONS:(\\d{4}-\\d{2}-\\d{2})-->");
 
     private final MarkdownStore store;
-    private final ImpressionsResolver impressionsResolver;
+    private final ImpressionsService impressions;
     private final SettingsStore settingsStore;
 
-    public DiaryExporter(MarkdownStore store, ImpressionsResolver impressionsResolver, SettingsStore settingsStore) {
+    public DiaryExporter(MarkdownStore store, ImpressionsService impressions, SettingsStore settingsStore) {
         this.store = store;
-        this.impressionsResolver = impressionsResolver;
+        this.impressions = impressions;
         this.settingsStore = settingsStore;
     }
 
     public String exportTrip(Trip trip) {
-        return buildMarkdown(trip, false);
+        return exportTrip(trip, null, null);
+    }
+
+    /**
+     * Exports the entries dated {@code from}..{@code to} (inclusive; null = unbounded). The header
+     * totals cover that range only; "Day N" stays relative to the trip start.
+     */
+    public String exportTrip(Trip trip, LocalDate from, LocalDate to) {
+        return buildMarkdown(trip, from, to, false);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
     public String exportTripAsHtml(Trip trip) {
-        return exportTripAsHtml(trip, ImpressionsMode.NONE);
+        return exportTripAsHtml(trip, null, null, null, false);
     }
 
     /**
-     * Renders the trip as a standalone HTML document, optionally embedding a per-day image grid
-     * discovered via the configured pattern selected by {@code mode} — see {@link ImpressionsMode}.
-     * A pattern that isn't configured (or resolves no files for a given day) simply yields no
-     * grid for that day; this is not treated as an error.
+     * Renders the entries dated {@code from}..{@code to} as a standalone HTML document,
+     * optionally embedding a per-day image grid from {@code images} (null = no images), reduced
+     * to faves if {@code favesOnly}. A source that yields no files for a given day simply gives
+     * no grid for that day; this is not treated as an error.
      */
-    public String exportTripAsHtml(Trip trip, ImpressionsMode mode) {
-        boolean includeMarkers = mode != ImpressionsMode.NONE;
-        String markdown = buildMarkdown(trip, includeMarkers);
+    public String exportTripAsHtml(Trip trip, LocalDate from, LocalDate to,
+                                   ImpressionSource images, boolean favesOnly) {
+        boolean includeMarkers = images != null;
+        String markdown = buildMarkdown(trip, from, to, includeMarkers);
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
         if (includeMarkers) {
-            bodyHtml = injectImpressions(bodyHtml, trip, mode);
+            bodyHtml = injectImpressions(bodyHtml, trip, images, favesOnly);
         }
         String title = trip.name() == null ? "" : escapeHtml(trip.name());
         return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
     }
 
-    private String buildMarkdown(Trip trip, boolean includeImpressionMarkers) {
+    private String buildMarkdown(Trip trip, LocalDate from, LocalDate to, boolean includeImpressionMarkers) {
         Objects.requireNonNull(trip, "trip");
-        List<LocalDate> dates = store.listEntryDates(trip.ref());
+        List<LocalDate> allDates = store.listEntryDates(trip.ref());
+        List<LocalDate> dates = allDates.stream()
+                .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
+                .toList();
         List<DiaryEntry> entries = dates.stream()
                 .map(d -> store.loadEntry(trip.ref(), d))
                 .toList();
@@ -98,7 +112,9 @@ public class DiaryExporter {
                 .filter(e -> e.altitudeMeters() != null)
                 .mapToDouble(DiaryEntry::altitudeMeters)
                 .sum();
-        LocalDate startDate = trip.startDate();
+        // A range starting at the trip's first entry keeps the trip's own start date.
+        LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
+                ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
 
         StringBuilder entriesBlock = new StringBuilder();
@@ -123,27 +139,22 @@ public class DiaryExporter {
     }
 
     /** Replaces embedded {@code <!--IMPRESSIONS:yyyy-MM-dd-->} markers with an image grid table. */
-    private String injectImpressions(String html, Trip trip, ImpressionsMode mode) {
+    private String injectImpressions(String html, Trip trip, ImpressionSource source, boolean favesOnly) {
         AppSettings settings = settingsStore.load();
-        String pattern = switch (mode) {
-            case FAVES -> blankToNull(settings.getImpressionsFaveFilePattern());
-            case ALL -> blankToNull(settings.getImpressionsFilePattern());
-            case NONE -> null;
-        };
+        ImageFilter faves = favesOnly ? impressions.faveFilter() : ImageFilter.parse("");
         int columns = Math.max(1, settings.getImpressionsGridColumns());
         Matcher m = IMPRESSIONS_MARKER.matcher(html);
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
             LocalDate date = LocalDate.parse(m.group(1));
-            String replacement = pattern == null ? "" : renderImpressionsTable(pattern, trip, date, columns);
+            String replacement = renderImpressionsTable(faves.apply(impressions.images(source, trip, date)), columns);
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(sb);
         return sb.toString();
     }
 
-    private String renderImpressionsTable(String pattern, Trip trip, LocalDate date, int columns) {
-        List<Path> images = impressionsResolver.resolve(pattern, trip, date);
+    private static String renderImpressionsTable(List<Path> images, int columns) {
         if (images.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"impressions\" style=\"column-count: ").append(columns).append(";\">\n");
@@ -153,10 +164,6 @@ public class DiaryExporter {
         }
         sb.append("</div>\n");
         return sb.toString();
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
     }
 
     private static String escapeHtml(String s) {

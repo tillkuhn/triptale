@@ -16,19 +16,12 @@ higher** level (subheadings stay inside the block), or to the end of the tale.
 
 ## 47 Impressions / exporter refactor: images as attachments
 
-Post images come from `impressionsFilePattern` — a machine-local photo folder — so exports
-only work on one machine and no image can be referenced by URL. Import images as attachments
-by selecting them, and give the exporters a switch: legacy filesystem location, or the
-attachments of the current entry (`attachments/<year>/<slug>/<date>-Weekday/`, already one
-folder per entry day and already synced to S3).
-
-- Model the source as an `ImpressionSource` interface (pattern / attachments), not a boolean
-  flag threaded through every exporter; keep it orthogonal to `ImpressionsMode` (NONE/FAVES/ALL).
-- Open: what does "FAVES" mean for attachments — subfolder, filename prefix, or frontmatter list?
-- Import is a write → copy, `addPending(...)`, commit via Smart Sync. Resize on import (git
-  sync mode would otherwise swallow 5–10 MB originals); decide filename-collision handling.
-- URLs must reuse `AttachmentSyncer`'s object-key logic + `publicAttachmentBaseUrl`.
-- Keep the legacy source; add a one-off "import this trip's impressions as attachments" action.
+Impressions come from a selectable source (Local Photo Lib / Trip Attachments / Pick Folder),
+reduced by `impressionsBaseFilter` and optionally `impressionsFaveFilter` (filename globs).
+The viewer imports selected images into the day's attachments; the Faves button is gone. Export
+gets a From/To entry range, an image source + "Faves only", and a per-entry "⇧ Export Tale".
+Status: implemented on `feature/47-impressions-refactor`, pending visual review. Deferred:
+resize on import, public URLs (todo 44), bulk import of a whole trip.
 
 [Details](docs/47_impressions_attachments_refactor.md)
 

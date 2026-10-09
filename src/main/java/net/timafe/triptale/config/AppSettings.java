@@ -1,5 +1,6 @@
 package net.timafe.triptale.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.nio.file.Path;
@@ -15,14 +16,21 @@ import java.util.regex.Pattern;
  * <p>Plain POJO for Jackson YAML (de)serialization — no JavaFX, no Spring annotations. Not a
  * Spring-managed {@code @ConfigurationProperties} bean: it's user-editable at runtime via the
  * Edit Settings dialog, not fixed at launch.
+ *
+ * <p>Unknown keys are ignored, so a {@code settings.yml} written by an older version (e.g. with
+ * the removed {@code impressionsFaveFilePattern}) still loads.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AppSettings {
+
+    public static final String DEFAULT_IMPRESSIONS_BASE_FILTER = "*.jpg *.jpeg *.png";
 
     private String dataDir = "";
     private Git git = new Git();
     private String impressionsFilePattern = "";
     private int impressionsGridColumns = 2;
-    private String impressionsFaveFilePattern = "";
+    private String impressionsBaseFilter = DEFAULT_IMPRESSIONS_BASE_FILTER;
+    private String impressionsFaveFilter = "";
     private String mapboxToken = "";
     private Attachments attachments = new Attachments();
     private boolean radioEnabled = false;
@@ -52,8 +60,12 @@ public class AppSettings {
     public void setImpressionsFilePattern(String impressionsFilePattern) { this.impressionsFilePattern = impressionsFilePattern; }
     public int getImpressionsGridColumns() { return impressionsGridColumns; }
     public void setImpressionsGridColumns(int impressionsGridColumns) { this.impressionsGridColumns = impressionsGridColumns; }
-    public String getImpressionsFaveFilePattern() { return impressionsFaveFilePattern; }
-    public void setImpressionsFaveFilePattern(String impressionsFaveFilePattern) { this.impressionsFaveFilePattern = impressionsFaveFilePattern; }
+    /** Space-separated filename globs every impression source is reduced to first (todo 47). */
+    public String getImpressionsBaseFilter() { return impressionsBaseFilter; }
+    public void setImpressionsBaseFilter(String impressionsBaseFilter) { this.impressionsBaseFilter = impressionsBaseFilter == null ? "" : impressionsBaseFilter; }
+    /** Space-separated filename globs marking faves, e.g. {@code *+.*}; blank = none defined (todo 47). */
+    public String getImpressionsFaveFilter() { return impressionsFaveFilter; }
+    public void setImpressionsFaveFilter(String impressionsFaveFilter) { this.impressionsFaveFilter = impressionsFaveFilter == null ? "" : impressionsFaveFilter; }
     public String getMapboxToken() { return mapboxToken; }
     public void setMapboxToken(String mapboxToken) { this.mapboxToken = mapboxToken; }
     public Attachments getAttachments() { return attachments; }

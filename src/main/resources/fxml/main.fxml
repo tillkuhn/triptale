@@ -59,11 +59,11 @@
                                 <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
-                                <MenuItem fx:id="favesMenuItem" text="🖼 Show Faves" onAction="#onShowFaves" disable="true"/>
                                 <MenuItem fx:id="addAttachmentsMenuItem" text="📎 Add Attachments…" onAction="#onAddAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
                                 <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                                <MenuItem fx:id="exportTaleMenuItem" text="⇧ Export Tale…" onAction="#onExportTale" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>
                             </items>
@@ -148,11 +148,8 @@
                     <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <Button fx:id="impressionsButton" text="No Impressions" onAction="#onShowImpressions">
-                            <tooltip><Tooltip text="Show images for this day"/></tooltip>
-                        </Button>
-                        <Button fx:id="favesButton" text="No Faves" onAction="#onShowFaves">
-                            <tooltip><Tooltip text="Show favourite images for this day"/></tooltip>
+                        <Button fx:id="impressionsButton" text="🖼 Impressions" onAction="#onShowImpressions" disable="true">
+                            <tooltip><Tooltip text="Show images for this day: photo library 🗂 / attachments 📎"/></tooltip>
                         </Button>
                     </HBox>
                     <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
@@ -235,7 +232,9 @@
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
-                <Button fx:id="copyButton" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                <Button fx:id="exportTaleButton" text="⇧ Export Tale" onAction="#onExportTale" disable="true">
+                    <tooltip><Tooltip text="Export just this day (saves pending edits first)"/></tooltip>
+                </Button>
                 <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="syncButton" text="🔄 Smart Sync" onAction="#onSync"/>
             </HBox>

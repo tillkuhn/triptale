@@ -36,7 +36,8 @@ class SettingsStoreTest {
         assertEquals("", settings.getGit().getAuthorEmail());
         assertEquals("", settings.getImpressionsFilePattern());
         assertEquals(2, settings.getImpressionsGridColumns());
-        assertEquals("", settings.getImpressionsFaveFilePattern());
+        assertEquals("*.jpg *.jpeg *.png", settings.getImpressionsBaseFilter());
+        assertEquals("", settings.getImpressionsFaveFilter());
         assertEquals("", settings.getAttachments().getBucketUrl());
         assertEquals("eu-central-1", settings.getAttachments().getRegion());
     }
@@ -51,7 +52,8 @@ class SettingsStoreTest {
         settings.setGit(git);
         settings.setImpressionsFilePattern("${HOME}/Pictures/output/${DATE}*.jpg");
         settings.setImpressionsGridColumns(4);
-        settings.setImpressionsFaveFilePattern("${HOME}/Pictures/00_Faves/${DATE}*.jpg");
+        settings.setImpressionsBaseFilter("*.jpg *.heic");
+        settings.setImpressionsFaveFilter("*+.*");
         AppSettings.Attachments attachments = new AppSettings.Attachments();
         attachments.setBucketUrl("s3://triptale-attachments/trips");
         attachments.setRegion("us-east-1");
@@ -67,11 +69,19 @@ class SettingsStoreTest {
         assertEquals("alice@example.com", loaded.getGit().getAuthorEmail());
         assertEquals("${HOME}/Pictures/output/${DATE}*.jpg", loaded.getImpressionsFilePattern());
         assertEquals(4, loaded.getImpressionsGridColumns());
-        assertEquals("${HOME}/Pictures/00_Faves/${DATE}*.jpg", loaded.getImpressionsFaveFilePattern());
+        assertEquals("*.jpg *.heic", loaded.getImpressionsBaseFilter());
+        assertEquals("*+.*", loaded.getImpressionsFaveFilter());
         assertEquals("s3://triptale-attachments/trips", loaded.getAttachments().getBucketUrl());
         assertEquals("us-east-1", loaded.getAttachments().getRegion());
         assertEquals("AKIAEXAMPLE", loaded.getAttachments().getAccessKeyId());
         assertEquals("secret/with+chars", loaded.getAttachments().getSecretAccessKey());
+    }
+
+    @Test
+    void loadIgnoresRemovedKeysFromOlderVersions() throws Exception {
+        Files.writeString(settingsStore.settingsFile(),
+                "dataDir: /some/data/dir\nimpressionsFaveFilePattern: \"${HOME}/x/${DATE}*.jpg\"\n");
+        assertEquals("/some/data/dir", settingsStore.load().getDataDir());
     }
 
     @Test
