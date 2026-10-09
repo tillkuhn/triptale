@@ -1,4 +1,4 @@
-# Optional CloudFront distribution serving backpack images publicly (todo 44, docs/44_wordpress_export.md).
+# Optional CloudFront distribution serving backpack images publicly (todo 44, docs/done/44_wordpress_export.md).
 # The bucket stays private: CloudFront reads through Origin Access Control, and only images below
 # attachments/ — radio/, backups etc. are neither addressable (origin path) nor readable (bucket policy).
 

@@ -1,6 +1,19 @@
 # ToDos for this app
 
-## Next Todo: 50
+## Next Todo: 51
+
+## 50 WordPress export follow-ups
+
+Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, CDN images).
+
+- Day heading wording for blog posts (currently the Markdown export's `2026-05-29 Friday
+  Day 1: …`).
+- Watch the CloudFront bill in Cost Explorer for a few weeks; if it isn't ~€0, set
+  `enable_cdn = false` and host images via SFTP on the blog (Blogger plan has it).
+- Optional stage 2: create the post as a draft via the WordPress.com REST API; first check
+  which auth works on the Blogger plan (application passwords vs. OAuth2).
+
+[Background](docs/done/44_wordpress_export.md)
 
 ## 49 Bulk import a whole trip's photo-lib impressions as attachments
 
@@ -61,20 +74,6 @@ separate from attachments), playable from the app while writing.
 - Open: Linux playback depends on a supported system FFmpeg — test the release jar.
 
 [Details](docs/46_radio.md)
-
-## 44 Support export trip as WordPress.com post (markup code)
-
-Goal: ease writing articles on our wordpress.com blog — its rich-text editor is a pain.
-
-- Stage 1: export target rendering Gutenberg block markup (headings, paragraphs, one Gallery
-  block per day) to the clipboard, for the block editor's Code editor. Stage 2 (optional):
-  publish a draft via the WordPress.com REST API.
-- Image hosting **works** (2026-10-10): CloudFront + OAC over the private bucket
-  (`terraform/cdn.tf`), only images below `attachments/`. A hand-made test post (2 days,
-  26 images) renders fine on the blog. Watch the bill for a few weeks.
-- Next: build stage 1 into the exporter (`publicAttachmentBaseUrl` setting, `%2B`-encode keys).
-
-[Details](docs/44_wordpress_export.md)
 
 ## 43 Spring Boot AOT Optimizations and other performance helpers
 
@@ -218,6 +217,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 44 Support export trip as WordPress.com post (markup code)
+
+see docs/done/44_wordpress_export.md
 
 ## DONE 34 support html export for trip entries
 
