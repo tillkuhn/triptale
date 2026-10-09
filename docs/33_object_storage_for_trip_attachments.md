@@ -325,7 +325,9 @@ is enough and no extra install matters more → our own S3 client.
 - ~~**Delete semantics:** use `bisync` (deletes propagate) or copy-both-ways (deletes don't)?~~
   → for now (33b, 2026-10-04): **copy both ways, never delete.** A file deleted locally comes
   back on the next pull. Still open: an explicit "delete attachment" action that removes the
-  object from the bucket too.
+  object from the bucket too. → 2026-10-09: superseded by a three-way sync against a per-device
+  sync base, see [ADR-0002](adr/0002-attachment-sync.md); implemented by
+  [todo 33c](33c_attachment_delete_propagation.md).
 - ~~**Conflicts:** same file changed on both sides — newer wins, keep both, or ask?~~ → for now
   (33b): **local wins.** Pull only downloads files missing locally; push uploads any local file
   that differs from the bucket. Revisit if it bites (e.g. the same photo edited on two machines).

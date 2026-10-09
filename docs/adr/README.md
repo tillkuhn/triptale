@@ -8,6 +8,7 @@ status `Superseded by ADR-00xx` rather than editing its original reasoning away)
 | # | Title | Status |
 |---|-------|--------|
 | [0001](0001-coordinate-display-format.md) | Display coordinates in DDM, not DMS or raw decimal degrees | Accepted |
+| [0002](0002-attachment-sync.md) | Sync attachments as a three-way merge against a per-device sync base | Accepted |
 
 ## Format
 

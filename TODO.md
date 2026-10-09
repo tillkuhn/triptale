@@ -2,6 +2,19 @@
 
 ## Next Todo: 49
 
+## 33c Attachment delete propagation (sync base)
+
+Cloud attachment sync never deletes: a locally deleted attachment comes back with the next
+pull, and a stale copy can overwrite a newer remote edit. Since todo 47's bulk import, mistaken
+imports need a real delete. Sync as a three-way merge against a per-device sync base (no base,
+no deletes), see [ADR-0002](docs/adr/0002-attachment-sync.md).
+
+- `ObjectStore.delete`, `SyncBase` file, three-way `plan()`, local deletes to the OS trash.
+- Smart Sync shows deletes and stops on mass deletes; viewer gets "🗑 Delete Selected".
+- Bucket versioning + 30-day noncurrent expiry in `terraform/`. Prerequisite for todo 42's remote side.
+
+[Details](docs/33c_attachment_delete_propagation.md)
+
 ## 48 Internal paragraphs: hide private notes from exports
 
 A tale heading `internal` or `private` (any level, case-insensitive, exact word, optional
@@ -88,6 +101,7 @@ add a button "rename" behind the slug in the trip edit screen, that should allow
 and walks through all trip YYYY subdirectories and update references to reflect the new path, including tolaria style wikilinks "[[path/file]]. 
 Report back with "x references updated" or similar.
 If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
+Depends on todo 33c (remote deletes); S3 rename = copy + delete.
 
 ## 41 justified-row (Flickr/Google Photos-style) impressions gallery for HTML export
 
