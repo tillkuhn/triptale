@@ -55,7 +55,7 @@ class SettingsStoreTest {
         settings.setImpressionsBaseFilter("*.jpg *.heic");
         settings.setImpressionsFaveFilter("*+.*");
         AppSettings.Attachments attachments = new AppSettings.Attachments();
-        attachments.setBucketUrl("s3://triptale-attachments/trips");
+        attachments.setBucketUrl("s3://triptale-backpack/trips");
         attachments.setRegion("us-east-1");
         attachments.setAccessKeyId("AKIAEXAMPLE");
         attachments.setSecretAccessKey("secret/with+chars");
@@ -71,7 +71,7 @@ class SettingsStoreTest {
         assertEquals(4, loaded.getImpressionsGridColumns());
         assertEquals("*.jpg *.heic", loaded.getImpressionsBaseFilter());
         assertEquals("*+.*", loaded.getImpressionsFaveFilter());
-        assertEquals("s3://triptale-attachments/trips", loaded.getAttachments().getBucketUrl());
+        assertEquals("s3://triptale-backpack/trips", loaded.getAttachments().getBucketUrl());
         assertEquals("us-east-1", loaded.getAttachments().getRegion());
         assertEquals("AKIAEXAMPLE", loaded.getAttachments().getAccessKeyId());
         assertEquals("secret/with+chars", loaded.getAttachments().getSecretAccessKey());

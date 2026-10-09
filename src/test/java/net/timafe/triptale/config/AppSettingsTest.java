@@ -27,7 +27,7 @@ class AppSettingsTest {
     @ParameterizedTest
     @ValueSource(strings = {"eu-central-1", "us-east-1", "us-gov-west-1", "ap-southeast-2"})
     void attachments_validRegions(String region) {
-        assertTrue(attachments("s3://triptale-attachments/x", region).validationError().isEmpty());
+        assertTrue(attachments("s3://triptale-backpack/x", region).validationError().isEmpty());
     }
 
     @ParameterizedTest
@@ -38,13 +38,13 @@ class AppSettingsTest {
 
     @Test
     void attachments_invalidBucketUrl() {
-        assertTrue(attachments("triptale-attachments", "eu-central-1").validationError().orElseThrow()
+        assertTrue(attachments("triptale-backpack", "eu-central-1").validationError().orElseThrow()
                 .contains("s3://"));
     }
 
     @Test
     void attachments_cloudRequiresCompleteConfig() {
-        AppSettings.Attachments attachments = attachments("s3://triptale-attachments", "eu-central-1");
+        AppSettings.Attachments attachments = attachments("s3://triptale-backpack", "eu-central-1");
         attachments.setSync(AppSettings.AttachmentSync.CLOUD);
         attachments.setAccessKeyId("AKIAEXAMPLE");
         assertTrue(attachments.validationError().orElseThrow().startsWith("Cloud sync needs"));

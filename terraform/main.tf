@@ -1,15 +1,15 @@
-# Attachments bucket (todo 33) plus an IAM user whose access key can touch only this bucket.
+# Backpack bucket for trip attachments (todo 33) plus an IAM user whose access key can touch only this bucket.
 
-resource "aws_s3_bucket" "attachments" {
-  bucket = "${var.app}-attachments"
+resource "aws_s3_bucket" "backpack" {
+  bucket = "${var.app}-backpack"
 
   lifecycle {
     prevent_destroy = true
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "attachments" {
-  bucket = aws_s3_bucket.attachments.id
+resource "aws_s3_bucket_public_access_block" "backpack" {
+  bucket = aws_s3_bucket.backpack.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -18,8 +18,8 @@ resource "aws_s3_bucket_public_access_block" "attachments" {
 }
 
 # SSE-S3, so the app user needs no KMS permissions.
-resource "aws_s3_bucket_server_side_encryption_configuration" "attachments" {
-  bucket = aws_s3_bucket.attachments.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "backpack" {
+  bucket = aws_s3_bucket.backpack.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -40,7 +40,7 @@ data "aws_iam_policy_document" "app" {
       "s3:ListBucketMultipartUploads",
       "s3:GetBucketLocation",
     ]
-    resources = [aws_s3_bucket.attachments.arn]
+    resources = [aws_s3_bucket.backpack.arn]
   }
 
   statement {
@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "app" {
       "s3:AbortMultipartUpload",
       "s3:ListMultipartUploadParts",
     ]
-    resources = ["${aws_s3_bucket.attachments.arn}/*"]
+    resources = ["${aws_s3_bucket.backpack.arn}/*"]
   }
 }
 

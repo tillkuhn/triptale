@@ -10,12 +10,12 @@ class BucketUrlTest {
 
     @Test
     void parse_bucketOnly() {
-        assertEquals(new BucketUrl("triptale-attachments", ""), BucketUrl.parse("s3://triptale-attachments"));
+        assertEquals(new BucketUrl("triptale-backpack", ""), BucketUrl.parse("s3://triptale-backpack"));
     }
 
     @Test
     void parse_bucketWithTrailingSlash() {
-        assertEquals(new BucketUrl("triptale-attachments", ""), BucketUrl.parse("s3://triptale-attachments/"));
+        assertEquals(new BucketUrl("triptale-backpack", ""), BucketUrl.parse("s3://triptale-backpack/"));
     }
 
     @Test
@@ -24,7 +24,7 @@ class BucketUrlTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "triptale-attachments", "https://triptale-attachments", "s3://",
+    @ValueSource(strings = {"", "triptale-backpack", "https://triptale-backpack", "s3://",
             "s3://ab", "s3://Upper-Case", "s3://-leading-hyphen", "s3://under_score"})
     void parse_rejectsMalformed(String url) {
         assertThrows(IllegalArgumentException.class, () -> BucketUrl.parse(url));

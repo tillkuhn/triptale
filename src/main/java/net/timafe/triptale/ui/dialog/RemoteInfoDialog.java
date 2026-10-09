@@ -35,7 +35,7 @@ public final class RemoteInfoDialog {
         boolean cloud = attachments.getSync() == AppSettings.AttachmentSync.CLOUD;
         if (cloud) {
             // the secret access key is deliberately never shown
-            grid.add(new Label("Attachments:"), 0, row);
+            grid.add(new Label("Backpack:"), 0, row);
             grid.add(new Label(orNone(attachments.getBucketUrl())), 1, row++);
             grid.add(new Label("Region:"), 0, row);
             grid.add(new Label(orNone(attachments.getRegion())), 1, row++);
@@ -44,7 +44,7 @@ public final class RemoteInfoDialog {
         }
 
         Dialogs.showInfo("Remote Info",
-                cloud ? "Git and attachment cloud configuration" : "Git configuration", grid);
+                cloud ? "Git and backpack cloud configuration" : "Git configuration", grid);
     }
 
     private String remoteDisplay() {

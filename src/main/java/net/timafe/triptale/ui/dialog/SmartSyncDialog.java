@@ -161,7 +161,7 @@ public final class SmartSyncDialog {
 
         boolean cloud = settings.getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
         if (cloud) {
-            attachmentsRow = new Row("Attachments", true);
+            attachmentsRow = new Row("Backpack", true);
             attachmentsRow.addTo(grid, r++);
         }
 

@@ -327,7 +327,7 @@ public final class ImageViewerDialog {
                     .orElse(switch (source) {
                         case ImpressionSource.PhotoLibrary p -> impressions.photoLibraryConfigured()
                                 ? "Photo library folder not found" : "No impressions file pattern configured";
-                        case ImpressionSource.TripAttachments a -> "No attachments for this day yet";
+                        case ImpressionSource.TripAttachments a -> "Nothing in the backpack for this day yet";
                         case ImpressionSource.Folder f -> "Folder not found";
                     });
         }
@@ -436,11 +436,11 @@ public final class ImageViewerDialog {
             selectAllBtn.setText(allVisibleSelected() ? "☐ Unselect All" : "☑ Select All");
             selectAllBtn.setDisable(empty);
             boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
-            importBtn.setText("📎 Import Selected (" + selected.size() + ")");
+            importBtn.setText("🎒 Import Selected (" + selected.size() + ")");
             importBtn.setDisable(selected.isEmpty() || fromAttachments);
             importBtn.setTooltip(new Tooltip(fromAttachments
-                    ? "These images already are attachments of this day"
-                    : "Copy the selected images to this day's attachments"));
+                    ? "These images are already in this day's backpack"
+                    : "Copy the selected images to this day's backpack"));
         }
 
         private String placeholderText() {

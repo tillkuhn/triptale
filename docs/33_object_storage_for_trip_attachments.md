@@ -68,7 +68,7 @@ the next sync. No checkbox and no separate "Add attachment" step for GPX.
 
 **D5 — S3 Standard on AWS, provisioned with OpenTofu, dedicated bucket-only key (2026-10-02).**
 The storage behind our own S3 client (D2) is **AWS S3** for now, not R2:
-- Bucket **`triptale-attachments`** in **`eu-central-1`**: private (all public access blocked),
+- Bucket **`triptale-attachments`** (since D7: **`triptale-backpack`**) in **`eu-central-1`**: private (all public access blocked),
   SSE-S3 encryption, no versioning, Standard storage class.
 - The app gets its **own IAM user `triptale-app`**, not the owner's admin credentials. Its
   inline policy allows only `ListBucket`/`ListBucketMultipartUploads`/`GetBucketLocation` on
@@ -104,6 +104,20 @@ Nothing reads them yet.
   `~/.aws/credentials`. An OS keychain was rejected: platform-specific and not small.
   An AWS profile in `~/.aws/credentials` was rejected too: it assumes the AWS CLI setup, and
   the settings dialog is where the rest of the configuration already lives.
+
+**D7 — "Backpack" in the UI, bucket `triptale-backpack` (2026-10-10).** "Attachments" sounded like
+mail/office, so the user-facing name is now **Backpack**, with 🎒 instead of 📎: the menus (🎒 Add to
+Backpack…, ☁ Push / Pull Backpack), the Settings labels, the Smart Sync row, the image viewer source
+"Trip Backpack" and the README. The Impressions button uses 📷 instead of 🖼, to set it apart.
+**Only the labels changed.** The data-dir folder `attachments/`, the S3 key prefix `attachments/`, the
+`attachments:` key in `settings.yml` and the Java package keep their names, so no device needs a
+migration. The bucket moved from `triptale-attachments` to `triptale-backpack` (`<app>-backpack` in
+`terraform/`). Plain `triptale` is taken by another AWS account. S3 can't rename buckets, so the move
+was done by hand: tofu forgot the old bucket (`removed { destroy = false }`) and created the new one,
+the objects were copied with `aws s3 sync` and the admin profile, then the old bucket was deleted
+and the `removed` blocks were dropped again. A full rebrand of the folder and prefix was rejected:
+it needs a migration on every device, and `triptale-backpack/backpack/...` would bring back the
+redundancy this change removed.
 
 ## Problem
 

@@ -830,8 +830,8 @@ public class MainController implements StatusSink {
         int photoLib = noDay ? 0 : impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date).size();
         int attached = noDay ? 0 : impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).size();
         impressionsButton.setText(photoLib == 0 && attached == 0
-                ? "🖼 Impressions: none – pick folder ›"
-                : "🖼 Impressions " + photoLib + " 🗂 / " + attached + " 📎 ›");
+                ? "📷 Impressions: none – pick folder ›"
+                : "📷 Impressions " + photoLib + " 🗂 / " + attached + " 🎒 ›");
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
@@ -1358,8 +1358,8 @@ public class MainController implements StatusSink {
     public void onPushAttachments() {
         transferAttachments("Push", "push-attachments", (syncer, root, prefix) -> {
             AttachmentSyncer.Result r = syncer.push(root, prefix, (done, total, file) ->
-                    Platform.runLater(() -> status("Pushing attachments " + (done + 1) + "/" + total + ": " + file)));
-            return "Attachments pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged";
+                    Platform.runLater(() -> status("Pushing backpack " + (done + 1) + "/" + total + ": " + file)));
+            return "Backpack pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged";
         });
     }
 
@@ -1367,8 +1367,8 @@ public class MainController implements StatusSink {
     public void onPullAttachments() {
         transferAttachments("Pull", "pull-attachments", (syncer, root, prefix) -> {
             int n = syncer.pull(root, prefix, (done, total, file) ->
-                    Platform.runLater(() -> status("Pulling attachments " + (done + 1) + "/" + total + ": " + file)));
-            return "Attachments pulled: " + n + " downloaded";
+                    Platform.runLater(() -> status("Pulling backpack " + (done + 1) + "/" + total + ": " + file)));
+            return "Backpack pulled: " + n + " downloaded";
         });
     }
 
@@ -1402,10 +1402,10 @@ public class MainController implements StatusSink {
         });
         task.setOnFailed(e -> {
             setTransferringAttachments(false);
-            error(verb + " Attachments failed: " + UiText.describe(task.getException()));
+            error(verb + " Backpack failed: " + UiText.describe(task.getException()));
         });
         setTransferringAttachments(true);
-        status(verb + "ing attachments…");
+        status(verb + "ing backpack…");
         Thread thread = new Thread(task, threadName);
         thread.setDaemon(true);
         thread.start();
@@ -1422,14 +1422,14 @@ public class MainController implements StatusSink {
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Add Attachments for " + DATE_DISPLAY.format(date));
+        chooser.setTitle("Add to Backpack for " + DATE_DISPLAY.format(date));
         chooser.setInitialDirectory(recentFolder.initial());
         List<File> files = chooser.showOpenMultipleDialog(null);
         if (files == null || files.isEmpty()) return;
         recentFolder.remember(files.getFirst().getParentFile());
         try {
             List<Path> copies = attachmentsDir.addFiles(trip.ref(), date, files.stream().map(File::toPath).toList());
-            status("Added " + copies.size() + " attachment" + (copies.size() == 1 ? "" : "s") + " to "
+            status("Added " + copies.size() + " file" + (copies.size() == 1 ? "" : "s") + " to "
                     + UiText.homeRelative(copies.getFirst().getParent()));
             updateImpressionsButton(trip, date);
         } catch (RuntimeException e) {

@@ -1,5 +1,5 @@
 variable "aws_region" {
-  description = "Region of the attachments bucket, e.g. eu-central-1."
+  description = "Region of the backpack bucket, e.g. eu-central-1."
   type        = string
 }
 
@@ -10,7 +10,7 @@ variable "aws_profile" {
 }
 
 variable "app" {
-  description = "App name; prefixes the bucket (<app>-attachments) and the IAM user (<app>-app)."
+  description = "App name; prefixes the bucket (<app>-backpack) and the IAM user (<app>-app)."
   type        = string
   default     = "triptale"
 }

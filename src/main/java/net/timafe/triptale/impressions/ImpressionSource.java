@@ -21,7 +21,7 @@ public sealed interface ImpressionSource {
 
     /** The entry day's folder under {@code attachments/} (todo 33a). */
     record TripAttachments() implements ImpressionSource {
-        @Override public String label() { return "Trip Attachments"; }
+        @Override public String label() { return "Trip Backpack"; }
     }
 
     /** An arbitrary folder picked ad hoc, used for importing; the same folder for every date. */

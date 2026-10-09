@@ -61,7 +61,7 @@ public final class EditSettingsDialog {
             @Override public AppSettings.AttachmentSync fromString(String s) { return null; }
         });
         TextField bucketUrlField = new TextField(attachments.getBucketUrl());
-        bucketUrlField.setPromptText("e.g. s3://triptale-attachments or s3://bucket/prefix");
+        bucketUrlField.setPromptText("e.g. s3://triptale-backpack or s3://bucket/prefix");
         bucketUrlField.setPrefColumnCount(36);
         TextField regionField = new TextField(attachments.getRegion());
         regionField.setPromptText("e.g. " + AppSettings.Attachments.DEFAULT_REGION);
@@ -100,11 +100,11 @@ public final class EditSettingsDialog {
         grid.add(mapboxTokenField, 1, row++);
         grid.add(new Separator(), 0, row, 2, 1);
         row++;
-        grid.add(new Label("Attachments sync:"), 0, row);
+        grid.add(new Label("Backpack sync:"), 0, row);
         grid.add(syncCombo, 1, row++);
-        grid.add(new Label("Attachments bucket URL:"), 0, row);
+        grid.add(new Label("Backpack bucket URL:"), 0, row);
         grid.add(bucketUrlField, 1, row++);
-        grid.add(new Label("Attachments region:"), 0, row);
+        grid.add(new Label("Backpack region:"), 0, row);
         grid.add(regionField, 1, row++);
         grid.add(new Label("Access key ID:"), 0, row);
         grid.add(accessKeyIdField, 1, row++);

@@ -58,8 +58,8 @@
                                 <MenuItem fx:id="nextDayMenuItem" text="▶ Next Day" onAction="#onNextDay" accelerator="Shortcut+Alt+Right"/>
                                 <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
                                 <SeparatorMenuItem/>
-                                <MenuItem fx:id="impressionsMenuItem" text="🖼 Show Impressions" onAction="#onShowImpressions" disable="true"/>
-                                <MenuItem fx:id="addAttachmentsMenuItem" text="📎 Add Attachments…" onAction="#onAddAttachments" disable="true"/>
+                                <MenuItem fx:id="impressionsMenuItem" text="📷 Show Impressions" onAction="#onShowImpressions" disable="true"/>
+                                <MenuItem fx:id="addAttachmentsMenuItem" text="🎒 Add to Backpack…" onAction="#onAddAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
                                 <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
@@ -91,8 +91,8 @@
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
                                 <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
-                                <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Attachments" onAction="#onPushAttachments" disable="true"/>
-                                <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Attachments" onAction="#onPullAttachments" disable="true"/>
+                                <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Backpack" onAction="#onPushAttachments" disable="true"/>
+                                <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Backpack" onAction="#onPullAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                                 <SeparatorMenuItem/>
@@ -148,8 +148,8 @@
                     <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <Button fx:id="impressionsButton" text="🖼 Impressions" onAction="#onShowImpressions" disable="true">
-                            <tooltip><Tooltip text="Show images for this day: photo library 🗂 / attachments 📎"/></tooltip>
+                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true">
+                            <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
                         </Button>
                     </HBox>
                     <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>

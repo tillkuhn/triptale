@@ -1,5 +1,5 @@
 output "bucket_name" {
-  value = aws_s3_bucket.attachments.bucket
+  value = aws_s3_bucket.backpack.bucket
 }
 
 output "region" {
