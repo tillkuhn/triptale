@@ -134,6 +134,11 @@ Verified with curl right after deployment: image 200 `image/jpeg` (second reques
 `Hit from cloudfront`), GPX 403, missing key 403, `http://` 301 to `https://`, a probe object at
 the bucket root unreachable (`/../` and `%2e%2e` give 400, direct 403), direct S3 URL 403.
 
+**URL encoding matters:** fave filenames contain `+`, which S3 reads as a space in a URL path,
+so `…Kiwieck+_mini.jpg` answers 403. The exporter must percent-encode each path segment
+(`+` → `%2B`, also spaces and umlauts). The throwaway generator used for the first hand-made
+post did this with Python's `urllib.parse.quote`.
+
 ### Scope of the experiment
 
 The question to answer here is narrow: **can CloudFront serve the bucket's *current* content
@@ -155,10 +160,13 @@ pipeline that gets them there is todo 47.
 
 ## Plan
 
-1. **Now:** provision the CloudFront distribution in `terraform/` behind `enable_cdn`, verify
+1. **Done 2026-10-10:** provision the CloudFront distribution in `terraform/` behind `enable_cdn`, verify
    that an object already in the bucket loads over `https://d….cloudfront.net/…` in a browser,
    hand-craft one WordPress post against those URLs, and watch Cost Explorer for a few weeks.
    Decision point: keep it, or destroy it and use the own webserver.
+   Result: provisioned, a hand-made post with 26 CDN images (2 days of Dalmatiner 26, generated
+   by a throwaway script) renders fine on timafe.wordpress.com. Keep it; Cost Explorer still to
+   be watched.
 2. Implement option 2 (block markup → clipboard) behind a new export menu item, with
    `publicAttachmentBaseUrl` in `settings.yml`. Depends on todo 47 for the images.
 3. Revisit option 3 if posts become frequent; reuse the option 2 generator.

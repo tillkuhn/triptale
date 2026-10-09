@@ -65,24 +65,14 @@ separate from attachments), playable from the app while writing.
 ## 44 Support export trip as WordPress.com post (markup code)
 
 Goal: ease writing articles on our wordpress.com blog — its rich-text editor is a pain.
-Doesn't have to be fully automated. Staged plan:
 
-- Stage 1 (recommended start): new export target that renders Gutenberg block markup
-  (headings, paragraphs, one Gallery block per day) to the clipboard, for pasting into the
-  block editor's Code editor. Images referenced via public `https://` URLs (S3 attachments).
-- Stage 2 (optional): "Publish draft to WordPress…" dialog using the WordPress.com REST API —
-  uploads (resized) images to the media library and creates the post as a draft.
-- Image hosting: the bucket is private; **try CloudFront + OAC** over it, provisioned in the
-  existing `terraform/` OpenTofu setup behind an `enable_cdn` variable. Free tier should make
-  it cost €0 and the auto-generated `d….cloudfront.net` hostname comes with a TLS cert, so no
-  domain needed. Watch the bill; if it disappoints, destroy it and serve the images from the
-  webserver we already run (`rclone sync`, not a git clone — attachments aren't in git). The
-  app only ever sees a configured `publicAttachmentBaseUrl`, so switching is a settings change.
-- **Next concrete step:** get CloudFront working against the bucket's *current* content and
-  hand-craft one WP post against those URLs. If that works, hosting is solved; if not, look at
-  other hosting. How images get into the bucket is app work — todo 47, separate.
-- Open questions: post granularity (per trip or per day)? Which WordPress.com plan (affects
-  auth)?
+- Stage 1: export target rendering Gutenberg block markup (headings, paragraphs, one Gallery
+  block per day) to the clipboard, for the block editor's Code editor. Stage 2 (optional):
+  publish a draft via the WordPress.com REST API.
+- Image hosting **works** (2026-10-10): CloudFront + OAC over the private bucket
+  (`terraform/cdn.tf`), only images below `attachments/`. A hand-made test post (2 days,
+  26 images) renders fine on the blog. Watch the bill for a few weeks.
+- Next: build stage 1 into the exporter (`publicAttachmentBaseUrl` setting, `%2B`-encode keys).
 
 [Details](docs/44_wordpress_export.md)
 
