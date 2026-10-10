@@ -109,32 +109,32 @@
             </StackPane>
             <HBox spacing="10" alignment="CENTER_LEFT" styleClass="toolbar-strip">
                 <padding><Insets top="10" right="12" bottom="10" left="12"/></padding>
-                <Label text="Trip:"/>
-                <ComboBox fx:id="yearCombo" prefWidth="90"/>
-                <ComboBox fx:id="tripCombo" prefWidth="240"/>
-                <Button text="ⓘ" onAction="#onTripDetails">
+                <Label text="Trip:" minWidth="-Infinity"/>
+                <ComboBox fx:id="yearCombo" prefWidth="84" minWidth="84"/>
+                <ComboBox fx:id="tripCombo" prefWidth="280" minWidth="160"/>
+                <Button text="ⓘ" minWidth="-Infinity" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip details"/></tooltip>
                 </Button>
-                <DatePicker fx:id="datePicker"/>
-                <HBox spacing="0" alignment="CENTER_LEFT" styleClass="nav-button-group">
-                    <Button fx:id="firstDayButton" text="⏮" onAction="#onFirstDay">
+                <DatePicker fx:id="datePicker" minWidth="-Infinity"/>
+                <HBox spacing="0" alignment="CENTER_LEFT" styleClass="nav-button-group" minWidth="-Infinity">
+                    <Button fx:id="firstDayButton" minWidth="-Infinity" text="⏮" onAction="#onFirstDay">
                         <tooltip><Tooltip text="Go to day 1"/></tooltip>
                     </Button>
-                    <Button fx:id="prevDayButton" text="◀" onAction="#onPrevDay"/>
-                    <Button fx:id="nextDayButton" text="▶" onAction="#onNextDay"/>
-                    <Button fx:id="todayButton" text="◉" onAction="#onToday">
+                    <Button fx:id="prevDayButton" minWidth="-Infinity" text="◀" onAction="#onPrevDay"/>
+                    <Button fx:id="nextDayButton" minWidth="-Infinity" text="▶" onAction="#onNextDay"/>
+                    <Button fx:id="todayButton" minWidth="-Infinity" text="◉" onAction="#onToday">
                         <tooltip><Tooltip text="Go to today"/></tooltip>
                     </Button>
-                    <Button fx:id="lastDayButton" text="⏭" onAction="#onLastDay">
+                    <Button fx:id="lastDayButton" minWidth="-Infinity" text="⏭" onAction="#onLastDay">
                         <tooltip><Tooltip text="Go to last day"/></tooltip>
                     </Button>
                 </HBox>
-                <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="radioButton" text="🔊" onAction="#onRadioToggle" styleClass="radio-button">
+                <Label fx:id="tourDayLabel" minWidth="-Infinity" styleClass="tour-day-label"/>
+                <Region HBox.hgrow="ALWAYS" minWidth="24"/>
+                <Button fx:id="radioButton" minWidth="-Infinity" text="🔊" onAction="#onRadioToggle" styleClass="radio-button">
                     <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>
                 </Button>
-                <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
+                <Button fx:id="connectivityButton" minWidth="-Infinity" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
                     <tooltip><Tooltip text="Check connectivity"/></tooltip>
                 </Button>
             </HBox>
