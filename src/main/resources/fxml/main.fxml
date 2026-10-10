@@ -76,7 +76,7 @@
                                 <MenuItem text="↺ Reset View" onAction="#onResetView" accelerator="Shortcut+0"/>
                             </items>
                         </Menu>
-                        <Menu fx:id="radioMenu" text="Radio">
+                        <Menu fx:id="radioMenu" text="Tailwind FM">
                             <items>
                                 <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
                                 <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
@@ -131,8 +131,8 @@
                 </HBox>
                 <Label fx:id="tourDayLabel" styleClass="tour-day-label"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="radioButton" text="🎵" onAction="#onRadioToggle" styleClass="radio-button">
-                    <tooltip><Tooltip text="Radio — play a random track from radio/"/></tooltip>
+                <Button fx:id="radioButton" text="📻" onAction="#onRadioToggle" styleClass="radio-button">
+                    <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>
                 </Button>
                 <Button fx:id="connectivityButton" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
                     <tooltip><Tooltip text="Check connectivity"/></tooltip>

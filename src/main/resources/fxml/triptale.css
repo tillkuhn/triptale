@@ -418,7 +418,7 @@
     -fx-font-size: 14px;
     -fx-padding: 4 0 4 0;
     -fx-alignment: center;
-    /* Fixed width: 🎵 / ⏸ / ▶ / the equalizer differ in width. */
+    /* Fixed width: 📻 / ⏸ / ▶ / the equalizer differ in width. */
     -fx-min-width: 40px;
     -fx-pref-width: 40px;
     -fx-max-width: 40px;

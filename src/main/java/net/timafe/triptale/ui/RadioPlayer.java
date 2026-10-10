@@ -4,6 +4,7 @@ import javafx.collections.MapChangeListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import net.timafe.triptale.radio.RadioLibrary;
+import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.radio.Track;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * <p>Created lazily by {@code MainController} on first use, so {@code javafx.media} (and its
  * native libraries) is never loaded at startup. All methods run on the FX thread; MediaPlayer
  * callbacks arrive there too.
+ *
+ * <p>Status messages go out under the {@link Station} name, with a DJ line when the station is
+ * switched on and now and then on later tracks.
  */
 public class RadioPlayer {
 
@@ -25,10 +29,14 @@ public class RadioPlayer {
     private final RadioLibrary library;
     private final StatusSink statusSink;
     private final Runnable onChange;
+    private final Station station = Station.load();
 
     /** Held in a field on purpose: a MediaPlayer nothing references is garbage-collected mid-track. */
     private MediaPlayer player;
     private Track current;
+    /** Whether the next "on air" message gets a DJ line. */
+    private boolean announce;
+    private String lastDjLine;
 
     /**
      * @param onChange runs after every state change (track, play/pause, stop), e.g. to refresh
@@ -42,9 +50,12 @@ public class RadioPlayer {
 
     /** Plays a random track (never the current one, unless it's the only one). */
     public void playRandom() {
+        // Switching the station on always gets a DJ line, later tracks one in four.
+        announce = player == null || ThreadLocalRandom.current().nextInt(4) == 0;
         library.random(ThreadLocalRandom.current(), current).ifPresentOrElse(this::play, () -> {
             stop();
-            statusSink.status("🎵 No tracks yet — put some MP3s into " + UiText.homeRelative(library.root()));
+            statusSink.status("📻 " + Station.NAME + " has no tracks yet — put some MP3s into "
+                    + UiText.homeRelative(library.root()));
         });
     }
 
@@ -54,10 +65,10 @@ public class RadioPlayer {
             playRandom();
         } else if (isPlaying()) {
             player.pause();
-            statusSink.status("🎵 Paused: " + label());
+            statusSink.status("📻 " + Station.NAME + " · Paused: " + label());
         } else {
             player.play();
-            statusSink.status("🎵 Playing: " + label());
+            statusSink.status("📻 " + Station.NAME + " · Back on air: " + label());
         }
         onChange.run();
     }
@@ -105,7 +116,7 @@ public class RadioPlayer {
         MediaPlayer p = player;
         p.setOnReady(() -> {
             if (p != player) return;
-            statusSink.status("🎵 Playing: " + label());
+            statusSink.status(onAirMessage());
             onChange.run();
         });
         // ID3 tags may trickle in after READY; refresh the tooltip when they do.
@@ -127,6 +138,19 @@ public class RadioPlayer {
         });
         p.play();
         onChange.run();
+    }
+
+    /** "📻 Tailwind FM · Artist – Title", plus a DJ line if this track is announced. */
+    private String onAirMessage() {
+        String message = "📻 " + Station.NAME + " · " + label();
+        if (!announce) return message;
+        announce = false;
+        return station.djLine(ThreadLocalRandom.current(), lastDjLine)
+                .map(line -> {
+                    lastDjLine = line;
+                    return message + " — \"" + line + "\"";
+                })
+                .orElse(message);
     }
 
     private void disposePlayer() {

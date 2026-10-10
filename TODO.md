@@ -84,6 +84,8 @@ separate from attachments), playable from the app while writing.
 - Stage 3: Tolaria-style wikilinks to tracks in tales (`Track` note type?), "Soundtrack of this
   trip" playlist, 📌 insert `[[current track]]` at the cursor, export rendering.
 - Open: Linux playback depends on a supported system FFmpeg — test the release jar.
+- Idea: give Tailwind FM's now-playing + DJ line its own line in the UI instead of sharing
+  the status line.
 
 [Details](docs/46_radio.md)
 

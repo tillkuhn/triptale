@@ -9,7 +9,7 @@ Still alpha, so it's off by default behind `AppSettings.radioEnabled` (`settings
 required)"). `MainController` reads it once in `initialize()` into the `radioEnabled` field —
 toggling it needs a restart, same as a changed data directory. When off:
 
-- The Radio menu and the 🎵 toolbar button are hidden (`setVisible`/`setManaged(false)`).
+- The Radio menu and the 📻 toolbar button are hidden (`setVisible`/`setManaged(false)`).
 - `syncRadioGitFiles()` (which calls `RadioLibrary.ensureManagedFiles()`, creating `radio/` and
   its `.gitignore`) is skipped at startup, so an unconfigured user's data dir is left untouched.
 - The `onRadio*`/`onOpenRadioFolder` handlers no-op defensively even if somehow invoked.
@@ -17,6 +17,16 @@ toggling it needs a restart, same as a changed data directory. When off:
 `RadioLibrary` itself stays a normal Spring bean either way — it does no I/O until a method is
 called, so leaving it wired up costs nothing. Once the feature leaves alpha, flip the default to
 `true` and drop the gate.
+
+## Branding: Tailwind FM
+
+In the UI the radio is a station called **Tailwind FM** (`radio.Station.NAME`): the menu title,
+the toolbar tooltip ("On air: …"), the Settings checkbox and the status line
+(`📻 Tailwind FM · Artist – Title`). The name works for any kind of travel, not just cycling.
+When the station is switched on, and on about one in four later tracks, the status line adds a
+random DJ line from `src/main/resources/dj-lines.txt` (travel-neutral, ≤ 60 chars, never naming
+the station itself — `StationTest` checks both). Branding only: classes, the `radio/` folder, the
+`radioEnabled` setting and the bucket prefix keep the plain "radio" name.
 
 ## Stage 1 — playback (done on `feature/radio`)
 
@@ -28,7 +38,7 @@ called, so leaving it wired up costs nothing. Once the feature leaves alpha, fli
   at startup and adds it to the pending commit, like `attachments/.gitignore`.
 - **Playback:** `ui.RadioPlayer` wraps `javafx.scene.media.MediaPlayer`. `MainController`
   creates it lazily on first use, so `javafx.media` and its natives aren't loaded at startup
-  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Radio Folder. A 🎵
+  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Radio Folder. A 📻
   toolbar button toggles playback; its tooltip shows the current track. At the end of a track
   the next random one starts.
 - **Labels:** "Artist – Title" from the ID3 tags once the media is `READY`, else the file name.

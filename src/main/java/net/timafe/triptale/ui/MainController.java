@@ -30,6 +30,7 @@ import javafx.util.StringConverter;
 import net.timafe.triptale.sync.BucketSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.radio.RadioLibrary;
+import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -1488,7 +1489,7 @@ public class MainController implements StatusSink {
     public void onRadioStop() {
         if (!radioEnabled) return;
         if (radio != null) radio.stop();
-        status("🎵 Radio stopped");
+        status("📻 " + Station.NAME + " is off air");
     }
 
     @FXML
@@ -1518,12 +1519,12 @@ public class MainController implements StatusSink {
             radioButton.setGraphic(equalizerIcon);
         } else {
             radioButton.setGraphic(null);
-            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "🎵");
+            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "📻");
         }
         if (radio == null || !radio.isLoaded()) {
-            radioButton.setTooltip(new Tooltip("Radio — play a random track from radio/"));
+            radioButton.setTooltip(new Tooltip(Station.NAME + " — play a random track from radio/"));
         } else if (playing) {
-            radioButton.setTooltip(new Tooltip("Now playing: " + radio.label() + " — click to pause"));
+            radioButton.setTooltip(new Tooltip("On air: " + radio.label() + " — click to pause"));
         } else {
             radioButton.setTooltip(new Tooltip("Paused: " + radio.label() + " — click to resume"));
         }

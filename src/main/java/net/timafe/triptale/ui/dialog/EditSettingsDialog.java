@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
+import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.ui.Dialogs;
 
 import java.nio.file.Path;
@@ -74,7 +75,7 @@ public final class EditSettingsDialog {
         TextField publicBaseUrlField = new TextField(attachments.getPublicBaseUrl());
         publicBaseUrlField.setPromptText("optional, e.g. https://d123.cloudfront.net/ (WordPress export images)");
         publicBaseUrlField.setPrefColumnCount(36);
-        CheckBox radioEnabledCheck = new CheckBox("Enable Radio (restart required)");
+        CheckBox radioEnabledCheck = new CheckBox("Enable " + Station.NAME + " radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("form-error");

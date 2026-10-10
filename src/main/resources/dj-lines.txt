@@ -1,0 +1,19 @@
+# DJ lines for the radio station "Tailwind FM" (see radio.Station), shown in the status line
+# after the track, e.g. 📻 Tailwind FM · Artist – Title — "<line>".
+# Travel in general, not just cycling. Keep them short; blank lines and # comments are ignored.
+
+Wherever you're headed, we've got your back.
+Never lost, just taking the scenic route.
+The soundtrack to your next detour.
+No ads, no news, no headwind.
+Broadcasting from wherever you are tonight.
+Write it down before you forget it.
+Today's forecast: a gentle push from behind.
+Every tale needs a soundtrack.
+The station that travels with you.
+Tune in, look out the window.
+Pushing you forward since kilometre zero.
+Slow travel, fast tunes.
+Home is where the playlist is.
+Next stop: wherever the road ends.
+Postcards are optional, stories are not.
