@@ -1,4 +1,4 @@
-package net.timafe.triptale.attachments;
+package net.timafe.triptale.sync;
 
 import net.timafe.triptale.config.BucketUrl;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AttachmentSyncerTest {
+class BucketSyncerTest {
 
     private static final String PREFIX = "attachments/";
 
@@ -23,12 +23,14 @@ class AttachmentSyncerTest {
     Path root;
 
     private final FakeStore store = new FakeStore();
-    private final AttachmentSyncer syncer = new AttachmentSyncer(store);
+    private final BucketSyncer syncer = new BucketSyncer(store);
 
     @Test
     void keyPrefix_withAndWithoutUrlPrefix() {
-        assertEquals("attachments/", AttachmentSyncer.keyPrefix(BucketUrl.parse("s3://bucket")));
-        assertEquals("triptale/attachments/", AttachmentSyncer.keyPrefix(BucketUrl.parse("s3://bucket/triptale/")));
+        assertEquals("attachments/", BucketSyncer.keyPrefix(BucketUrl.parse("s3://bucket"), "attachments"));
+        assertEquals("triptale/attachments/",
+                BucketSyncer.keyPrefix(BucketUrl.parse("s3://bucket/triptale/"), "attachments"));
+        assertEquals("triptale/radio/", BucketSyncer.keyPrefix(BucketUrl.parse("s3://bucket/triptale"), "radio"));
     }
 
     @Test
@@ -36,9 +38,9 @@ class AttachmentSyncerTest {
         write("2026/trip/2026-09-26-Saturday/track.gpx", "<gpx/>");
         write("2026/trip/notes.txt", "hi");
 
-        AttachmentSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
+        BucketSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
 
-        assertEquals(new AttachmentSyncer.Result(2, 0), result);
+        assertEquals(new BucketSyncer.Result(2, 0), result);
         assertEquals(List.of("attachments/2026/trip/2026-09-26-Saturday/track.gpx", "attachments/2026/trip/notes.txt"),
                 store.putKeys);
     }
@@ -52,9 +54,9 @@ class AttachmentSyncerTest {
         write("2026/trip/day/resized.jpg", "bigger");
         store.remote.put("attachments/2026/trip/day/resized.jpg", new ObjectStore.ObjectInfo(3, "x"));
 
-        AttachmentSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
+        BucketSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
 
-        assertEquals(new AttachmentSyncer.Result(2, 1), result);
+        assertEquals(new BucketSyncer.Result(2, 1), result);
         assertEquals(List.of("attachments/2026/trip/day/edited.jpg", "attachments/2026/trip/day/resized.jpg"),
                 store.putKeys);
     }
@@ -84,8 +86,8 @@ class AttachmentSyncerTest {
 
     @Test
     void push_missingRootUploadsNothing() {
-        AttachmentSyncer.Result result = syncer.push(root.resolve("nope"), PREFIX, (d, t, f) -> {});
-        assertEquals(new AttachmentSyncer.Result(0, 0), result);
+        BucketSyncer.Result result = syncer.push(root.resolve("nope"), PREFIX, (d, t, f) -> {});
+        assertEquals(new BucketSyncer.Result(0, 0), result);
     }
 
     @Test
@@ -98,9 +100,9 @@ class AttachmentSyncerTest {
         store.addRemote("attachments/2026/trip/day/cloud-only.jpg", "cloud-only");
         store.remote.put("attachments/2026/.DS_Store", new ObjectStore.ObjectInfo(3, "x"));
 
-        AttachmentSyncer.Plan plan = syncer.plan(root, PREFIX);
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX);
 
-        assertEquals(new AttachmentSyncer.Plan(1, 10, 2, 9), plan);
+        assertEquals(new BucketSyncer.Plan(1, 10, 2, 9), plan);
         assertEquals(List.of(), store.putKeys);
         assertEquals(List.of(), store.getKeys);
     }
@@ -147,7 +149,7 @@ class AttachmentSyncerTest {
         store.remote.put("attachments/bad.jpg", new ObjectStore.ObjectInfo(5, "00".repeat(16)));
         store.contents.put("attachments/bad.jpg", "hello");
 
-        assertThrows(AttachmentException.class, () -> syncer.pull(root, PREFIX, (d, t, f) -> {}));
+        assertThrows(SyncException.class, () -> syncer.pull(root, PREFIX, (d, t, f) -> {}));
         assertFalse(Files.exists(root.resolve("bad.jpg")));
     }
 
@@ -163,10 +165,10 @@ class AttachmentSyncerTest {
     @Test
     void localTarget_mapsKeysInsideRootOnly() {
         assertEquals(java.util.Optional.of(root.resolve("2026/t/d/a.jpg")),
-                AttachmentSyncer.localTarget(root, PREFIX, "attachments/2026/t/d/a.jpg"));
-        assertTrue(AttachmentSyncer.localTarget(root, PREFIX, "attachments/a\\b.jpg").isEmpty());
-        assertTrue(AttachmentSyncer.localTarget(root, PREFIX, "attachments/").isEmpty());
-        assertTrue(AttachmentSyncer.localTarget(root, PREFIX, "attachments//a.jpg").isEmpty());
+                BucketSyncer.localTarget(root, PREFIX, "attachments/2026/t/d/a.jpg"));
+        assertTrue(BucketSyncer.localTarget(root, PREFIX, "attachments/a\\b.jpg").isEmpty());
+        assertTrue(BucketSyncer.localTarget(root, PREFIX, "attachments/").isEmpty());
+        assertTrue(BucketSyncer.localTarget(root, PREFIX, "attachments//a.jpg").isEmpty());
     }
 
     private Path write(String relative, String content) throws Exception {
@@ -176,7 +178,7 @@ class AttachmentSyncerTest {
     }
 
     private static ObjectStore.ObjectInfo info(Path file) throws Exception {
-        return new ObjectStore.ObjectInfo(Files.size(file), HexFormat.of().formatHex(AttachmentSyncer.md5(file)));
+        return new ObjectStore.ObjectInfo(Files.size(file), HexFormat.of().formatHex(BucketSyncer.md5(file)));
     }
 
     private static final class FakeStore implements ObjectStore {
@@ -199,7 +201,7 @@ class AttachmentSyncerTest {
         }
 
         @Override public void put(String key, Path file, byte[] md5) {
-            assertArrayEquals(AttachmentSyncer.md5(file), md5);
+            assertArrayEquals(BucketSyncer.md5(file), md5);
             putKeys.add(key);
         }
 

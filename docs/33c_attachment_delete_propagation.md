@@ -6,7 +6,7 @@ and 33b (pull) of [todo 33](33_object_storage_for_trip_attachments.md).
 
 ## Problem
 
-Cloud attachment sync is "copy both ways, never delete" (`attachments.AttachmentSyncer`). A
+Cloud attachment sync is "copy both ways, never delete" (`sync.BucketSyncer`). A
 locally deleted attachment is downloaded again by the next pull, and a stale local copy
 overwrites a newer remote edit. Since todo 47 lets the impressions viewer import many images at
 once, mistaken imports need a real delete.
@@ -19,7 +19,7 @@ once, mistaken imports need a real delete.
    data dir, e.g. `.attachments-sync.yml`, holding `bucketUrl`, `keyPrefix` and `files: {relative
    path: md5}`. Missing, unreadable or different bucket/prefix → empty base. Add the file to
    the data dir's `.gitignore` handling next to `.state.yml`.
-3. **`AttachmentSyncer.plan()`** becomes the three-way classification from the ADR table and
+3. **`BucketSyncer.plan()`** becomes the three-way classification from the ADR table and
    returns per-file actions: download, upload, delete local, delete remote, drop from base. The
    `Plan` record gains `deleteLocal`/`deleteRemote` counts. `pull`/`push` run off that plan
    (pull first, then push, as today).

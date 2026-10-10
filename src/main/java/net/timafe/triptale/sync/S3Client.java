@@ -1,4 +1,4 @@
-package net.timafe.triptale.attachments;
+package net.timafe.triptale.sync;
 
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
@@ -98,9 +98,9 @@ public final class S3Client implements ObjectStore {
             body = HttpRequest.BodyPublishers.ofFile(file);
             contentType = Files.probeContentType(file);
         } catch (FileNotFoundException e) {
-            throw new AttachmentException("File vanished before upload: " + file, e);
+            throw new SyncException("File vanished before upload: " + file, e);
         } catch (IOException e) {
-            throw new AttachmentException("Could not read " + file, e);
+            throw new SyncException("Could not read " + file, e);
         }
         Map<String, String> headers = Map.of(
                 "content-md5", Base64.getEncoder().encodeToString(md5),
@@ -129,7 +129,7 @@ public final class S3Client implements ObjectStore {
             }
             Files.move(part, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
-            throw new AttachmentException("Could not write " + target, e);
+            throw new SyncException("Could not write " + target, e);
         } finally {
             try {
                 Files.deleteIfExists(part);
@@ -161,16 +161,16 @@ public final class S3Client implements ObjectStore {
         try {
             return http.send(req.build(), handler);
         } catch (IOException e) {
-            throw new AttachmentException("S3 " + method + " to " + bucket + " failed: " + e.getMessage(), e);
+            throw new SyncException("S3 " + method + " to " + bucket + " failed: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new AttachmentException("S3 " + method + " interrupted", e);
+            throw new SyncException("S3 " + method + " interrupted", e);
         }
     }
 
     private static void checkStatus(String method, String path, int status, byte[] body) {
         if (status / 100 != 2) {
-            throw new AttachmentException("S3 " + method + " " + path + " → HTTP " + status + errorDetail(body));
+            throw new SyncException("S3 " + method + " " + path + " → HTTP " + status + errorDetail(body));
         }
     }
 
@@ -192,7 +192,7 @@ public final class S3Client implements ObjectStore {
             f.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             return f.newDocumentBuilder().parse(new ByteArrayInputStream(xml));
         } catch (Exception e) {
-            throw new AttachmentException("Unexpected S3 response: " + e.getMessage(), e);
+            throw new SyncException("Unexpected S3 response: " + e.getMessage(), e);
         }
     }
 

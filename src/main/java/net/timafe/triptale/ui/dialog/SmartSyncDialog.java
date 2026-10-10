@@ -3,31 +3,19 @@ package net.timafe.triptale.ui.dialog;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TitledPane;
-import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.stage.Window;
-import net.timafe.triptale.attachments.AttachmentSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
-import net.timafe.triptale.attachments.S3Client;
 import net.timafe.triptale.config.AppSettings;
-import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.BrowserLauncher;
@@ -36,11 +24,8 @@ import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.CommitMessage;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -80,10 +65,10 @@ public final class SmartSyncDialog {
     private final BrowserLauncher browser;
 
     // Per-show state; a SmartSyncDialog instance is meant to be shown once.
-    private Row connectivityRow;
-    private Row commitRow;
-    private Row remoteRow;
-    private Row attachmentsRow;
+    private SyncRow connectivityRow;
+    private SyncRow commitRow;
+    private SyncRow remoteRow;
+    private BucketSyncStep attachments;
     private TextArea messageArea;
     private TextArea remoteDetails;
     private TitledPane remoteDetailsPane;
@@ -92,9 +77,6 @@ public final class SmartSyncDialog {
     private Button closeButton;
     private List<String> dirtyFiles = List.of();
     private boolean commitClean;
-    private AttachmentSyncer syncer;
-    private String keyPrefix;
-    private Path attachmentsRoot;
     private int preparing;
     private boolean running;
     private Dialog<Void> dialog;
@@ -118,29 +100,19 @@ public final class SmartSyncDialog {
         AppSettings settings = settingsStore.load();
         String remoteUrl = remoteUrl();
 
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(16));
-        ColumnConstraints checkCol = new ColumnConstraints();
-        ColumnConstraints nameCol = new ColumnConstraints(110);
-        ColumnConstraints statusCol = new ColumnConstraints();
-        statusCol.setHgrow(Priority.ALWAYS);
-        statusCol.setFillWidth(true);
-        ColumnConstraints iconCol = new ColumnConstraints(26);
-        grid.getColumnConstraints().addAll(checkCol, nameCol, statusCol, iconCol);
+        GridPane grid = SyncRow.grid();
 
         int r = 0;
-        connectivityRow = new Row("Connectivity", false);
+        connectivityRow = row("Connectivity", false);
         connectivityRow.addTo(grid, r++);
 
-        commitRow = new Row("Commit", true);
+        commitRow = row("Commit", true);
         messageArea = new TextArea();
         messageArea.setPrefRowCount(2);
         messageArea.setWrapText(true);
         commitRow.addTo(grid, r++);
 
-        remoteRow = new Row("Git Remote", true);
+        remoteRow = row("Git Remote", true);
         remoteDetails = new TextArea();
         remoteDetails.setEditable(false);
         remoteDetails.setPrefRowCount(6);
@@ -161,8 +133,8 @@ public final class SmartSyncDialog {
 
         boolean cloud = settings.getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
         if (cloud) {
-            attachmentsRow = new Row("Backpack", true);
-            attachmentsRow.addTo(grid, r++);
+            attachments = new BucketSyncStep(row("Backpack", true), attachmentsDir.root(), AttachmentsDir.DIR_NAME);
+            attachments.row.addTo(grid, r++);
         }
 
         Label context = new Label(settings.resolvedDataDir().map(UiText::homeRelative)
@@ -237,11 +209,11 @@ public final class SmartSyncDialog {
         remoteRow.setEnabled(false, false);
         if (!hasRemote) remoteRow.muted("No 'origin' remote configured");
         else remoteRow.muted("Waiting for connectivity check…");
-        Optional<String> attachmentsProblem = cloud ? attachmentsProblem(settings) : Optional.empty();
+        Optional<String> attachmentsProblem = cloud ? attachments.configure(settings.getAttachments()) : Optional.empty();
         if (cloud) {
-            attachmentsRow.setEnabled(false, false);
-            attachmentsProblem.ifPresentOrElse(attachmentsRow::muted,
-                    () -> attachmentsRow.muted("Waiting for connectivity check…"));
+            attachments.row.setEnabled(false, false);
+            attachmentsProblem.ifPresentOrElse(attachments.row::muted,
+                    () -> attachments.row.muted("Waiting for connectivity check…"));
         }
 
         connectivityRow.running("Checking " + host + "…");
@@ -258,13 +230,19 @@ public final class SmartSyncDialog {
         if (!online) {
             connectivityRow.fail("Offline (" + host + " not reachable)");
             if (hasRemote) remoteRow.muted("Offline");
-            if (attachmentsReady) attachmentsRow.muted("Offline");
+            if (attachmentsReady) attachments.row.muted("Offline");
             updateSyncButton();
             return;
         }
         connectivityRow.ok("Online (" + host + ")");
         if (hasRemote) prepareFetch();
-        if (attachmentsReady) preparePlan();
+        if (attachmentsReady) {
+            preparing++;
+            attachments.prepare("smart-sync-plan", () -> {
+                preparing--;
+                updateSyncButton();
+            });
+        }
         updateSyncButton();
     }
 
@@ -304,53 +282,6 @@ public final class SmartSyncDialog {
         background("smart-sync-fetch", fetch);
     }
 
-    private void preparePlan() {
-        attachmentsRow.running("Comparing with bucket…");
-        preparing++;
-        Task<AttachmentSyncer.Plan> plan = new Task<>() {
-            @Override protected AttachmentSyncer.Plan call() {
-                return syncer.plan(attachmentsRoot, keyPrefix);
-            }
-        };
-        plan.setOnSucceeded(e -> {
-            preparing--;
-            AttachmentSyncer.Plan p = plan.getValue();
-            if (p.upToDate()) {
-                attachmentsRow.idle("Up to date");
-                attachmentsRow.setEnabled(true, false);
-            } else {
-                List<String> parts = new ArrayList<>();
-                if (p.toDownload() > 0) parts.add("↓ " + p.toDownload() + " to download (" + megabytes(p.downloadBytes()) + ")");
-                if (p.toUpload() > 0) parts.add("↑ " + p.toUpload() + " to upload (" + megabytes(p.uploadBytes()) + ")");
-                attachmentsRow.idle(String.join(" · ", parts));
-                attachmentsRow.setEnabled(true, true);
-            }
-            updateSyncButton();
-        });
-        plan.setOnFailed(e -> {
-            preparing--;
-            attachmentsRow.fail("Cannot list bucket: " + UiText.describe(plan.getException()));
-            attachmentsRow.setEnabled(true, false);
-            updateSyncButton();
-        });
-        background("smart-sync-plan", plan);
-    }
-
-    /** Validates the S3 config and builds the syncer; a message if attachments can't be synced. */
-    private Optional<String> attachmentsProblem(AppSettings settings) {
-        AppSettings.Attachments a = settings.getAttachments();
-        Optional<String> invalid = a.validationError();
-        if (invalid.isPresent()) return invalid;
-        try {
-            attachmentsRoot = attachmentsDir.root();
-            syncer = new AttachmentSyncer(S3Client.from(a));
-            keyPrefix = AttachmentSyncer.keyPrefix(BucketUrl.parse(a.getBucketUrl()));
-            return Optional.empty();
-        } catch (RuntimeException e) {
-            return Optional.of(UiText.describe(e));
-        }
-    }
-
     // ---------------------------------------------------------------------
     // Sync run
     // ---------------------------------------------------------------------
@@ -358,12 +289,12 @@ public final class SmartSyncDialog {
     private void runSync(Request request, boolean cloud, Consumer<Outcome> onFinished) {
         boolean doCommit = commitRow.check.isSelected();
         boolean doRemote = remoteRow.check.isSelected();
-        boolean doAttachments = cloud && attachmentsRow.check.isSelected();
+        boolean doAttachments = cloud && attachments.row.check.isSelected();
         String message = messageArea.getText().isBlank()
                 ? CommitMessage.compose(request.pendingMessage(), List.of())
                 : messageArea.getText().trim();
         running = true;
-        for (Row row : rows()) row.check.setDisable(true);
+        for (SyncRow row : rows()) row.check.setDisable(true);
         messageArea.setEditable(false);
         syncButton.setDisable(true);
         closeButton.setDisable(true);
@@ -395,7 +326,7 @@ public final class SmartSyncDialog {
                 }
             }
 
-            if (doAttachments) runAttachments();
+            if (doAttachments) attachments.run();
 
             Outcome outcome = new Outcome(commitSettled, sha, remote);
             fx(() -> {
@@ -446,28 +377,6 @@ public final class SmartSyncDialog {
         return RemoteOutcome.OK;
     }
 
-    /** Pull first, then push, mirroring git (todo 33b). */
-    private void runAttachments() {
-        fx(() -> attachmentsRow.running("Downloading…"));
-        int downloaded;
-        try {
-            downloaded = syncer.pull(attachmentsRoot, keyPrefix, (done, total, file) ->
-                    fx(() -> attachmentsRow.running("Downloading " + (done + 1) + "/" + total + ": " + file)));
-        } catch (RuntimeException e) {
-            fx(() -> attachmentsRow.fail("Download failed: " + UiText.describe(e)));
-            return;
-        }
-        fx(() -> attachmentsRow.running("Uploading…"));
-        try {
-            AttachmentSyncer.Result result = syncer.push(attachmentsRoot, keyPrefix, (done, total, file) ->
-                    fx(() -> attachmentsRow.running("Uploading " + (done + 1) + "/" + total + ": " + file)));
-            fx(() -> attachmentsRow.ok(downloaded + " downloaded, " + result.uploaded() + " uploaded, "
-                    + result.unchanged() + " unchanged"));
-        } catch (RuntimeException e) {
-            fx(() -> attachmentsRow.fail("Upload failed (" + downloaded + " downloaded): " + UiText.describe(e)));
-        }
-    }
-
     // ---------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------
@@ -477,8 +386,14 @@ public final class SmartSyncDialog {
         syncButton.setDisable(running || preparing > 0 || !anyChecked);
     }
 
-    private List<Row> rows() {
-        return attachmentsRow == null ? List.of(commitRow, remoteRow) : List.of(commitRow, remoteRow, attachmentsRow);
+    private List<SyncRow> rows() {
+        return attachments == null ? List.of(commitRow, remoteRow) : List.of(commitRow, remoteRow, attachments.row);
+    }
+
+    private SyncRow row(String title, boolean selectable) {
+        return new SyncRow(title, selectable, () -> {
+            if (syncButton != null) updateSyncButton();
+        }, this::resize);
     }
 
     private void showDetails(String text, boolean conflict) {
@@ -506,8 +421,7 @@ public final class SmartSyncDialog {
     }
 
     private static void showNode(Node node, boolean visible) {
-        node.setVisible(visible);
-        node.setManaged(visible);
+        SyncRow.showNode(node, visible);
     }
 
     private static void fx(Runnable r) {
@@ -522,74 +436,5 @@ public final class SmartSyncDialog {
 
     private static String plural(int n, String noun) {
         return n + " " + noun + (n == 1 ? "" : "s");
-    }
-
-    private static String megabytes(long bytes) {
-        return String.format(Locale.ROOT, "%.1f MB", bytes / 1_000_000.0);
-    }
-
-    /** One step: checkbox, name, status text (+ extra controls below it), status icon. */
-    private final class Row {
-        final CheckBox check = new CheckBox();
-        final Label name;
-        final Label status = new Label();
-        final VBox extra = new VBox(6);
-        final ProgressIndicator spinner = new ProgressIndicator();
-        final Label icon = new Label();
-        private final boolean selectable;
-
-        Row(String title, boolean selectable) {
-            this.selectable = selectable;
-            name = new Label(title);
-            name.setStyle("-fx-font-weight: bold;");
-            status.setWrapText(true);
-            status.setMaxWidth(Double.MAX_VALUE);
-            status.setMinHeight(Region.USE_PREF_SIZE);
-            spinner.setPrefSize(18, 18);
-            spinner.setMaxSize(18, 18);
-            check.selectedProperty().addListener((obs, was, is) -> {
-                if (syncButton != null) updateSyncButton();
-            });
-        }
-
-        void addTo(GridPane grid, int rowIndex) {
-            if (selectable) grid.add(check, 0, rowIndex);
-            grid.add(name, 1, rowIndex);
-            VBox middle = new VBox(6, status, extra);
-            grid.add(middle, 2, rowIndex);
-            StackPane iconCell = new StackPane(spinner, icon);
-            iconCell.setAlignment(Pos.TOP_CENTER);
-            grid.add(iconCell, 3, rowIndex);
-            for (Node n : List.of(check, name, middle, iconCell)) GridPane.setValignment(n, VPos.TOP);
-            showNode(spinner, false);
-        }
-
-        void setEnabled(boolean enabled, boolean selected) {
-            check.setDisable(!enabled);
-            check.setSelected(enabled && selected);
-        }
-
-        void idle(String text) { show(text, "", "sync-status-idle"); }
-        void muted(String text) { show(text, "–", "sync-status-muted"); }
-        void ok(String text) { show(text, "✓", "sync-status-ok"); }
-        void fail(String text) { show(text, "✗", "sync-status-error"); }
-
-        void running(String text) {
-            status.setText(text);
-            status.getStyleClass().setAll("label", "sync-status-idle");
-            showNode(icon, false);
-            showNode(spinner, true);
-            resize();
-        }
-
-        private void show(String text, String symbol, String styleClass) {
-            status.setText(text);
-            status.getStyleClass().setAll("label", styleClass);
-            icon.setText(symbol);
-            icon.getStyleClass().setAll("label", styleClass);
-            showNode(spinner, false);
-            showNode(icon, true);
-            resize();
-        }
     }
 }

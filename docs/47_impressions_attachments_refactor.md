@@ -12,7 +12,7 @@ In addition, it should be possible to import impressions from an arbitrary direc
 
 Attachments already fit: `attachments/<year>/<slug>/<date>-Weekday/` is one folder per entry
 day (`attachments.AttachmentsDir`), which maps one-to-one onto "one gallery block per day",
-and `attachments.AttachmentSyncer` already pushes them to S3 — so attachment-backed images are
+and `sync.BucketSyncer` already pushes them to S3 — so attachment-backed images are
 the ones that can get a public URL (see todo 44).
 
 

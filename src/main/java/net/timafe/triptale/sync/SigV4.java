@@ -1,4 +1,4 @@
-package net.timafe.triptale.attachments;
+package net.timafe.triptale.sync;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;

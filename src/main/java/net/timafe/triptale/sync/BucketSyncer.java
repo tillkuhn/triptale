@@ -1,4 +1,4 @@
-package net.timafe.triptale.attachments;
+package net.timafe.triptale.sync;
 
 import net.timafe.triptale.config.BucketUrl;
 
@@ -18,8 +18,8 @@ import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /**
- * Syncs the local {@code attachments/} tree with an {@link ObjectStore} (todos 33a, 33b), as
- * "copy both ways, never delete":
+ * Syncs a local folder tree with an {@link ObjectStore} under a key prefix, as "copy both ways,
+ * never delete" — used for {@code attachments/} (todos 33a, 33b) and {@code radio/} (todo 52):
  * <ul>
  *   <li><b>pull</b> downloads objects that have no local file; it never overwrites a local file,</li>
  *   <li><b>push</b> uploads files that are missing remotely or differ in size or MD5 — so when
@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  * Nothing is deleted on either side. Hidden files and folders ({@code .gitignore},
  * {@code .DS_Store}, …) are skipped in both directions.
  */
-public final class AttachmentSyncer {
+public final class BucketSyncer {
 
     public record Result(int uploaded, int unchanged) {}
 
@@ -48,25 +48,25 @@ public final class AttachmentSyncer {
 
     private final ObjectStore store;
 
-    public AttachmentSyncer(ObjectStore store) {
+    public BucketSyncer(ObjectStore store) {
         this.store = store;
     }
 
     /**
-     * Object key prefix for the attachments tree: {@code [<url prefix>/]attachments/}, so keys
-     * mirror the paths inside the data dir.
+     * Object key prefix for a top-level data dir folder: {@code [<url prefix>/]<dirName>/}, so
+     * keys mirror the paths inside the data dir.
      */
-    public static String keyPrefix(BucketUrl url) {
-        return (url.prefix().isEmpty() ? "" : url.prefix() + "/") + AttachmentsDir.DIR_NAME + "/";
+    public static String keyPrefix(BucketUrl url, String dirName) {
+        return (url.prefix().isEmpty() ? "" : url.prefix() + "/") + dirName + "/";
     }
 
-    public Result push(Path attachmentsRoot, String keyPrefix, Progress progress) {
-        List<Path> files = localFiles(attachmentsRoot);
+    public Result push(Path root, String keyPrefix, Progress progress) {
+        List<Path> files = localFiles(root);
         Map<String, ObjectStore.ObjectInfo> remote = store.list(keyPrefix);
         int uploaded = 0;
         for (int i = 0; i < files.size(); i++) {
             Path file = files.get(i);
-            String relative = relativeKey(attachmentsRoot, file);
+            String relative = relativeKey(root, file);
             progress.update(i, files.size(), relative);
             String key = keyPrefix + relative;
             byte[] md5 = changedMd5(file, remote.get(key));
@@ -82,18 +82,18 @@ public final class AttachmentSyncer {
      * returns how many were downloaded. A download whose MD5 doesn't match the object's ETag is
      * removed again and fails the pull.
      */
-    public int pull(Path attachmentsRoot, String keyPrefix, Progress progress) {
-        Map<Path, ObjectStore.ObjectInfo> missing = missingLocally(attachmentsRoot, keyPrefix, store.list(keyPrefix));
+    public int pull(Path root, String keyPrefix, Progress progress) {
+        Map<Path, ObjectStore.ObjectInfo> missing = missingLocally(root, keyPrefix, store.list(keyPrefix));
         int done = 0;
         for (Map.Entry<Path, ObjectStore.ObjectInfo> e : missing.entrySet()) {
             Path target = e.getKey();
-            progress.update(done, missing.size(), relativeKey(attachmentsRoot, target));
+            progress.update(done, missing.size(), relativeKey(root, target));
             try {
                 Files.createDirectories(target.getParent());
             } catch (IOException ex) {
-                throw new AttachmentException("Could not create " + target.getParent(), ex);
+                throw new SyncException("Could not create " + target.getParent(), ex);
             }
-            store.get(keyPrefix + relativeKey(attachmentsRoot, target), target);
+            store.get(keyPrefix + relativeKey(root, target), target);
             verify(target, e.getValue());
             done++;
         }
@@ -101,18 +101,18 @@ public final class AttachmentSyncer {
     }
 
     /** Same comparisons as {@link #pull} and {@link #push}, without transferring: one LIST plus local MD5s. */
-    public Plan plan(Path attachmentsRoot, String keyPrefix) {
+    public Plan plan(Path root, String keyPrefix) {
         Map<String, ObjectStore.ObjectInfo> remote = store.list(keyPrefix);
         int toDownload = 0;
         long downloadBytes = 0;
-        for (ObjectStore.ObjectInfo info : missingLocally(attachmentsRoot, keyPrefix, remote).values()) {
+        for (ObjectStore.ObjectInfo info : missingLocally(root, keyPrefix, remote).values()) {
             toDownload++;
             downloadBytes += info.size();
         }
         int toUpload = 0;
         long uploadBytes = 0;
-        for (Path file : localFiles(attachmentsRoot)) {
-            ObjectStore.ObjectInfo existing = remote.get(keyPrefix + relativeKey(attachmentsRoot, file));
+        for (Path file : localFiles(root)) {
+            ObjectStore.ObjectInfo existing = remote.get(keyPrefix + relativeKey(root, file));
             long size = size(file);
             boolean changed = existing == null || existing.size() != size
                     || !existing.etag().equalsIgnoreCase(HexFormat.of().formatHex(md5(file)));
@@ -137,7 +137,7 @@ public final class AttachmentSyncer {
     /**
      * Where an object would live locally, or empty for keys we must not write: outside the
      * prefix, folder markers ({@code …/}), hidden segments, or anything resolving outside the
-     * attachments root ({@code ..}).
+     * root ({@code ..}).
      */
     static Optional<Path> localTarget(Path root, String keyPrefix, String key) {
         if (!key.startsWith(keyPrefix) || key.endsWith("/")) return Optional.empty();
@@ -160,7 +160,7 @@ public final class AttachmentSyncer {
         } catch (IOException ignored) {
             // the failure below is what matters
         }
-        throw new AttachmentException("Downloaded " + file.getFileName() + " is corrupt (MD5 " + actual
+        throw new SyncException("Downloaded " + file.getFileName() + " is corrupt (MD5 " + actual
                 + ", expected " + info.etag() + ")");
     }
 
@@ -180,7 +180,7 @@ public final class AttachmentSyncer {
                     .sorted()
                     .toList();
         } catch (IOException e) {
-            throw new AttachmentException("Could not list " + root, e);
+            throw new SyncException("Could not list " + root, e);
         }
     }
 
@@ -205,7 +205,7 @@ public final class AttachmentSyncer {
         try {
             return Files.size(file);
         } catch (IOException e) {
-            throw new AttachmentException("Could not read " + file, e);
+            throw new SyncException("Could not read " + file, e);
         }
     }
 
@@ -220,7 +220,7 @@ public final class AttachmentSyncer {
         try (InputStream in = new DigestInputStream(Files.newInputStream(file), digest)) {
             in.transferTo(OutputStream.nullOutputStream());
         } catch (IOException e) {
-            throw new AttachmentException("Could not read " + file, e);
+            throw new SyncException("Could not read " + file, e);
         }
         return digest.digest();
     }

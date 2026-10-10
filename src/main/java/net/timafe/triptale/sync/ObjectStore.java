@@ -1,9 +1,9 @@
-package net.timafe.triptale.attachments;
+package net.timafe.triptale.sync;
 
 import java.nio.file.Path;
 import java.util.Map;
 
-/** The few bucket operations attachment sync needs; {@link S3Client} is the real one. */
+/** The few bucket operations folder sync needs; {@link S3Client} is the real one. */
 public interface ObjectStore {
 
     /** Size and ETag (without quotes) of a stored object. */

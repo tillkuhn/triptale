@@ -27,10 +27,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
-import net.timafe.triptale.attachments.AttachmentSyncer;
+import net.timafe.triptale.sync.BucketSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.radio.RadioLibrary;
-import net.timafe.triptale.attachments.S3Client;
+import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.config.AppSettings;
@@ -1360,7 +1360,7 @@ public class MainController implements StatusSink {
     @FXML
     public void onPushAttachments() {
         transferAttachments("Push", "push-attachments", (syncer, root, prefix) -> {
-            AttachmentSyncer.Result r = syncer.push(root, prefix, (done, total, file) ->
+            BucketSyncer.Result r = syncer.push(root, prefix, (done, total, file) ->
                     Platform.runLater(() -> status("Pushing backpack " + (done + 1) + "/" + total + ": " + file)));
             return "Backpack pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged";
         });
@@ -1378,18 +1378,18 @@ public class MainController implements StatusSink {
     /** One attachment transfer on a worker thread; returns the status message on success. */
     @FunctionalInterface
     private interface AttachmentTransfer {
-        String run(AttachmentSyncer syncer, Path root, String keyPrefix);
+        String run(BucketSyncer syncer, Path root, String keyPrefix);
     }
 
     private void transferAttachments(String verb, String threadName, AttachmentTransfer transfer) {
         AppSettings.Attachments settings = settingsStore.load().getAttachments();
         Path root;
-        AttachmentSyncer syncer;
+        BucketSyncer syncer;
         String keyPrefix;
         try {
             root = attachmentsDir.root();
-            syncer = new AttachmentSyncer(S3Client.from(settings));
-            keyPrefix = AttachmentSyncer.keyPrefix(BucketUrl.parse(settings.getBucketUrl()));
+            syncer = new BucketSyncer(S3Client.from(settings));
+            keyPrefix = BucketSyncer.keyPrefix(BucketUrl.parse(settings.getBucketUrl()), AttachmentsDir.DIR_NAME);
         } catch (RuntimeException e) {
             error(UiText.describe(e));
             return;
