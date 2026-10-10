@@ -1519,7 +1519,7 @@ public class MainController implements StatusSink {
             radioButton.setGraphic(equalizerIcon);
         } else {
             radioButton.setGraphic(null);
-            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "📻");
+            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "🔊");
         }
         if (radio == null || !radio.isLoaded()) {
             radioButton.setTooltip(new Tooltip(Station.NAME + " — play a random track from radio/"));

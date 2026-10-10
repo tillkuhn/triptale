@@ -9,7 +9,7 @@ Still alpha, so it's off by default behind `AppSettings.radioEnabled` (`settings
 required)"). `MainController` reads it once in `initialize()` into the `radioEnabled` field —
 toggling it needs a restart, same as a changed data directory. When off:
 
-- The Radio menu and the 📻 toolbar button are hidden (`setVisible`/`setManaged(false)`).
+- The Radio menu and the 🔊 toolbar button are hidden (`setVisible`/`setManaged(false)`).
 - `syncRadioGitFiles()` (which calls `RadioLibrary.ensureManagedFiles()`, creating `radio/` and
   its `.gitignore`) is skipped at startup, so an unconfigured user's data dir is left untouched.
 - The `onRadio*`/`onOpenRadioFolder` handlers no-op defensively even if somehow invoked.
@@ -38,7 +38,7 @@ the station itself — `StationTest` checks both). Branding only: classes, the `
   at startup and adds it to the pending commit, like `attachments/.gitignore`.
 - **Playback:** `ui.RadioPlayer` wraps `javafx.scene.media.MediaPlayer`. `MainController`
   creates it lazily on first use, so `javafx.media` and its natives aren't loaded at startup
-  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Radio Folder. A 📻
+  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Radio Folder. A 🔊
   toolbar button toggles playback; its tooltip shows the current track. At the end of a track
   the next random one starts.
 - **Labels:** "Artist – Title" from the ID3 tags once the media is `READY`, else the file name.

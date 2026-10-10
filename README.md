@@ -136,7 +136,7 @@ restart.
 
 - Drop `mp3`, `m4a`, `aac`, `wav` or `aif(f)` files into `radio/` (subfolders are fine;
   **📂 Open Radio Folder** gets you there). FLAC and OGG don't play.
-- The 📻 toolbar button plays and pauses; the tooltip shows "Artist – Title" from the tags. When
+- The 🔊 toolbar button plays and pauses; the tooltip shows "Artist – Title" from the tags. When
   a track ends, the next random one starts. The **Tailwind FM** menu also has Next Random Track
   and Stop.
 - `radio/` is never committed to git (the app writes its `.gitignore`). To get your tracks onto
@@ -262,7 +262,7 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 | `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
 | `mapboxToken` | Public Mapbox token for the trip map. |
 | `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. The same bucket also syncs Tailwind FM's tracks. |
-| `radioEnabled` | Shows the Tailwind FM menu and 📻 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
+| `radioEnabled` | Shows the Tailwind FM menu and 🔊 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
 
 `settings.yml` lives in `$HOME/.config/triptale/` on macOS and Linux, and in `%APPDATA%\triptale\` on Windows. It belongs to the machine, not to the data repo. To use a different settings directory (e.g. a second profile, or one on a USB stick for travel), set `TRIPTALE_SETTINGS_DIR` or pass `-Dtriptale.settings-dir=/path`.
 
