@@ -12,7 +12,7 @@ clutters a diary sync.
 
 ## Decisions
 
-- **Separate action:** Radio menu → "☁ Sync Tracks…" (`ui/dialog/SyncTracksDialog`), not a
+- **Separate action:** Radio menu → "⛅ Sync Tracks…" (`ui/dialog/SyncTracksDialog`), not a
   Smart Sync row.
 - **Only in attachment sync mode `cloud`.** Same bucket and credentials (`attachments:` in
   `settings.yml`); the menu item is disabled in other modes, and the dialog says why.

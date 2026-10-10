@@ -33,8 +33,8 @@ once, mistaken imports need a real delete.
    failure, so an interrupted sync keeps what's done.
 6. **Smart Sync UI** (`ui/dialog/SmartSyncDialog`): the Attachments row shows "↓ n ↑ n ✕ n local
    ✕ n remote". Above a threshold (20 files or 25 % of the tree) the row needs an explicit
-   confirmation before it runs. The ☁ Push / ☁ Pull menu items: decide whether they stay
-   one-directional (no deletes) or become "☁ Sync Attachments".
+   confirmation before it runs. The ⛅ Push / ⛅ Pull menu items: decide whether they stay
+   one-directional (no deletes) or become "⛅ Sync Attachments".
 7. **Viewer Delete action**: in `ImageViewerDialog` with source Trip Attachments, "🗑 Delete
    Selected" (with confirmation) moves the selected files to the trash; the next sync
    propagates it. Refresh counts via the existing `onImported`-style callback (rename it to

@@ -4,7 +4,7 @@
 
 ## 52 Sync Tracks: cloud sync for radio/
 
-Radio menu → "☁ Sync Tracks…" syncs `radio/` through the attachments bucket under its own
+Radio menu → "⛅ Sync Tracks…" syncs `radio/` through the attachments bucket under its own
 `radio/` key prefix, like Smart Sync's Backpack row, but as a separate action. Only in
 attachment sync mode `cloud`; copy both ways, never delete (until todo 33c's sync base is
 reused per folder). Status: implemented on `feature/52-radio-sync`, pending a real bucket run.

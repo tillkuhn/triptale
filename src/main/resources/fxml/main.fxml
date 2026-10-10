@@ -83,7 +83,7 @@
                                 <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
-                                <MenuItem fx:id="syncTracksMenuItem" text="☁ Sync Tracks…" onAction="#onSyncTracks" disable="true"/>
+                                <MenuItem fx:id="syncTracksMenuItem" text="⛅ Sync Tracks…" onAction="#onSyncTracks" disable="true"/>
                             </items>
                         </Menu>
                         <Menu text="Repository">
@@ -92,8 +92,8 @@
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
                                 <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
-                                <MenuItem fx:id="pushAttachmentsMenuItem" text="☁ Push Backpack" onAction="#onPushAttachments" disable="true"/>
-                                <MenuItem fx:id="pullAttachmentsMenuItem" text="☁ Pull Backpack" onAction="#onPullAttachments" disable="true"/>
+                                <MenuItem fx:id="pushAttachmentsMenuItem" text="⛅ Push Backpack" onAction="#onPushAttachments" disable="true"/>
+                                <MenuItem fx:id="pullAttachmentsMenuItem" text="⛅ Pull Backpack" onAction="#onPullAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                                 <SeparatorMenuItem/>

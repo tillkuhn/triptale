@@ -117,7 +117,7 @@ The backpack holds the big stuff that doesn't belong in Markdown: GPX tracks, PD
 |---|---|
 | `off` (default) | Files stay on this machine only; `attachments/` is git-ignored so it doesn't weigh down the repo. |
 | `git` | Files are committed and synced with your Markdown files. Fine for a few small files. |
-| `cloud` | Files stay out of git and are synced with an **S3 bucket** — via Smart Sync or ☁ Push / ☁ Pull Backpack. |
+| `cloud` | Files stay out of git and are synced with an **S3 bucket** — via Smart Sync or ⛅ Push / ⛅ Pull Backpack. |
 
 Cloud sync copies both ways and never deletes: pull downloads what's missing locally (never overwriting a local file), push uploads what's new or changed (by size and MD5). Object keys mirror the local layout (`<prefix>/attachments/<year>/<slug>/<day>/<file>`), so the bucket stays browsable.
 
