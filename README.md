@@ -2,7 +2,7 @@
 
 > An offline-first diary for long cycling and hiking trips — your notes live as plain Markdown in a git repo you own.
 
-TripTale is a small JavaFX app for keeping a day-by-day journal of a trip: kilometres ridden, altitude climbed, where you started and stopped, and whatever notes you want to scribble. The twist: there is no cloud, no account, no database. Every entry is a plain Markdown file on disk, and the whole thing is a git repository — so you can sync between machines, hack it from the command line, or never touch the app again and just edit `.md` files in your favourite editor.
+TripTale is a small JavaFX app for keeping a day-by-day journal of a trip: kilometres ridden, altitude climbed, where you started and stopped, and whatever notes you want to scribble. The twist: no account, no database, and no cloud unless you want one. Every entry is a plain Markdown file on disk, and the whole thing is a git repository — so you can sync between machines, hack it from the command line, or never touch the app again and just edit `.md` files in your favourite editor.
 
 > ⚠️ **Status:** personal hobby project. Used daily on macOS; a prebuilt jar runs on Linux, Windows builds locally. No roadmap, no promises — but contributions and ideas are welcome.
 
@@ -30,6 +30,7 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 - **Export** — render a whole trip as one Markdown document (copy to clipboard) or as an HTML page with a photo gallery.
 - **Smart Sync** (`⌘K`) — commit, rebase onto the remote, push, and sync the backpack in one dialog, see [below](#git--smart-sync-).
 - **Backpack 🎒** — keep GPX files, PDFs, tickets etc. next to each day, optionally synced to S3, see [below](#backpack-).
+- **Tailwind FM 📻** (alpha) — your own little radio station: random tracks from your music pool while you write, synced between machines via S3, see [below](#tailwind-fm--alpha).
 
 ## How it stores your data 💾
 
@@ -45,9 +46,11 @@ triptale-data/                         # git repo
 │       ├── README.md                  # the trip: name, dates, description
 │       ├── 2026-06-04-Thursday.md     # one tale per day
 │       └── 2026-06-05-Friday.md
-└── attachments/                       # the backpack (optional), see "Backpack"
-    └── 2026/alps-2026/2026-06-04-Thursday/
-        └── gotthard.gpx
+├── attachments/                       # the backpack (optional), see "Backpack"
+│   └── 2026/alps-2026/2026-06-04-Thursday/
+│       └── gotthard.gpx
+└── radio/                             # music pool for Tailwind FM (optional), never in git
+    └── some-artist - some-song.mp3
 ```
 
 A tale is just Markdown with a YAML frontmatter block — structured fields on top, the day's title as the first heading, free notes below:
@@ -122,6 +125,29 @@ The backpack holds the big stuff that doesn't belong in Markdown: GPX tracks, PD
 Cloud sync copies both ways and never deletes: pull downloads what's missing locally (never overwriting a local file), push uploads what's new or changed (by size and MD5). Object keys mirror the local layout (`<prefix>/attachments/<year>/<slug>/<day>/<file>`), so the bucket stays browsable.
 
 For `cloud` mode you need a bucket URL (`s3://bucket/optional-prefix/`), region, and an access key ID + secret. Use a dedicated IAM user restricted to that bucket (list, get, put) rather than your own credentials. TripTale talks to S3 directly (no AWS SDK, no extra tools). The keys are stored in `settings.yml`, which lives outside the data repo and is never committed. Background and design notes: [docs/33a_attachments_mvp.md](docs/33a_attachments_mvp.md).
+
+## Tailwind FM 📻 (alpha)
+
+I listen to a lot of music on the road and like to quote the soundtrack of a day in a tale.
+**Tailwind FM** is TripTale's built-in radio station: it plays random tracks from a pool of
+favourites in `<data-dir>/radio/` while you write, and the DJ drops a line now and then. It's
+still alpha, so it's off by default: tick **Enable Tailwind FM radio** in ⚙ Edit Settings… and
+restart.
+
+- Drop `mp3`, `m4a`, `aac`, `wav` or `aif(f)` files into `radio/` (subfolders are fine;
+  **📂 Open Radio Folder** gets you there). FLAC and OGG don't play.
+- The 📻 toolbar button plays and pauses; the tooltip shows "Artist – Title" from the tags. When
+  a track ends, the next random one starts. The **Tailwind FM** menu also has Next Random Track
+  and Stop.
+- `radio/` is never committed to git (the app writes its `.gitignore`). To get your tracks onto
+  another machine, **⛅ Sync Tracks…** in the Tailwind FM menu syncs them with the backpack's S3 bucket
+  under `<prefix>/radio/`, the same way as the backpack: copy both ways, never delete. It's
+  separate from Smart Sync on purpose, so music never slows down a diary sync, and it needs
+  Backpack sync mode `cloud`.
+- On Linux, playback uses the system's FFmpeg libraries; a missing or too new FFmpeg shows up as
+  an "unsupported" error. macOS and Windows need nothing extra.
+
+Design notes: [docs/46_radio.md](docs/46_radio.md).
 
 ## Impressions & Faves 📷
 
@@ -235,7 +261,8 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 | `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
 | `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
 | `mapboxToken` | Public Mapbox token for the trip map. |
-| `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. |
+| `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. The same bucket also syncs Tailwind FM's tracks. |
+| `radioEnabled` | Shows the Tailwind FM menu and 📻 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
 
 `settings.yml` lives in `$HOME/.config/triptale/` on macOS and Linux, and in `%APPDATA%\triptale\` on Windows. It belongs to the machine, not to the data repo. To use a different settings directory (e.g. a second profile, or one on a USB stick for travel), set `TRIPTALE_SETTINGS_DIR` or pass `-Dtriptale.settings-dir=/path`.
 
@@ -243,11 +270,11 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 
 - **Java 25** with records for the domain types
 - **Spring Boot** (headless — `web-application-type: none`) for DI, config binding, and lifecycle
-- **JavaFX** for the UI, with FXML controllers resolved as Spring beans
+- **JavaFX** for the UI, with FXML controllers resolved as Spring beans; `javafx-media` for Tailwind FM
 - **JGit** for in-process git operations (init, commit, status); `fetch`/`pull`/`push` use the OS `git` binary
 - **Jackson YAML** for frontmatter and settings
 - **commonmark** for HTML export, **metadata-extractor** for photo EXIF data
-- A small hand-rolled S3 client (SigV4 over `java.net.http`) for the backpack
+- A small hand-rolled S3 client (SigV4 over `java.net.http`) for the backpack and Tailwind FM's tracks
 - **Maven** as the build system; a thin `Makefile` wraps the common targets
 
 The interesting bit architecturally is that JavaFX's `Application.init()` boots Spring *before* `start()`, and the FXML loader uses `spring::getBean` as its controller factory — so controllers are real Spring beans with constructor-injected services. See [AGENTS.md](AGENTS.md) for the layering and conventions, and `docs/` for the design notes behind most features.
@@ -256,7 +283,7 @@ The interesting bit architecturally is that JavaFX's `Application.init()` boots 
 
 This is a hobby project, but PRs, issues, and ideas are welcome. A few ground rules:
 
-- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, `attachments`, and `domain` packages.
+- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages.
 - Domain types are records — keep them plain.
 - Constructor injection only, no field `@Autowired`.
 - New write operations save to disk, then call `addPending(...)` in `MainController` — never commit from the storage layer.
