@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 52
+## Next Todo: 53
+
+## 52 Sync Tracks: cloud sync for radio/
+
+Radio menu → "☁ Sync Tracks…" syncs `radio/` through the attachments bucket under its own
+`radio/` key prefix, like Smart Sync's Backpack row, but as a separate action. Only in
+attachment sync mode `cloud`; copy both ways, never delete (until todo 33c's sync base is
+reused per folder). Status: implemented on `feature/52-radio-sync`, pending a real bucket run.
+
+[Details](docs/52_radio_sync.md)
 
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
@@ -80,7 +89,7 @@ separate from attachments), playable from the app while writing.
   + `ui.RadioPlayer`, Radio menu + 🎵 toolbar button: random track, play/pause, auto-next, stop,
   open radio folder. Managed `radio/.gitignore`. Gated off by default behind a new "Enable Radio
   (restart required)" setting until it's out of alpha.
-- Stage 2: cloud sync of `radio/` via its own S3 prefix (generalize `AttachmentSyncer`).
+- Stage 2: cloud sync of `radio/` via its own S3 prefix — see todo 52.
 - Stage 3: Tolaria-style wikilinks to tracks in tales (`Track` note type?), "Soundtrack of this
   trip" playlist, 📌 insert `[[current track]]` at the cursor, export rendering.
 - Open: Linux playback depends on a supported system FFmpeg — test the release jar.

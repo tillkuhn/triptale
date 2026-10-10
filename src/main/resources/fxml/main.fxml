@@ -83,6 +83,7 @@
                                 <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
+                                <MenuItem fx:id="syncTracksMenuItem" text="☁ Sync Tracks…" onAction="#onSyncTracks" disable="true"/>
                             </items>
                         </Menu>
                         <Menu text="Repository">

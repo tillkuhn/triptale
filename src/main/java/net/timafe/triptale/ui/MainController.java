@@ -54,6 +54,7 @@ import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
+import net.timafe.triptale.ui.dialog.SyncTracksDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.TripMapDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
@@ -141,6 +142,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem pushAttachmentsMenuItem;
     @FXML private MenuItem pullAttachmentsMenuItem;
+    @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
@@ -1313,6 +1315,8 @@ public class MainController implements StatusSink {
         boolean attachmentsDisabled = !Boolean.TRUE.equals(connected) || !cloud || transferringAttachments;
         if (pushAttachmentsMenuItem != null) pushAttachmentsMenuItem.setDisable(attachmentsDisabled);
         if (pullAttachmentsMenuItem != null) pullAttachmentsMenuItem.setDisable(attachmentsDisabled);
+        // Sync Tracks checks the bucket itself, so only the mode matters (todo 52).
+        if (syncTracksMenuItem != null) syncTracksMenuItem.setDisable(!cloud);
     }
 
     private boolean hasRemoteConfigured() {
@@ -1492,6 +1496,12 @@ public class MainController implements StatusSink {
         if (!radioEnabled) return;
         radioLibrary.ensureManagedFiles();
         browser.open(radioLibrary.root().toUri().toString());
+    }
+
+    @FXML
+    public void onSyncTracks() {
+        if (!radioEnabled) return;
+        new SyncTracksDialog(settingsStore, radioLibrary).show();
     }
 
     private void updateRadioButton() {

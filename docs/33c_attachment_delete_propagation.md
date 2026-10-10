@@ -18,7 +18,9 @@ once, mistaken imports need a real delete.
 2. **Sync base store** (`attachments.SyncBase`, no JavaFX): load/save a gitignored file in the
    data dir, e.g. `.attachments-sync.yml`, holding `bucketUrl`, `keyPrefix` and `files: {relative
    path: md5}`. Missing, unreadable or different bucket/prefix → empty base. Add the file to
-   the data dir's `.gitignore` handling next to `.state.yml`.
+   the data dir's `.gitignore` handling next to `.state.yml`. Since todo 52 the same syncer
+   (`sync.BucketSyncer`) also mirrors `radio/`, so make the base per folder (e.g.
+   `.<dir>-sync.yml`, `sync.SyncBase`) and let Sync Tracks use it too.
 3. **`BucketSyncer.plan()`** becomes the three-way classification from the ADR table and
    returns per-file actions: download, upload, delete local, delete remote, drop from base. The
    `Plan` record gains `deleteLocal`/`deleteRemote` counts. `pull`/`push` run off that plan

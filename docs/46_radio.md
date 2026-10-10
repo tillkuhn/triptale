@@ -54,8 +54,8 @@ called, so leaving it wired up costs nothing. Once the feature leaves alpha, fli
 
 ## Later stages
 
-- **Cloud sync:** own S3 prefix for `radio/`, generalized from `AttachmentSyncer` /
-  `ObjectStore`. Possibly stream unsynced tracks from presigned HTTPS URLs (needs presigning
+- **Cloud sync:** done as todo 52 ([52_radio_sync.md](52_radio_sync.md)): Radio → ☁ Sync
+  Tracks… mirrors `radio/` under its own S3 prefix via `sync.BucketSyncer`. Possibly stream unsynced tracks from presigned HTTPS URLs (needs presigning
   in `SigV4`; the bucket must stay private).
 - **Wikilinks:** an `.mp3` isn't a Tolaria note, so `[[Track]]` won't resolve in Tolaria.
   Idea: one stub note per track (`type: Track`, `artist`, `title`, `file: radio/x.mp3`),
