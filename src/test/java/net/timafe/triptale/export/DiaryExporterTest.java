@@ -219,7 +219,7 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
-        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg");
 
         String html = exporter.exportTripAsHtml(trip, null, null, null, false);
 
@@ -234,7 +234,7 @@ class DiaryExporterTest {
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
         java.nio.file.Files.createFile(tempDir.resolve("20250701_two.jpg"));
-        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg");
         setImpressionsGridColumns(2);
 
         String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, false);
@@ -252,7 +252,7 @@ class DiaryExporterTest {
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_all.jpg"));
         java.nio.file.Files.createFile(tempDir.resolve("20250701_fave+.jpg"));
-        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg");
         setImpressionsFaveFilter("*+.*");
 
         String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, true);
@@ -339,7 +339,7 @@ class DiaryExporterTest {
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
         java.nio.file.Files.createFile(tempDir.resolve("20250701_one.jpg"));
-        setImpressionsFilePattern(tempDir.toString() + "/${DATE}*.jpg");
+        setImpressionsFilePattern(tempDir.toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg");
 
         String markdown = exporter.exportTrip(trip);
 

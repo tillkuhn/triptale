@@ -22,25 +22,28 @@ import java.util.stream.Stream;
 
 /**
  * Resolves "impressions" (day-entry images) on disk from a configurable pattern such as
- * {@code ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/output/${DATE}*.jpg}.
+ * {@code ${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_*}{@code /${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*.jpg}.
  *
  * <p>Supported variables:
  * <ul>
  *     <li>{@code ${HOME}} — the current user's home directory</li>
- *     <li>{@code ${DATE}} — the entry's date formatted as {@code yyyyMMdd}</li>
  *     <li>{@code ${TRIP_SLUG}} — the active trip's slug</li>
  *     <li>{@code ${TRIP_YEAR}} — the active trip's start-date year, e.g. {@code 2026}</li>
  *     <li>{@code ${TRIP_MONTH}} — the active trip's start-date month, zero-padded, e.g. {@code 06}</li>
  *     <li>{@code ${TRIP_DAY}} — the active trip's start-date day, zero-padded, e.g. {@code 04}</li>
+ *     <li>{@code ${ENTRY_YEAR}} — the entry's year, e.g. {@code 2026}</li>
+ *     <li>{@code ${ENTRY_MONTH}} — the entry's month, zero-padded, e.g. {@code 08}</li>
+ *     <li>{@code ${ENTRY_DAY}} — the entry's day of month, zero-padded, e.g. {@code 07}</li>
  * </ul>
  *
  * <p>Variable substitution and directory-segment glob matching are delegated to
  * {@link PathPatternResolver}. The pattern's final {@code /}-separated segment is always treated
  * as a filename glob matched against files in the resolved directory; everything before it is
  * resolved as a directory (each segment may itself be a glob). The resolved directory is cached
- * per {@code (pattern, trip)} for the lifetime of the application — that half of the pattern is
- * fixed for a trip's whole lifetime, so only the filename glob is re-evaluated on every call
- * (e.g. on every date navigation). Restart the app if the underlying folder is reorganized
+ * per substituted directory pattern for the lifetime of the application — when it only uses
+ * trip variables that is one lookup per trip, so only the filename glob is re-evaluated on every
+ * date navigation; {@code ENTRY_*} variables in a directory segment make it one lookup per day.
+ * Misses are cached too. Restart the app if the underlying folder is created or reorganized
  * mid-session.
  *
  * <p>No JavaFX dependency — kept in the {@code storage} package per the project's package
@@ -50,9 +53,8 @@ import java.util.stream.Stream;
 public class ImpressionsResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ImpressionsResolver.class);
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final DateTimeFormatter TRIP_MONTH_FORMAT = DateTimeFormatter.ofPattern("MM");
-    private static final DateTimeFormatter TRIP_DAY_FORMAT = DateTimeFormatter.ofPattern("dd");
+    private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("MM");
+    private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("dd");
 
     private final PathPatternResolver pathPatternResolver;
     private final Map<String, Optional<Path>> resolvedDirectoryCache = new ConcurrentHashMap<>();
@@ -69,46 +71,47 @@ public class ImpressionsResolver {
      */
     public List<Path> resolve(String pattern, Trip trip, LocalDate date) {
         if (date == null) return List.of();
-        Optional<Path> dir = resolveDirectory(pattern, trip);
+        Optional<Path> dir = resolveDirectory(pattern, trip, date);
         if (dir.isEmpty()) return List.of();
 
         String filenamePattern = pattern.substring(pattern.lastIndexOf('/') + 1);
-        String glob = PathPatternResolver.substitute(filenamePattern, Map.of("DATE", date.format(DATE_FORMAT)));
+        String glob = PathPatternResolver.substitute(filenamePattern, variables(trip, date));
         return matchFiles(dir.get(), glob);
     }
 
     /**
      * Resolves the directory half of the pattern (everything before the last {@code /}) for the
-     * given trip; empty if the pattern is blank, has no directory segment, or doesn't resolve.
+     * given trip and date; empty if the pattern is blank, has no directory segment, or doesn't
+     * resolve. A null date leaves {@code ENTRY_*} variables unsubstituted, so a directory that
+     * uses them won't resolve.
      */
-    public Optional<Path> resolveDirectory(String pattern, Trip trip) {
+    public Optional<Path> resolveDirectory(String pattern, Trip trip, LocalDate date) {
         if (pattern == null || pattern.isBlank()) return Optional.empty();
         int sep = pattern.lastIndexOf('/');
         if (sep < 0) {
             log.warn("Impressions pattern has no directory segment: {}", pattern);
             return Optional.empty();
         }
-        String directoryPattern = pattern.substring(0, sep);
-        Map<String, String> vars = tripVariables(trip);
-        String cacheKey = directoryPattern + "||" + tripCacheKey(trip);
-        return resolvedDirectoryCache.computeIfAbsent(cacheKey,
-                k -> pathPatternResolver.resolveDirectory(directoryPattern, vars));
+        String directoryPattern = PathPatternResolver.substitute(pattern.substring(0, sep), variables(trip, date));
+        return resolvedDirectoryCache.computeIfAbsent(directoryPattern,
+                k -> pathPatternResolver.resolveDirectory(directoryPattern, Map.of()));
     }
 
-    private static Map<String, String> tripVariables(Trip trip) {
+    private static Map<String, String> variables(Trip trip, LocalDate date) {
         Map<String, String> vars = new java.util.HashMap<>();
         vars.put("HOME", System.getProperty("user.home", ""));
         if (trip != null && trip.startDate() != null) {
             vars.put("TRIP_SLUG", trip.slug());
             vars.put("TRIP_YEAR", Integer.toString(trip.startDate().getYear()));
-            vars.put("TRIP_MONTH", trip.startDate().format(TRIP_MONTH_FORMAT));
-            vars.put("TRIP_DAY", trip.startDate().format(TRIP_DAY_FORMAT));
+            vars.put("TRIP_MONTH", trip.startDate().format(MONTH_FORMAT));
+            vars.put("TRIP_DAY", trip.startDate().format(DAY_FORMAT));
+        }
+        if (date != null) {
+            vars.put("ENTRY_YEAR", Integer.toString(date.getYear()));
+            vars.put("ENTRY_MONTH", date.format(MONTH_FORMAT));
+            vars.put("ENTRY_DAY", date.format(DAY_FORMAT));
         }
         return vars;
-    }
-
-    private static String tripCacheKey(Trip trip) {
-        return trip == null ? "" : trip.year() + "/" + trip.slug();
     }
 
     private static List<Path> matchFiles(Path dir, String globPattern) {

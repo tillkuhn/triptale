@@ -173,11 +173,13 @@ The photo library pattern is a filesystem path containing `${VAR}` placeholders:
 | Variable         | Expands to                                  | Example              |
 |------------------|----------------------------------------------|-----------------------|
 | `${HOME}`        | user home directory                          | `/Users/alice`        |
-| `${DATE}`        | the entry's date, `yyyyMMdd`                 | `20260807`            |
 | `${TRIP_SLUG}`   | the active trip's slug                       | `iceland-roadtrip`    |
 | `${TRIP_YEAR}`   | the active trip's start-date year            | `2026`                |
 | `${TRIP_MONTH}`  | the active trip's start-date month, 2-digit  | `06`                  |
 | `${TRIP_DAY}`    | the active trip's start-date day, 2-digit    | `04`                  |
+| `${ENTRY_YEAR}`  | the entry's year                             | `2026`                |
+| `${ENTRY_MONTH}` | the entry's month, 2-digit                   | `08`                  |
+| `${ENTRY_DAY}`   | the entry's day of month, 2-digit            | `07`                  |
 
 After substitution, the pattern is split on `/` and matched one directory level at a time —
 **every** segment may contain wildcards, not just the filename:
@@ -187,8 +189,10 @@ After substitution, the pattern is split on `/` and matched one directory level 
 - A segment with no wildcard must match an existing file/directory exactly.
 - A segment with a wildcard is matched against that directory's children; if more than one
   matches, the first one (sorted by name) is used and a warning is logged — it doesn't fail.
-- The resolved directory is cached for as long as a trip stays open, so only the final
-  filename glob is re-evaluated as you navigate between days.
+- Resolved directories are cached for the session. If the directory part only uses trip
+  variables, that's one lookup per trip and only the final filename glob is re-evaluated as
+  you navigate between days; `${ENTRY_*}` in a directory segment makes it one lookup per day.
+  Missing folders are cached too, so a folder you create while the app runs needs a restart.
 
 Expansion happens at the moment images are actually looked up, not when settings are saved —
 so pointing at a USB drive or NAS that isn't always mounted just yields a count of 0
@@ -197,21 +201,26 @@ rather than an error.
 Examples, from simplest to most specific:
 
 ```
-${HOME}/Pictures/00_Faves/output/${DATE}*.jpg
+${HOME}/Pictures/00_Faves/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
 ```
 One shared folder for every trip; photos are matched purely by date.
 
 ```
-${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/output/${DATE}*.jpg
+${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
 ```
 A per-trip folder, e.g. `Pictures/2026/06_ab_iceland-roadtrip/output/` — the `??` absorbs two
 extra characters you typed by hand between month and slug when naming the folder.
 
 ```
-${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_??_${TRIP_SLUG}/output/${DATE}*.jpg
+${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_??_${TRIP_SLUG}/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
 ```
 Same idea, but year/month/slug combined into one directory name instead of nested folders,
 e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
+
+```
+${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_*/${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*.jpg
+```
+One sub-folder per day inside the trip folder, e.g. `Pictures/2026_06_iceland/2026_08_07/`.
 
 ## Export 📤
 

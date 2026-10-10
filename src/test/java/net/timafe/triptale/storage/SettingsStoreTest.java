@@ -50,7 +50,7 @@ class SettingsStoreTest {
         git.setAuthorName("Alice");
         git.setAuthorEmail("alice@example.com");
         settings.setGit(git);
-        settings.setImpressionsFilePattern("${HOME}/Pictures/output/${DATE}*.jpg");
+        settings.setImpressionsFilePattern("${HOME}/Pictures/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg");
         settings.setImpressionsGridColumns(4);
         settings.setImpressionsBaseFilter("*.jpg *.heic");
         settings.setImpressionsFaveFilter("*+.*");
@@ -67,7 +67,7 @@ class SettingsStoreTest {
         assertEquals("/some/data/dir", loaded.getDataDir());
         assertEquals("Alice", loaded.getGit().getAuthorName());
         assertEquals("alice@example.com", loaded.getGit().getAuthorEmail());
-        assertEquals("${HOME}/Pictures/output/${DATE}*.jpg", loaded.getImpressionsFilePattern());
+        assertEquals("${HOME}/Pictures/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg", loaded.getImpressionsFilePattern());
         assertEquals(4, loaded.getImpressionsGridColumns());
         assertEquals("*.jpg *.heic", loaded.getImpressionsBaseFilter());
         assertEquals("*+.*", loaded.getImpressionsFaveFilter());
@@ -80,7 +80,7 @@ class SettingsStoreTest {
     @Test
     void loadIgnoresRemovedKeysFromOlderVersions() throws Exception {
         Files.writeString(settingsStore.settingsFile(),
-                "dataDir: /some/data/dir\nimpressionsFaveFilePattern: \"${HOME}/x/${DATE}*.jpg\"\n");
+                "dataDir: /some/data/dir\nimpressionsFaveFilePattern: \"${HOME}/x/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg\"\n");
         assertEquals("/some/data/dir", settingsStore.load().getDataDir());
     }
 

@@ -34,7 +34,7 @@ class ImpressionsResolverTest {
 
     @Test
     void matchesFilesForGivenDateOnly() {
-        String pattern = tempDir.toString() + "/${DATE}*.jpg";
+        String pattern = tempDir.toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
         List<Path> matches = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
         assertEquals(2, matches.size());
         assertTrue(matches.get(0).getFileName().toString().startsWith("20260807"));
@@ -43,7 +43,7 @@ class ImpressionsResolverTest {
 
     @Test
     void returnsEmptyWhenDirectoryMissing() {
-        List<Path> matches = resolver.resolve(tempDir.resolve("nope").toString() + "/${DATE}*.jpg", TRIP, LocalDate.of(2026, 8, 7));
+        List<Path> matches = resolver.resolve(tempDir.resolve("nope").toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg", TRIP, LocalDate.of(2026, 8, 7));
         assertTrue(matches.isEmpty());
     }
 
@@ -57,7 +57,7 @@ class ImpressionsResolverTest {
     void substitutesHomeVariable() {
         String home = System.getProperty("user.home");
         // Won't necessarily match anything real, just verifying no crash and substitution occurs
-        List<Path> matches = resolver.resolve("${HOME}/nonexistent-dir-xyz/${DATE}*.jpg", TRIP, LocalDate.of(2026, 8, 7));
+        List<Path> matches = resolver.resolve("${HOME}/nonexistent-dir-xyz/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg", TRIP, LocalDate.of(2026, 8, 7));
         assertTrue(matches.isEmpty());
         assertTrue(Files.notExists(Path.of(home, "nonexistent-dir-xyz")));
     }
@@ -67,7 +67,7 @@ class ImpressionsResolverTest {
         Path tripDir = Files.createDirectories(tempDir.resolve("2026").resolve("06_ab_iceland-roadtrip"));
         Files.createFile(tripDir.resolve("20260807_party.jpg"));
 
-        String pattern = tempDir + "/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/${DATE}*.jpg";
+        String pattern = tempDir + "/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
         List<Path> matches = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
         assertEquals(1, matches.size());
         assertEquals("20260807_party.jpg", matches.get(0).getFileName().toString());
@@ -78,15 +78,28 @@ class ImpressionsResolverTest {
         Path tripDir = Files.createDirectories(tempDir.resolve("2026-06-04-iceland-roadtrip"));
         Files.createFile(tripDir.resolve("20260807_party.jpg"));
 
-        String pattern = tempDir + "/${TRIP_YEAR}-${TRIP_MONTH}-${TRIP_DAY}-${TRIP_SLUG}/${DATE}*.jpg";
+        String pattern = tempDir + "/${TRIP_YEAR}-${TRIP_MONTH}-${TRIP_DAY}-${TRIP_SLUG}/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
         List<Path> matches = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
         assertEquals(1, matches.size());
         assertEquals("20260807_party.jpg", matches.get(0).getFileName().toString());
     }
 
     @Test
+    void substitutesEntryVariablesInDirectorySegments() throws IOException {
+        Path tripDir = tempDir.resolve("2026_06_iceland");
+        Files.createFile(Files.createDirectories(tripDir.resolve("2026_08_07")).resolve("IMG_0001.jpg"));
+        Files.createFile(Files.createDirectories(tripDir.resolve("2026_08_08")).resolve("IMG_0002.jpg"));
+
+        String pattern = tempDir + "/${TRIP_YEAR}_${TRIP_MONTH}_*/${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*jpg";
+        List<Path> day1 = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
+        List<Path> day2 = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 8));
+        assertEquals(List.of(tripDir.resolve("2026_08_07/IMG_0001.jpg")), day1);
+        assertEquals(List.of(tripDir.resolve("2026_08_08/IMG_0002.jpg")), day2);
+    }
+
+    @Test
     void returnsEmptyWhenTripVariableUsedWithNoTripInScope() {
-        String pattern = tempDir + "/${TRIP_SLUG}/${DATE}*.jpg";
+        String pattern = tempDir + "/${TRIP_SLUG}/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
         assertTrue(resolver.resolve(pattern, null, LocalDate.of(2026, 8, 7)).isEmpty());
     }
 }

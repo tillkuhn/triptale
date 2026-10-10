@@ -50,7 +50,7 @@ public class ImpressionsService {
     public Optional<Path> directory(ImpressionSource source, Trip trip, LocalDate date) {
         return switch (source) {
             case ImpressionSource.PhotoLibrary p ->
-                    resolver.resolveDirectory(settingsStore.load().getImpressionsFilePattern(), trip);
+                    resolver.resolveDirectory(settingsStore.load().getImpressionsFilePattern(), trip, date);
             case ImpressionSource.TripAttachments a -> trip == null || date == null
                     ? Optional.empty()
                     : Optional.of(attachmentsDir.dayDir(trip.ref(), date)).filter(Files::isDirectory);

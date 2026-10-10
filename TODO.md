@@ -369,6 +369,11 @@ cache, and extracting a generic reusable resolver now).
 Added later (2026-10-04): `${TRIP_DAY}` (trip's start-date day, zero-padded), sourced the same
 way as `TRIP_MONTH`/`TRIP_YEAR`.
 
+Changed 2026-10-10: `${DATE}` (`yyyyMMdd`) replaced by `${ENTRY_YEAR}`/`${ENTRY_MONTH}`/`${ENTRY_DAY}`,
+usable in directory segments too (e.g. a per-day `2026_08_07/` folder). The directory cache is now
+keyed by the substituted directory pattern, so it's per day when those appear in the directory part.
+Misses stay cached on purpose: no folder for a day is common, and sessions are short.
+
 ## DONE 15 store optional start point coordinates per trip entry
 
 see docs/15_start_point_coordinates.md for the full design (from a grill-me session covering

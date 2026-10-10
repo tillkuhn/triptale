@@ -40,7 +40,7 @@ public final class EditSettingsDialog {
         TextField authorEmailField = new TextField(settings.getGit().getAuthorEmail());
         authorEmailField.setPrefColumnCount(36);
         TextField patternField = new TextField(settings.getImpressionsFilePattern());
-        patternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/00_Faves/output/${DATE}*.jpg");
+        patternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_*/${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*.jpg");
         patternField.setPrefColumnCount(36);
         TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);

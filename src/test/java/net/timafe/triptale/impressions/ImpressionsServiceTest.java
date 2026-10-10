@@ -78,7 +78,7 @@ class ImpressionsServiceTest {
         Files.createFile(lib.resolve("20260604_1.jpg"));
         Files.createFile(lib.resolve("20260604_2.heic"));
         Files.createFile(lib.resolve("20260605_1.jpg"));
-        update(s -> s.setImpressionsFilePattern(lib + "/${DATE}*"));
+        update(s -> s.setImpressionsFilePattern(lib + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*"));
 
         assertTrue(service.photoLibraryConfigured());
         assertEquals(List.of(lib.resolve("20260604_1.jpg")), service.images(ImpressionSource.PHOTO_LIBRARY, trip, DAY));
