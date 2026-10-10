@@ -1,7 +1,7 @@
 # Todo 52 — Sync Tracks: cloud sync for radio/
 
-Status: **implemented 2026-10-10** on `feature/52-radio-sync`, pending a real run against the
-bucket. Stage 2 of [todo 46](46_radio.md).
+Status: **done 2026-10-10**, verified against the real bucket. Stage 2 of
+[todo 46](../46_radio.md).
 
 ## Goal
 

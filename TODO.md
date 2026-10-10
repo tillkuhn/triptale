@@ -2,15 +2,6 @@
 
 ## Next Todo: 53
 
-## 52 Sync Tracks: cloud sync for radio/
-
-Radio menu → "⛅ Sync Tracks…" syncs `radio/` through the attachments bucket under its own
-`radio/` key prefix, like Smart Sync's Backpack row, but as a separate action. Only in
-attachment sync mode `cloud`; copy both ways, never delete (until todo 33c's sync base is
-reused per folder). Status: implemented on `feature/52-radio-sync`, pending a real bucket run.
-
-[Details](docs/52_radio_sync.md)
-
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
 Placeholder. First build the lookup service (public Nominatim, see
@@ -238,6 +229,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 52 Sync Tracks: cloud sync for radio/
+
+see docs/done/52_radio_sync.md
 
 ## DONE 44 Support export trip as WordPress.com post (markup code)
 
