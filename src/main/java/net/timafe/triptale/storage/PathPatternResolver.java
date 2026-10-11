@@ -59,14 +59,27 @@ public class PathPatternResolver {
         String substituted = substitute(directoryPattern, vars);
         String[] segments = substituted.split("/", -1);
 
-        Path current = substituted.startsWith("/") ? Paths.get("/") : Paths.get("");
-        for (String segment : segments) {
+        Path drive = driveRoot(segments[0]);
+        Path current = drive != null ? drive : substituted.startsWith("/") ? Paths.get("/") : Paths.get("");
+        for (int i = drive != null ? 1 : 0; i < segments.length; i++) {
+            String segment = segments[i];
             if (segment.isEmpty()) continue;
             Path next = resolveSegment(current, segment);
             if (next == null) return Optional.empty();
             current = next;
         }
         return Files.isDirectory(current) ? Optional.of(current) : Optional.empty();
+    }
+
+    /**
+     * {@code F:\} for a leading {@code F:} segment on Windows, else null. Resolving the bare
+     * {@code F:} would give the drive-relative {@code F:Photos} rather than {@code F:\Photos}.
+     * Elsewhere {@code F:/} isn't absolute, so {@code F:} stays an ordinary relative segment.
+     */
+    private static Path driveRoot(String firstSegment) {
+        if (!firstSegment.endsWith(":")) return null;
+        Path root = Paths.get(firstSegment + "/");
+        return root.isAbsolute() ? root : null;
     }
 
     private static boolean isGlob(String segment) {
