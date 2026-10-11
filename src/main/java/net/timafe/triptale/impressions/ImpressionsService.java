@@ -14,8 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -83,6 +85,27 @@ public class ImpressionsService {
      */
     public List<Path> importToAttachments(Trip trip, LocalDate date, List<Path> images) {
         return attachmentsDir.addFiles(trip.ref(), date, images);
+    }
+
+    /**
+     * The images that are already in the day's attachment folder: a file with the same name and
+     * the same size is there. A same-name file with a different size (e.g. an edited re-export)
+     * doesn't count, so it can be imported over the old copy.
+     */
+    public Set<Path> alreadyImported(Trip trip, LocalDate date, List<Path> images) {
+        if (trip == null || date == null || images.isEmpty()) return Set.of();
+        Path dir = attachmentsDir.dayDir(trip.ref(), date);
+        if (!Files.isDirectory(dir)) return Set.of();
+        Set<Path> packed = new HashSet<>();
+        for (Path image : images) {
+            Path copy = dir.resolve(image.getFileName());
+            try {
+                if (Files.isRegularFile(copy) && Files.size(copy) == Files.size(image)) packed.add(image);
+            } catch (IOException e) {
+                log.debug("Could not compare {} with {}: {}", image, copy, e.getMessage());
+            }
+        }
+        return packed;
     }
 
     private static List<Path> listFiles(Path dir) {

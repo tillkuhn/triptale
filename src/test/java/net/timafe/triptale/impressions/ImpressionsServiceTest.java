@@ -135,4 +135,24 @@ class ImpressionsServiceTest {
         assertEquals("new", Files.readString(dir.resolve("IMG_0001.jpg")));
         assertTrue(Files.exists(img), "import copies, it doesn't move");
     }
+
+    @Test
+    void alreadyImportedMatchesSameNameAndSize() throws IOException {
+        Path lib = Files.createDirectories(tempDir.resolve("lib"));
+        Path same = Files.writeString(lib.resolve("same.jpg"), "abc");
+        Path edited = Files.writeString(lib.resolve("edited.jpg"), "abcdef");
+        Path fresh = Files.writeString(lib.resolve("fresh.jpg"), "abc");
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
+        Files.writeString(dir.resolve("same.jpg"), "xyz");
+        Files.writeString(dir.resolve("edited.jpg"), "abc");
+
+        assertEquals(java.util.Set.of(same), service.alreadyImported(trip, DAY, List.of(same, edited, fresh)));
+    }
+
+    @Test
+    void alreadyImportedIsEmptyWithoutDayFolder() throws IOException {
+        Path img = Files.writeString(Files.createDirectories(tempDir.resolve("lib")).resolve("a.jpg"), "abc");
+
+        assertTrue(service.alreadyImported(trip, DAY, List.of(img)).isEmpty());
+    }
 }

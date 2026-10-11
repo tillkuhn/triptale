@@ -1,18 +1,22 @@
 package net.timafe.triptale.ui.dialog;
 
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.Separator;
+import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -44,16 +48,21 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 /**
  * Paging photo viewer for a day's impressions: one image at a time with EXIF metadata,
- * keyboard and button navigation, and an "Open in Maps" action when the photo is geotagged.
+ * keyboard and button navigation, and an "Open in Maps" split button when the photo is geotagged —
+ * its menu sets the photo's location as the tale's start or end point (through {@link RoutePoints},
+ * so the main window applies it as an unsaved form change).
  * Below the image, the user picks the source (trip attachments, local photo library, or an
  * ad-hoc folder), can narrow it to faves, select images and import them as attachments of the
  * day (todo 47).
@@ -67,6 +76,27 @@ public final class ImageViewerDialog {
 
     private static final int IMAGE_W = 640;
     private static final int IMAGE_H = 480;
+    /** A new point closer than this to the current one replaces it without asking. */
+    private static final double SAME_SPOT_METERS = 10;
+    private static final ButtonType MAP_BUTTON = new ButtonType("Open in Maps", ButtonBar.ButtonData.RIGHT);
+
+    /** The two points of a tale's route. */
+    public enum RoutePoint {
+        START("📍", "Start"), END("🏁", "End");
+
+        final String emoji;
+        final String label;
+        RoutePoint(String emoji, String label) { this.emoji = emoji; this.label = label; }
+    }
+
+    /**
+     * The tale's route points as the main window currently holds them (null = unset), and how to
+     * apply a new one there. The viewer never persists anything itself.
+     */
+    public interface RoutePoints {
+        Coordinates.LatLon get(RoutePoint point);
+        void set(RoutePoint point, Coordinates.LatLon value);
+    }
 
     /** The source combo's entries; {@link #FOLDER} gets its directory from the chooser. */
     private enum SourceChoice {
@@ -95,10 +125,11 @@ public final class ImageViewerDialog {
 
     /**
      * Shows the viewer modally for the trip's day. {@code onImported} runs on the FX thread after
-     * each successful import, so the caller can refresh what depends on the attachments.
+     * each successful import, so the caller can refresh what depends on the attachments;
+     * {@code route} receives a photo's location set as start or end point.
      */
-    public void show(Trip trip, LocalDate date, Runnable onImported) {
-        new Session(trip, date, onImported).show();
+    public void show(Trip trip, LocalDate date, Runnable onImported, RoutePoints route) {
+        new Session(trip, date, onImported, route).show();
     }
 
     /** State and controls of one open viewer. */
@@ -106,9 +137,12 @@ public final class ImageViewerDialog {
         private final Trip trip;
         private final LocalDate date;
         private final Runnable onImported;
+        private final RoutePoints route;
         private final ImageFilter faveFilter = impressions.faveFilter();
         private final Map<Path, ExifInfo> exifCache = new HashMap<>();
         private final Set<Path> selected = new LinkedHashSet<>();
+        /** Images of the source already in the day's backpack (same name and size). */
+        private Set<Path> packed = Set.of();
 
         /** Null while Pick Folder has no folder yet. */
         private ImpressionSource source;
@@ -129,20 +163,36 @@ public final class ImageViewerDialog {
         private final Button nextBtn = new Button("▶");
         private final Button lastBtn = new Button("⏭");
         private final CheckBox selectCheck = new CheckBox("Select");
+        private final Label packedBadge = new Label("🎒 In backpack");
         private final ComboBox<SourceChoice> sourceCombo = new ComboBox<>();
         private final Label dirLabel = new Label();
         private final Button copySourceDirBtn = new Button("📋");
         private final Button pickBtn = new Button("📂");
         private final CheckBox favesCheck = new CheckBox();
+        private final Label packedSummary = new Label();
         private final Button selectAllBtn = new Button();
         private final Button importBtn = new Button();
-        private Button mapButton;
+        private final MenuItem setStartItem = new MenuItem();
+        private final MenuItem setEndItem = new MenuItem();
+        private final SplitMenuButton mapButton = new SplitMenuButton(setStartItem, setEndItem);
         private final Tooltip mapTooltip = new Tooltip();
 
-        Session(Trip trip, LocalDate date, Runnable onImported) {
+        Session(Trip trip, LocalDate date, Runnable onImported, RoutePoints route) {
             this.trip = trip;
             this.date = date;
             this.onImported = onImported;
+            this.route = route;
+            // A dialog pane only knows plain buttons for its button types; swap in the split
+            // button for Open in Maps. Not being a pane-created Button, it also doesn't close the dialog.
+            dlg.setDialogPane(new DialogPane() {
+                @Override
+                protected Node createButton(ButtonType type) {
+                    if (type != MAP_BUTTON) return super.createButton(type);
+                    mapButton.setText(type.getText());
+                    ButtonBar.setButtonData(mapButton, type.getButtonData());
+                    return mapButton;
+                }
+            });
         }
 
         void show() {
@@ -201,7 +251,11 @@ public final class ImageViewerDialog {
             selectCheck.setTooltip(new Tooltip("Select this image for import (Space)"));
             selectCheck.setOnAction(ev -> toggleSelected());
 
-            HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn, selectCheck);
+            // Stays managed when hidden, so the nav row doesn't shift between images.
+            packedBadge.setVisible(false);
+            packedBadge.setTooltip(new Tooltip(
+                    "Already in this day's backpack (same name and size) — importing it again overwrites the copy"));
+            HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn, selectCheck, packedBadge);
             nav.setAlignment(Pos.CENTER);
             nav.setPadding(new Insets(0, 0, 4, 0));
 
@@ -235,25 +289,21 @@ public final class ImageViewerDialog {
             importBtn.setOnAction(ev -> importSelected());
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            HBox actionRow = fixedWidth(new HBox(8, favesCheck, spacer, selectAllBtn, importBtn));
+            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, selectAllBtn, importBtn));
             actionRow.setAlignment(Pos.CENTER_LEFT);
 
             VBox content = fixedWidth(new VBox(6, topInfo, imageBox, nav, new Separator(), sourceRow, actionRow));
             content.setAlignment(Pos.CENTER);
 
-            ButtonType mapButtonType = new ButtonType("Open in Maps", ButtonBar.ButtonData.RIGHT);
             dlg.setResizable(true);
             dlg.getDialogPane().getStyleClass().add("image-viewer-dialog");
-            dlg.getDialogPane().getButtonTypes().setAll(mapButtonType, ButtonType.CLOSE);
-            mapButton = (Button) dlg.getDialogPane().lookupButton(mapButtonType);
-            Tooltip.install(mapButton, mapTooltip);
-            mapButton.addEventFilter(ActionEvent.ACTION, ev -> {
-                ExifInfo exif = visible.isEmpty() ? null : exifCache.get(visible.get(index));
-                if (exif != null && exif.hasLocation()) {
-                    browser.open(exif.mapsUrl());
-                }
-                ev.consume();
-            });
+            dlg.getDialogPane().getButtonTypes().setAll(MAP_BUTTON, ButtonType.CLOSE);
+            mapButton.setTooltip(mapTooltip);
+            mapButton.setOnAction(ev -> currentExif()
+                    .filter(ExifInfo::hasLocation)
+                    .ifPresent(exif -> browser.open(exif.mapsUrl())));
+            setStartItem.setOnAction(ev -> setRoutePoint(RoutePoint.START));
+            setEndItem.setOnAction(ev -> setRoutePoint(RoutePoint.END));
             // Lock the dialog's initial width so it can't grow/shrink between images — the content
             // is fixed at 640, the dialog pane just adds its own padding. Still user-resizable
             // afterwards since we only set the preferred width.
@@ -327,6 +377,7 @@ public final class ImageViewerDialog {
             source = newSource;
             all = source == null ? List.of() : impressions.images(source, trip, date);
             selected.clear();
+            updatePacked();
             index = 0;
             dirLabel.setText(describeDirectory());
             dirLabel.setTooltip(new Tooltip(dirLabel.getText()));
@@ -349,6 +400,16 @@ public final class ImageViewerDialog {
                         case ImpressionSource.TripAttachments a -> "Nothing in the backpack for this day yet";
                         case ImpressionSource.Folder f -> "Folder not found";
                     });
+        }
+
+        /** Not computed for the backpack itself, where every image is trivially packed. */
+        private void updatePacked() {
+            packed = source == null || source instanceof ImpressionSource.TripAttachments
+                    ? Set.of()
+                    : impressions.alreadyImported(trip, date, all);
+            packedSummary.setText(packed.isEmpty() ? "" : "🎒 " + packed.size() + " packed");
+            packedSummary.setTooltip(packed.isEmpty() ? null
+                    : new Tooltip("Already in this day's backpack (same name and size)"));
         }
 
         private void updateFavesCheck() {
@@ -390,17 +451,67 @@ public final class ImageViewerDialog {
             refresh();
         }
 
+        /** Select All skips images that are already in the backpack; Unselect All clears them too. */
         private void toggleSelectAll() {
-            if (allVisibleSelected()) {
+            if (selectAllUnselects()) {
                 visible.forEach(selected::remove);
             } else {
-                selected.addAll(visible);
+                selected.addAll(unpackedVisible());
             }
             refresh();
         }
 
-        private boolean allVisibleSelected() {
-            return !visible.isEmpty() && selected.containsAll(visible);
+        private List<Path> unpackedVisible() {
+            return visible.stream().filter(p -> !packed.contains(p)).toList();
+        }
+
+        /** True once everything Select All would pick is selected (and something visible is). */
+        private boolean selectAllUnselects() {
+            return selected.containsAll(unpackedVisible()) && visible.stream().anyMatch(selected::contains);
+        }
+
+        private Optional<ExifInfo> currentExif() {
+            return visible.isEmpty() ? Optional.empty() : Optional.ofNullable(exifCache.get(visible.get(index)));
+        }
+
+        /**
+         * Hands the current photo's location to the main window as start or end point. Asks first
+         * when that replaces a different point, or when the photo was taken on another day.
+         */
+        private void setRoutePoint(RoutePoint point) {
+            Optional<ExifInfo> exif = currentExif().filter(ExifInfo::hasLocation);
+            if (exif.isEmpty()) return;
+            Path photo = visible.get(index);
+            Coordinates.LatLon value = Coordinates.rounded(exif.get().latitude(), exif.get().longitude());
+
+            List<String> warnings = new ArrayList<>();
+            Coordinates.LatLon current = route.get(point);
+            if (current != null && Coordinates.distanceMeters(current, value) > SAME_SPOT_METERS) {
+                warnings.add("This replaces the tale's " + point.label.toLowerCase(Locale.ROOT) + " point.\n"
+                        + "Current: " + describePoint(current) + "\n"
+                        + "New:     " + describePoint(value));
+            }
+            LocalDateTime taken = exif.get().captureTime();
+            if (taken != null && !taken.toLocalDate().equals(date)) {
+                warnings.add("The photo was taken on " + UiText.friendlyDate(taken.toLocalDate())
+                        + ", not on this tale's day.");
+            }
+            if (!warnings.isEmpty() && !confirmRoutePoint(point, warnings)) return;
+
+            route.set(point, value);
+            refresh();
+            statusSink.status(point.emoji + " " + point.label + " set from " + photo.getFileName() + " (unsaved)");
+        }
+
+        private boolean confirmRoutePoint(RoutePoint point, List<String> warnings) {
+            ButtonType apply = new ButtonType("Set as " + point.label, ButtonBar.ButtonData.OK_DONE);
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, String.join("\n\n", warnings),
+                    apply, ButtonType.CANCEL);
+            confirm.initOwner(dlg.getDialogPane().getScene().getWindow());
+            confirm.setTitle("📷 Impression Curator");
+            confirm.setHeaderText("Set this photo's location as " + point.label.toLowerCase(Locale.ROOT) + " point?");
+            Dialogs.applyStylesheet(confirm.getDialogPane());
+            return confirm.showAndWait().filter(apply::equals).isPresent();
         }
 
         private void importSelected() {
@@ -415,6 +526,7 @@ public final class ImageViewerDialog {
                 return;
             }
             selected.clear();
+            updatePacked();
             refresh();
             statusSink.status("Imported " + copies.size() + " impression" + (copies.size() == 1 ? "" : "s")
                     + " to " + UiText.homeRelative(copies.getFirst().getParent()));
@@ -439,6 +551,7 @@ public final class ImageViewerDialog {
                 pathLabel.setText("");
                 metaLabel.setText("");
                 selectCheck.setSelected(false);
+                packedBadge.setVisible(false);
                 mapButton.setDisable(true);
                 mapTooltip.setText("No image");
             } else {
@@ -448,12 +561,20 @@ public final class ImageViewerDialog {
                 ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
                 metaLabel.setText(describeExif(exif, sizeOf(p)));
                 selectCheck.setSelected(selected.contains(p));
+                packedBadge.setVisible(packed.contains(p));
                 mapButton.setDisable(!exif.hasLocation());
-                mapTooltip.setText(exif.hasLocation() ? "Open coordinates in Google Maps" : "No geo data");
+                mapTooltip.setText(exif.hasLocation()
+                        ? "Open coordinates in Google Maps — ▾ to use them as the tale's start or end point"
+                        : "No geo data");
             }
+            boolean hasStart = route.get(RoutePoint.START) != null;
+            setStartItem.setText(RoutePoint.START.emoji + " Set as Start");
+            setEndItem.setText(RoutePoint.END.emoji + (hasStart ? " Set as End" : " Set as End (set a start point first)"));
+            setEndItem.setDisable(!hasStart);
 
-            selectAllBtn.setText(allVisibleSelected() ? "☐ Unselect All" : "☑ Select All");
-            selectAllBtn.setDisable(empty);
+            boolean unselects = selectAllUnselects();
+            selectAllBtn.setText(unselects ? "☐ Unselect All" : "☑ Select All");
+            selectAllBtn.setDisable(empty || (!unselects && unpackedVisible().isEmpty()));
             boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
             importBtn.setText("🎒 Import Selected (" + selected.size() + ")");
             importBtn.setDisable(selected.isEmpty() || fromAttachments);
@@ -506,6 +627,11 @@ public final class ImageViewerDialog {
                 ? " · 📍 " + Coordinates.toDdm(exif.latitude(), exif.longitude())
                 : " · 📍 Uncharted");
         return sb.toString();
+    }
+
+    /** DDM for reading plus the 5-decimal value, since whole minutes can't tell nearby points apart. */
+    private static String describePoint(Coordinates.LatLon p) {
+        return String.format(Locale.ROOT, "%s  (%.5f, %.5f)", Coordinates.toDdm(p.lat(), p.lon()), p.lat(), p.lon());
     }
 
     private static void appendPart(StringBuilder sb, String part) {

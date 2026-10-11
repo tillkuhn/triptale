@@ -1742,7 +1742,27 @@ public class MainController implements StatusSink {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
-        imageViewerDialog.show(trip, date, () -> updateImpressionsButton(trip, date));
+        imageViewerDialog.show(trip, date, () -> updateImpressionsButton(trip, date), new ImageViewerDialog.RoutePoints() {
+            @Override
+            public Coordinates.LatLon get(ImageViewerDialog.RoutePoint point) {
+                Double lat = point == ImageViewerDialog.RoutePoint.START ? startLat : stopLat;
+                Double lon = point == ImageViewerDialog.RoutePoint.START ? startLon : stopLon;
+                return lat == null || lon == null ? null : new Coordinates.LatLon(lat, lon);
+            }
+
+            @Override
+            public void set(ImageViewerDialog.RoutePoint point, Coordinates.LatLon value) {
+                if (point == ImageViewerDialog.RoutePoint.START) {
+                    startLat = value.lat();
+                    startLon = value.lon();
+                } else {
+                    stopLat = value.lat();
+                    stopLon = value.lon();
+                }
+                updateCoordinatesButton();
+                updateDirty();
+            }
+        });
     }
 
     private Double parseDouble(String s, String field) {
