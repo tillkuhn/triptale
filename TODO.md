@@ -14,11 +14,6 @@ What to do with it is decided once the service exists. Ideas so far: suggest a t
 Coordinates dialog OK / GPX import / an explicit "Look up" button.
 
 
-## 09 Links per entry (`url_<verb>`)
-
-Replaces `trackurl` with flat `url_<verb>` frontmatter keys, a Links dialog, and a per-entry link
-list in exports. [Details](docs/09_entry_links.md)
-
 ## 50 WordPress export follow-ups
 
 Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, CDN images).
@@ -239,6 +234,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 09 Links per entry (`url_<verb>`)
+
+see docs/done/09_entry_links.md
 
 ## DONE 52 Sync Tracks: cloud sync for radio/
 
