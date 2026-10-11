@@ -11,10 +11,12 @@ import java.util.Optional;
  */
 public enum LinkKind {
     TRACK("track", "🗺", "Track"),
-    DIVE("dive", "🤿", "Dive at"),
+    DIVE("dive", "🐠", "Dive at"),
     EAT("eat", "🍲", "Eat at"),
     DRINK("drink", "🍺", "Drink at"),
-    SLEEP("sleep", "🛏", "Sleep at");
+    SLEEP("sleep", "🛏", "Sleep at"),
+    LISTEN("listen", "🎵", "Listen to"),
+    WATCH("watch", "🎬", "Watch");
 
     /** Frontmatter key prefix, e.g. {@code url_track}. */
     public static final String KEY_PREFIX = "url_";
