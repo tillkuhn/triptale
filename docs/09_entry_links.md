@@ -41,8 +41,8 @@ url_track: <migrated from former trackurl key>
 - **Kinds, in export order:** 🗺️ Track: · 🤿 Dive at: · 🍲 Eat at: · 🍺 Drink at: · 🛏️ Sleep at: — then unknown verbs alphabetically as `🔗 <Verb>:`.
 - **YAML:** global alphabetical key order is kept, so `url_*` keys come after `type`.
 - **Export:** the list goes at the end of each entry. `entry-track.md` → `entry-links.md`, one line per link. Link text is the name, otherwise the domain only; the href is always the full URL. WordPress gets the same list as a `<ul>`, replacing the inline `Track` part.
-- **Naming:** "Links" everywhere in UI and code; the YAML prefix stays `url_`.
-- **Entry form:** the track URL field and the 🔗 button are replaced by a button labelled `Links: 🗺️ 🍲` (🔗 for unknown verbs, ⚠️ if any value is invalid), or `No links yet`. It's disabled when no entry is loaded.
+- **Naming:** "Links" in code; "🕸️ Weblinks" in the UI (button, and the "🕸️ Weblinks Manager" dialog, renamed 2026-10). The YAML prefix stays `url_`.
+- **Entry form:** the track URL field and the 🔗 button are replaced by a fixed-width button (room for six verb emojis) labelled `🕸️ Weblinks: 🗺️ 🍲` (🔗 for unknown verbs, ⚠️ if any value is invalid), or `🕸️ No Weblinks yet`. It's disabled when no entry is loaded.
 - **`LinksDialog`** (`ui/dialog/`) returns `Optional<Map<…>>`. The controller applies it as form state and marks the entry dirty; the normal entry Save persists it. Buttons are OK and Cancel. Existing rows have the verb fixed, URL and name editable inline, plus 🔗 open and 🗑 delete. The new row's dropdown shows only verbs not yet used. On OK, a filled-in new row is added if valid; an invalid one blocks OK with an inline error.
 - **Tests:**
   - `Link.parse`/`format` round-trips (parentheses in URLs, `]` in names, invalid values).

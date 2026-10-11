@@ -187,7 +187,7 @@ public final class ExportDiaryDialog {
         imagesBox.setAlignment(Pos.CENTER_LEFT);
 
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Export Diary");
+        dlg.setTitle("📖 Diary Composer");
         dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(new VBox(8, rangeBox, ta, imagesBox));

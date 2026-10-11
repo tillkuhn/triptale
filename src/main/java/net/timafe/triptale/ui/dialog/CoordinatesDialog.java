@@ -70,7 +70,7 @@ public final class CoordinatesDialog {
     /** Empty when the user cancelled or dismissed the dialog. */
     public Optional<Result> showAndWait(Double startLat, Double startLon, Double stopLat, Double stopLon) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Coordinates");
+        dlg.setTitle("🧭 Coordinator");
         dlg.setHeaderText("Start and end point");
 
         Row start = Row.of(startLat, startLon);

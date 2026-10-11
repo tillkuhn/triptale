@@ -259,7 +259,7 @@ public final class ImageViewerDialog {
 
             // Date is shown in the window title only — it's redundant above the image and was
             // taking up a whole header row of vertical space.
-            dlg.setTitle("Impressions of " + UiText.friendlyDate(date));
+            dlg.setTitle("📷 Impression Curator · " + UiText.friendlyDate(date));
             dlg.getDialogPane().setContent(content);
             dlg.getDialogPane().addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
                 if (ev.getCode() == KeyCode.LEFT) {
@@ -281,9 +281,6 @@ public final class ImageViewerDialog {
             sourceCombo.valueProperty().addListener((obs, old, choice) -> {
                 if (choice != null) selectSource(choice);
             });
-            if (initial == SourceChoice.FOLDER) {
-                dlg.setOnShown(ev -> Platform.runLater(this::pickFolder));
-            }
             dlg.showAndWait();
         }
 
@@ -305,7 +302,8 @@ public final class ImageViewerDialog {
                 case PHOTO_LIB -> loadSource(ImpressionSource.PHOTO_LIBRARY);
                 case FOLDER -> {
                     loadSource(pickedFolder == null ? null : new ImpressionSource.Folder(pickedFolder));
-                    // Defer, so the combo's popup is closed before the chooser opens.
+                    // Opening the dialog on Pick Folder doesn't pop the chooser (that was irritating);
+                    // switching to it does. Defer, so the combo's popup is closed first.
                     if (pickedFolder == null && dlg.isShowing()) Platform.runLater(this::pickFolder);
                 }
             }

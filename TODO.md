@@ -184,19 +184,20 @@ Example (...)
 Writing objects: 100% (1027/1027), done.
 Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0
 
-## 30 Localization for Trip Language
+## 30 Localization and i18 for Trip Language
 
 The single language for the application (e.g. menu entries, labels etc.) will remain english.
-But since the contributed trip tales are potentially in a different language, and the exporter adds some words such as "Distance, Day etc." we should add support for i18n as far as derived trip entry content is affected. 
-Add a new setting defaultTripLanguage, possible values for locales are right now  German (de) and English (en), default is English.
-Add support for properties to translate certain values, but should always default to english. 
+But since the contributed trip tales are potentially in a different language (currently mostly german, and the exporter adds some words such as "Distance, Day , Link Verbs etc." to the generated content, we should add support for i18n as far as derived trip entry content is affected. 
+Add a new application setting defaultTripLanguage, possible values for locales are right now  German (de) and English (en), default is English.
+Add support for properties to translate certain values, but should always default to english if not special language is available. 
 Current content for german translation:
 
 Day = Tag
 Distance = Distanz
 Altitude = Höhenmeter
+and the translations for URL Links like Sleep, Eat etc.
 
-In Export Diary, use these values instead of the current hardcoded english versions when template content is written, let me know if I forgot anything
+In Export Diary, use these values instead of the current hardcoded english versions when template content is written, let me know if I forgot anything.
 
 ## 29 implement delete (entire) trip
 

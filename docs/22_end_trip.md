@@ -62,6 +62,9 @@ before more consumers depend on the current spelling.
    This is the same mechanism that already produces "first day" (`tourDay == 1` fallback when
    `delta` is very negative) — "last day" is checked first and wins ties, e.g. a single-day trip
    viewed today shows "last day", not "today".
+   *Superseded (2026-10):* the toolbar label is gone; the date picker itself shows the day
+   counter (`2026-09-27 Sunday (2/2)`), which makes "first/last day" redundant. The relative
+   wording (today, 3 days ago, …) moved to the date picker's tooltip.
 
 8. **`DatePicker` symmetry.** The existing day-cell-factory greys out dates before `startDate`
    (`main.fxml` date picker, `MainController` day-cell factory) and the value-listener snaps

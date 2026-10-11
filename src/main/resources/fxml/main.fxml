@@ -43,7 +43,7 @@
                         <Menu text="My Trips">
                             <items>
                                 <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
-                                <MenuItem text="ℹ Edit Trip…" onAction="#onTripDetails"/>
+                                <MenuItem text="🧳 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                             </items>
@@ -112,10 +112,11 @@
                 <Label text="Trip:" minWidth="-Infinity"/>
                 <ComboBox fx:id="yearCombo" prefWidth="84" minWidth="84"/>
                 <ComboBox fx:id="tripCombo" prefWidth="280" minWidth="160"/>
-                <Button text="ⓘ" minWidth="-Infinity" onAction="#onTripDetails">
-                    <tooltip><Tooltip text="Trip details"/></tooltip>
+                <Button text="🧳" minWidth="-Infinity" onAction="#onTripDetails">
+                    <tooltip><Tooltip text="Trip Planner: edit name, dates and description"/></tooltip>
                 </Button>
-                <DatePicker fx:id="datePicker" minWidth="-Infinity"/>
+                <Label text="Day:" minWidth="-Infinity"/>
+                <DatePicker fx:id="datePicker" prefWidth="250" minWidth="-Infinity"/>
                 <HBox spacing="0" alignment="CENTER_LEFT" styleClass="nav-button-group" minWidth="-Infinity">
                     <Button fx:id="firstDayButton" minWidth="-Infinity" text="⏮" onAction="#onFirstDay">
                         <tooltip><Tooltip text="Go to day 1"/></tooltip>
@@ -129,9 +130,8 @@
                         <tooltip><Tooltip text="Go to last day"/></tooltip>
                     </Button>
                 </HBox>
-                <Label fx:id="tourDayLabel" minWidth="-Infinity" styleClass="tour-day-label"/>
                 <Region HBox.hgrow="ALWAYS" minWidth="24"/>
-                <Button fx:id="radioButton" minWidth="-Infinity" text="🔊" onAction="#onRadioToggle" styleClass="radio-button">
+                <Button fx:id="radioButton" minWidth="-Infinity" onAction="#onRadioToggle" styleClass="radio-button">
                     <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>
                 </Button>
                 <Button fx:id="connectivityButton" minWidth="-Infinity" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">
@@ -149,11 +149,11 @@
                     <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true">
+                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="weblinks-button">
                             <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
                         </Button>
-                        <Button fx:id="linksButton" text="No links yet" onAction="#onLinks" minWidth="-Infinity">
-                            <tooltip><Tooltip text="Track, dive, eat, drink and sleep links for this day"/></tooltip>
+                        <Button fx:id="linksButton" text="🕸️ No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
+                            <tooltip><Tooltip text="Track, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
                     <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>

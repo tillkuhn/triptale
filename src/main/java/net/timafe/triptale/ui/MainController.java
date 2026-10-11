@@ -130,7 +130,7 @@ public class MainController implements StatusSink {
     @FXML private Label statusIcon;
     @FXML private Label versionLabel;
     @FXML private HBox statusRow;
-    @FXML private Label tourDayLabel;
+    @FXML private HBox statusBar;
     @FXML private Label titleLabel;
     @FXML private Button exportTaleButton;
     @FXML private Button saveButton;
@@ -233,6 +233,7 @@ public class MainController implements StatusSink {
     /** Created on first use, so javafx.media stays unloaded until the radio is touched (todo 46). */
     private RadioPlayer radio;
     private EqualizerIcon equalizerIcon;
+    private SpeakerIcon speakerIcon;
     private final RecentFolder recentFolder = new RecentFolder();
 
     // Window title: greeting + travel quote, re-rolled on trip switch (todo 45).
@@ -292,12 +293,21 @@ public class MainController implements StatusSink {
         rollWindowTitle();
         loadTaleFontSize();
         applyTaleFontSize();
-        statusLabel.maxWidthProperty().bind(statusRow.widthProperty().multiply(0.5));
+        // Fixed share of the row, so the bordered status box doesn't grow and shrink with each
+        // message; long messages ellipsize inside it.
+        var statusWidth = statusRow.widthProperty().multiply(0.55);
+        statusBar.minWidthProperty().bind(statusWidth);
+        statusBar.prefWidthProperty().bind(statusWidth);
+        statusBar.maxWidthProperty().bind(statusWidth);
         datePicker.setConverter(new StringConverter<>() {
-            @Override public String toString(LocalDate d) { return d == null ? "" : DATE_DISPLAY.format(d); }
+            @Override public String toString(LocalDate d) {
+                return d == null ? "" : DATE_DISPLAY.format(d) + dayCounter(tripCombo.getValue(), d);
+            }
             @Override public LocalDate fromString(String s) {
                 if (s == null || s.isBlank()) return null;
-                try { return LocalDate.parse(s.trim(), DATE_DISPLAY); } catch (Exception e) { return null; }
+                // Drop the " (2/14)" day counter that toString() appends.
+                String date = s.replaceFirst("\\s*\\(.*\\)\\s*$", "").trim();
+                try { return LocalDate.parse(date, DATE_DISPLAY); } catch (Exception e) { return null; }
             }
         });
         tripCombo.setConverter(new StringConverter<>() {
@@ -332,6 +342,7 @@ public class MainController implements StatusSink {
         radioButton.setManaged(radioEnabled);
         boolean ready = performStartupChecks();
         radioButton.hoverProperty().addListener((obs, was, is) -> updateRadioButton());
+        if (radioEnabled) updateRadioButton();
         if (ready) {
             syncAttachmentsGitFiles();
             if (radioEnabled) syncRadioGitFiles();
@@ -841,7 +852,7 @@ public class MainController implements StatusSink {
         int photoLib = noDay ? 0 : impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date).size();
         int attached = noDay ? 0 : impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).size();
         impressionsButton.setText(photoLib == 0 && attached == 0
-                ? "📷 Impressions: none – pick folder ›"
+                ? "📷 No Impressions yet"
                 : "📷 Impressions " + photoLib + " 🗂 / " + attached + " 🎒 ›");
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
@@ -1116,30 +1127,35 @@ public class MainController implements StatusSink {
     }
 
     private void updateTourDay(Trip trip, LocalDate date) {
-        if (tourDayLabel == null) return;
-        Long day = trip == null ? null : trip.dayNumber(date);
+        // The trip may have changed while the date stayed put — re-render the day counter.
+        datePicker.getEditor().setText(datePicker.getConverter().toString(date));
+        Long day = trip == null || date == null ? null : trip.dayNumber(date);
         if (day == null) {
-            tourDayLabel.setText("");
-            tourDayLabel.setTooltip(null);
+            datePicker.setTooltip(null);
             if (titleLabel != null) titleLabel.setText("Title:");
             return;
         }
         Long total = trip.totalDays();
-        tourDayLabel.setText("Day " + day + " / " + (total == null ? "∞" : total)
-                + " (" + relativeDayLabel(trip, date, day) + ")");
-        tourDayLabel.setTooltip(new Tooltip(total == null
-                ? "Day " + day + " — no end date set (edit in Trip Details)"
-                : "Day " + day + " of " + total));
+        datePicker.setTooltip(new Tooltip((total == null
+                ? "Day " + day + " — no end date set (set it in the 🧳 Trip Planner)"
+                : "Day " + day + " of " + total) + ", " + relativeDayLabel(date)));
         if (titleLabel != null) titleLabel.setText("Title Day " + day + ":");
     }
 
-    private static String relativeDayLabel(Trip trip, LocalDate date, long tourDay) {
-        if (trip.endDate() != null && date.equals(trip.endDate())) return "last day";
+    /** {@code " (2/14)"}, or {@code " (2/∞)"} without an end date; empty outside the trip. */
+    private static String dayCounter(Trip trip, LocalDate date) {
+        Long day = trip == null ? null : trip.dayNumber(date);
+        if (day == null) return "";
+        Long total = trip.totalDays();
+        return " (" + day + "/" + (total == null ? "∞" : total) + ")";
+    }
+
+    private static String relativeDayLabel(LocalDate date) {
         long delta = ChronoUnit.DAYS.between(LocalDate.now(), date);
         if (delta == 0) return "today";
         if (delta == -1) return "yesterday";
         if (delta == 1) return "tomorrow";
-        if (delta < -1) return tourDay == 1 ? "first day" : (-delta) + " days ago";
+        if (delta < -1) return (-delta) + " days ago";
         return "in " + delta + " days";
     }
 
@@ -1520,8 +1536,10 @@ public class MainController implements StatusSink {
             radioButton.setText("");
             radioButton.setGraphic(equalizerIcon);
         } else {
-            radioButton.setGraphic(null);
-            radioButton.setText(playing ? "⏸" : radio != null && radio.isLoaded() ? "▶" : "🔊");
+            boolean idle = !playing && (radio == null || !radio.isLoaded());
+            if (idle && speakerIcon == null) speakerIcon = new SpeakerIcon();
+            radioButton.setGraphic(idle ? speakerIcon : null);
+            radioButton.setText(idle ? "" : playing ? "⏸" : "▶");
         }
         if (radio == null || !radio.isLoaded()) {
             radioButton.setTooltip(new Tooltip(Station.NAME + " — play a random track from radio/"));
@@ -1671,14 +1689,14 @@ public class MainController implements StatusSink {
         updateDirty();
     }
 
-    /** "Links: 🗺️ 🍲" (🔗 for unknown verbs, ⚠️ if a value isn't a URL), or "No links yet". */
+    /** "🕸️ Weblinks: 🗺️ 🍲" (🔗 for unknown verbs, ⚠️ if a value isn't a URL), or "🕸️ No Weblinks yet". */
     private void updateLinksButton() {
         if (linksButton == null) return;
         if (links.isEmpty()) {
-            linksButton.setText("No links yet");
+            linksButton.setText("🕸️ No Weblinks yet");
             return;
         }
-        StringBuilder label = new StringBuilder("Links:");
+        StringBuilder label = new StringBuilder("🕸️ Weblinks:");
         links.keySet().forEach(verb -> label.append(' ').append(LinkKind.emojiFor(verb)));
         if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠️");
         linksButton.setText(label.toString());

@@ -80,7 +80,7 @@ The trip's `README.md` works the same way: `start_date`, `end_date` and `type: T
 
 - Frontmatter keys are always written in alphabetical order, so saving never produces a noisy diff.
 - Fields you didn't fill in are left out; `0` is a real measurement, a missing key means "not recorded".
-- `url_<verb>` keys hold a few links per day, at most one each for `track`, `dive`, `eat`, `drink` and `sleep`: either a bare URL or `"[Name](url)"`. You edit them in the Links dialog, and the exports list them at the end of each day (e.g. `🛏️ Sleep at: Hotel Lepontina`). `url_*` keys with any other verb are kept as they are.
+- `url_<verb>` keys hold a few links per day, at most one each for `track`, `dive`, `eat`, `drink` and `sleep`: either a bare URL or `"[Name](url)"`. You edit them in the 🕸️ Weblinks Manager, and the exports list them at the end of each day (e.g. `🛏️ Sleep at: Hotel Lepontina`). `url_*` keys with any other verb are kept as they are.
 - `type: Tale` / `type: Trip`, the `belongs_to` wiki link and the `trip.md`/`tale.md`/`type.md` definitions make the data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault, so you can browse and edit your trips there too.
 - A trip's slug (its directory name) is derived from its name once and never changes, even if you rename the trip later.
 
@@ -153,7 +153,7 @@ Design notes: [docs/46_radio.md](docs/46_radio.md).
 ## Impressions & Faves 📷
 
 Each entry has a **📷 Impressions 12 🗂 / 3 🎒** button: that day's images in your local photo
-library (🗂) and in the day's backpack (🎒). It opens a photo viewer where you choose the
+library (🗂) and in the day's backpack (🎒). It opens the **Impression Curator**, where you choose the
 source — **Trip Backpack**, **Local Photo Lib**, or **Pick Folder** (any folder, e.g. a camera
 card) — narrow it to faves, tick images and **🎒 Import Selected** them into that day's backpack.
 Imports copy the originals (EXIF included); a same-named file is overwritten. The backpack

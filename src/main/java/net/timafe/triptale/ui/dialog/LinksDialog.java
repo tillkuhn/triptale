@@ -68,8 +68,8 @@ public final class LinksDialog {
     /** The edited links keyed by verb in {@link LinkKind#ORDER}, or empty when the user cancelled. */
     public Optional<SequencedMap<String, Link>> showAndWait(SequencedMap<String, Link> links) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("Links");
-        dlg.setHeaderText("Links for this day");
+        dlg.setTitle("🕸️ Weblinks Manager");
+        dlg.setHeaderText("Weblinks for this day");
 
         List<Row> rows = new ArrayList<>();
         links.forEach((verb, link) -> rows.add(Row.of(verb, link)));

@@ -31,7 +31,9 @@ public final class TripMapDialog {
     /** {@code startPoints} and {@code endPoint} entries are {@code {lon, lat}}; {@code endPoint} may be null. */
     public void show(String tripName, List<double[]> startPoints, double[] endPoint) {
         Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle("Start Points · " + tripName);
+        dlg.setTitle("🗺️ Cartographer");
+        // What the map shows (and will later let you choose) lives in the header, not the title.
+        dlg.setHeaderText(tripName + "\n" + describe(startPoints, endPoint));
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
         StackPane content = new StackPane();
@@ -77,5 +79,12 @@ public final class TripMapDialog {
         dlg.getDialogPane().setContent(content);
         Dialogs.applyStylesheet(dlg.getDialogPane());
         dlg.showAndWait();
+    }
+
+    /** E.g. "📍 3 start points · 🏁 latest stop point". */
+    private static String describe(List<double[]> startPoints, double[] endPoint) {
+        int n = startPoints.size();
+        return "📍 " + (n == 0 ? "No" : n) + " start point" + (n == 1 ? "" : "s")
+                + " · " + (endPoint == null ? "🏁 no stop point yet" : "🏁 latest stop point");
     }
 }

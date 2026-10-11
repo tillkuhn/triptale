@@ -73,7 +73,8 @@ Supersedes the original "design points" list; the ideas above are the input, the
 **Main screen**
 - Faves button + "Show Faves" menu item removed. One button:
   `🖼 Impressions <photolib> 🗂 / <attachments> 📎 ›`, counts with base filter, without fave
-  filter; `🖼 Impressions: none – pick folder ›` when both are 0. Enabled whenever a trip+date
+  filter; `🖼 Impressions: none – pick folder ›` when both are 0 (now `📷 No Impressions yet`,
+  2026-10). Enabled whenever a trip+date
   is selected.
 - Main-screen "📋 Copy Tale" button removed (menu item stays). Its spot gets "⇧ Export Tale",
   which runs `saveIfDirty()` and opens the export dialog with From = To = current entry;
@@ -87,6 +88,8 @@ Supersedes the original "design points" list; the ideas above are the input, the
 - Default source: attachments if >0 images, else photo lib if >0, else Pick Folder.
 - Pick Folder with no folder yet opens the DirectoryChooser immediately; initial dir = last
   folder used this session (shared with Add Attachments), else `~/Pictures`, else `$HOME`.
+  *2026-10:* no longer when the dialog *opens* on Pick Folder (a day with no images) — only when
+  the user switches to it. The dialog is now titled "📷 Impression Curator · <date>".
 - Selection: "Select" checkbox for the current image (Space toggles), keyed by path. Select
   All acts on the visible set (after faves filter). Toggling Faves only keeps the selection;
   switching source clears it.

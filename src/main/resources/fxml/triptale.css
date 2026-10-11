@@ -67,11 +67,6 @@
     -fx-font-size: 13px;
     -fx-padding: 4 0 2 0;
 }
-.tour-day-label {
-    -fx-text-fill: #e8f4f1;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
 
 /* ── Text inputs ──────────────────────────────────────── */
 .text-field, .text-area, .date-picker .text-field {
@@ -422,6 +417,26 @@
     -fx-min-width: 40px;
     -fx-pref-width: 40px;
     -fx-max-width: 40px;
+}
+/* ── Weblinks & Impressions buttons ──────────────── */
+/* Fixed width: room for the label plus six verb emojis, so neither jumps as its label changes.
+   Shared by the Impressions button so the two line up. */
+.weblinks-button {
+    -fx-alignment: center-left;
+    -fx-min-width: 225px;
+    -fx-pref-width: 225px;
+    -fx-max-width: 225px;
+}
+
+/* Drawn, not the 🔊 emoji: colour emoji ignore -fx-text-fill and render grey. */
+.speaker-cone {
+    -fx-fill: #4ec9b0;
+}
+.speaker-waves {
+    -fx-fill: transparent;
+    -fx-stroke: #4ec9b0;
+    -fx-stroke-width: 1.6;
+    -fx-stroke-line-cap: round;
 }
 .equalizer-bar {
     -fx-fill: #4ec9b0;
