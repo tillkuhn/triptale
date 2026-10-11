@@ -1689,16 +1689,16 @@ public class MainController implements StatusSink {
         updateDirty();
     }
 
-    /** "🕸️ Weblinks: 🗺️ 🍲" (🔗 for unknown verbs, ⚠️ if a value isn't a URL), or "🕸️ No Weblinks yet". */
+    /** "🕸 Weblinks: 🗺 🍲" (🔗 for unknown verbs, ⚠ if a value isn't a URL), or "🕸 No Weblinks yet". */
     private void updateLinksButton() {
         if (linksButton == null) return;
         if (links.isEmpty()) {
-            linksButton.setText("🕸️ No Weblinks yet");
+            linksButton.setText("🕸 No Weblinks yet");
             return;
         }
-        StringBuilder label = new StringBuilder("🕸️ Weblinks:");
+        StringBuilder label = new StringBuilder("🕸 Weblinks:");
         links.keySet().forEach(verb -> label.append(' ').append(LinkKind.emojiFor(verb)));
-        if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠️");
+        if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠");
         linksButton.setText(label.toString());
     }
 

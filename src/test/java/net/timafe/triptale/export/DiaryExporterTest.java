@@ -171,9 +171,9 @@ class DiaryExporterTest {
         assertTrue(out.contains("""
                 Long day.
 
-                * 🗺️ Track: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))
+                * 🗺 Track: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))
                 * 🍲 Eat at: [Muc Food](https://mucfood.com/)
-                * 🛏️ Sleep at: [nice.hotel.com](https://nice.hotel.com/)
+                * 🛏 Sleep at: [nice.hotel.com](https://nice.hotel.com/)
                 * 🔗 Tour: supertour"""), out);
     }
 
@@ -397,7 +397,7 @@ class DiaryExporterTest {
         assertTrue(out.contains("## 2025-07-01 Dienstag Tag 1: A → B"), out);
         assertTrue(out.lines().anyMatch(l -> l.equals("Distanz: 50,5 km")), out);
         assertTrue(out.contains("Start: 51°29′N 0°01′W"), out);
-        assertTrue(out.contains("* 🛏️ Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
+        assertTrue(out.contains("* 🛏 Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
         // No German label for a custom verb: falls back to the capitalized verb
         assertTrue(out.contains("* 🔗 Tour: [tour.example.com](https://tour.example.com/)"), out);
     }

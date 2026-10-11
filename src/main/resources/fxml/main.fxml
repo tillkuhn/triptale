@@ -152,7 +152,7 @@
                         <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="weblinks-button">
                             <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
                         </Button>
-                        <Button fx:id="linksButton" text="🕸️ No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
+                        <Button fx:id="linksButton" text="🕸 No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
                             <tooltip><Tooltip text="Track, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
@@ -161,7 +161,7 @@
                     <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
                     <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
                     <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <Button fx:id="coordinatesButton" text="🗺️ Uncharted" onAction="#onCoordinates">
+                        <Button fx:id="coordinatesButton" text="🗺 Uncharted" onAction="#onCoordinates">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
                         <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">

@@ -105,8 +105,8 @@ class WordPressExporterTest {
         String out = exporter.export(trip, null, null, false, false);
 
         assertTrue(out.indexOf("<p>tale</p>") < out.indexOf("<!-- wp:list -->"), out);
-        assertTrue(out.contains("<li>🗺️ Track: <a href=\"https://www.example.com/t?a=1&amp;b=2\">example.com</a></li>"), out);
-        assertTrue(out.contains("<li>🛏️ Sleep at: <a href=\"https://hotel.example.com/x\">Hotel &lt;B&gt;</a></li>"), out);
+        assertTrue(out.contains("<li>🗺 Track: <a href=\"https://www.example.com/t?a=1&amp;b=2\">example.com</a></li>"), out);
+        assertTrue(out.contains("<li>🛏 Sleep at: <a href=\"https://hotel.example.com/x\">Hotel &lt;B&gt;</a></li>"), out);
         assertTrue(out.contains("<li>🔗 Tour: not a url</li>"), out);
         assertTrue(out.indexOf("Track:") < out.indexOf("Sleep at:"), out);
     }

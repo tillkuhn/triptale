@@ -80,7 +80,7 @@ class LinkTest {
     @Test
     void labelsAndEmojiForKnownAndUnknownVerbs() {
         assertEquals("Sleep at", LinkKind.labelFor("sleep"));
-        assertEquals("🛏️", LinkKind.emojiFor("sleep"));
+        assertEquals("🛏", LinkKind.emojiFor("sleep"));
         assertEquals("Tour", LinkKind.labelFor("tour"));
         assertEquals(LinkKind.UNKNOWN_EMOJI, LinkKind.emojiFor("tour"));
     }

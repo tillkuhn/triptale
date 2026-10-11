@@ -31,7 +31,7 @@ public final class TripMapDialog {
     /** {@code startPoints} and {@code endPoint} entries are {@code {lon, lat}}; {@code endPoint} may be null. */
     public void show(String tripName, List<double[]> startPoints, double[] endPoint) {
         Dialog<Void> dlg = new Dialog<>();
-        dlg.setTitle("🗺️ Cartographer");
+        dlg.setTitle("🗺 Cartographer");
         // What the map shows (and will later let you choose) lives in the header, not the title.
         dlg.setHeaderText(tripName + "\n" + describe(startPoints, endPoint));
         dlg.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);

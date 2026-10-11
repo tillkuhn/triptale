@@ -10,11 +10,11 @@ import java.util.Optional;
  * preserved on load/save, see {@link #ORDER} and {@link #emojiFor}.
  */
 public enum LinkKind {
-    TRACK("track", "🗺️", "Track"),
+    TRACK("track", "🗺", "Track"),
     DIVE("dive", "🤿", "Dive at"),
     EAT("eat", "🍲", "Eat at"),
     DRINK("drink", "🍺", "Drink at"),
-    SLEEP("sleep", "🛏️", "Sleep at");
+    SLEEP("sleep", "🛏", "Sleep at");
 
     /** Frontmatter key prefix, e.g. {@code url_track}. */
     public static final String KEY_PREFIX = "url_";
