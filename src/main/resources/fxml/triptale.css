@@ -177,6 +177,11 @@
 .date-picker-popup > .month-year-pane .spinner .button > .right-arrow {
     -fx-background-color: #4ec9b0;
 }
+.date-picker-popup > .month-year-pane .spinner .button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: none;
+}
 .date-picker-popup > .month-year-pane .spinner .button:hover {
     -fx-background-color: #2e4040;
 }
@@ -254,39 +259,68 @@
 }
 
 /* ── Buttons ──────────────────────────────────────────── */
+/* Buttons are "raised" (lighter than the surface, top highlight, soft shadow) so they
+   read as buttons rather than bordered text; inputs stay "sunken" (darker than the surface).
+   The background is two layers: a 1px lighter top edge, then the gradient fill inset below it. */
 .button {
-    -fx-background-color: #253333;
-    -fx-border-color: #3a5050;
+    -fx-background-color:
+        #4a6464,
+        linear-gradient(to bottom, #344a4a, #2a3d3d);
+    -fx-background-insets: 0, 1 0 0 0;
+    -fx-background-radius: 6;
+    -fx-border-color: #46605f;
     -fx-border-width: 1;
     -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-text-fill: #c8deda;
+    -fx-text-fill: #e2f0ed;
     -fx-padding: 5 13 5 13;
     -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 4, 0, 0, 1);
 }
 .button:hover {
-    -fx-background-color: #2e4040;
+    -fx-background-color:
+        #5a7a78,
+        linear-gradient(to bottom, #3c5555, #314747);
     -fx-border-color: #4ec9b0;
 }
 .button:pressed {
-    -fx-background-color: #1e3030;
+    -fx-background-color:
+        #1e2c2c,
+        linear-gradient(to bottom, #233232, #283a3a);
+    -fx-effect: none;
+}
+.button:focused {
+    -fx-border-color: #4ec9b0;
 }
 .button:default {
-    -fx-background-color: #4ec9b0;
+    -fx-background-color:
+        #7ee0cb,
+        linear-gradient(to bottom, #56d3b9, #43bca3);
     -fx-border-color: #38b09a;
-    -fx-text-fill: #16201f;
+    -fx-text-fill: #10201d;
 }
 .button:default:hover {
-    -fx-background-color: #38b09a;
+    -fx-background-color:
+        #8ee8d4,
+        linear-gradient(to bottom, #62dcc2, #4ec9b0);
+}
+.button:default:pressed {
+    -fx-background-color:
+        #38b09a,
+        linear-gradient(to bottom, #3aa992, #43bca3);
 }
 .button:disabled {
     -fx-opacity: 0.35;
 }
 
 /* ── Nav button group (first/prev/next/today segmented block) ── */
+/* One shadow for the whole block, not per segment (those would overlap at the seams). */
+.nav-button-group {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 4, 0, 0, 1);
+}
 .nav-button-group > .button {
     -fx-border-radius: 0;
     -fx-background-radius: 0;
+    -fx-effect: none;
 }
 .nav-button-group > .button:first-child {
     -fx-border-radius: 6 0 0 6;
