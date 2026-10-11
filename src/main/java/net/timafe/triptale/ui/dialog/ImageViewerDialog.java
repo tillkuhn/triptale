@@ -40,6 +40,8 @@ import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.Coordinates;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -444,7 +446,7 @@ public final class ImageViewerDialog {
                 imageView.setImage(new Image(p.toUri().toString(), IMAGE_W, IMAGE_H, true, true, true));
                 pathLabel.setText(UiText.homeRelative(p));
                 ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
-                metaLabel.setText(describeExif(exif));
+                metaLabel.setText(describeExif(exif, sizeOf(p)));
                 selectCheck.setSelected(selected.contains(p));
                 mapButton.setDisable(!exif.hasLocation());
                 mapTooltip.setText(exif.hasLocation() ? "Open coordinates in Google Maps" : "No geo data");
@@ -474,8 +476,17 @@ public final class ImageViewerDialog {
         return region;
     }
 
-    /** One-line EXIF summary: camera · aperture · ISO · exposure · dimensions · coordinates. */
-    private static String describeExif(ExifInfo exif) {
+    /** The file size in bytes, or null if it can't be read. */
+    private static Long sizeOf(Path p) {
+        try {
+            return Files.size(p);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** One-line summary: camera · aperture · ISO · exposure · dimensions · file size · coordinates. */
+    private static String describeExif(ExifInfo exif, Long fileSize) {
         StringBuilder sb = new StringBuilder();
         if (exif.hasCameraData()) {
             appendPart(sb, exif.cameraModel());
@@ -487,6 +498,9 @@ public final class ImageViewerDialog {
         }
         if (exif.dimensions() != null) {
             sb.append(" · ").append(exif.dimensions());
+        }
+        if (fileSize != null) {
+            sb.append(" · ").append(UiText.fileSize(fileSize));
         }
         sb.append(exif.hasLocation()
                 ? " · 📍 " + Coordinates.toDdm(exif.latitude(), exif.longitude())

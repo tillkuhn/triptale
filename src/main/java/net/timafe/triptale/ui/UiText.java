@@ -53,6 +53,12 @@ public final class UiText {
         return sb.toString();
     }
 
+    /** Rough file size, enough to tell a {@code _mini} copy from the original: "312 KB", "4.5 MB". */
+    public static String fileSize(long bytes) {
+        if (bytes < 1_000_000) return Math.max(1, Math.round(bytes / 1000.0)) + " KB";
+        return String.format(Locale.ROOT, "%.1f MB", bytes / 1_000_000.0);
+    }
+
     /** True when the value is a well-formed absolute http(s) URL. */
     public static boolean isValidHttpUrl(String value) {
         return Link.isHttpUrl(value);
