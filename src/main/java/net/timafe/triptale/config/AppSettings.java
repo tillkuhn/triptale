@@ -36,6 +36,7 @@ public class AppSettings {
     private String mapboxToken = "";
     private Attachments attachments = new Attachments();
     private boolean radioEnabled = false;
+    private String defaultTripLanguage = "en";
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -75,6 +76,9 @@ public class AppSettings {
     /** Gates the Radio feature (todo 46): off by default, UI and folder stay untouched until a restart with this on. */
     public boolean isRadioEnabled() { return radioEnabled; }
     public void setRadioEnabled(boolean radioEnabled) { this.radioEnabled = radioEnabled; }
+    /** Language code ({@code en}, {@code de}) for words the exports add around the tales (todo 30); kept as a string so a hand-edited unknown value doesn't break loading. */
+    public String getDefaultTripLanguage() { return defaultTripLanguage; }
+    public void setDefaultTripLanguage(String defaultTripLanguage) { this.defaultTripLanguage = defaultTripLanguage == null ? "" : defaultTripLanguage; }
 
     public static class Git {
         private String authorName = "";

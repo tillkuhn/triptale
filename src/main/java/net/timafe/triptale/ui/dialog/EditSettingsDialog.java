@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
+import net.timafe.triptale.i18n.TripLanguage;
 import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.ui.Dialogs;
 
@@ -53,6 +54,13 @@ public final class EditSettingsDialog {
         TextField mapboxTokenField = new TextField(settings.getMapboxToken());
         mapboxTokenField.setPromptText("pk.… (unrestricted public token)");
         mapboxTokenField.setPrefColumnCount(36);
+        ComboBox<TripLanguage> languageCombo = new ComboBox<>();
+        languageCombo.getItems().setAll(TripLanguage.values());
+        languageCombo.setValue(TripLanguage.fromCode(settings.getDefaultTripLanguage()));
+        languageCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(TripLanguage l) { return l == null ? "" : l.displayName(); }
+            @Override public TripLanguage fromString(String s) { return null; }
+        });
         AppSettings.Attachments attachments = settings.getAttachments();
         ComboBox<AppSettings.AttachmentSync> syncCombo = new ComboBox<>();
         syncCombo.getItems().setAll(AppSettings.AttachmentSync.values());
@@ -98,6 +106,13 @@ public final class EditSettingsDialog {
         grid.add(baseFilterField, 1, row++);
         grid.add(new Label("Impressions fave filter:"), 0, row);
         grid.add(faveFilterField, 1, row++);
+        grid.add(new Separator(), 0, row, 2, 1);
+        row++;
+        grid.add(new Label("Trip language:"), 0, row);
+        grid.add(languageCombo, 1, row++);
+        Label languageHint = new Label("For words the exports add (Day, Distance, …); the app itself stays English");
+        languageHint.getStyleClass().add("hint-label");
+        grid.add(languageHint, 1, row++);
         grid.add(new Separator(), 0, row, 2, 1);
         row++;
         grid.add(new Label("Mapbox token:"), 0, row);
@@ -146,6 +161,7 @@ public final class EditSettingsDialog {
         settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
         settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
         settings.setMapboxToken(mapboxTokenField.getText().trim());
+        settings.setDefaultTripLanguage(languageCombo.getValue().code());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
         return Optional.of(settings);

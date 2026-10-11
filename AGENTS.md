@@ -63,7 +63,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Package boundary rule
 
-JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
+JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
 
 ---
 
@@ -93,7 +93,7 @@ and return their result as data. See **UI structure** below.
 - **No `@SpringBootTest`** — all tests are pure unit tests; classes are instantiated directly with `new`.
 - **No Spring context in tests** — `TripTaleProperties` is wired manually in each test class.
 - **`@TempDir`** for all tests touching the filesystem — no fixtures on disk.
-- **`Locale.ROOT`** for all number formatting — `String.format(Locale.ROOT, ...)` everywhere.
+- **`Locale.ROOT`** for all number formatting — `String.format(Locale.ROOT, ...)` everywhere. Only exception: text that goes into an export uses the trip language's locale via `i18n.ExportTexts` (`12,5 km` in German); frontmatter always stays `Locale.ROOT`.
 - **`Double` null means "not recorded"** — `0.0` is a real measurement. Do not coerce null to zero.
 - **Errors from `storage`/`git` are unchecked** — `StorageException` / `GitException`. The UI catches `RuntimeException` at action boundaries and shows an alert; don't add checked exceptions to those layers.
 - **Build entries via `DiaryEntry.Builder`** (`DiaryEntry.builder(date)...build()`) rather than the record constructor directly; `DiaryEntry.empty(date)` gives a blank entry for a given date.
@@ -169,7 +169,16 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 
 ## Export templates
 
-Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded via `getResourceAsStream` at runtime — missing template = `IllegalStateException`. Number formats: distance `%.1f`, altitude `%.0f`, both with `Locale.ROOT`.
+Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded via `getResourceAsStream` at runtime — missing template = `IllegalStateException`. Number formats: distance `%.1f`, altitude `%.0f`, both in the trip locale (`ExportTexts.distance` / `altitude`).
+
+**Trip language (todo 30):** the app UI stays English; only words the exports add (Day, Distance,
+link labels, weekdays, numbers) follow `defaultTripLanguage` in `settings.yml` (`en`|`de`, read at
+export time). Templates reference words as `{{t.<key>}}`, resolved from
+`src/main/resources/i18n/export.properties` (English base, every key) and `export_de.properties`
+(may omit keys). `link.<verb>` keys exist only per language — English labels come from `LinkKind`.
+`ExportTexts` loads the bundle with a no-fallback `ResourceBundle.Control`; without it a missing
+`export_en.properties` would fall back to the JVM default locale. Entry filenames stay English.
+A future per-trip override will be the `lang` key in the trip `README.md`.
 
 `DiaryEntry.DEFAULT_ROUTE` (`"From → To"`) is a UI placeholder. Export headings suppress it; `routeSegment()` returns `""` for this value.
 

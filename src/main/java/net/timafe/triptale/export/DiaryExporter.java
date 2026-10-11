@@ -4,6 +4,8 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.i18n.ExportTexts;
+import net.timafe.triptale.i18n.TripLanguage;
 import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -26,7 +28,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -45,8 +46,9 @@ public class DiaryExporter {
     private static final String HTML_SHELL = "/export/html-shell.html";
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
-    private static final DateTimeFormatter WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.ENGLISH);
     private static final String MISSING = "—";
+    // {{t.stats.distance}} in a template: a word from ExportTexts
+    private static final Pattern TEXT_VAR = Pattern.compile("\\{\\{t\\.([\\w.]+)}}");
     private static final Pattern IMPRESSIONS_MARKER = Pattern.compile("<!--IMPRESSIONS:(\\d{4}-\\d{2}-\\d{2})-->");
 
     private final MarkdownStore store;
@@ -92,11 +94,21 @@ public class DiaryExporter {
             bodyHtml = injectImpressions(bodyHtml, trip, images, favesOnly);
         }
         String title = trip.name() == null ? "" : escapeHtml(trip.name());
-        return substitute(load(HTML_SHELL), Map.of("title", title, "body", bodyHtml));
+        return substitute(load(HTML_SHELL), Map.of("lang", texts().language().code(), "title", title, "body", bodyHtml));
+    }
+
+    /** Texts in the trip language, currently always the app-wide default (todo 30). */
+    ExportTexts texts() {
+        return texts(settingsStore);
+    }
+
+    static ExportTexts texts(SettingsStore settingsStore) {
+        return ExportTexts.of(TripLanguage.fromCode(settingsStore.load().getDefaultTripLanguage()));
     }
 
     private String buildMarkdown(Trip trip, LocalDate from, LocalDate to, boolean includeImpressionMarkers) {
         Objects.requireNonNull(trip, "trip");
+        ExportTexts texts = texts();
         List<LocalDate> allDates = store.listEntryDates(trip.ref());
         List<LocalDate> dates = allDates.stream()
                 .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
@@ -121,7 +133,7 @@ public class DiaryExporter {
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
             if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
-            entriesBlock.append(renderEntry(trip, e, includeImpressionMarkers));
+            entriesBlock.append(renderEntry(trip, e, texts, includeImpressionMarkers));
         }
 
         Map<String, String> vars = new LinkedHashMap<>();
@@ -129,13 +141,17 @@ public class DiaryExporter {
         vars.put("tripDescription", trip.description() == null ? "" : trip.description().strip());
         vars.put("startDate", startDate == null ? MISSING : startDate.format(ISO));
         vars.put("endDate", endDate == null ? MISSING : endDate.format(ISO));
-        vars.put("totalDays", totalDaysLabel(startDate, endDate));
+        long totalDays = totalDays(startDate, endDate);
+        vars.put("totalDays", totalDays < 0 ? MISSING : Long.toString(totalDays));
+        vars.put("daysLabel", texts.plural("days", totalDays));
         vars.put("entryCount", Integer.toString(dates.size()));
-        vars.put("totalDistance", formatDistance(totalDistance));
-        vars.put("totalAltitude", formatAltitude(totalAltitude));
-        vars.put("entries", entriesBlock.toString());
+        vars.put("entriesLabel", texts.plural("entries", dates.size()));
+        vars.put("totalDistance", texts.distance(totalDistance));
+        vars.put("totalAltitude", texts.altitude(totalAltitude));
 
-        String out = substitute(load(SHELL), vars);
+        // Words go in before the entries, so a "{{t.…}}" typed in a tale stays as written
+        String out = substitute(translate(load(SHELL), texts), vars);
+        out = out.replace("{{entries}}", entriesBlock.toString());
         return collapseBlankLines(out).strip() + "\n";
     }
 
@@ -175,32 +191,33 @@ public class DiaryExporter {
     }
 
     /** The entry heading line as in the Markdown export, e.g. {@code ## 2025-07-01 Tuesday Day 1: A → B}. */
-    static String headingLine(Trip trip, DiaryEntry e) {
+    static String headingLine(Trip trip, DiaryEntry e, ExportTexts texts) {
         Map<String, String> h = new LinkedHashMap<>();
         h.put("date", e.date().format(ISO));
-        h.put("weekday", e.date().format(WEEKDAY));
-        h.put("daySegment", daySegment(trip.startDate(), e.date()));
+        h.put("weekday", texts.weekday(e.date()));
+        h.put("longDate", texts.longDate(e.date()));
+        h.put("daySegment", daySegment(trip.startDate(), e.date(), texts));
         h.put("titleSegment", titleSegment(e.title()));
         return substitute(load(ENTRY_HEADING), h).strip();
     }
 
-    private String renderEntry(Trip trip, DiaryEntry e, boolean includeImpressionMarker) {
+    private String renderEntry(Trip trip, DiaryEntry e, ExportTexts texts, boolean includeImpressionMarker) {
         StringBuilder sb = new StringBuilder();
-        sb.append(headingLine(trip, e));
+        sb.append(headingLine(trip, e, texts));
 
         StringBuilder stats = new StringBuilder();
         if (e.distance() != null) {
-            stats.append(substitute(load(ENTRY_DISTANCE),
-                    Map.of("distance", formatDistance(e.distance()))).stripTrailing());
+            stats.append(substitute(translate(load(ENTRY_DISTANCE), texts),
+                    Map.of("distance", texts.distance(e.distance()))).stripTrailing());
         }
         if (e.altitudeMeters() != null) {
             if (stats.length() > 0) stats.append("\n");
-            stats.append(substitute(load(ENTRY_ALTITUDE),
-                    Map.of("altitude", formatAltitude(e.altitudeMeters()))).stripTrailing());
+            stats.append(substitute(translate(load(ENTRY_ALTITUDE), texts),
+                    Map.of("altitude", texts.altitude(e.altitudeMeters()))).stripTrailing());
         }
         if (e.startLat() != null && e.startLon() != null) {
             if (stats.length() > 0) stats.append("\n");
-            stats.append(substitute(load(ENTRY_STARTPOINT),
+            stats.append(substitute(translate(load(ENTRY_STARTPOINT), texts),
                     Map.of("startpoint", Coordinates.toDdm(e.startLat(), e.startLon()))).stripTrailing());
         }
         if (stats.length() > 0) {
@@ -217,7 +234,7 @@ public class DiaryExporter {
             StringBuilder links = new StringBuilder();
             e.links().forEach((verb, link) -> links.append(substitute(load(ENTRY_LINKS), Map.of(
                     "emoji", LinkKind.emojiFor(verb),
-                    "label", LinkKind.labelFor(verb),
+                    "label", texts.linkLabel(verb),
                     // Invalid values (hand-edited, not a URL) go out as plain text rather than a broken link
                     "link", link.valid() ? "[" + link.displayText() + "](" + link.url() + ")" : link.url()))));
             sb.append("\n\n").append(links.toString().stripTrailing());
@@ -230,27 +247,25 @@ public class DiaryExporter {
         return sb.toString();
     }
 
-    private static String daySegment(LocalDate startDate, LocalDate entryDate) {
+    private static String daySegment(LocalDate startDate, LocalDate entryDate, ExportTexts texts) {
         if (startDate == null) return "";
         long day = ChronoUnit.DAYS.between(startDate, entryDate) + 1;
-        return " Day " + day;
+        return " " + texts.word("day") + " " + day;
     }
 
     private static String titleSegment(String title) {
         return ": " + title;
     }
 
-    private static String totalDaysLabel(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null || endDate == null) return MISSING;
-        return Long.toString(ChronoUnit.DAYS.between(startDate, endDate) + 1);
+    /** Days from start to end, both inclusive; -1 if either is unknown. */
+    private static long totalDays(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) return -1;
+        return ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
 
-    static String formatDistance(double v) {
-        return String.format(Locale.ROOT, "%.1f", v);
-    }
-
-    static String formatAltitude(double v) {
-        return String.format(Locale.ROOT, "%.0f", v);
+    /** Replaces {@code {{t.key}}} placeholders with words in the trip language. */
+    private static String translate(String template, ExportTexts texts) {
+        return TEXT_VAR.matcher(template).replaceAll(m -> Matcher.quoteReplacement(texts.word(m.group(1))));
     }
 
     private static String substitute(String template, Map<String, String> vars) {

@@ -1,1 +1,1 @@
-Altitude climbed: {{altitude}} m
+{{t.stats.altitude}}: {{altitude}} m

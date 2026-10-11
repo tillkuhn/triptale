@@ -1,1 +1,1 @@
-Distance covered: {{distance}} km
+{{t.stats.distance}}: {{distance}} km

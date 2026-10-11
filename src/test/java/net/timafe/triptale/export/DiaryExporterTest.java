@@ -86,8 +86,8 @@ class DiaryExporterTest {
         assertTrue(out.contains("Altitude: 1200 m"));
         assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: A → B"));
         assertTrue(out.contains("## 2025-07-02 Wednesday Day 2: B → C"));
-        assertTrue(out.contains("Distance covered: 50.0 km"));
-        assertTrue(out.contains("Altitude climbed: 800 m"));
+        assertTrue(out.lines().anyMatch(l -> l.equals("Distance: 50.0 km")), out);
+        assertTrue(out.lines().anyMatch(l -> l.equals("Altitude: 800 m")), out);
         assertTrue(out.contains("Day one"));
         assertTrue(out.contains("Day two"));
     }
@@ -125,8 +125,9 @@ class DiaryExporterTest {
         String out = exporter.exportTrip(trip);
 
         assertTrue(out.contains("Rest day."));
-        assertFalse(out.contains("Distance covered:"));
-        assertFalse(out.contains("Altitude climbed:"));
+        // The trip header's "- Distance: 0.0 km" stays; only the entry's own stat lines go
+        assertFalse(out.lines().anyMatch(l -> l.startsWith("Distance:")), out);
+        assertFalse(out.lines().anyMatch(l -> l.startsWith("Altitude:")), out);
         assertFalse(out.contains("Start:"));
     }
 
@@ -218,6 +219,7 @@ class DiaryExporterTest {
         String html = exporter.exportTripAsHtml(trip);
 
         assertTrue(html.contains("<!DOCTYPE html>"));
+        assertTrue(html.contains("<html lang=\"en\">"));
         assertTrue(html.contains("<title>Alps 2025</title>"));
         assertTrue(html.contains("<h1>Alps 2025</h1>"));
         assertTrue(html.contains("<h2>2025-07-01 Tuesday Day 1: A → B</h2>"));
@@ -368,5 +370,63 @@ class DiaryExporterTest {
 
         assertFalse(markdown.contains("IMPRESSIONS"));
         assertFalse(markdown.contains(".jpg"));
+    }
+
+    private void setDefaultTripLanguage(String code) {
+        AppSettings settings = settingsStore.load();
+        settings.setDefaultTripLanguage(code);
+        settingsStore.save(settings);
+    }
+
+    @Test
+    void germanTripLanguageTranslatesWordsDatesAndNumbers() {
+        setDefaultTripLanguage("de");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .distance(50.5).altitudeMeters(800.0).startLat(51.488).startLon(-0.013).title("A → B").tales("Los geht's.")
+                .link("sleep", Link.parse("https://nice.hotel.com/"))
+                .link("tour", Link.parse("https://tour.example.com/"))
+                .build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("- Zeitraum: 2025-07-01 → 2025-07-01 (1 Tag, 1 Eintrag)"), out);
+        assertTrue(out.contains("- Distanz: 50,5 km"), out);
+        assertTrue(out.contains("- Höhenmeter: 800 m"), out);
+        assertTrue(out.contains("## 2025-07-01 Dienstag Tag 1: A → B"), out);
+        assertTrue(out.lines().anyMatch(l -> l.equals("Distanz: 50,5 km")), out);
+        assertTrue(out.contains("Start: 51°29′N 0°01′W"), out);
+        assertTrue(out.contains("* 🛏️ Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
+        // No German label for a custom verb: falls back to the capitalized verb
+        assertTrue(out.contains("* 🔗 Tour: [tour.example.com](https://tour.example.com/)"), out);
+    }
+
+    @Test
+    void germanTripLanguageSetsHtmlLang() {
+        setDefaultTripLanguage("de");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+
+        assertTrue(exporter.exportTripAsHtml(trip).contains("<html lang=\"de\">"));
+    }
+
+    @Test
+    void singleDayAndEntryUseSingular() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales(".").build());
+
+        assertTrue(exporter.exportTrip(trip).contains("(1 day, 1 entry)"));
+    }
+
+    @Test
+    void textPlaceholderInTaleIsNotTranslated() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Literal {{t.day}} here").build());
+
+        assertTrue(exporter.exportTrip(trip).contains("Literal {{t.day}} here"));
     }
 }

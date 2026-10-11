@@ -222,5 +222,20 @@ class WordPressExporterTest {
 
         assertTrue(html.contains("<title>A &amp; B</title>"));
         assertTrue(html.contains("<p>x</p>"));
+        assertTrue(html.contains("<html lang=\"en\">"));
+    }
+
+    @Test
+    void germanTripLanguageTranslatesHeadingStatsAndLinks() {
+        updateSettings(s -> s.setDefaultTripLanguage("de"));
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY2).title("B → C").distance(42.5).altitudeMeters(650.0)
+                .link("eat", Link.parse("https://food.example.com/")).build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.contains(">2025-07-02 Mittwoch Tag 2: B → C</h2>"), out);
+        assertTrue(out.contains("<p>42,5 km · 650 m ↑</p>"), out);
+        assertTrue(out.contains("<li>🍲 Essen: <a href=\"https://food.example.com/\">food.example.com</a></li>"), out);
+        assertTrue(exporter.previewHtml("t", "").contains("<html lang=\"de\">"));
     }
 }

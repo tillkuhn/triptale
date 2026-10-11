@@ -4,6 +4,7 @@ import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -84,18 +85,19 @@ public class WordPressExporter {
         String baseUrl = images ? publicBaseUrl() : "";
         ImageFilter faves = favesOnly ? impressions.faveFilter() : ImageFilter.parse("");
         int columns = Math.max(1, settingsStore.load().getImpressionsGridColumns());
+        ExportTexts texts = DiaryExporter.texts(settingsStore);
         List<String> blocks = new ArrayList<>();
         for (LocalDate date : store.listEntryDates(trip.ref())) {
             if ((from != null && date.isBefore(from)) || (to != null && date.isAfter(to))) continue;
             DiaryEntry e = store.loadEntry(trip.ref(), date);
-            String heading = DiaryExporter.headingLine(trip, e).replaceFirst("^#+\\s*", "");
+            String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
             blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
-            stats(e).ifPresent(blocks::add);
+            stats(e, texts).ifPresent(blocks::add);
             if (e.tales() != null && !e.tales().isBlank()) {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
                 blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(e.tales().strip(), 1))));
             }
-            links(e).ifPresent(blocks::add);
+            links(e, texts).ifPresent(blocks::add);
             if (!baseUrl.isEmpty()) {
                 List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
                 gallery(faves.apply(dayImages), baseUrl, columns).ifPresent(blocks::add);
@@ -107,32 +109,33 @@ public class WordPressExporter {
     /** A standalone HTML page that roughly shows how {@code markup} will look on the blog. */
     public String previewHtml(String title, String markup) {
         return load(PREVIEW_SHELL)
+                .replace("{{lang}}", DiaryExporter.texts(settingsStore).language().code())
                 .replace("{{title}}", DiaryExporter.escapeHtml(title == null ? "" : title))
                 .replace("{{body}}", markup);
     }
 
     /** Distance and climb; parts that are unset or zero (e.g. train days) are left out. */
-    private static Optional<String> stats(DiaryEntry e) {
+    private static Optional<String> stats(DiaryEntry e, ExportTexts texts) {
         List<String> parts = new ArrayList<>();
         if (e.distance() != null && e.distance() > 0) {
-            parts.add(DiaryExporter.formatDistance(e.distance()) + " km");
+            parts.add(texts.distance(e.distance()) + " km");
         }
         if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
-            parts.add(DiaryExporter.formatAltitude(e.altitudeMeters()) + " m ↑");
+            parts.add(texts.altitude(e.altitudeMeters()) + " m ↑");
         }
         return parts.isEmpty() ? Optional.empty()
                 : Optional.of(block("paragraph", "", "<p>" + String.join(" · ", parts) + "</p>"));
     }
 
     /** The entry's links as a list block, same wording as the Markdown export; invalid values as plain text. */
-    private static Optional<String> links(DiaryEntry e) {
+    private static Optional<String> links(DiaryEntry e, ExportTexts texts) {
         if (e.links().isEmpty()) return Optional.empty();
         StringBuilder html = new StringBuilder("<ul class=\"wp-block-list\">");
         e.links().forEach((verb, link) -> {
             String text = DiaryExporter.escapeHtml(link.valid() ? link.displayText() : link.url());
             html.append("<!-- wp:list-item -->\n<li>")
                     .append(LinkKind.emojiFor(verb)).append(' ')
-                    .append(DiaryExporter.escapeHtml(LinkKind.labelFor(verb))).append(": ")
+                    .append(DiaryExporter.escapeHtml(texts.linkLabel(verb))).append(": ")
                     .append(link.valid() ? "<a href=\"" + DiaryExporter.escapeHtml(link.url()) + "\">" + text + "</a>" : text)
                     .append("</li>\n<!-- /wp:list-item -->");
         });
