@@ -1137,7 +1137,7 @@ public class MainController implements StatusSink {
         }
         Long total = trip.totalDays();
         datePicker.setTooltip(new Tooltip((total == null
-                ? "Day " + day + " — no end date set (set it in the 🧳 Trip Planner)"
+                ? "Day " + day + " — no end date set (set it in the 📝 Trip Planner)"
                 : "Day " + day + " of " + total) + ", " + relativeDayLabel(date)));
         if (titleLabel != null) titleLabel.setText("Title Day " + day + ":");
     }

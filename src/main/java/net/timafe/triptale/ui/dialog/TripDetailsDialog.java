@@ -121,7 +121,7 @@ public final class TripDetailsDialog {
         grid.add(descArea, 1, row);
 
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("🧳 Trip Planner");
+        dlg.setTitle("📝 Trip Planner");
         dlg.setHeaderText(trip.name());
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);

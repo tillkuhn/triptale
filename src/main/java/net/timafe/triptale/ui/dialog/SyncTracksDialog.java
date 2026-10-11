@@ -29,7 +29,7 @@ import java.util.Optional;
  */
 public final class SyncTracksDialog {
 
-    private static final ButtonType SYNC = new ButtonType("Sync", ButtonBar.ButtonData.OK_DONE);
+    private static final ButtonType SYNC = new ButtonType("🔄 Sync Now", ButtonBar.ButtonData.OK_DONE);
 
     private final SettingsStore settingsStore;
     private final RadioLibrary radioLibrary;

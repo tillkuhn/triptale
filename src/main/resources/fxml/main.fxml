@@ -43,7 +43,7 @@
                         <Menu text="My Trips">
                             <items>
                                 <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
-                                <MenuItem text="🧳 Edit Trip…" onAction="#onTripDetails"/>
+                                <MenuItem text="📝 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                             </items>
@@ -112,7 +112,7 @@
                 <Label text="Trip:" minWidth="-Infinity"/>
                 <ComboBox fx:id="yearCombo" prefWidth="84" minWidth="84"/>
                 <ComboBox fx:id="tripCombo" prefWidth="280" minWidth="160"/>
-                <Button text="🧳" minWidth="-Infinity" onAction="#onTripDetails">
+                <Button text="📝" minWidth="-Infinity" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip Planner: edit name, dates and description"/></tooltip>
                 </Button>
                 <Label text="Day:" minWidth="-Infinity"/>
