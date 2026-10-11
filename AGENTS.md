@@ -138,9 +138,10 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 `docs/13_settings_handling.md`.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
-- Entries: `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `trackurl`, `type`
+- Entries: `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `type`, `url_<verb>`
 - Trips (`README.md`): `end_date`, `start_date`, `type`
-- Single-word keys stay flat lowercase (`altitude`, `trackurl`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
+- Single-word keys stay flat lowercase (`altitude`, `date`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
+- Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji, label and export order, live in `domain.LinkKind`. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/09_entry_links.md`.
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
 - Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initRepo()` creates all three if missing, alongside `.gitignore` setup.
 - Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.
@@ -168,7 +169,7 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 
 ## Export templates
 
-Five Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded via `getResourceAsStream` at runtime — missing template = `IllegalStateException`. Number formats: distance `%.1f`, altitude `%.0f`, both with `Locale.ROOT`.
+Mustache-style `{{var}}` templates in `src/main/resources/export/`. Loaded via `getResourceAsStream` at runtime — missing template = `IllegalStateException`. Number formats: distance `%.1f`, altitude `%.0f`, both with `Locale.ROOT`.
 
 `DiaryEntry.DEFAULT_ROUTE` (`"From → To"`) is a UI placeholder. Export headings suppress it; `routeSegment()` returns `""` for this value.
 

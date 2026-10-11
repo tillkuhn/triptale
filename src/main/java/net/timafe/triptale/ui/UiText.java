@@ -1,5 +1,7 @@
 package net.timafe.triptale.ui;
 
+import net.timafe.triptale.domain.Link;
+
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -53,17 +55,7 @@ public final class UiText {
 
     /** True when the value is a well-formed absolute http(s) URL. */
     public static boolean isValidHttpUrl(String value) {
-        if (value == null || value.isBlank()) return false;
-        try {
-            java.net.URI uri = java.net.URI.create(value.trim());
-            String scheme = uri.getScheme();
-            return uri.isAbsolute()
-                    && scheme != null
-                    && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
-                    && uri.getHost() != null;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return Link.isHttpUrl(value);
     }
 
     /** Parses a decimal accepting both {@code .} and {@code ,} as separator; null when unparseable. */

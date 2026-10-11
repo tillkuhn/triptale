@@ -38,6 +38,8 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.export.DiaryExporter;
@@ -52,6 +54,7 @@ import net.timafe.triptale.ui.dialog.CoordinatesDialog;
 import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
+import net.timafe.triptale.ui.dialog.LinksDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
@@ -93,6 +96,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.SequencedMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -113,8 +117,7 @@ public class MainController implements StatusSink {
     @FXML private TextField distanceField;
     @FXML private TextField altField;
     @FXML private TextField titleField;
-    @FXML private TextField trackUrlField;
-    @FXML private Button openTrackUrlButton;
+    @FXML private Button linksButton;
     @FXML private Button coordinatesButton;
     @FXML private Button openCoordinatesButton;
     @FXML private Button tripMapButton;
@@ -185,12 +188,14 @@ public class MainController implements StatusSink {
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineTitle = "";
-    private String baselineTrackUrl = "";
+    private SequencedMap<String, Link> baselineLinks = new LinkedHashMap<>();
     private Double baselineStartLat;
     private Double baselineStartLon;
     private Double baselineStopLat;
     private Double baselineStopLon;
     private String baselineTales = "";
+    /** The form's links; replaced (never mutated) by the Links dialog. */
+    private SequencedMap<String, Link> links = baselineLinks;
     private Double startLat;
     private Double startLon;
     private Double stopLat;
@@ -394,7 +399,6 @@ public class MainController implements StatusSink {
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
         titleField.textProperty().addListener((o, a, b) -> updateDirty());
-        trackUrlField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (ready) {
             restoreLastSelection();
@@ -774,7 +778,8 @@ public class MainController implements StatusSink {
         distanceField.setText(e.distance() == null ? "" : e.distance().toString());
         altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
         titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
-        trackUrlField.setText(e.trackUrl() == null ? "" : e.trackUrl());
+        links = e.links();
+        updateLinksButton();
         startLat = e.startLat();
         startLon = e.startLon();
         stopLat = e.stopLat();
@@ -803,7 +808,7 @@ public class MainController implements StatusSink {
         titleField.setDisable(showEmpty);
         distanceField.setDisable(showEmpty);
         altField.setDisable(showEmpty);
-        trackUrlField.setDisable(showEmpty);
+        if (linksButton != null) linksButton.setDisable(showEmpty);
         if (showEmpty) {
             if (!talesArea.getStyleClass().contains("tale-text-empty")) {
                 talesArea.getStyleClass().add("tale-text-empty");
@@ -931,7 +936,7 @@ public class MainController implements StatusSink {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineTitle = titleField.getText();
-        baselineTrackUrl = trackUrlField.getText();
+        baselineLinks = links;
         baselineStartLat = startLat;
         baselineStartLon = startLon;
         baselineStopLat = stopLat;
@@ -943,7 +948,7 @@ public class MainController implements StatusSink {
         return !Objects.equals(distanceField.getText(), baselineDistance)
                 || !Objects.equals(altField.getText(), baselineAlt)
                 || !Objects.equals(titleField.getText(), baselineTitle)
-                || !Objects.equals(trackUrlField.getText(), baselineTrackUrl)
+                || !Objects.equals(links, baselineLinks)
                 || !Objects.equals(startLat, baselineStartLat)
                 || !Objects.equals(startLon, baselineStartLon)
                 || !Objects.equals(stopLat, baselineStopLat)
@@ -1010,9 +1015,6 @@ public class MainController implements StatusSink {
         if (exportTaleMenuItem != null) exportTaleMenuItem.setDisable(!exportable);
         if (copyMenuItem != null) {
             copyMenuItem.setDisable(!hasContent);
-        }
-        if (openTrackUrlButton != null) {
-            openTrackUrlButton.setDisable(!UiText.isValidHttpUrl(trackUrlField.getText()));
         }
         updateCommitButton();
     }
@@ -1166,7 +1168,7 @@ public class MainController implements StatusSink {
                 .distance(distance)
                 .altitudeMeters(alt)
                 .title(titleField.getText())
-                .trackUrl(trackUrlField.getText())
+                .links(links)
                 .startLat(startLat)
                 .startLon(startLon)
                 .stopLat(stopLat)
@@ -1661,9 +1663,25 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onOpenTrackUrl() {
-        String url = trackUrlField.getText();
-        if (UiText.isValidHttpUrl(url)) browser.open(url.trim());
+    public void onLinks() {
+        Optional<SequencedMap<String, Link>> result = new LinksDialog(browser).showAndWait(links);
+        if (result.isEmpty()) return;
+        links = result.get();
+        updateLinksButton();
+        updateDirty();
+    }
+
+    /** "Links: 🗺️ 🍲" (🔗 for unknown verbs, ⚠️ if a value isn't a URL), or "No links yet". */
+    private void updateLinksButton() {
+        if (linksButton == null) return;
+        if (links.isEmpty()) {
+            linksButton.setText("No links yet");
+            return;
+        }
+        StringBuilder label = new StringBuilder("Links:");
+        links.keySet().forEach(verb -> label.append(' ').append(LinkKind.emojiFor(verb)));
+        if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠️");
+        linksButton.setText(label.toString());
     }
 
     @FXML

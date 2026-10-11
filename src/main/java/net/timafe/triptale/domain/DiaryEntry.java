@@ -1,13 +1,22 @@
 package net.timafe.triptale.domain;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.SequencedMap;
+import java.util.TreeMap;
 
+/**
+ * One diary day. {@code links} is keyed by verb (see {@link LinkKind}) and ordered by
+ * {@link LinkKind#ORDER}; never null.
+ */
 public record DiaryEntry(
         LocalDate date,
         Double distance,
         Double altitudeMeters,
         String title,
-        String trackUrl,
+        SequencedMap<String, Link> links,
         Double startLat,
         Double startLon,
         Double stopLat,
@@ -24,7 +33,7 @@ public record DiaryEntry(
         private Double distance;
         private Double altitudeMeters;
         private String title = DEFAULT_TITLE;
-        private String trackUrl;
+        private final Map<String, Link> links = new TreeMap<>(LinkKind.ORDER);
         private Double startLat;
         private Double startLon;
         private Double stopLat;
@@ -36,7 +45,16 @@ public record DiaryEntry(
         public Builder distance(Double v)       { this.distance = v; return this; }
         public Builder altitudeMeters(Double v) { this.altitudeMeters = v; return this; }
         public Builder title(String v)          { this.title = (v != null && !v.isBlank()) ? v : DEFAULT_TITLE; return this; }
-        public Builder trackUrl(String v)       { this.trackUrl = (v != null && !v.isBlank()) ? v : null; return this; }
+        /** Replaces all links; keys are verbs ({@code track}, …), blank values are skipped. */
+        public Builder links(Map<String, Link> v) {
+            links.clear();
+            if (v != null) v.forEach(this::link);
+            return this;
+        }
+        public Builder link(String verb, Link v) {
+            if (verb != null && !verb.isBlank() && v != null && !v.url().isBlank()) links.put(verb, v);
+            return this;
+        }
         public Builder startLat(Double v)       { this.startLat = v; return this; }
         public Builder startLon(Double v)       { this.startLon = v; return this; }
         public Builder stopLat(Double v)        { this.stopLat = v; return this; }
@@ -44,7 +62,8 @@ public record DiaryEntry(
         public Builder tales(String v)          { this.tales = v != null ? v : ""; return this; }
 
         public DiaryEntry build() {
-            return new DiaryEntry(date, distance, altitudeMeters, title, trackUrl,
+            return new DiaryEntry(date, distance, altitudeMeters, title,
+                    Collections.unmodifiableSequencedMap(new LinkedHashMap<>(links)),
                     startLat, startLon, stopLat, stopLon, tales);
         }
     }

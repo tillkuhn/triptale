@@ -2,6 +2,7 @@ package net.timafe.triptale.export;
 
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
@@ -94,6 +95,7 @@ public class WordPressExporter {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
                 blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(e.tales().strip(), 1))));
             }
+            links(e).ifPresent(blocks::add);
             if (!baseUrl.isEmpty()) {
                 List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
                 gallery(faves.apply(dayImages), baseUrl, columns).ifPresent(blocks::add);
@@ -109,7 +111,7 @@ public class WordPressExporter {
                 .replace("{{body}}", markup);
     }
 
-    /** Distance, climb and a track link; parts that are unset or zero (e.g. train days) are left out. */
+    /** Distance and climb; parts that are unset or zero (e.g. train days) are left out. */
     private static Optional<String> stats(DiaryEntry e) {
         List<String> parts = new ArrayList<>();
         if (e.distance() != null && e.distance() > 0) {
@@ -118,11 +120,23 @@ public class WordPressExporter {
         if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
             parts.add(DiaryExporter.formatAltitude(e.altitudeMeters()) + " m ↑");
         }
-        if (e.trackUrl() != null && !e.trackUrl().isBlank()) {
-            parts.add("<a href=\"" + DiaryExporter.escapeHtml(e.trackUrl().strip()) + "\">Track</a>");
-        }
         return parts.isEmpty() ? Optional.empty()
                 : Optional.of(block("paragraph", "", "<p>" + String.join(" · ", parts) + "</p>"));
+    }
+
+    /** The entry's links as a list block, same wording as the Markdown export; invalid values as plain text. */
+    private static Optional<String> links(DiaryEntry e) {
+        if (e.links().isEmpty()) return Optional.empty();
+        StringBuilder html = new StringBuilder("<ul class=\"wp-block-list\">");
+        e.links().forEach((verb, link) -> {
+            String text = DiaryExporter.escapeHtml(link.valid() ? link.displayText() : link.url());
+            html.append("<!-- wp:list-item -->\n<li>")
+                    .append(LinkKind.emojiFor(verb)).append(' ')
+                    .append(DiaryExporter.escapeHtml(LinkKind.labelFor(verb))).append(": ")
+                    .append(link.valid() ? "<a href=\"" + DiaryExporter.escapeHtml(link.url()) + "\">" + text + "</a>" : text)
+                    .append("</li>\n<!-- /wp:list-item -->");
+        });
+        return Optional.of(block("list", "", html.append("</ul>").toString()));
     }
 
     private static List<String> blocks(Node parent) {

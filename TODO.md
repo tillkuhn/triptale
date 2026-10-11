@@ -2,6 +2,7 @@
 
 ## Next Todo: 53
 
+
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
 Placeholder. First build the lookup service (public Nominatim, see
@@ -11,6 +12,12 @@ User-Agent, ≤ 1 req/s, quick timeout, fails quietly. Credit OSM in the About d
 What to do with it is decided once the service exists. Ideas so far: suggest a title like
 "Vechta → Bremen" instead of "Untitled", store place/country in frontmatter, run on
 Coordinates dialog OK / GPX import / an explicit "Look up" button.
+
+
+## 09 Links per entry (`url_<verb>`)
+
+Replaces `trackurl` with flat `url_<verb>` frontmatter keys, a Links dialog, and a per-entry link
+list in exports. [Details](docs/09_entry_links.md)
 
 ## 50 WordPress export follow-ups
 
@@ -431,26 +438,6 @@ cache format).
 extend the impressions filter, support a new editable optional prefereces impressionsFaveFilePattern besides impressionsFilePattern.
 also add a new bnutton displaying "x Faves" next to the existing "X Impressions" Button. this feature is used to display favourite images, it should re-use the samve image viewer.
 
-## DONE (WON'T DO) 09 New concept for storing links
-
-we need a flexible way to store multiple links. introduce new "links" array in frontmatter for trip entry.
-the actual link should have a mandatory "url" property. kind is optional and should allow any string value, but for the UI
-we should enforve an enumerated value, suggest to use short very. Initial list "drink, eat, sleep, hike, bike, dive" (list should sort alphabetically). title is just an optional string
-
-
-```
----
-date: 2026-07-24
-route: 'Essen → München'
-links:
-  - url: https://muc1.com/
-    kind: hike
-    title: Nice GPX routed for Muc 
-  - url: https://bar.com/
-    kind: drink
-    title: best bar in town
-  - url: https://random.com/
-```
 
 ## DONE 20 Support Tolaria belongs_to references
 

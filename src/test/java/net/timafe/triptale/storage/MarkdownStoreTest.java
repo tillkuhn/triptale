@@ -3,6 +3,7 @@ package net.timafe.triptale.storage;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import org.junit.jupiter.api.BeforeEach;
@@ -199,13 +200,14 @@ class MarkdownStoreTest {
                 .distance(82.5)
                 .altitudeMeters(1240.0)
                 .title("Innsbruck → Brenner")
-                .trackUrl("https://www.strava.com/activities/123")
+                .link("track", Link.parse("https://www.strava.com/activities/123"))
                 .tales("Hot day, lots of climbing.")
                 .build();
         store.saveEntry(ALPS_2025, entry);
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
-        assertTrue(raw.contains("trackurl:"));
+        assertTrue(raw.contains("url_track: \"https://www.strava.com/activities/123\"")
+                || raw.contains("url_track: https://www.strava.com/activities/123"), raw);
         assertFalse(raw.contains("route:"));
         assertTrue(raw.contains("# Innsbruck → Brenner\n\nHot day"), "body should start with H1 title");
 
@@ -214,7 +216,7 @@ class MarkdownStoreTest {
         assertEquals(82.5, loaded.distance());
         assertEquals(1240.0, loaded.altitudeMeters());
         assertEquals("Innsbruck → Brenner", loaded.title());
-        assertEquals("https://www.strava.com/activities/123", loaded.trackUrl());
+        assertEquals("https://www.strava.com/activities/123", loaded.links().get("track").url());
         assertTrue(loaded.tales().contains("Hot day"));
     }
 
@@ -249,7 +251,8 @@ class MarkdownStoreTest {
                 .distance(82.5)
                 .altitudeMeters(1240.0)
                 .title("Innsbruck → Brenner")
-                .trackUrl("https://www.strava.com/activities/123")
+                .link("track", Link.parse("https://www.strava.com/activities/123"))
+                .link("eat", Link.of("https://food.example.com", "Bistro"))
                 .startLat(51.553443)
                 .startLon(7.915507)
                 .tales("Hot day.")
@@ -309,16 +312,41 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void saveEntryOmitsBlankTrackUrlFromFrontmatter() throws Exception {
+    void saveEntryOmitsBlankLinksFromFrontmatter() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
-                .trackUrl("   ")
+                .link("track", Link.parse("   "))
                 .tales("No track.")
                 .build());
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
-        assertFalse(raw.contains("trackurl"));
-        assertNull(store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4)).trackUrl());
+        assertFalse(raw.contains("url_"));
+        assertTrue(store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4)).links().isEmpty());
+    }
+
+    @Test
+    void loadEntryKeepsUnknownAndInvalidLinksAcrossSave() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
+        Files.writeString(file, """
+                ---
+                date: 2025-07-04
+                url_sleep: nice-hotel.com
+                url_tour: "[SuperTours](https://supertour-app.com)"
+                ---
+
+                # Day
+                """);
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals(List.of("sleep", "tour"), List.copyOf(loaded.links().keySet()));
+        assertFalse(loaded.links().get("sleep").valid());
+        assertEquals("SuperTours", loaded.links().get("tour").name());
+
+        store.saveEntry(ALPS_2025, loaded);
+        String raw = Files.readString(file);
+        assertTrue(raw.contains("url_sleep: \"nice-hotel.com\"") || raw.contains("url_sleep: nice-hotel.com"), raw);
+        assertTrue(raw.contains("url_tour: \"[SuperTours](https://supertour-app.com)\""), raw);
     }
 
     @Test

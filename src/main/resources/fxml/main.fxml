@@ -152,17 +152,15 @@
                         <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true">
                             <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
                         </Button>
+                        <Button fx:id="linksButton" text="No links yet" onAction="#onLinks" minWidth="-Infinity">
+                            <tooltip><Tooltip text="Track, dive, eat, drink and sleep links for this day"/></tooltip>
+                        </Button>
                     </HBox>
                     <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                     <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                     <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
                     <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
-                    <Label text="Track URL:" GridPane.rowIndex="1" GridPane.columnIndex="4"/>
                     <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <TextField fx:id="trackUrlField" prefWidth="220" HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="openTrackUrlButton" text="🔗" onAction="#onOpenTrackUrl" disable="true">
-                            <tooltip><Tooltip text="Open track URL in browser"/></tooltip>
-                        </Button>
                         <Button fx:id="coordinatesButton" text="🗺️ Uncharted" onAction="#onCoordinates">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>

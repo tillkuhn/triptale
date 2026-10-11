@@ -4,6 +4,7 @@ import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ImpressionsResolver;
@@ -83,14 +84,31 @@ class WordPressExporterTest {
     }
 
     @Test
-    void statsParagraphHasDistanceClimbAndTrackLink() {
+    void statsParagraphHasDistanceAndClimb() {
         store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).distance(42.0).altitudeMeters(650.4)
-                .trackUrl("https://example.com/t?a=1&b=2").startLat(1.0).startLon(2.0).build());
+                .startLat(1.0).startLon(2.0).build());
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains("<p>42.0 km · 650 m ↑ · <a href=\"https://example.com/t?a=1&amp;b=2\">Track</a></p>"), out);
+        assertTrue(out.contains("<p>42.0 km · 650 m ↑</p>"), out);
         assertFalse(out.contains("Start"));
+    }
+
+    @Test
+    void linksBecomeListAfterTale() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("tale")
+                .link("sleep", Link.of("https://hotel.example.com/x", "Hotel <B>"))
+                .link("track", Link.parse("https://www.example.com/t?a=1&b=2"))
+                .link("tour", Link.parse("not a url"))
+                .build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.indexOf("<p>tale</p>") < out.indexOf("<!-- wp:list -->"), out);
+        assertTrue(out.contains("<li>🗺️ Track: <a href=\"https://www.example.com/t?a=1&amp;b=2\">example.com</a></li>"), out);
+        assertTrue(out.contains("<li>🛏️ Sleep at: <a href=\"https://hotel.example.com/x\">Hotel &lt;B&gt;</a></li>"), out);
+        assertTrue(out.contains("<li>🔗 Tour: not a url</li>"), out);
+        assertTrue(out.indexOf("Track:") < out.indexOf("Sleep at:"), out);
     }
 
     @Test

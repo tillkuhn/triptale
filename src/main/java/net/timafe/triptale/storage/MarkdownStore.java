@@ -6,6 +6,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.util.Markdown;
@@ -206,8 +208,11 @@ public class MarkdownStore {
         if (entry.startLon() != null) fm.put("start_lon", entry.startLon());
         if (entry.stopLat() != null) fm.put("stop_lat", entry.stopLat());
         if (entry.stopLon() != null) fm.put("stop_lon", entry.stopLon());
-        if (entry.trackUrl() != null && !entry.trackUrl().isBlank()) fm.put("trackurl", entry.trackUrl());
         fm.put("type", ENTRY_TYPE);
+        // url_* sorts after type; among themselves alphabetically by verb (not LinkKind order)
+        entry.links().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(l -> fm.put(LinkKind.KEY_PREFIX + l.getKey(), l.getValue().format()));
         try {
             String tales = entry.tales() == null ? "" : entry.tales();
             String body = "# " + entry.title() + "\n\n" + Markdown.demoteH1(tales);
@@ -317,13 +322,24 @@ public class MarkdownStore {
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .title(title)
-                .trackUrl(asString(data.get("trackurl")))
+                .links(parseLinks(data))
                 .startLat(asDouble(data.get("start_lat")))
                 .startLon(asDouble(data.get("start_lon")))
                 .stopLat(asDouble(data.get("stop_lat")))
                 .stopLon(asDouble(data.get("stop_lon")))
                 .tales(tales)
                 .build();
+    }
+
+    /** Every {@code url_<verb>} key, known verb or not, so hand-added links survive a save. */
+    private static Map<String, Link> parseLinks(Map<String, Object> data) {
+        Map<String, Link> links = new LinkedHashMap<>();
+        data.forEach((key, value) -> {
+            if (key.startsWith(LinkKind.KEY_PREFIX) && key.length() > LinkKind.KEY_PREFIX.length() && value != null) {
+                links.put(key.substring(LinkKind.KEY_PREFIX.length()), Link.parse(value.toString()));
+            }
+        });
+        return links;
     }
 
     private static void ensureDir(Path p) {

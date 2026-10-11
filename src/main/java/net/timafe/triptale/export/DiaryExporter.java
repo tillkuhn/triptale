@@ -2,6 +2,7 @@ package net.timafe.triptale.export;
 
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
@@ -39,7 +40,7 @@ public class DiaryExporter {
     private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
     private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
     private static final String ENTRY_STARTPOINT = "/export/entry-startpoint.md";
-    private static final String ENTRY_TRACK = "/export/entry-track.md";
+    private static final String ENTRY_LINKS = "/export/entry-links.md";
     private static final String ENTRY_TALES = "/export/entry-tales.md";
     private static final String HTML_SHELL = "/export/html-shell.html";
 
@@ -202,11 +203,6 @@ public class DiaryExporter {
             stats.append(substitute(load(ENTRY_STARTPOINT),
                     Map.of("startpoint", Coordinates.toDdm(e.startLat(), e.startLon()))).stripTrailing());
         }
-        if (e.trackUrl() != null && !e.trackUrl().isBlank()) {
-            if (stats.length() > 0) stats.append("\n");
-            stats.append(substitute(load(ENTRY_TRACK),
-                    Map.of("trackUrl", e.trackUrl())).stripTrailing());
-        }
         if (stats.length() > 0) {
             sb.append("\n\n").append(stats);
         }
@@ -215,6 +211,16 @@ public class DiaryExporter {
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);
+        }
+
+        if (!e.links().isEmpty()) {
+            StringBuilder links = new StringBuilder();
+            e.links().forEach((verb, link) -> links.append(substitute(load(ENTRY_LINKS), Map.of(
+                    "emoji", LinkKind.emojiFor(verb),
+                    "label", LinkKind.labelFor(verb),
+                    // Invalid values (hand-edited, not a URL) go out as plain text rather than a broken link
+                    "link", link.valid() ? "[" + link.displayText() + "](" + link.url() + ")" : link.url()))));
+            sb.append("\n\n").append(links.toString().stripTrailing());
         }
 
         if (includeImpressionMarker) {
