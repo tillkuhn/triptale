@@ -67,6 +67,19 @@ class ImpressionsServiceTest {
     }
 
     @Test
+    void hiddenFilesAreSkippedEvenWithoutBaseFilter() throws IOException {
+        update(s -> s.setImpressionsBaseFilter(""));
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
+        Files.createFile(dir.resolve("20260729_103837_Dive_mini.jpg"));
+        Files.createFile(dir.resolve("._20260729_103837_Dive_mini.jpg"));
+        Files.createFile(dir.resolve(".DS_Store"));
+
+        List<Path> images = service.images(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY);
+
+        assertEquals(List.of(dir.resolve("20260729_103837_Dive_mini.jpg")), images);
+    }
+
+    @Test
     void attachmentsSourceIsEmptyWithoutDayFolder() {
         assertTrue(service.images(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).isEmpty());
         assertTrue(service.directory(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).isEmpty());

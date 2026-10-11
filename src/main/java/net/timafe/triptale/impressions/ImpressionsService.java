@@ -58,13 +58,18 @@ public class ImpressionsService {
         };
     }
 
-    /** The day's images from the source, base filter applied, sorted by filename. */
+    /**
+     * The day's images from the source, base filter applied, sorted by filename. Hidden files are
+     * always skipped — notably macOS AppleDouble leftovers ({@code ._IMG_0431.jpg}) that copying to
+     * a non-Apple drive leaves behind, which would otherwise pass a {@code *.jpg} filter.
+     */
     public List<Path> images(ImpressionSource source, Trip trip, LocalDate date) {
         AppSettings settings = settingsStore.load();
         List<Path> files = source instanceof ImpressionSource.PhotoLibrary
                 ? resolver.resolve(settings.getImpressionsFilePattern(), trip, date)
                 : directory(source, trip, date).map(ImpressionsService::listFiles).orElse(List.of());
-        return ImageFilter.parse(settings.getImpressionsBaseFilter()).apply(files);
+        List<Path> visible = files.stream().filter(f -> !f.getFileName().toString().startsWith(".")).toList();
+        return ImageFilter.parse(settings.getImpressionsBaseFilter()).apply(visible);
     }
 
     /** The configured {@code impressionsFaveFilter}; {@link ImageFilter#isEmpty() empty} if none. */
