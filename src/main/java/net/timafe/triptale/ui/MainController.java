@@ -34,6 +34,7 @@ import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
+import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -55,12 +56,12 @@ import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.LinksDialog;
+import net.timafe.triptale.ui.dialog.MapAssistantDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
-import net.timafe.triptale.ui.dialog.TripMapDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.CommitMessage;
 import net.timafe.triptale.util.Coordinates;
@@ -120,7 +121,6 @@ public class MainController implements StatusSink {
     @FXML private Button linksButton;
     @FXML private Button coordinatesButton;
     @FXML private Button openCoordinatesButton;
-    @FXML private Button tripMapButton;
     @FXML private Button impressionsButton;
     @FXML private TextArea talesArea;
     @FXML private VBox taleEmptyOverlay;
@@ -248,7 +248,7 @@ public class MainController implements StatusSink {
     private final ExportDiaryDialog exportDiaryDialog;
     private final ImageViewerDialog imageViewerDialog;
     private final AboutDialog aboutDialog;
-    private final TripMapDialog tripMapDialog;
+    private final MapAssistantDialog mapAssistantDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, WordPressExporter wordPressExporter,
@@ -278,7 +278,8 @@ public class MainController implements StatusSink {
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
-        this.tripMapDialog = new TripMapDialog(new MapboxService(settingsStore));
+        this.mapAssistantDialog = new MapAssistantDialog(store, new MapboxService(settingsStore),
+                new PhotoLocations(impressions, exifReader), this);
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -884,29 +885,26 @@ public class MainController implements StatusSink {
         browser.open(Coordinates.googleMapsUrl(new Coordinates.LatLon(startLat, startLon), stop));
     }
 
+    /** Map Assistant on the current day (entry form button). */
     @FXML
-    public void onShowTripMap() {
+    public void onMapAssistant() {
         Trip trip = tripCombo.getValue();
         if (trip == null) {
             status("Select a trip first");
             return;
         }
-        List<LocalDate> dates = store.listEntryDates(trip.ref());
-        List<double[]> startPoints = new ArrayList<>();
-        double[] endPoint = null;
-        for (int i = 0; i < dates.size(); i++) {
-            DiaryEntry entry = store.loadEntry(trip.ref(), dates.get(i));
-            if (entry.startLat() != null && entry.startLon() != null) {
-                startPoints.add(new double[]{entry.startLon(), entry.startLat()});
-            }
-            // Only the latest day's stop point — a multi-day trip's daily stop is usually the
-            // next day's start (redundant); a one-way trip's final destination otherwise never
-            // appears on the map at all.
-            if (i == dates.size() - 1 && entry.stopLat() != null && entry.stopLon() != null) {
-                endPoint = new double[]{entry.stopLon(), entry.stopLat()};
-            }
+        mapAssistantDialog.showDay(trip, datePicker.getValue());
+    }
+
+    /** Map Assistant on the whole trip (My Trips menu). */
+    @FXML
+    public void onMapAssistantTrip() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) {
+            status("Select a trip first");
+            return;
         }
-        tripMapDialog.show(trip.name(), startPoints, endPoint);
+        mapAssistantDialog.show(trip);
     }
 
     private void updateViewSourceMenuItem(boolean exists) {

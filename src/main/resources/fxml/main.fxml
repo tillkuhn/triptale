@@ -46,6 +46,7 @@
                                 <MenuItem text="📝 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
+                                <MenuItem text="🗺 Map Assistant…" onAction="#onMapAssistantTrip"/>
                             </items>
                         </Menu>
                         <Menu text="Tale Entries">
@@ -167,8 +168,8 @@
                         <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">
                             <tooltip><Tooltip text="Show start point on Google Maps"/></tooltip>
                         </Button>
-                        <Button fx:id="tripMapButton" text="🗺 Trip Map" onAction="#onShowTripMap">
-                            <tooltip><Tooltip text="Show all start points for this trip on a map"/></tooltip>
+                        <Button text="🗺 Map Assistant" onAction="#onMapAssistant">
+                            <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
                         </Button>
                     </HBox>
                 </GridPane>

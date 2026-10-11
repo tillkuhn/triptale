@@ -63,7 +63,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Package boundary rule
 
-JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
+JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `map`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
 
 ---
 
@@ -78,6 +78,7 @@ ui.MainController ──► storage.MarkdownStore ──► storage.SettingsStor
                   ├── attachments.AttachmentsDir ──► MarkdownStore
                   ├── sync.BucketSyncer ──► sync.S3Client (SigV4, java.net.http)   (for attachments/ and radio/)
                   ├── ui.ConnectivityService
+                  ├── map.PhotoLocations ──► ImpressionsService, storage.ExifReader   (for ui.dialog.MapAssistantDialog)
                   ├── radio.RadioLibrary ──► MarkdownStore   (played by ui.RadioPlayer, created lazily)
                   └── ui.dialog.* ──► the services each dialog needs
 ```
