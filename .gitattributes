@@ -1,0 +1,5 @@
+# Normalize to LF on commit, keep LF on checkout (also on Windows)
+* text=auto eol=lf
+# cmd.exe needs CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
