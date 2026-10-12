@@ -9,20 +9,6 @@ The 🎒 Backpack button next to Map Assistant (added with todo 55) currently ju
 current day (e.g. show the day's backpack files, with adding as one option), and show the
 number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
 
-## 55 Activity per entry
-
-New single-valued frontmatter key `activity` per tale (main activity of the day), to put
-reports into context and pick icons for distance/altitude stats (todo 53).
-- Enum `domain.Activity` like `LinkKind` (key, emoji, label), alphabetical: backpacking,
-  bikepacking, cycling, hiking, railtripping, relaxing, roadtripping, sightseeing.
-- Null = not set, nothing stored; UI shows `😴 No activity yet`. Unknown values are kept
-  verbatim and shown as `❓ Value`; known values are normalized to lowercase.
-- UI: label-less ComboBox behind Altitude (empty grid cell). Export templates untouched;
-  `ExportTexts.activity(key)` prepared for todo 53 (DE: only Radeln, Wandern).
-
-[Details](docs/55_activity_per_entry.md)
-
-
 ## 53 Entry fact header in exports
 
 Show an entry's key facts as a header row under the entry title: 1–n centered items side by
@@ -263,6 +249,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 55 Activity per entry
+
+see docs/done/55_activity_per_entry.md
 
 ## DONE 54 Map Assistant
 
