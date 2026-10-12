@@ -35,6 +35,23 @@
             aspect-ratio: 4 / 3;
             object-fit: cover;
         }
+        .wp-block-columns {
+            display: flex;
+            gap: 1rem;
+            margin: 0.5rem 0 1.5rem;
+        }
+        .wp-block-column {
+            flex: 1 1 0;
+        }
+        .wp-block-column p {
+            margin: 0.1rem 0;
+        }
+        @media (max-width: 600px) {
+            .wp-block-columns { flex-direction: column; }
+        }
+        .has-text-align-center { text-align: center; }
+        .has-small-font-size { font-size: 0.85rem; }
+        .has-x-large-font-size { font-size: 2rem; }
         .wp-block-quote {
             border-left: 4px solid #ccc;
             margin: 1rem 0;

@@ -76,7 +76,7 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, DAY2, DAY3, false, false);
 
-        assertTrue(out.startsWith("<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">2025-07-02 Wednesday Day 2: B → C</h2>\n<!-- /wp:heading -->"), out);
+        assertTrue(out.startsWith("<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">B → C</h2>\n<!-- /wp:heading -->"), out);
         assertTrue(out.contains("<!-- wp:paragraph -->\n<p>three</p>\n<!-- /wp:paragraph -->"));
         assertFalse(out.contains("one"));
         assertFalse(out.contains("Alps 2025"));
@@ -96,18 +96,31 @@ class WordPressExporterTest {
         assertFalse(out.contains("Internal"), out);
         assertFalse(out.contains("Komoot"), out);
         assertFalse(out.contains("secret"), out);
-        assertTrue(out.contains("Day 2: B → C"), out);
+        assertTrue(out.contains(">B → C</h2>"), out);
     }
 
     @Test
-    void statsParagraphHasDistanceAndClimb() {
-        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).distance(42.0).altitudeMeters(650.4)
-                .startLat(1.0).startLon(2.0).build());
+    void factsBecomeColumnsUnderTheHeading() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).activity("cycling").distance(42.0).altitudeMeters(650.4)
+                .startLat(1.0).startLon(2.0).tales("tale").build());
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains("<p>42.0 km · 650 m ↑</p>"), out);
-        assertFalse(out.contains("Start"));
+        assertTrue(out.contains("""
+                <!-- wp:column -->
+                <div class="wp-block-column"><!-- wp:paragraph {"align":"center","fontSize":"x-large"} -->
+                <p class="has-text-align-center has-x-large-font-size">🚴</p>
+                <!-- /wp:paragraph -->
+
+                <!-- wp:paragraph {"align":"center"} -->
+                <p class="has-text-align-center"><strong>42.0 km</strong><br><small>650 m climbed</small></p>
+                <!-- /wp:paragraph --></div>
+                <!-- /wp:column -->"""), out);
+        assertTrue(out.contains(">📅</p>"), out);
+        assertTrue(out.contains("<strong>Tuesday · Day 1</strong><br><small>July 1st 2025</small>"), out);
+        assertTrue(out.contains("<strong>1°00′N 2°00′E</strong><br><small>Starting point</small>"), out);
+        assertTrue(out.contains("<!-- wp:columns -->\n<div class=\"wp-block-columns\"><!-- wp:column -->"), out);
+        assertTrue(out.indexOf("</h2>") < out.indexOf("wp:columns") && out.indexOf("wp:columns") < out.indexOf("<p>tale</p>"), out);
     }
 
     @Test
@@ -134,7 +147,7 @@ class WordPressExporterTest {
         String out = exporter.export(trip, null, null, false, false);
 
         assertFalse(out.contains(" km"));
-        assertFalse(out.contains("m ↑"));
+        assertFalse(out.contains("climbed"));
     }
 
     @Test
@@ -249,8 +262,9 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains(">2025-07-02 Mittwoch Tag 2: B → C</h2>"), out);
-        assertTrue(out.contains("<p>42,5 km · 650 m ↑</p>"), out);
+        assertTrue(out.contains(">B → C</h2>"), out);
+        assertTrue(out.contains("<strong>Mittwoch · Tag 2</strong><br><small>2. Juli 2025</small>"), out);
+        assertTrue(out.contains("<strong>42,5 km</strong><br><small>650 m bergauf</small>"), out);
         assertTrue(out.contains("<li>🍲 Essen: <a href=\"https://food.example.com/\">food.example.com</a></li>"), out);
         assertTrue(exporter.previewHtml("t", "").contains("<html lang=\"de\">"));
     }

@@ -188,7 +188,11 @@ same or higher level. Every exporter must run tales through `Markdown.stripPriva
 `shiftHeadings` — `WordPressExporter` has its own tale path, so a new exporter needs it too. See
 `docs/48_private_sections.md`.
 
-`DiaryEntry.DEFAULT_ROUTE` (`"From → To"`) is a UI placeholder. Export headings suppress it; `routeSegment()` returns `""` for this value.
+**Entry facts (todo 53):** an entry heading is its title only (`DiaryEntry.DEFAULT_TITLE` / blank
+→ "Day N", or the date without a trip start). Date, activity + distance/climb and start/stop
+point come from `export.EntryFacts`: an italic byline in Markdown, a "ticket stub" HTML block
+(styled in `html-shell.html`) in the HTML export, a `wp:columns` block on WordPress. Readers
+never see an ISO date. See `docs/53_entry_fact_strip.md`.
 
 ---
 

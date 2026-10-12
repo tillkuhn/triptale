@@ -1,1 +1,0 @@
-{{t.stats.start}}: {{startpoint}}
