@@ -5,6 +5,7 @@ import javafx.scene.Node;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
@@ -12,6 +13,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Dialog;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
+import net.timafe.triptale.ui.ActivityChoices;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.GpxImport;
 
@@ -25,7 +27,8 @@ import java.util.Optional;
  */
 public final class NewTripDialog {
 
-    public record Spec(String name, LocalDate startDate, String description, Optional<FirstEntry> firstEntry) {}
+    /** {@code activity} is the trip's default for new entries, null for none. */
+    public record Spec(String name, LocalDate startDate, String activity, String description, Optional<FirstEntry> firstEntry) {}
 
     /**
      * All fields but {@code title} are null unless the trip was created from a GPX import;
@@ -45,6 +48,7 @@ public final class NewTripDialog {
         nameField.setPrefColumnCount(28);
         DatePicker startField = new DatePicker(LocalDate.now());
         startField.setConverter(Dialogs.isoDateConverter());
+        ComboBox<String> activityCombo = ActivityChoices.newComboBox(null);
         TextArea descArea = new TextArea();
         descArea.setPromptText("Optional description");
         descArea.setPrefRowCount(3);
@@ -71,10 +75,12 @@ public final class NewTripDialog {
         grid.add(nameField, 1, 0);
         grid.add(new Label("Start date:"), 0, 1);
         grid.add(startField, 1, 1);
-        grid.add(new Label("Description:"), 0, 2);
-        grid.add(descArea, 1, 2);
-        grid.add(initFirstEntryCheck, 1, 3);
-        grid.add(importHintLabel, 1, 4);
+        grid.add(new Label("Default activity:"), 0, 2);
+        grid.add(activityCombo, 1, 2);
+        grid.add(new Label("Description:"), 0, 3);
+        grid.add(descArea, 1, 3);
+        grid.add(initFirstEntryCheck, 1, 4);
+        grid.add(importHintLabel, 1, 5);
 
         dlg.getDialogPane().setContent(grid);
         ButtonType importType = new ButtonType("Import GPX…", ButtonBar.ButtonData.LEFT);
@@ -129,6 +135,7 @@ public final class NewTripDialog {
                             gpxDistanceKm[0], gpxAltitudeGainM[0], gpxFile[0])
                     : new FirstEntry(name, null, null, null, null, null, null, null));
         }
-        return Optional.of(new Spec(name, startField.getValue(), descArea.getText(), firstEntry));
+        return Optional.of(new Spec(name, startField.getValue(), ActivityChoices.value(activityCombo),
+                descArea.getText(), firstEntry));
     }
 }

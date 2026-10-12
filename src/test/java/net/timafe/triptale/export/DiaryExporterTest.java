@@ -81,19 +81,17 @@ class DiaryExporterTest {
 
         assertTrue(out.startsWith("# Alps 2025"), "should start with trip name heading");
         assertTrue(out.contains("Summer ride"));
-        assertTrue(out.contains("2025-07-01 → 2025-07-02 (2 days, 2 entries)"));
+        assertTrue(out.contains("July 1st 2025 → July 2nd 2025 (2 days, 2 entries)"), out);
         assertTrue(out.contains("Distance: 82.5 km"));
         assertTrue(out.contains("Altitude: 1200 m"));
-        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: A → B"));
-        assertTrue(out.contains("## 2025-07-02 Wednesday Day 2: B → C"));
-        assertTrue(out.lines().anyMatch(l -> l.equals("Distance: 50.0 km")), out);
-        assertTrue(out.lines().anyMatch(l -> l.equals("Altitude: 800 m")), out);
+        assertTrue(out.contains("## A → B\n\n*Tuesday, July 1st 2025 · Day 1 · 📏 50.0 km, 800 m climbed*"), out);
+        assertTrue(out.contains("## B → C\n\n*Wednesday, July 2nd 2025 · Day 2 · 📏 32.5 km, 400 m climbed*"), out);
         assertTrue(out.contains("Day one"));
         assertTrue(out.contains("Day two"));
     }
 
     @Test
-    void defaultTitleIsIncludedInHeading() {
+    void defaultTitleFallsBackToDay() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
@@ -101,8 +99,19 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: Untitled"),
-                "with no blank-check guard, the default title placeholder should appear in the heading");
+        assertTrue(out.contains("## Day 1\n"), out);
+        assertFalse(out.contains("Untitled"), out);
+    }
+
+    @Test
+    void defaultTitleWithoutTripStartFallsBackToDate() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", null, null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("hi").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("## Tuesday, July 1st 2025\n\n*Tuesday, July 1st 2025*"), out);
     }
 
     @Test
@@ -125,10 +134,33 @@ class DiaryExporterTest {
         String out = exporter.exportTrip(trip);
 
         assertTrue(out.contains("Rest day."));
-        // The trip header's "- Distance: 0.0 km" stays; only the entry's own stat lines go
-        assertFalse(out.lines().anyMatch(l -> l.startsWith("Distance:")), out);
-        assertFalse(out.lines().anyMatch(l -> l.startsWith("Altitude:")), out);
-        assertFalse(out.contains("Start:"));
+        // Only the date is left
+        assertTrue(out.contains("\n*Tuesday, July 1st 2025 · Day 1*\n"), out);
+    }
+
+    @Test
+    void zeroDistanceCountsAsAbsentAndActivityShowsItsName() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .activity("sightseeing").distance(0.0).altitudeMeters(0.0).tales("Castle.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("· Day 1 · 🏰 Sightseeing*"), out);
+        assertFalse(out.contains(" km,"), out);
+    }
+
+    @Test
+    void activityEmojiLeadsDistanceAndClimb() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .activity("cycling").altitudeMeters(350.0).tales("Hills.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("· Day 1 · 🚴 350 m climbed*"), out);
     }
 
     @Test
@@ -140,7 +172,19 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("Start: 51°29′N 0°01′W"));
+        assertTrue(out.contains("· 🧭 51°29′N 0°01′W*"), out);
+    }
+
+    @Test
+    void stopPointFollowsStartPointWithArrow() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .startLat(51.488).startLon(-0.013).stopLat(50.1).stopLon(8.67).tales("Far.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("· 🧭 51°29′N 0°01′W → 50°06′N 8°40′E*"), out);
     }
 
     @Test
@@ -152,11 +196,11 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertFalse(out.contains("Start:"));
+        assertFalse(out.contains("🧭"), out);
     }
 
     @Test
-    void linksListedAtEndOfEntryInKindOrder() {
+    void linksListedAtEndOfEntryAlphabetically() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Long day.")
@@ -171,10 +215,10 @@ class DiaryExporterTest {
         assertTrue(out.contains("""
                 Long day.
 
-                * 🗺️ Track: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))
                 * 🍲 Eat at: [Muc Food](https://mucfood.com/)
-                * 🛏️ Sleep at: [nice.hotel.com](https://nice.hotel.com/)
-                * 🔗 Tour: supertour"""), out);
+                * 🛏 Sleep at: [nice.hotel.com](https://nice.hotel.com/)
+                * 🔗 Tour: supertour
+                * 🗺 Track tour: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))"""), out);
     }
 
     @Test
@@ -222,10 +266,30 @@ class DiaryExporterTest {
         assertTrue(html.contains("<html lang=\"en\">"));
         assertTrue(html.contains("<title>Alps 2025</title>"));
         assertTrue(html.contains("<h1>Alps 2025</h1>"));
-        assertTrue(html.contains("<h2>2025-07-01 Tuesday Day 1: A → B</h2>"));
+        assertTrue(html.contains("<h2>A → B</h2>"), html);
         assertTrue(html.contains("<strong>one</strong>"));
         assertTrue(html.contains("<em>great</em>"));
         assertTrue(html.contains("<p>"));
+    }
+
+    @Test
+    void exportTripAsHtmlRendersFactsStripInsteadOfByline() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 3))
+                .activity("cycling").distance(123.0).altitudeMeters(100.0).startLat(50.1).startLon(8.67)
+                .title("A → B").tales("Tale.").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("""
+                <div class="facts">
+                <div class="fact"><span class="fact-stamp"><small>Day</small>3</span><span class="fact-value">Thursday</span><span class="fact-note">July 3rd 2025</span></div>
+                <div class="fact"><span class="fact-emoji">🚴</span><span class="fact-value">123.0 km</span><span class="fact-note">100 m climbed</span></div>
+                <div class="fact"><span class="fact-emoji">🧭</span><span class="fact-value">50°06′N 8°40′E</span><span class="fact-note">Starting point</span></div>
+                </div>"""), html);
+        assertFalse(html.contains("· Day 3"), "the byline is for plain Markdown only");
+        assertTrue(html.indexOf("class=\"facts\"") < html.indexOf("<p>Tale.</p>"), html);
     }
 
     @Test
@@ -313,7 +377,8 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip, LocalDate.of(2025, 7, 2), LocalDate.of(2025, 7, 2));
 
-        assertTrue(out.contains("Day 2: Two"), out);
+        assertTrue(out.contains("## Two"), out);
+        assertTrue(out.contains("· Day 2 ·"), out);
         assertFalse(out.contains("One"), out);
         assertFalse(out.contains("Three"), out);
         assertTrue(out.contains("20.0"), out);
@@ -339,6 +404,24 @@ class DiaryExporterTest {
 
 
     @Test
+    void exportDropsPrivateSections() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .title("A → B").tales("Public text.\n\n## Internal\n\nKomoot said 87 km.").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2))
+                .title("B → C").tales("## Private: costs\n\n45 EUR cash").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("Public text."), out);
+        assertFalse(out.contains("Internal"), out);
+        assertFalse(out.contains("Komoot"), out);
+        assertFalse(out.contains("45 EUR"), out);
+        assertTrue(out.contains("## B → C"), "an all-private tale still exports its day heading");
+    }
+
+    @Test
     void exportShiftsTaleSubheadingsSoTheyDontCollideWithEntryHeading() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
@@ -347,8 +430,7 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("## 2025-07-01 Tuesday Day 1: A → B"),
-                "entry heading should remain at H2");
+        assertTrue(out.contains("## A → B"), "entry heading should remain at H2");
         assertTrue(out.lines().anyMatch(l -> l.equals("### Subheading")),
                 "tale subheading should be shifted to H3 to avoid colliding with the entry heading");
         assertFalse(out.lines().anyMatch(l -> l.equals("## Subheading")),
@@ -391,15 +473,29 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("- Zeitraum: 2025-07-01 → 2025-07-01 (1 Tag, 1 Eintrag)"), out);
+        assertTrue(out.contains("- Zeitraum: 1. Juli 2025 → 1. Juli 2025 (1 Tag, 1 Eintrag)"), out);
         assertTrue(out.contains("- Distanz: 50,5 km"), out);
         assertTrue(out.contains("- Höhenmeter: 800 m"), out);
-        assertTrue(out.contains("## 2025-07-01 Dienstag Tag 1: A → B"), out);
-        assertTrue(out.lines().anyMatch(l -> l.equals("Distanz: 50,5 km")), out);
-        assertTrue(out.contains("Start: 51°29′N 0°01′W"), out);
-        assertTrue(out.contains("* 🛏️ Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
+        assertTrue(out.contains("## A → B\n\n*Dienstag, 1. Juli 2025 · Tag 1 · 📏 50,5 km, 800 m bergauf · 🧭 51°29′N 0°01′W*"), out);
+        assertTrue(out.contains("* 🛏 Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
         // No German label for a custom verb: falls back to the capitalized verb
         assertTrue(out.contains("* 🔗 Tour: [tour.example.com](https://tour.example.com/)"), out);
+    }
+
+    @Test
+    void germanTripLanguageTranslatesFactsStrip() {
+        setDefaultTripLanguage("de");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .activity("hiking").stopLat(50.1).stopLon(8.67).tales("hi").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("<span class=\"fact-stamp\"><small>Tag</small>1</span><span class=\"fact-value\">Dienstag</span><span class=\"fact-note\">1. Juli 2025</span>"), html);
+        assertTrue(html.contains("<span class=\"fact-emoji\">🥾</span><span class=\"fact-value\">Wandern</span></div>"), html);
+        assertTrue(html.contains("<span class=\"fact-value\">→ 50°06′N 8°40′E</span><span class=\"fact-note\">Ziel</span>"), html);
+        assertTrue(html.contains("<h2>Tag 1</h2>"), html);
     }
 
     @Test

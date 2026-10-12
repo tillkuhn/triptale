@@ -76,7 +76,7 @@ Supersedes the original "design points" list; the ideas above are the input, the
   filter; `🖼 Impressions: none – pick folder ›` when both are 0 (now `📷 No Impressions yet`,
   2026-10). Enabled whenever a trip+date
   is selected.
-- Main-screen "📋 Copy Tale" button removed (menu item stays). Its spot gets "⇧ Export Tale",
+- Main-screen "📋 Copy Tale" button removed (menu item stays; removed too in todo 48). Its spot gets "⇧ Export Tale",
   which runs `saveIfDirty()` and opens the export dialog with From = To = current entry;
   disabled while the day has no entry file.
 

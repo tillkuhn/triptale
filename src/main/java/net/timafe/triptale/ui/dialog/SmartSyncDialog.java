@@ -56,7 +56,7 @@ public final class SmartSyncDialog {
      */
     public record Outcome(boolean commitSettled, String sha, RemoteOutcome remote) {}
 
-    private static final ButtonType SYNC = new ButtonType("Sync", ButtonBar.ButtonData.OK_DONE);
+    private static final ButtonType SYNC = new ButtonType("🔄 Sync Now", ButtonBar.ButtonData.OK_DONE);
 
     private final GitService gitService;
     private final SettingsStore settingsStore;

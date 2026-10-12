@@ -1,10 +1,13 @@
 package net.timafe.triptale.storage;
 
+import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifSubIFDDirectory;
 import org.junit.jupiter.api.Test;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -112,5 +115,27 @@ class ExifReaderTest {
     @Test
     void returnsEmptyForNullPath() {
         assertEquals(ExifInfo.empty(), reader.read(null));
+    }
+
+    @Test
+    void parsesCaptureTimeFromDateTimeOriginal() {
+        assertEquals(LocalDateTime.of(2026, 8, 19, 10, 37, 10),
+                ExifReader.captureTime(metadataWithDateTimeOriginal("2026:08:19 10:37:10")));
+    }
+
+    @Test
+    void captureTimeIsNullWhenMissingOrBlank() {
+        assertNull(ExifReader.captureTime(new Metadata()));
+        assertNull(ExifReader.captureTime(metadataWithDateTimeOriginal("    :  :     ")));
+        assertNull(ExifReader.captureTime(metadataWithDateTimeOriginal("garbage")));
+        assertNull(reader.read(fixture("no_exif.jpg")).captureTime());
+    }
+
+    private static Metadata metadataWithDateTimeOriginal(String value) {
+        ExifSubIFDDirectory dir = new ExifSubIFDDirectory();
+        dir.setString(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL, value);
+        Metadata metadata = new Metadata();
+        metadata.addDirectory(dir);
+        return metadata;
     }
 }

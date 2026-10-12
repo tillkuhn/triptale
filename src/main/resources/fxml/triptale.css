@@ -106,6 +106,19 @@
     -fx-fill: #1e2a2a;
 }
 
+/* ── Export preview text (tale colours, no scallops) ── */
+.text-area.export-text {
+    -fx-background-color: #f5f0e1;
+    -fx-border-color: #c9bfa3;
+    -fx-text-fill: #0a1428;
+}
+.text-area.export-text .content {
+    -fx-background-color: #f5f0e1;
+}
+.text-area.export-text:focused {
+    -fx-border-color: #4ec9b0;
+}
+
 /* ── Tale text (no entry yet — muted, matches app background) ── */
 .text-area.tale-text-empty,
 .text-area.tale-text-empty .content {
@@ -312,6 +325,51 @@
     -fx-opacity: 0.35;
 }
 
+/* Split button (e.g. the curator's Open in Maps ▾): same raised body as .button; the label and
+   arrow halves are transparent on top of it, split by a thin divider. */
+.split-menu-button {
+    -fx-background-color:
+        #4a6464,
+        linear-gradient(to bottom, #344a4a, #2a3d3d);
+    -fx-background-insets: 0, 1 0 0 0;
+    -fx-background-radius: 6;
+    -fx-border-color: #46605f;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 4, 0, 0, 1);
+}
+.split-menu-button:hover,
+.split-menu-button:focused {
+    -fx-border-color: #4ec9b0;
+}
+.split-menu-button > .label {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2f0ed;
+    -fx-padding: 5 10 5 13;
+    -fx-cursor: hand;
+}
+.split-menu-button > .label:hover {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-background-radius: 6 0 0 6;
+}
+.split-menu-button > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent transparent #46605f;
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 5 9 5 9;
+    -fx-cursor: hand;
+}
+.split-menu-button > .arrow-button:hover {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-background-radius: 0 6 6 0;
+}
+.split-menu-button > .arrow-button > .arrow {
+    -fx-background-color: #4ec9b0;
+}
+.split-menu-button:disabled {
+    -fx-opacity: 0.35;
+}
+
 /* ── Nav button group (first/prev/next/today segmented block) ── */
 /* One shadow for the whole block, not per segment (those would overlap at the seams). */
 .nav-button-group {
@@ -453,13 +511,20 @@
     -fx-max-width: 40px;
 }
 /* ── Weblinks & Impressions buttons ──────────────── */
-/* Fixed width: room for the label plus six verb emojis, so neither jumps as its label changes.
-   Shared by the Impressions button so the two line up. */
-.weblinks-button {
+/* Fixed width so Impressions, Weblinks and Coordinates don't jump as their labels change, and
+   line up in two columns. Sized for the Weblinks label plus six verb emojis. */
+.fixed-width-button {
     -fx-alignment: center-left;
-    -fx-min-width: 225px;
-    -fx-pref-width: 225px;
-    -fx-max-width: 225px;
+    -fx-min-width: 266px;
+    -fx-pref-width: 266px;
+    -fx-max-width: 266px;
+}
+/* Two of these plus the 6px HBox spacing span one .fixed-width-button (Map Assistant, Backpack). */
+.half-width-button {
+    -fx-alignment: center-left;
+    -fx-min-width: 130px;
+    -fx-pref-width: 130px;
+    -fx-max-width: 130px;
 }
 
 /* Drawn, not the 🔊 emoji: colour emoji ignore -fx-text-fill and render grey. */

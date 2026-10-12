@@ -9,10 +9,12 @@ import java.util.TreeMap;
 
 /**
  * One diary day. {@code links} is keyed by verb (see {@link LinkKind}) and ordered by
- * {@link LinkKind#ORDER}; never null.
+ * {@link LinkKind#ORDER}; never null. {@code activity} is normalized by {@link Activity#normalize},
+ * null means not set.
  */
 public record DiaryEntry(
         LocalDate date,
+        String activity,
         Double distance,
         Double altitudeMeters,
         String title,
@@ -30,6 +32,7 @@ public record DiaryEntry(
 
     public static final class Builder {
         private final LocalDate date;
+        private String activity;
         private Double distance;
         private Double altitudeMeters;
         private String title = DEFAULT_TITLE;
@@ -42,6 +45,7 @@ public record DiaryEntry(
 
         private Builder(LocalDate date) { this.date = date; }
 
+        public Builder activity(String v)       { this.activity = Activity.normalize(v); return this; }
         public Builder distance(Double v)       { this.distance = v; return this; }
         public Builder altitudeMeters(Double v) { this.altitudeMeters = v; return this; }
         public Builder title(String v)          { this.title = (v != null && !v.isBlank()) ? v : DEFAULT_TITLE; return this; }
@@ -62,7 +66,7 @@ public record DiaryEntry(
         public Builder tales(String v)          { this.tales = v != null ? v : ""; return this; }
 
         public DiaryEntry build() {
-            return new DiaryEntry(date, distance, altitudeMeters, title,
+            return new DiaryEntry(date, activity, distance, altitudeMeters, title,
                     Collections.unmodifiableSequencedMap(new LinkedHashMap<>(links)),
                     startLat, startLon, stopLat, stopLon, tales);
         }

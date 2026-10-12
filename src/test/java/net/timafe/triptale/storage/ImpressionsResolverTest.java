@@ -42,6 +42,15 @@ class ImpressionsResolverTest {
     }
 
     @Test
+    void forwardSlashPatternResolvesToAbsolutePath() {
+        // On Windows "C:/Users/..." used to come back drive-relative ("C:Users\...")
+        String pattern = tempDir.toString().replace('\\', '/') + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
+        List<Path> matches = resolver.resolve(pattern, TRIP, LocalDate.of(2026, 8, 7));
+        assertEquals(List.of(tempDir.resolve("20260807_204352_Fireshow.jpg"), tempDir.resolve("20260807_210101_Other.jpg")),
+                matches);
+    }
+
+    @Test
     void returnsEmptyWhenDirectoryMissing() {
         List<Path> matches = resolver.resolve(tempDir.resolve("nope").toString() + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg", TRIP, LocalDate.of(2026, 8, 7));
         assertTrue(matches.isEmpty());

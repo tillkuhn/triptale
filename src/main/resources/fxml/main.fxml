@@ -43,9 +43,10 @@
                         <Menu text="My Trips">
                             <items>
                                 <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
-                                <MenuItem text="🧳 Edit Trip…" onAction="#onTripDetails"/>
+                                <MenuItem text="📝 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
+                                <MenuItem text="🗺 Map Assistant…" onAction="#onMapAssistantTrip"/>
                             </items>
                         </Menu>
                         <Menu text="Tale Entries">
@@ -62,7 +63,7 @@
                                 <MenuItem fx:id="addAttachmentsMenuItem" text="🎒 Add to Backpack…" onAction="#onAddAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
-                                <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                                <MenuItem fx:id="addPrivateMenuItem" text="🔒 Add Private Section" onAction="#onAddPrivateSection" disable="true"/>
                                 <MenuItem fx:id="exportTaleMenuItem" text="⇧ Export Tale…" onAction="#onExportTale" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>
@@ -112,7 +113,7 @@
                 <Label text="Trip:" minWidth="-Infinity"/>
                 <ComboBox fx:id="yearCombo" prefWidth="84" minWidth="84"/>
                 <ComboBox fx:id="tripCombo" prefWidth="280" minWidth="160"/>
-                <Button text="🧳" minWidth="-Infinity" onAction="#onTripDetails">
+                <Button text="📝" minWidth="-Infinity" onAction="#onTripDetails">
                     <tooltip><Tooltip text="Trip Planner: edit name, dates and description"/></tooltip>
                 </Button>
                 <Label text="Day:" minWidth="-Infinity"/>
@@ -146,29 +147,36 @@
             <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
             <VBox styleClass="card" spacing="6">
                 <GridPane hgap="12" vgap="8">
-                    <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label fx:id="titleLabel" text="Title:" minWidth="80" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="weblinks-button">
-                            <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
+                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="fixed-width-button">
+                            <tooltip><Tooltip text="Show images for this day: 🗂 photo library, 🎒 backpack"/></tooltip>
                         </Button>
-                        <Button fx:id="linksButton" text="🕸️ No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
-                            <tooltip><Tooltip text="Track, dive, eat, drink and sleep weblinks for this day"/></tooltip>
+                        <Button fx:id="linksButton" text="🕸 No Weblinks yet" onAction="#onLinks" styleClass="fixed-width-button">
+                            <tooltip><Tooltip text="Track, explore, visit, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
-                    <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                    <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
-                    <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <Button fx:id="coordinatesButton" text="🗺️ Uncharted" onAction="#onCoordinates">
+                    <Label text="Distance:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="distanceField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                        <tooltip><Tooltip text="In km; append m to enter metres, e.g. 850 m"/></tooltip>
+                    </TextField>
+                    <Label text="Altitude:" minWidth="-Infinity" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="3">
+                        <tooltip><Tooltip text="In m; append km to enter kilometres, e.g. 1.2 km"/></tooltip>
+                    </TextField>
+                    <ComboBox fx:id="activityCombo" prefWidth="190" maxWidth="Infinity" GridPane.rowIndex="1" GridPane.columnIndex="4">
+                        <tooltip><Tooltip text="Main activity of the day"/></tooltip>
+                    </ComboBox>
+                    <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
+                        <Button fx:id="coordinatesButton" text="📍 Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
-                        <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">
-                            <tooltip><Tooltip text="Show start point on Google Maps"/></tooltip>
+                        <Button text="🗺 Map Assistant" onAction="#onMapAssistant" styleClass="half-width-button">
+                            <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
                         </Button>
-                        <Button fx:id="tripMapButton" text="🗺 Trip Map" onAction="#onShowTripMap">
-                            <tooltip><Tooltip text="Show all start points for this trip on a map"/></tooltip>
+                        <Button fx:id="backpackButton" text="🎒 Backpack" onAction="#onAddAttachments" disable="true" styleClass="half-width-button">
+                            <tooltip><Tooltip text="Add files to this day's backpack"/></tooltip>
                         </Button>
                     </HBox>
                 </GridPane>

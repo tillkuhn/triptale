@@ -49,6 +49,17 @@ class ExportTextsTest {
     }
 
     @Test
+    void activityLabels() {
+        assertEquals("🚴 Radeln", de.activity("cycling"));
+        assertEquals("🥾 Wandern", de.activity("hiking"));
+        assertEquals("🚆 Railtripping", de.activity("railtripping"));
+        assertEquals("🚴 Cycling", en.activity("cycling"));
+        assertEquals("❓ Kayaking", de.activity("kayaking"));
+        assertEquals("", en.activity(null));
+        assertEquals("", en.activity(" "));
+    }
+
+    @Test
     void plurals() {
         assertEquals("day", en.plural("days", 1));
         assertEquals("days", en.plural("days", 2));
@@ -89,8 +100,8 @@ class ExportTextsTest {
         Properties base = load("/i18n/export.properties");
         Properties german = load("/i18n/export_de.properties");
         for (String key : german.stringPropertyNames()) {
-            // link.* labels have their English default in LinkKind
-            if (key.startsWith("link.")) continue;
+            // link.* and activity.* labels have their English default in LinkKind / Activity
+            if (key.startsWith("link.") || key.startsWith("activity.")) continue;
             assertTrue(base.containsKey(key), "export_de.properties has a key missing from the base: " + key);
         }
     }

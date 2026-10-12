@@ -1,31 +1,13 @@
 # ToDos for this app
 
-## Next Todo: 54
+## Next Todo: 58
 
-## 53 Entry fact header in exports (Polarsteps-style)
+## 56 Open the backpack from the main window
 
-Show an entry's key facts as a header row under the entry title: 1–n centered items side by
-side, each with a big emoji, one or two short lines, and a separator between items. The
-Polarsteps photo book is the inspiration, but the look is our own. The title loses its date
-and day suffix.
-
-```
-## Title without dates, day
-
-   📅                    🚴                      🧭
-Wednesday (Day 3)     123 km, 100 m climbed    Frankfurt (if name available)
-July 23rd 2026        800 m altitude           50° 6' N, 8° 40' E
-
-Here goes the tale …
-```
-
-- Depends on todo 30. i18n supplies the localized values (weekday, long date, day label,
-  distance/altitude, coordinates); this todo only does the layout in the templates.
-- Items without data drop out (no coordinates → no 🧭 item), so the row has 1–n items.
-- Layout only works in the HTML outputs (`html-shell.html`, WordPress preview). Decide what
-  plain Markdown gets: a single line (`📅 Wed, 23 July · 🚴 123 km · 📍 Frankfurt`) or a table.
-- Place name comes from todo 51 (reverse geocoding) once it exists; until then coordinates only.
-- Coordinates in degrees/minutes/seconds (DMS) with N/S/E/W, unlike the decimal frontmatter.
+The 🎒 Backpack button next to Map Assistant (added with todo 55) currently just triggers
+"Add to Backpack…" (`onAddAttachments`). Give it a proper "open backpack" action for the
+current day (e.g. show the day's backpack files, with adding as one option), and show the
+number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
 
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
@@ -73,17 +55,17 @@ no deletes), see [ADR-0002](docs/adr/0002-attachment-sync.md).
 
 [Details](docs/33c_attachment_delete_propagation.md)
 
-## 48 Internal paragraphs: hide private notes from exports
+## 48 Private sections: hide internal notes from exports
 
-A tale heading `internal` or `private` (any level, case-insensitive, exact word, optional
-trailing `:`) marks a private block, e.g. `## internal` followed by original distance/route
-notes. On export, drop the heading and everything up to the next heading of the **same or
-higher** level (subheadings stay inside the block), or to the end of the tale.
+A heading starting with `internal`, `private`, `intern` or `privat` (any level,
+case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
+of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
+both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay unchanged.
 
-- Strip centrally in `DiaryExporter` before `Markdown.shiftHeadings`, so every export format
-  is covered; the editor and the word count stay unchanged.
-- Ignore `#` lines inside fenced code blocks; a tale that ends up blank is treated as empty.
-- Unit tests: nesting, end of tale, `Private:` vs. `Private beach`, code fences.
+- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
+- New "🔒 Add Private Section" menu item appends `## Internal` + placeholder at the end.
+
+[Details](docs/48_private_sections.md)
 
 ## 47 Impressions / exporter refactor: images as attachments
 
@@ -243,6 +225,22 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 53 Entry fact header in exports
+
+see docs/done/53_entry_fact_strip.md
+
+## DONE 57 Trip default activity
+
+see docs/done/57_trip_default_activity.md
+
+## DONE 55 Activity per entry
+
+see docs/done/55_activity_per_entry.md
+
+## DONE 54 Map Assistant
+
+see docs/done/54_map_assistant.md
 
 ## DONE 30 Localization and i18n for Trip Language
 

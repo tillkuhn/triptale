@@ -67,6 +67,19 @@ class ImpressionsServiceTest {
     }
 
     @Test
+    void hiddenFilesAreSkippedEvenWithoutBaseFilter() throws IOException {
+        update(s -> s.setImpressionsBaseFilter(""));
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
+        Files.createFile(dir.resolve("20260729_103837_Dive_mini.jpg"));
+        Files.createFile(dir.resolve("._20260729_103837_Dive_mini.jpg"));
+        Files.createFile(dir.resolve(".DS_Store"));
+
+        List<Path> images = service.images(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY);
+
+        assertEquals(List.of(dir.resolve("20260729_103837_Dive_mini.jpg")), images);
+    }
+
+    @Test
     void attachmentsSourceIsEmptyWithoutDayFolder() {
         assertTrue(service.images(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).isEmpty());
         assertTrue(service.directory(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).isEmpty());
@@ -121,5 +134,25 @@ class ImpressionsServiceTest {
         assertEquals(List.of(dir.resolve("IMG_0001.jpg")), copies);
         assertEquals("new", Files.readString(dir.resolve("IMG_0001.jpg")));
         assertTrue(Files.exists(img), "import copies, it doesn't move");
+    }
+
+    @Test
+    void alreadyImportedMatchesSameNameAndSize() throws IOException {
+        Path lib = Files.createDirectories(tempDir.resolve("lib"));
+        Path same = Files.writeString(lib.resolve("same.jpg"), "abc");
+        Path edited = Files.writeString(lib.resolve("edited.jpg"), "abcdef");
+        Path fresh = Files.writeString(lib.resolve("fresh.jpg"), "abc");
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
+        Files.writeString(dir.resolve("same.jpg"), "xyz");
+        Files.writeString(dir.resolve("edited.jpg"), "abc");
+
+        assertEquals(java.util.Set.of(same), service.alreadyImported(trip, DAY, List.of(same, edited, fresh)));
+    }
+
+    @Test
+    void alreadyImportedIsEmptyWithoutDayFolder() throws IOException {
+        Path img = Files.writeString(Files.createDirectories(tempDir.resolve("lib")).resolve("a.jpg"), "abc");
+
+        assertTrue(service.alreadyImported(trip, DAY, List.of(img)).isEmpty());
     }
 }

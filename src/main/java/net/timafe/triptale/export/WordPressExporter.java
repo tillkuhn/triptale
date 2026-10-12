@@ -41,7 +41,7 @@ import java.util.stream.StreamSupport;
 
 /**
  * Renders a range of a trip's entries as WordPress block markup (todo 44, stage 1), for pasting
- * into the block editor's Code editor. Per day: heading, stats, the tale as core blocks, and a
+ * into the block editor's Code editor. Per day: heading, facts, the tale as core blocks, and a
  * gallery of the day's backpack images, hotlinked via {@code attachments.publicBaseUrl}.
  */
 @Component
@@ -92,10 +92,12 @@ public class WordPressExporter {
             DiaryEntry e = store.loadEntry(trip.ref(), date);
             String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
             blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
-            stats(e, texts).ifPresent(blocks::add);
-            if (e.tales() != null && !e.tales().isBlank()) {
+            blocks.add(facts(EntryFacts.of(trip.startDate(), e, texts)));
+            // Private sections (todo 48) never leave the app
+            String tales = e.tales() == null ? "" : Markdown.stripPrivate(e.tales()).strip();
+            if (!tales.isEmpty()) {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
-                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(e.tales().strip(), 1))));
+                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(tales, 1))));
             }
             links(e, texts).ifPresent(blocks::add);
             if (!baseUrl.isEmpty()) {
@@ -114,17 +116,25 @@ public class WordPressExporter {
                 .replace("{{body}}", markup);
     }
 
-    /** Distance and climb; parts that are unset or zero (e.g. train days) are left out. */
-    private static Optional<String> stats(DiaryEntry e, ExportTexts texts) {
-        List<String> parts = new ArrayList<>();
-        if (e.distance() != null && e.distance() > 0) {
-            parts.add(texts.distance(e.distance()) + " km");
+    /**
+     * The entry facts (todo 53) as a columns block, one centered column per fact: a big emoji over
+     * one paragraph with the value in bold and a small note below. Every column has the same rows
+     * so they line up; the day stamp is HTML-only, here the day joins the weekday. No custom CSS
+     * on the blog, so the theme styles it.
+     */
+    private static String facts(EntryFacts facts) {
+        List<String> columns = new ArrayList<>();
+        for (EntryFacts.Item item : facts.items()) {
+            String value = item.stamp() == null ? item.value()
+                    : item.value() + " · " + item.stamp().label() + " " + item.stamp().day();
+            StringBuilder text = new StringBuilder("<strong>").append(DiaryExporter.escapeHtml(value)).append("</strong>");
+            if (item.note() != null) text.append("<br><small>").append(DiaryExporter.escapeHtml(item.note())).append("</small>");
+            String emoji = block("paragraph", "{\"align\":\"center\",\"fontSize\":\"x-large\"}",
+                    "<p class=\"has-text-align-center has-x-large-font-size\">" + item.emoji() + "</p>");
+            String body = block("paragraph", "{\"align\":\"center\"}", "<p class=\"has-text-align-center\">" + text + "</p>");
+            columns.add(block("column", "", "<div class=\"wp-block-column\">" + emoji + "\n\n" + body + "</div>"));
         }
-        if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
-            parts.add(texts.altitude(e.altitudeMeters()) + " m ↑");
-        }
-        return parts.isEmpty() ? Optional.empty()
-                : Optional.of(block("paragraph", "", "<p>" + String.join(" · ", parts) + "</p>"));
+        return block("columns", "", "<div class=\"wp-block-columns\">" + String.join("\n\n", columns) + "</div>");
     }
 
     /** The entry's links as a list block, same wording as the Markdown export; invalid values as plain text. */

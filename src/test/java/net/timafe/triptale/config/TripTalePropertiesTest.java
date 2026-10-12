@@ -34,8 +34,10 @@ class TripTalePropertiesTest {
     @Test
     void explicitAbsoluteSettingsDirUsedDirectly() {
         TripTaleProperties props = new TripTaleProperties();
-        props.setSettingsDir("/tmp/my-settings");
-        assertEquals("/tmp/my-settings", props.resolvedSettingsDir().toString());
+        // "/tmp/..." is only absolute on Unix; on Windows it resolves against the current drive
+        Path absolute = Path.of(System.getProperty("java.io.tmpdir"), "my-settings").toAbsolutePath();
+        props.setSettingsDir(absolute.toString());
+        assertEquals(absolute, props.resolvedSettingsDir());
     }
 
     @Test

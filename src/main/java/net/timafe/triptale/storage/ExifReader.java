@@ -16,9 +16,12 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
- * Reads camera model, aperture, exposure time, ISO and GPS coordinates from an image file's EXIF
+ * Reads camera model, aperture, exposure time, ISO, GPS coordinates and capture time from an image file's EXIF
  * metadata, for display in the impressions viewer.
  *
  * <p>Never throws — any parsing failure (corrupt file, unsupported format, missing tags) yields
@@ -31,12 +34,15 @@ public class ExifReader {
 
     private static final Logger log = LoggerFactory.getLogger(ExifReader.class);
 
+    /** EXIF's own timestamp format, e.g. {@code 2026:08:19 10:37:10}. */
+    private static final DateTimeFormatter EXIF_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
+
     public ExifInfo read(Path path) {
         if (path == null) return ExifInfo.empty();
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(new File(path.toUri()));
             return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata), iso(metadata),
-                    latitude(metadata), longitude(metadata), dimensions(metadata));
+                    latitude(metadata), longitude(metadata), dimensions(metadata), captureTime(metadata));
         } catch (ImageProcessingException | IOException | RuntimeException e) {
             log.debug("Could not read EXIF metadata from {}: {}", path, e.getMessage());
             return ExifInfo.empty();
@@ -116,6 +122,22 @@ public class ExifReader {
         try {
             return dir.getImageWidth() + "×" + dir.getImageHeight();
         } catch (MetadataException e) {
+            return null;
+        }
+    }
+
+    /**
+     * {@code DateTimeOriginal} as camera-local time, or null when it's missing or unparseable (some
+     * cameras write blanks like {@code "    :  :     "} when the clock was never set).
+     */
+    static LocalDateTime captureTime(Metadata metadata) {
+        ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+        if (dir == null) return null;
+        String raw = trimToNull(dir.getString(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL));
+        if (raw == null) return null;
+        try {
+            return LocalDateTime.parse(raw, EXIF_TIMESTAMP);
+        } catch (DateTimeParseException e) {
             return null;
         }
     }

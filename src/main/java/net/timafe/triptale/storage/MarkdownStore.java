@@ -139,7 +139,8 @@ public class MarkdownStore {
                     name,
                     asDate(data.get("start_date")),
                     asDate(data.get("end_date")),
-                    description
+                    description,
+                    asString(data.get("activity"))
             ));
         } catch (IOException e) {
             throw new StorageException("Failed to load trip: " + ref.path(), e);
@@ -152,6 +153,7 @@ public class MarkdownStore {
         ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
+        if (trip.activity() != null) fm.put("activity", trip.activity());
         if (trip.endDate() != null) fm.put("end_date", trip.endDate().toString());
         fm.put("start_date", trip.startDate() == null ? null : trip.startDate().toString());
         fm.put("type", TRIP_TYPE);
@@ -200,6 +202,7 @@ public class MarkdownStore {
         ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
+        if (entry.activity() != null) fm.put("activity", entry.activity());
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
@@ -319,6 +322,7 @@ public class MarkdownStore {
         boolean hasTitle = title != null && !title.isBlank();
         String tales = hasTitle ? titleAndBody.remainder() : body;
         return DiaryEntry.builder(date)
+                .activity(asString(data.get("activity")))
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .title(title)

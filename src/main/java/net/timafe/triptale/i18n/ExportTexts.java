@@ -1,5 +1,6 @@
 package net.timafe.triptale.i18n;
 
+import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.LinkKind;
 
 import java.time.LocalDate;
@@ -48,6 +49,18 @@ public final class ExportTexts {
     public String linkLabel(String verb) {
         String key = "link." + verb;
         return bundle.containsKey(key) ? bundle.getString(key) : LinkKind.labelFor(verb);
+    }
+
+    /** {@code activity.<key>} if translated, else the capitalized value ("Hiking", "Kayaking"). */
+    public String activityLabel(String activity) {
+        String key = "activity." + Activity.normalize(activity);
+        return bundle.containsKey(key) ? bundle.getString(key) : Activity.labelFor(Activity.normalize(activity));
+    }
+
+    /** Emoji and label, e.g. "🚴 Radeln"; "" for an unset activity. */
+    public String activity(String activity) {
+        if (Activity.normalize(activity) == null) return "";
+        return Activity.emojiFor(activity) + " " + activityLabel(activity);
     }
 
     /** Full weekday name, e.g. "Donnerstag". */

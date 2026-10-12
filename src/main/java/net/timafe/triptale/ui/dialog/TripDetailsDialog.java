@@ -4,16 +4,19 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.ui.ActivityChoices;
 import net.timafe.triptale.ui.Dialogs;
 
 import java.time.LocalDate;
@@ -93,13 +96,26 @@ public final class TripDetailsDialog {
 
         DatePicker endField = new DatePicker(trip.endDate());
         endField.setConverter(Dialogs.isoDateConverter());
-        Button endTripButton = new Button("End Trip");
-        endTripButton.setDisable(maxEntryDate == null);
-        endTripButton.setOnAction(ev -> endField.setValue(maxEntryDate));
+        endField.setPromptText("open-ended");
+        // DatePicker only commits typed text on Enter/focus loss; commit blank (reopen) and
+        // complete dates right away so OK reflects the field as shown
+        endField.getEditor().textProperty().addListener((o, a, text) -> {
+            LocalDate typed = endField.getConverter().fromString(text);
+            if ((typed != null || text.isBlank()) && !Objects.equals(typed, endField.getValue())) {
+                endField.setValue(typed);
+            }
+        });
+        Button lastEntryButton = new Button("Set to last entry");
+        if (maxEntryDate != null) {
+            lastEntryButton.setTooltip(new Tooltip("Set the end date to " + maxEntryDate));
+        }
+        lastEntryButton.setOnAction(ev -> endField.setValue(maxEntryDate));
         HBox dateBox = new HBox(10,
                 new Label(trip.startDate() == null ? "—" : trip.startDate().toString()),
-                endField, endTripButton);
+                endField, lastEntryButton);
         dateBox.setAlignment(Pos.CENTER_LEFT);
+
+        ComboBox<String> activityCombo = ActivityChoices.newComboBox(trip.activity());
 
         GridPane grid = Dialogs.formGrid();
         int row = 0;
@@ -111,6 +127,8 @@ public final class TripDetailsDialog {
         grid.add(new Label(Integer.toString(trip.year())), 1, row++);
         grid.add(new Label("Start / end date:"), 0, row);
         grid.add(dateBox, 1, row++);
+        grid.add(new Label("Default activity:"), 0, row);
+        grid.add(activityCombo, 1, row++);
         grid.add(new Label("Entries:"), 0, row);
         grid.add(new Label(Integer.toString(stats.entries())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
@@ -121,7 +139,7 @@ public final class TripDetailsDialog {
         grid.add(descArea, 1, row);
 
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("🧳 Trip Planner");
+        dlg.setTitle("📝 Trip Planner");
         dlg.setHeaderText(trip.name());
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -130,6 +148,7 @@ public final class TripDetailsDialog {
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
         Runnable refreshOk = () -> {
             LocalDate newEnd = endField.getValue();
+            lastEntryButton.setDisable(maxEntryDate == null || maxEntryDate.equals(newEnd));
             boolean endInvalid = newEnd != null
                     && ((trip.startDate() != null && newEnd.isBefore(trip.startDate()))
                             || (maxEntryDate != null && newEnd.isBefore(maxEntryDate)));
@@ -138,23 +157,26 @@ public final class TripDetailsDialog {
                             || endInvalid
                             || (nameField.getText().trim().equals(trip.name())
                                     && descArea.getText().equals(originalDesc)
-                                    && Objects.equals(newEnd, trip.endDate())));
+                                    && Objects.equals(newEnd, trip.endDate())
+                                    && Objects.equals(ActivityChoices.value(activityCombo), trip.activity())));
         };
         refreshOk.run();
         nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
         endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
+        activityCombo.valueProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
         String newName = nameField.getText().trim();
         String newDesc = descArea.getText();
         LocalDate newEnd = endField.getValue();
+        String newActivity = ActivityChoices.value(activityCombo);
         if (newName.equals(trip.name()) && newDesc.equals(originalDesc)
-                && Objects.equals(newEnd, trip.endDate())) {
+                && Objects.equals(newEnd, trip.endDate()) && Objects.equals(newActivity, trip.activity())) {
             return Optional.empty();
         }
         // Slug and year are immutable — a rename never moves the directory.
-        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc));
+        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity));
     }
 }

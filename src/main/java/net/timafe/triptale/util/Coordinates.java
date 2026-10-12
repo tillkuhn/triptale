@@ -30,7 +30,26 @@ public final class Coordinates {
     private static final Pattern GEOJSON_ARRAY = Pattern.compile(
             "\\[\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*]");
 
+    private static final double EARTH_RADIUS_M = 6_371_000.0;
+
     private Coordinates() {}
+
+    /**
+     * Rounded to 5 decimals (about 1 m) — plenty for a diary, and keeps values taken from
+     * full-precision sources such as photo EXIF short and diff-stable in the frontmatter.
+     */
+    public static LatLon rounded(double lat, double lon) {
+        return new LatLon(Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5);
+    }
+
+    /** Great-circle (haversine) distance in metres. */
+    public static double distanceMeters(LatLon a, LatLon b) {
+        double dLat = Math.toRadians(b.lat() - a.lat());
+        double dLon = Math.toRadians(b.lon() - a.lon());
+        double h = Math.pow(Math.sin(dLat / 2), 2)
+                + Math.cos(Math.toRadians(a.lat())) * Math.cos(Math.toRadians(b.lat())) * Math.pow(Math.sin(dLon / 2), 2);
+        return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1.0, Math.sqrt(h)));
+    }
 
     public static boolean isValid(double lat, double lon) {
         return lat >= -MAX_LAT && lat <= MAX_LAT && lon >= -MAX_LON && lon <= MAX_LON;

@@ -10,6 +10,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.text.Font;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -26,16 +27,13 @@ import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Clipboards;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.StatusSink;
-import net.timafe.triptale.ui.UiText;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Shows the export of a range of a trip's entries (the whole trip from the Trip menu, a single
@@ -91,40 +89,25 @@ public final class ExportDiaryDialog {
 
     /** Exports the entries {@code from}..{@code to}; null means the first/last entry. */
     public void show(Trip trip, LocalDate from, LocalDate to) {
-        List<LocalDate> dates;
-        Map<LocalDate, String> labels = new HashMap<>();
+        EntryRangePicker range;
         try {
-            dates = store.listEntryDates(trip.ref());
-            for (LocalDate d : dates) labels.put(d, entryLabel(trip, store.loadEntry(trip.ref(), d)));
+            List<DiaryEntry> entries = store.listEntryDates(trip.ref()).stream()
+                    .map(d -> store.loadEntry(trip.ref(), d))
+                    .toList();
+            range = new EntryRangePicker(trip, entries, from, to);
         } catch (RuntimeException e) {
             statusSink.error("Export failed: " + e.getMessage());
             return;
         }
-        StringConverter<LocalDate> converter = new StringConverter<>() {
-            @Override public String toString(LocalDate d) { return d == null ? "" : labels.getOrDefault(d, d.toString()); }
-            @Override public LocalDate fromString(String s) { return null; }
-        };
-        ComboBox<LocalDate> fromCombo = new ComboBox<>();
-        ComboBox<LocalDate> toCombo = new ComboBox<>();
-        for (ComboBox<LocalDate> c : List.of(fromCombo, toCombo)) {
-            c.getItems().setAll(dates);
-            c.setConverter(converter);
-            c.setDisable(dates.isEmpty());
-        }
-        if (!dates.isEmpty()) {
-            fromCombo.setValue(from != null && dates.contains(from) ? from : dates.getFirst());
-            toCombo.setValue(to != null && dates.contains(to) ? to : dates.getLast());
-        }
 
         TextArea ta = new TextArea();
         ta.setEditable(false);
-        ta.setWrapText(false);
-        ta.setStyle("-fx-font-family: 'monospace';");
+        ta.setWrapText(true);
+        // The generic 'monospace' is a hairline typewriter face on macOS; Menlo reads much darker
+        ta.setStyle("-fx-font-family: '" + (Font.getFamilies().contains("Menlo") ? "Menlo" : "monospace") + "';");
+        ta.getStyleClass().add("export-text");
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
-
-        HBox rangeBox = new HBox(8, new Label("From:"), fromCombo, new Label("To:"), toCombo);
-        rangeBox.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<Images> imagesCombo = new ComboBox<>();
         imagesCombo.getItems().setAll(Images.values());
@@ -132,7 +115,7 @@ public final class ExportDiaryDialog {
             @Override public String toString(Images i) { return i == null ? "" : i.label; }
             @Override public Images fromString(String s) { return null; }
         });
-        imagesCombo.setValue(defaultImages(trip, fromCombo.getValue(), toCombo.getValue()));
+        imagesCombo.setValue(defaultImages(trip, range.from(), range.to()));
         CheckBox favesCheck = new CheckBox("Faves only");
         if (impressions.faveFilter().isEmpty()) {
             favesCheck.setText("Faves only (no pattern defined)");
@@ -154,22 +137,14 @@ public final class ExportDiaryDialog {
         Runnable render = () -> {
             try {
                 ta.setText(formatCombo.getValue() == Format.WORDPRESS
-                        ? wordPressExporter.export(trip, fromCombo.getValue(), toCombo.getValue(),
+                        ? wordPressExporter.export(trip, range.from(), range.to(),
                                 imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected())
-                        : diaryExporter.exportTrip(trip, fromCombo.getValue(), toCombo.getValue()));
+                        : diaryExporter.exportTrip(trip, range.from(), range.to()));
             } catch (RuntimeException e) {
                 statusSink.error("Export failed: " + e.getMessage());
             }
         };
-        // Keep From <= To by dragging the other end along.
-        fromCombo.valueProperty().addListener((obs, old, d) -> {
-            if (d != null && toCombo.getValue() != null && d.isAfter(toCombo.getValue())) toCombo.setValue(d);
-            render.run();
-        });
-        toCombo.valueProperty().addListener((obs, old, d) -> {
-            if (d != null && fromCombo.getValue() != null && d.isBefore(fromCombo.getValue())) fromCombo.setValue(d);
-            render.run();
-        });
+        range.onChange(render);
         formatCombo.valueProperty().addListener((obs, old, f) -> {
             offerImages(f, imagesCombo);
             render.run();
@@ -190,7 +165,7 @@ public final class ExportDiaryDialog {
         dlg.setTitle("📖 Diary Composer");
         dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
-        dlg.getDialogPane().setContent(new VBox(8, rangeBox, ta, imagesBox));
+        dlg.getDialogPane().setContent(new VBox(8, range.node(), ta, imagesBox));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
@@ -213,7 +188,7 @@ public final class ExportDiaryDialog {
             if (formatCombo.getValue() == Format.WORDPRESS) {
                 openInBrowser(wordPressExporter.previewHtml(trip.name(), ta.getText()));
             } else {
-                previewInBrowser(trip, fromCombo.getValue(), toCombo.getValue(),
+                previewInBrowser(trip, range.from(), range.to(),
                         imagesCombo.getValue().source, favesCheck.isSelected());
             }
             ev.consume();
@@ -270,13 +245,5 @@ public final class ExportDiaryDialog {
             }
         }
         return impressions.photoLibraryConfigured() ? Images.PHOTO_LIB : Images.NONE;
-    }
-
-    /** "Day 2: Frankfurt to Mannheim"; the date stands in for a missing day number or title. */
-    private static String entryLabel(Trip trip, DiaryEntry e) {
-        Long day = trip.dayNumber(e.date());
-        String title = e.title() == null || e.title().isBlank() || e.title().equals(DiaryEntry.DEFAULT_TITLE)
-                ? UiText.friendlyDate(e.date()) : e.title();
-        return (day == null ? e.date().toString() : "Day " + day) + ": " + title;
     }
 }

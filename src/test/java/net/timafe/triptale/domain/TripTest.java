@@ -16,6 +16,14 @@ class TripTest {
     }
 
     @Test
+    void activityIsNormalizedAndOptional() {
+        assertEquals("cycling", new Trip(2026, "Tour", "Tour", START, null, "", " Cycling ").activity());
+        assertEquals("Kayaking", new Trip(2026, "Tour", "Tour", START, null, "", "Kayaking").activity());
+        assertNull(new Trip(2026, "Tour", "Tour", START, null, "", " ").activity());
+        assertNull(trip(START, null).activity());
+    }
+
+    @Test
     void dayNumberIsOneBasedFromStartDate() {
         Trip trip = trip(START, START.plusDays(9));
         assertEquals(1L, trip.dayNumber(START));

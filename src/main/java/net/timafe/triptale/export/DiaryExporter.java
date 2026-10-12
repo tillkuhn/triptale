@@ -11,7 +11,6 @@ import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
-import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.Markdown;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
@@ -38,9 +37,7 @@ public class DiaryExporter {
 
     private static final String SHELL = "/export/diary-template.md";
     private static final String ENTRY_HEADING = "/export/entry-heading.md";
-    private static final String ENTRY_DISTANCE = "/export/entry-distance.md";
-    private static final String ENTRY_ALTITUDE = "/export/entry-altitude.md";
-    private static final String ENTRY_STARTPOINT = "/export/entry-startpoint.md";
+    private static final String ENTRY_FACTS = "/export/entry-facts.md";
     private static final String ENTRY_LINKS = "/export/entry-links.md";
     private static final String ENTRY_TALES = "/export/entry-tales.md";
     private static final String HTML_SHELL = "/export/html-shell.html";
@@ -70,7 +67,7 @@ public class DiaryExporter {
      * totals cover that range only; "Day N" stays relative to the trip start.
      */
     public String exportTrip(Trip trip, LocalDate from, LocalDate to) {
-        return buildMarkdown(trip, from, to, false);
+        return buildMarkdown(trip, from, to, false, false);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
@@ -87,7 +84,7 @@ public class DiaryExporter {
     public String exportTripAsHtml(Trip trip, LocalDate from, LocalDate to,
                                    ImpressionSource images, boolean favesOnly) {
         boolean includeMarkers = images != null;
-        String markdown = buildMarkdown(trip, from, to, includeMarkers);
+        String markdown = buildMarkdown(trip, from, to, includeMarkers, true);
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
         if (includeMarkers) {
@@ -106,7 +103,9 @@ public class DiaryExporter {
         return ExportTexts.of(TripLanguage.fromCode(settingsStore.load().getDefaultTripLanguage()));
     }
 
-    private String buildMarkdown(Trip trip, LocalDate from, LocalDate to, boolean includeImpressionMarkers) {
+    /** With {@code htmlFacts}, each entry gets the facts strip as an HTML block instead of the Markdown byline. */
+    private String buildMarkdown(Trip trip, LocalDate from, LocalDate to, boolean includeImpressionMarkers,
+                                 boolean htmlFacts) {
         Objects.requireNonNull(trip, "trip");
         ExportTexts texts = texts();
         List<LocalDate> allDates = store.listEntryDates(trip.ref());
@@ -133,14 +132,14 @@ public class DiaryExporter {
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
             if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
-            entriesBlock.append(renderEntry(trip, e, texts, includeImpressionMarkers));
+            entriesBlock.append(renderEntry(trip, e, texts, includeImpressionMarkers, htmlFacts));
         }
 
         Map<String, String> vars = new LinkedHashMap<>();
         vars.put("tripName", trip.name() == null ? "" : trip.name());
         vars.put("tripDescription", trip.description() == null ? "" : trip.description().strip());
-        vars.put("startDate", startDate == null ? MISSING : startDate.format(ISO));
-        vars.put("endDate", endDate == null ? MISSING : endDate.format(ISO));
+        vars.put("startDate", startDate == null ? MISSING : texts.longDate(startDate));
+        vars.put("endDate", endDate == null ? MISSING : texts.longDate(endDate));
         long totalDays = totalDays(startDate, endDate);
         vars.put("totalDays", totalDays < 0 ? MISSING : Long.toString(totalDays));
         vars.put("daysLabel", texts.plural("days", totalDays));
@@ -190,41 +189,34 @@ public class DiaryExporter {
                 .replace("\"", "&quot;");
     }
 
-    /** The entry heading line as in the Markdown export, e.g. {@code ## 2025-07-01 Tuesday Day 1: A → B}. */
+    /**
+     * The entry heading line, e.g. {@code ## A → B}. Without a real title it falls back to the day
+     * ({@code ## Day 3}), or to the date if the trip has no start date; the facts carry the date.
+     */
     static String headingLine(Trip trip, DiaryEntry e, ExportTexts texts) {
-        Map<String, String> h = new LinkedHashMap<>();
-        h.put("date", e.date().format(ISO));
-        h.put("weekday", texts.weekday(e.date()));
-        h.put("longDate", texts.longDate(e.date()));
-        h.put("daySegment", daySegment(trip.startDate(), e.date(), texts));
-        h.put("titleSegment", titleSegment(e.title()));
-        return substitute(load(ENTRY_HEADING), h).strip();
+        return substitute(load(ENTRY_HEADING), Map.of("title", headingTitle(trip, e, texts))).strip();
     }
 
-    private String renderEntry(Trip trip, DiaryEntry e, ExportTexts texts, boolean includeImpressionMarker) {
+    private static String headingTitle(Trip trip, DiaryEntry e, ExportTexts texts) {
+        String title = e.title() == null ? "" : e.title().strip();
+        if (!title.isEmpty() && !title.equals(DiaryEntry.DEFAULT_TITLE)) return title;
+        Long day = EntryFacts.dayNumber(trip.startDate(), e.date());
+        if (day != null) return texts.word("day") + " " + day;
+        return texts.weekday(e.date()) + ", " + texts.longDate(e.date());
+    }
+
+    private String renderEntry(Trip trip, DiaryEntry e, ExportTexts texts, boolean includeImpressionMarker,
+                               boolean htmlFacts) {
         StringBuilder sb = new StringBuilder();
         sb.append(headingLine(trip, e, texts));
 
-        StringBuilder stats = new StringBuilder();
-        if (e.distance() != null) {
-            stats.append(substitute(translate(load(ENTRY_DISTANCE), texts),
-                    Map.of("distance", texts.distance(e.distance()))).stripTrailing());
-        }
-        if (e.altitudeMeters() != null) {
-            if (stats.length() > 0) stats.append("\n");
-            stats.append(substitute(translate(load(ENTRY_ALTITUDE), texts),
-                    Map.of("altitude", texts.altitude(e.altitudeMeters()))).stripTrailing());
-        }
-        if (e.startLat() != null && e.startLon() != null) {
-            if (stats.length() > 0) stats.append("\n");
-            stats.append(substitute(translate(load(ENTRY_STARTPOINT), texts),
-                    Map.of("startpoint", Coordinates.toDdm(e.startLat(), e.startLon()))).stripTrailing());
-        }
-        if (stats.length() > 0) {
-            sb.append("\n\n").append(stats);
-        }
+        // HTML exports get the ticket stub strip as a raw HTML block, plain Markdown a one-line byline
+        EntryFacts facts = EntryFacts.of(trip.startDate(), e, texts);
+        sb.append("\n\n").append(htmlFacts ? facts.html()
+                : substitute(load(ENTRY_FACTS), Map.of("facts", facts.byline())).stripTrailing());
 
-        String tales = e.tales() == null ? "" : Markdown.shiftHeadings(e.tales().strip(), 1);
+        // Private sections (todo 48) never leave the app
+        String tales = e.tales() == null ? "" : Markdown.shiftHeadings(Markdown.stripPrivate(e.tales()).strip(), 1);
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);
@@ -245,16 +237,6 @@ public class DiaryExporter {
         }
 
         return sb.toString();
-    }
-
-    private static String daySegment(LocalDate startDate, LocalDate entryDate, ExportTexts texts) {
-        if (startDate == null) return "";
-        long day = ChronoUnit.DAYS.between(startDate, entryDate) + 1;
-        return " " + texts.word("day") + " " + day;
-    }
-
-    private static String titleSegment(String title) {
-        return ": " + title;
     }
 
     /** Days from start to end, both inclusive; -1 if either is unknown. */

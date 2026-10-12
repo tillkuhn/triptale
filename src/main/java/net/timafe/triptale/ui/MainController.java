@@ -34,6 +34,7 @@ import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
+import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -55,18 +56,19 @@ import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.LinksDialog;
+import net.timafe.triptale.ui.dialog.MapAssistantDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
-import net.timafe.triptale.ui.dialog.TripMapDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.CommitMessage;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
 import net.timafe.triptale.util.Greetings;
 import net.timafe.triptale.util.Greetings.Greeting;
+import net.timafe.triptale.util.Lengths;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
@@ -98,6 +100,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 /**
  * Controller for the single main window: trip/date navigation, the entry form and its dirty
@@ -116,11 +119,10 @@ public class MainController implements StatusSink {
     @FXML private DatePicker datePicker;
     @FXML private TextField distanceField;
     @FXML private TextField altField;
+    @FXML private ComboBox<String> activityCombo;
     @FXML private TextField titleField;
     @FXML private Button linksButton;
     @FXML private Button coordinatesButton;
-    @FXML private Button openCoordinatesButton;
-    @FXML private Button tripMapButton;
     @FXML private Button impressionsButton;
     @FXML private TextArea talesArea;
     @FXML private VBox taleEmptyOverlay;
@@ -148,6 +150,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem pullAttachmentsMenuItem;
     @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
+    @FXML private Button backpackButton;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
@@ -159,7 +162,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem impressionsMenuItem;
     @FXML private MenuItem exportTaleMenuItem;
     @FXML private MenuItem saveMenuItem;
-    @FXML private MenuItem copyMenuItem;
+    @FXML private MenuItem addPrivateMenuItem;
     @FXML private MenuItem deleteEntryMenuItem;
     @FXML private Menu appMenu;
     @FXML private Menu radioMenu;
@@ -171,6 +174,8 @@ public class MainController implements StatusSink {
     private static final String DELETE = "Delete";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
 
+    /** Placeholder body of a section added by 🔒 Add Private Section (todo 48). */
+    private static final String PRIVATE_PLACEHOLDER = "Private notes, not exported.";
     private static final String TALE_FONT_SIZE_STATE_KEY = "taleFontSizePx";
     private static final int TALE_FONT_SIZE_DEFAULT_PX = 13;
     private static final int TALE_FONT_SIZE_MIN_PX = 10;
@@ -188,6 +193,7 @@ public class MainController implements StatusSink {
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineTitle = "";
+    private String baselineActivity;
     private SequencedMap<String, Link> baselineLinks = new LinkedHashMap<>();
     private Double baselineStartLat;
     private Double baselineStartLon;
@@ -248,7 +254,7 @@ public class MainController implements StatusSink {
     private final ExportDiaryDialog exportDiaryDialog;
     private final ImageViewerDialog imageViewerDialog;
     private final AboutDialog aboutDialog;
-    private final TripMapDialog tripMapDialog;
+    private final MapAssistantDialog mapAssistantDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, WordPressExporter wordPressExporter,
@@ -278,7 +284,8 @@ public class MainController implements StatusSink {
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
-        this.tripMapDialog = new TripMapDialog(new MapboxService(settingsStore));
+        this.mapAssistantDialog = new MapAssistantDialog(store, new MapboxService(settingsStore),
+                new PhotoLocations(impressions, exifReader), this);
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -314,6 +321,7 @@ public class MainController implements StatusSink {
             @Override public String toString(Trip t) { return t == null ? "" : t.name(); }
             @Override public Trip fromString(String s) { return null; }
         });
+        ActivityChoices.install(activityCombo);
         yearCombo.setConverter(new StringConverter<>() {
             @Override public String toString(Integer y) { return y == null ? "" : y.toString(); }
             @Override public Integer fromString(String s) { return null; }
@@ -409,6 +417,9 @@ public class MainController implements StatusSink {
         });
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
+        activityCombo.valueProperty().addListener((o, a, b) -> updateDirty());
+        normalizeOnFocusLost(distanceField, Lengths::parseDistanceKm, Lengths::formatDistance);
+        normalizeOnFocusLost(altField, Lengths::parseAltitudeM, Lengths::formatAltitude);
         titleField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (ready) {
@@ -556,10 +567,11 @@ public class MainController implements StatusSink {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description()));
+        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity()));
         addPending(ref.path(), CREATE);
         spec.get().firstEntry().ifPresent(fe -> {
             DiaryEntry entry = DiaryEntry.builder(start)
+                    .activity(spec.get().activity())
                     .title(fe.title())
                     .startLat(fe.lat())
                     .startLon(fe.lon())
@@ -660,9 +672,9 @@ public class MainController implements StatusSink {
         startLon = p.lon();
         stopLat = p.stopLat();
         stopLon = p.stopLon();
-        distanceField.setText(String.valueOf(p.distanceKm()));
+        distanceField.setText(Lengths.formatDistance(p.distanceKm()));
         if (p.altitudeGainM() != null) {
-            altField.setText(String.valueOf(p.altitudeGainM()));
+            altField.setText(Lengths.formatAltitude(p.altitudeGainM()));
         }
         updateCoordinatesButton();
         updateDirty();
@@ -776,6 +788,7 @@ public class MainController implements StatusSink {
         updateTourDay(trip, date);
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
+        if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
             updateDeleteEntryMenuItem(false);
@@ -786,8 +799,10 @@ public class MainController implements StatusSink {
         updateViewSourceMenuItem(entryExists);
         updateDeleteEntryMenuItem(entryExists);
         DiaryEntry e = store.loadEntry(trip.ref(), date);
-        distanceField.setText(e.distance() == null ? "" : e.distance().toString());
-        altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
+        distanceField.setText(Lengths.formatDistance(e.distance()));
+        altField.setText(Lengths.formatAltitude(e.altitudeMeters()));
+        // A new day starts with the trip's default activity (todo 57); it's stored on first save.
+        ActivityChoices.show(activityCombo, entryExists ? e.activity() : trip.activity());
         titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
         links = e.links();
         updateLinksButton();
@@ -819,7 +834,11 @@ public class MainController implements StatusSink {
         titleField.setDisable(showEmpty);
         distanceField.setDisable(showEmpty);
         altField.setDisable(showEmpty);
+        activityCombo.setDisable(showEmpty);
         if (linksButton != null) linksButton.setDisable(showEmpty);
+        if (addPrivateMenuItem != null) {
+            addPrivateMenuItem.setDisable(showEmpty || tripCombo.getValue() == null || datePicker.getValue() == null);
+        }
         if (showEmpty) {
             if (!talesArea.getStyleClass().contains("tale-text-empty")) {
                 talesArea.getStyleClass().add("tale-text-empty");
@@ -853,7 +872,7 @@ public class MainController implements StatusSink {
         int attached = noDay ? 0 : impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).size();
         impressionsButton.setText(photoLib == 0 && attached == 0
                 ? "📷 No Impressions yet"
-                : "📷 Impressions " + photoLib + " 🗂 / " + attached + " 🎒 ›");
+                : "📷 Impressions: 🗂 " + photoLib + "  🎒 " + attached);
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
@@ -869,44 +888,28 @@ public class MainController implements StatusSink {
                     ? "Start " + Coordinates.toDdm(startLat, startLon) + " · End " + Coordinates.toDdm(stopLat, stopLon)
                     : "Set start and end point"));
         }
-        if (openCoordinatesButton != null) {
-            openCoordinatesButton.setDisable(!set);
-            openCoordinatesButton.setTooltip(new Tooltip(stopSet
-                    ? "Show route start → end on Google Maps"
-                    : "Show start point on Google Maps"));
-        }
     }
 
+    /** Map Assistant on the current day (entry form button). */
     @FXML
-    public void onOpenCoordinates() {
-        if (startLat == null || startLon == null) return;
-        Coordinates.LatLon stop = stopLat == null || stopLon == null ? null : new Coordinates.LatLon(stopLat, stopLon);
-        browser.open(Coordinates.googleMapsUrl(new Coordinates.LatLon(startLat, startLon), stop));
-    }
-
-    @FXML
-    public void onShowTripMap() {
+    public void onMapAssistant() {
         Trip trip = tripCombo.getValue();
         if (trip == null) {
             status("Select a trip first");
             return;
         }
-        List<LocalDate> dates = store.listEntryDates(trip.ref());
-        List<double[]> startPoints = new ArrayList<>();
-        double[] endPoint = null;
-        for (int i = 0; i < dates.size(); i++) {
-            DiaryEntry entry = store.loadEntry(trip.ref(), dates.get(i));
-            if (entry.startLat() != null && entry.startLon() != null) {
-                startPoints.add(new double[]{entry.startLon(), entry.startLat()});
-            }
-            // Only the latest day's stop point — a multi-day trip's daily stop is usually the
-            // next day's start (redundant); a one-way trip's final destination otherwise never
-            // appears on the map at all.
-            if (i == dates.size() - 1 && entry.stopLat() != null && entry.stopLon() != null) {
-                endPoint = new double[]{entry.stopLon(), entry.stopLat()};
-            }
+        mapAssistantDialog.showDay(trip, datePicker.getValue());
+    }
+
+    /** Map Assistant on the whole trip (My Trips menu). */
+    @FXML
+    public void onMapAssistantTrip() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) {
+            status("Select a trip first");
+            return;
         }
-        tripMapDialog.show(trip.name(), startPoints, endPoint);
+        mapAssistantDialog.show(trip);
     }
 
     private void updateViewSourceMenuItem(boolean exists) {
@@ -947,6 +950,7 @@ public class MainController implements StatusSink {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineTitle = titleField.getText();
+        baselineActivity = ActivityChoices.value(activityCombo);
         baselineLinks = links;
         baselineStartLat = startLat;
         baselineStartLon = startLon;
@@ -956,9 +960,10 @@ public class MainController implements StatusSink {
     }
 
     private boolean isDirty() {
-        return !Objects.equals(distanceField.getText(), baselineDistance)
-                || !Objects.equals(altField.getText(), baselineAlt)
+        return !sameLength(distanceField.getText(), baselineDistance, Lengths::parseDistanceKm)
+                || !sameLength(altField.getText(), baselineAlt, Lengths::parseAltitudeM)
                 || !Objects.equals(titleField.getText(), baselineTitle)
+                || !Objects.equals(ActivityChoices.value(activityCombo), baselineActivity)
                 || !Objects.equals(links, baselineLinks)
                 || !Objects.equals(startLat, baselineStartLat)
                 || !Objects.equals(startLon, baselineStartLon)
@@ -1017,16 +1022,11 @@ public class MainController implements StatusSink {
             saveMenuItem.setDisable(!saveEnabled);
             saveMenuItem.setText(saveLabel);
         }
-        boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
-                && tripCombo.getValue() != null && datePicker.getValue() != null;
         // Export Tale saves pending edits first, so a savable new entry counts as exportable.
         boolean exportable = tripCombo.getValue() != null && datePicker.getValue() != null
                 && (entryExists || saveEnabled);
         if (exportTaleButton != null) exportTaleButton.setDisable(!exportable);
         if (exportTaleMenuItem != null) exportTaleMenuItem.setDisable(!exportable);
-        if (copyMenuItem != null) {
-            copyMenuItem.setDisable(!hasContent);
-        }
         updateCommitButton();
     }
 
@@ -1108,11 +1108,12 @@ public class MainController implements StatusSink {
         if (prevDayMenuItem != null) prevDayMenuItem.setDisable(prevDisabled);
         if (firstDayMenuItem != null) firstDayMenuItem.setDisable(prevDisabled);
         if (todayButton != null || todayMenuItem != null) {
-            LocalDate target = LocalDate.now();
-            if (trip != null && trip.startDate() != null && target.isBefore(trip.startDate())) {
-                target = trip.startDate();
-            }
-            boolean todayDisabled = date == null || date.equals(target);
+            // Outside the trip, Today would only snap to its first/last day, which those buttons already do
+            LocalDate today = LocalDate.now();
+            boolean outsideTrip = trip != null
+                    && ((trip.startDate() != null && today.isBefore(trip.startDate()))
+                        || (trip.endDate() != null && today.isAfter(trip.endDate())));
+            boolean todayDisabled = date == null || date.equals(today) || outsideTrip;
             if (todayButton != null) todayButton.setDisable(todayDisabled);
             if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }
@@ -1137,7 +1138,7 @@ public class MainController implements StatusSink {
         }
         Long total = trip.totalDays();
         datePicker.setTooltip(new Tooltip((total == null
-                ? "Day " + day + " — no end date set (set it in the 🧳 Trip Planner)"
+                ? "Day " + day + " — no end date set (set it in the 📝 Trip Planner)"
                 : "Day " + day + " of " + total) + ", " + relativeDayLabel(date)));
         if (titleLabel != null) titleLabel.setText("Title Day " + day + ":");
     }
@@ -1176,11 +1177,16 @@ public class MainController implements StatusSink {
      * already have advanced to a new selection (see {@link SaveTarget} and {@link #confirmNavigateAway}).
      */
     private void doSave(TripRef trip, LocalDate date) {
-        Double distance = parseDouble(distanceField.getText(), "distance");
-        Double alt = parseDouble(altField.getText(), "altitude");
-        if (distance == null && !distanceField.getText().isBlank()) return;
-        if (alt == null && !altField.getText().isBlank()) return;
+        Double distance;
+        Double alt;
+        try {
+            distance = parseLength(distanceField.getText(), "distance", Lengths::parseDistanceKm);
+            alt = parseLength(altField.getText(), "altitude", Lengths::parseAltitudeM);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
         DiaryEntry entry = DiaryEntry.builder(date)
+                .activity(ActivityChoices.value(activityCombo))
                 .distance(distance)
                 .altitudeMeters(alt)
                 .title(titleField.getText())
@@ -1201,6 +1207,8 @@ public class MainController implements StatusSink {
         updateEmptyState();
         addPending(trip.path() + "/" + date, wasNew ? CREATE : UPDATE);
         talesArea.setText(Markdown.demoteH1(talesArea.getText()));
+        distanceField.setText(Lengths.formatDistance(distance));
+        altField.setText(Lengths.formatAltitude(alt));
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.path() + "/" + date);
@@ -1244,15 +1252,22 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onCopyTale() {
-        String title = titleField.getText();
-        String tales = talesArea.getText();
-        StringBuilder sb = new StringBuilder();
-        if (title != null && !title.isBlank() && !title.equals(DiaryEntry.DEFAULT_TITLE)) {
-            sb.append(title).append("\n\n");
+    public void onAddPrivateSection() {
+        if (talesArea.isDisabled()) return;
+        String text = talesArea.getText();
+        int existing = Markdown.privateHeadingOffset(text);
+        talesArea.requestFocus();
+        if (existing >= 0) {
+            talesArea.positionCaret(existing);
+            status("Tale already has a private section");
+            return;
         }
-        if (tales != null) sb.append(tales);
-        Clipboards.putString(sb.toString());
+        // replaceText (not setText) keeps the insert undoable
+        int end = text.stripTrailing().length();
+        String insert = (end == 0 ? "" : "\n\n") + "## Internal\n\n" + PRIVATE_PLACEHOLDER;
+        talesArea.replaceText(end, text.length(), insert);
+        int start = end + insert.length() - PRIVATE_PLACEHOLDER.length();
+        talesArea.selectRange(start, start + PRIVATE_PLACEHOLDER.length());
     }
 
     @FXML
@@ -1689,23 +1704,24 @@ public class MainController implements StatusSink {
         updateDirty();
     }
 
-    /** "🕸️ Weblinks: 🗺️ 🍲" (🔗 for unknown verbs, ⚠️ if a value isn't a URL), or "🕸️ No Weblinks yet". */
+    /** "🕸 Weblinks: 🗺 🍲" (🔗 for unknown verbs, ⚠ if a value isn't a URL), or "🕸 No Weblinks yet". */
     private void updateLinksButton() {
         if (linksButton == null) return;
         if (links.isEmpty()) {
-            linksButton.setText("🕸️ No Weblinks yet");
+            linksButton.setText("🕸 No Weblinks yet");
             return;
         }
-        StringBuilder label = new StringBuilder("🕸️ Weblinks:");
-        links.keySet().forEach(verb -> label.append(' ').append(LinkKind.emojiFor(verb)));
-        if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠️");
+        // En spaces: a plain space next to a color emoji renders almost zero-width in JavaFX
+        StringBuilder label = new StringBuilder("🕸 Weblinks:");
+        links.keySet().forEach(verb -> label.append('\u2002').append(LinkKind.emojiFor(verb)));
+        if (links.values().stream().anyMatch(l -> !l.valid())) label.append("\u2002⚠");
         linksButton.setText(label.toString());
     }
 
     @FXML
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
-                new CoordinatesDialog().showAndWait(startLat, startLon, stopLat, stopLon);
+                new CoordinatesDialog(browser).showAndWait(startLat, startLon, stopLat, stopLon);
         if (result.isEmpty()) return;
         Coordinates.LatLon start = result.get().start();
         Coordinates.LatLon stop = result.get().stop();
@@ -1742,14 +1758,60 @@ public class MainController implements StatusSink {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
-        imageViewerDialog.show(trip, date, () -> updateImpressionsButton(trip, date));
+        imageViewerDialog.show(trip, date, () -> updateImpressionsButton(trip, date), new ImageViewerDialog.RoutePoints() {
+            @Override
+            public Coordinates.LatLon get(ImageViewerDialog.RoutePoint point) {
+                Double lat = point == ImageViewerDialog.RoutePoint.START ? startLat : stopLat;
+                Double lon = point == ImageViewerDialog.RoutePoint.START ? startLon : stopLon;
+                return lat == null || lon == null ? null : new Coordinates.LatLon(lat, lon);
+            }
+
+            @Override
+            public void set(ImageViewerDialog.RoutePoint point, Coordinates.LatLon value) {
+                if (point == ImageViewerDialog.RoutePoint.START) {
+                    startLat = value.lat();
+                    startLon = value.lon();
+                } else {
+                    stopLat = value.lat();
+                    stopLon = value.lon();
+                }
+                updateCoordinatesButton();
+                updateDirty();
+            }
+        });
     }
 
-    private Double parseDouble(String s, String field) {
-        if (s == null || s.isBlank()) return null;
-        Double value = UiText.parseDecimal(s);
-        if (value == null) error("Invalid " + field + ": " + s);
-        return value;
+    /** Parses a length field, showing an error alert (and rethrowing) if the text is invalid. */
+    private Double parseLength(String s, String field, Function<String, Double> parser) {
+        try {
+            return parser.apply(s);
+        } catch (IllegalArgumentException e) {
+            error("Invalid " + field + ": " + s.strip() + " (use a number, optionally followed by km or m)");
+            throw e;
+        }
+    }
+
+    /** Same value if both parse (so "101.64" equals "101.64 km"), otherwise same text. */
+    private static boolean sameLength(String a, String b, Function<String, Double> parser) {
+        try {
+            return Objects.equals(parser.apply(a), parser.apply(b));
+        } catch (IllegalArgumentException e) {
+            return Objects.equals(a, b);
+        }
+    }
+
+    /** Rewrites valid input as "value unit" when the field loses focus; invalid text is left for save-time validation. */
+    private static void normalizeOnFocusLost(TextField field, Function<String, Double> parser,
+                                             Function<Double, String> formatter) {
+        field.focusedProperty().addListener((o, was, focused) -> {
+            if (focused) return;
+            try {
+                String formatted = formatter.apply(parser.apply(field.getText()));
+                if (!formatted.equals(field.getText())) field.setText(formatted);
+            } catch (IllegalArgumentException ignored) {
+                // keep what the user typed; doSave reports it
+            }
+        });
     }
 
     @Override

@@ -26,7 +26,7 @@ import java.util.SequencedMap;
 /**
  * Edits an entry's links (todo 09): one row per existing link with the verb fixed and URL/name
  * editable, plus a row to add a link for a verb not used yet. Only http(s) URLs can be entered;
- * an invalid value that came from the file is kept as-is and marked ⚠️ unless the user edits it.
+ * an invalid value that came from the file is kept as-is and marked ⚠ unless the user edits it.
  */
 public final class LinksDialog {
 
@@ -68,7 +68,7 @@ public final class LinksDialog {
     /** The edited links keyed by verb in {@link LinkKind#ORDER}, or empty when the user cancelled. */
     public Optional<SequencedMap<String, Link>> showAndWait(SequencedMap<String, Link> links) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("🕸️ Weblinks Manager");
+        dlg.setTitle("🕸 Weblinks Manager");
         dlg.setHeaderText("Weblinks for this day");
 
         List<Row> rows = new ArrayList<>();
@@ -112,7 +112,7 @@ public final class LinksDialog {
             for (Row row : rows) {
                 Link current = row.value();
                 Label label = new Label(LinkKind.emojiFor(row.verb()) + " " + LinkKind.labelFor(row.verb())
-                        + (current.valid() ? "" : " ⚠️"));
+                        + (current.valid() ? "" : " ⚠"));
                 if (!current.valid()) label.setTooltip(new Tooltip("Not an http(s) URL — kept as-is"));
                 Button open = new Button("🔗");
                 open.setTooltip(new Tooltip("Open in browser"));

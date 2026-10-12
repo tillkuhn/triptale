@@ -141,4 +141,20 @@ class CoordinatesTest {
     void rejectsOutOfRangeGeoJsonCoordinates() {
         assertTrue(Coordinates.tryParse("[200.0, 10.1]").isEmpty());
     }
+
+    @Test
+    void roundsToFiveDecimals() {
+        assertEquals(new Coordinates.LatLon(-1.15556, 100.38333),
+                Coordinates.rounded(-1.155555555555, 100.383333333333));
+    }
+
+    @Test
+    void measuresGreatCircleDistance() {
+        Coordinates.LatLon a = new Coordinates.LatLon(48.8566, 2.3522);
+        assertEquals(0.0, Coordinates.distanceMeters(a, a), 1e-9);
+        // 0.0001° of latitude is ~11 m anywhere on the globe.
+        assertEquals(11.1, Coordinates.distanceMeters(a, new Coordinates.LatLon(48.8567, 2.3522)), 0.1);
+        // Paris → London, ~344 km.
+        assertEquals(343_500, Coordinates.distanceMeters(a, new Coordinates.LatLon(51.5074, -0.1278)), 1_000);
+    }
 }

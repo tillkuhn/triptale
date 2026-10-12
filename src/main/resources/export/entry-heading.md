@@ -1,1 +1,1 @@
-## {{date}} {{weekday}}{{daySegment}}{{titleSegment}}
+## {{title}}

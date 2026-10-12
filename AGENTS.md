@@ -63,7 +63,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Package boundary rule
 
-JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
+JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `map`, `radio`, `sync`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
 
 ---
 
@@ -78,6 +78,7 @@ ui.MainController ──► storage.MarkdownStore ──► storage.SettingsStor
                   ├── attachments.AttachmentsDir ──► MarkdownStore
                   ├── sync.BucketSyncer ──► sync.S3Client (SigV4, java.net.http)   (for attachments/ and radio/)
                   ├── ui.ConnectivityService
+                  ├── map.PhotoLocations ──► ImpressionsService, storage.ExifReader   (for ui.dialog.MapAssistantDialog)
                   ├── radio.RadioLibrary ──► MarkdownStore   (played by ui.RadioPlayer, created lazily)
                   └── ui.dialog.* ──► the services each dialog needs
 ```
@@ -138,10 +139,11 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 `docs/13_settings_handling.md`.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
-- Entries: `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `type`, `url_<verb>`
-- Trips (`README.md`): `end_date`, `start_date`, `type`
+- Entries: `activity`, `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `type`, `url_<verb>`
+- Trips (`README.md`): `activity`, `end_date`, `start_date`, `type`
 - Single-word keys stay flat lowercase (`altitude`, `date`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
-- Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji, label and export order, live in `domain.LinkKind`. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/done/09_entry_links.md`.
+- Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji and label, live in `domain.LinkKind`; links are listed and exported alphabetically by verb (`LinkKind.ORDER`), unknown verbs included. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/done/09_entry_links.md`.
+- `activity` (todo 55) holds one `domain.Activity` key (lowercase) or a tolerated unknown value; absent = not set. On a trip it's only the default that **new** entries are pre-filled with (todo 57) — copied on first save, never inherited at read time. See `docs/done/55_activity_per_entry.md`, `docs/done/57_trip_default_activity.md`.
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
 - Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initRepo()` creates all three if missing, alongside `.gitignore` setup.
 - Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.
@@ -180,7 +182,17 @@ export time). Templates reference words as `{{t.<key>}}`, resolved from
 `export_en.properties` would fall back to the JVM default locale. Entry filenames stay English.
 A future per-trip override will be the `lang` key in the trip `README.md`.
 
-`DiaryEntry.DEFAULT_ROUTE` (`"From → To"`) is a UI placeholder. Export headings suppress it; `routeSegment()` returns `""` for this value.
+**Private sections (todo 48):** a tale heading starting with `internal`/`private`/`intern`/`privat`
+(case-insensitive, then end/whitespace/`:`) hides itself and everything up to the next heading of the
+same or higher level. Every exporter must run tales through `Markdown.stripPrivate` before
+`shiftHeadings` — `WordPressExporter` has its own tale path, so a new exporter needs it too. See
+`docs/48_private_sections.md`.
+
+**Entry facts (todo 53):** an entry heading is its title only (`DiaryEntry.DEFAULT_TITLE` / blank
+→ "Day N", or the date without a trip start). Date, activity + distance/climb and start/stop
+point come from `export.EntryFacts`: an italic byline in Markdown, a "ticket stub" HTML block
+(styled in `html-shell.html`) in the HTML export, a `wp:columns` block on WordPress. Readers
+never see an ISO date. See `docs/done/53_entry_fact_strip.md`.
 
 ---
 
@@ -212,7 +224,7 @@ Shared UI helpers, all in `ui/`:
 - Button look lives in `src/main/resources/fxml/triptale.css` under `/* ── Buttons ── */`. Buttons are deliberately "raised" (lighter gradient fill, 1px top highlight via a two-layer background, soft drop shadow) and inputs "sunken" (darker than the surface), so buttons don't read as bordered text. To tune: the gradient stops on `.button` / `.button:hover` and the shadow alpha. The teal filled button is `:default` (`defaultButton="true"`, e.g. Save Tale — Enter fires it unless the focused control consumes Enter, like a TextArea). `.nav-button-group` carries one shared shadow; its child buttons and the date-picker popup's spinner arrows have `-fx-effect: none`.
 - Every new `Alert` or `Dialog` must call `Dialogs.applyStylesheet(dialogPane)` to inherit the dark theme. Going through `Dialogs.showInfo(...)` instead of `new Alert(...)` makes that impossible to forget.
 - `BuildProperties` (version/build-date in About) and JavaFX `HostServices` (opening URLs in the system browser) are both resolved via `ObjectProvider` on `MainController` and may be null. `BuildProperties` is absent only if the data dir has no reachable git tag at all — `spring-boot-maven-plugin:build-info`'s `build-info` goal actually binds to the `generate-resources` phase (not `prepare-package`, despite what its own docs/javadoc imply), so it already runs on `mvn compile`/`process-classes`, and therefore on `make run`/`run-fast` too (`javafx:run` forks the build up through `process-classes`, which is after `generate-resources`) — not just `package`/`verify`. Its `version` is populated from `git-commit-id-maven-plugin`'s `git.closest.tag.name` (most recent reachable tag, e.g. `v0.9.0` — no commit-distance suffix, no dirty marker), overriding the Maven coordinate (`0.1.0-SNAPSHOT`), which is never bumped. `HostServices` is wrapped in `ui.BrowserLauncher`, which degrades to a log warning when absent.
-- Decimal input (`UiText.parseDecimal`) accepts both `.` and `,` as separators. `MainController.parseDouble` is the same parse plus an error alert, for save-time validation.
+- Decimal input (`UiText.parseDecimal`) accepts both `.` and `,` as separators. The distance/altitude fields go through `util.Lengths` instead: a non-negative number with optional `km`/`m` suffix (bare = km for distance, m for altitude), converted and rounded (2 decimals km, whole m), shown as `"101.64 km"` / `"493 m"` (normalized on focus loss and save). Frontmatter stays a plain number. Dirty tracking compares the parsed values, not the text.
 - Export previews go through `export.ExportTempFiles` (`newFile` / `sweep`), not `Files.createTempFile` directly — `sweep()` runs once from `initialize()` to clear files left by crashed sessions.
 
 ---
