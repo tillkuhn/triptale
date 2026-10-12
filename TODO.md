@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 57
+## Next Todo: 58
 
 ## 56 Open the backpack from the main window
 
@@ -28,6 +28,8 @@ Here goes the tale …
 - Depends on todo 30. i18n supplies the localized values (weekday, long date, day label,
   distance/altitude, coordinates); this todo only does the layout in the templates.
 - Items without data drop out (no coordinates → no 🧭 item), so the row has 1–n items.
+- Entry activity (todo 55): `ExportTexts.activity()` gives e.g. "🚴 Radeln"; a trip-level
+  activity in the trip header (todo 57) could come with it.
 - Layout only works in the HTML outputs (`html-shell.html`, WordPress preview). Decide what
   plain Markdown gets: a single line (`📅 Wed, 23 July · 🚴 123 km · 📍 Frankfurt`) or a table.
 - Place name comes from todo 51 (reverse geocoding) once it exists; until then coordinates only.
@@ -249,6 +251,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 57 Trip default activity
+
+see docs/done/57_trip_default_activity.md
 
 ## DONE 55 Activity per entry
 

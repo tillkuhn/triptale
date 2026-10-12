@@ -38,7 +38,6 @@ import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
-import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
@@ -191,13 +190,10 @@ public class MainController implements StatusSink {
     private static final String CONN_ICON_CONNECTED    = "📶";
     private static final String CONN_ICON_DISCONNECTED = "📵";
 
-    /** {@link #activityCombo} item for "not set" (stored as null); a null combo value is awkward to render. */
-    private static final String NO_ACTIVITY = "";
-
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineTitle = "";
-    private String baselineActivity = NO_ACTIVITY;
+    private String baselineActivity;
     private SequencedMap<String, Link> baselineLinks = new LinkedHashMap<>();
     private Double baselineStartLat;
     private Double baselineStartLon;
@@ -325,13 +321,7 @@ public class MainController implements StatusSink {
             @Override public String toString(Trip t) { return t == null ? "" : t.name(); }
             @Override public Trip fromString(String s) { return null; }
         });
-        activityCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(String a) {
-                return a == null || a.isEmpty() ? "😴 No activity yet" : Activity.emojiFor(a) + " " + Activity.labelFor(a);
-            }
-            @Override public String fromString(String s) { return null; }
-        });
-        showActivity(null);
+        ActivityChoices.install(activityCombo);
         yearCombo.setConverter(new StringConverter<>() {
             @Override public String toString(Integer y) { return y == null ? "" : y.toString(); }
             @Override public Integer fromString(String s) { return null; }
@@ -577,10 +567,11 @@ public class MainController implements StatusSink {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description()));
+        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity()));
         addPending(ref.path(), CREATE);
         spec.get().firstEntry().ifPresent(fe -> {
             DiaryEntry entry = DiaryEntry.builder(start)
+                    .activity(spec.get().activity())
                     .title(fe.title())
                     .startLat(fe.lat())
                     .startLon(fe.lon())
@@ -810,7 +801,8 @@ public class MainController implements StatusSink {
         DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(Lengths.formatDistance(e.distance()));
         altField.setText(Lengths.formatAltitude(e.altitudeMeters()));
-        showActivity(e.activity());
+        // A new day starts with the trip's default activity (todo 57); it's stored on first save.
+        ActivityChoices.show(activityCombo, entryExists ? e.activity() : trip.activity());
         titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
         links = e.links();
         updateLinksButton();
@@ -954,21 +946,11 @@ public class MainController implements StatusSink {
         talesLabel.setText("🐉 Tales · " + words + " word" + (words == 1 ? "" : "s") + " updated " + ago);
     }
 
-    /** "Not set", the curated activities, and {@code activity} itself if it isn't one of them (kept, never dropped). */
-    private void showActivity(String activity) {
-        List<String> items = new ArrayList<>();
-        items.add(NO_ACTIVITY);
-        for (Activity a : Activity.values()) items.add(a.key());
-        if (activity != null && Activity.of(activity).isEmpty()) items.add(activity);
-        activityCombo.getItems().setAll(items);
-        activityCombo.setValue(activity == null ? NO_ACTIVITY : activity);
-    }
-
     private void snapshotBaseline() {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineTitle = titleField.getText();
-        baselineActivity = activityCombo.getValue();
+        baselineActivity = ActivityChoices.value(activityCombo);
         baselineLinks = links;
         baselineStartLat = startLat;
         baselineStartLon = startLon;
@@ -981,7 +963,7 @@ public class MainController implements StatusSink {
         return !sameLength(distanceField.getText(), baselineDistance, Lengths::parseDistanceKm)
                 || !sameLength(altField.getText(), baselineAlt, Lengths::parseAltitudeM)
                 || !Objects.equals(titleField.getText(), baselineTitle)
-                || !Objects.equals(activityCombo.getValue(), baselineActivity)
+                || !Objects.equals(ActivityChoices.value(activityCombo), baselineActivity)
                 || !Objects.equals(links, baselineLinks)
                 || !Objects.equals(startLat, baselineStartLat)
                 || !Objects.equals(startLon, baselineStartLon)
@@ -1204,7 +1186,7 @@ public class MainController implements StatusSink {
             return;
         }
         DiaryEntry entry = DiaryEntry.builder(date)
-                .activity(activityCombo.getValue())
+                .activity(ActivityChoices.value(activityCombo))
                 .distance(distance)
                 .altitudeMeters(alt)
                 .title(titleField.getText())

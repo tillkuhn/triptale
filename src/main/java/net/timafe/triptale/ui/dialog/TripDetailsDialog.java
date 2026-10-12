@@ -4,6 +4,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -15,6 +16,7 @@ import javafx.scene.layout.HBox;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.ui.ActivityChoices;
 import net.timafe.triptale.ui.Dialogs;
 
 import java.time.LocalDate;
@@ -113,6 +115,8 @@ public final class TripDetailsDialog {
                 endField, lastEntryButton);
         dateBox.setAlignment(Pos.CENTER_LEFT);
 
+        ComboBox<String> activityCombo = ActivityChoices.newComboBox(trip.activity());
+
         GridPane grid = Dialogs.formGrid();
         int row = 0;
         grid.add(new Label("Name:"), 0, row);
@@ -123,6 +127,8 @@ public final class TripDetailsDialog {
         grid.add(new Label(Integer.toString(trip.year())), 1, row++);
         grid.add(new Label("Start / end date:"), 0, row);
         grid.add(dateBox, 1, row++);
+        grid.add(new Label("Default activity:"), 0, row);
+        grid.add(activityCombo, 1, row++);
         grid.add(new Label("Entries:"), 0, row);
         grid.add(new Label(Integer.toString(stats.entries())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
@@ -151,23 +157,26 @@ public final class TripDetailsDialog {
                             || endInvalid
                             || (nameField.getText().trim().equals(trip.name())
                                     && descArea.getText().equals(originalDesc)
-                                    && Objects.equals(newEnd, trip.endDate())));
+                                    && Objects.equals(newEnd, trip.endDate())
+                                    && Objects.equals(ActivityChoices.value(activityCombo), trip.activity())));
         };
         refreshOk.run();
         nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
         endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
+        activityCombo.valueProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
         String newName = nameField.getText().trim();
         String newDesc = descArea.getText();
         LocalDate newEnd = endField.getValue();
+        String newActivity = ActivityChoices.value(activityCombo);
         if (newName.equals(trip.name()) && newDesc.equals(originalDesc)
-                && Objects.equals(newEnd, trip.endDate())) {
+                && Objects.equals(newEnd, trip.endDate()) && Objects.equals(newActivity, trip.activity())) {
             return Optional.empty();
         }
         // Slug and year are immutable — a rename never moves the directory.
-        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc));
+        return Optional.of(new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity));
     }
 }

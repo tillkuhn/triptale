@@ -3,14 +3,28 @@ package net.timafe.triptale.domain;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * {@code activity} is the default for new entries (todo 57), copied into an entry when it's first
+ * created rather than inherited at read time; normalized by {@link Activity#normalize}, null = none.
+ */
 public record Trip(
         int year,
         String slug,
         String name,
         LocalDate startDate,
         LocalDate endDate,
-        String description
+        String description,
+        String activity
 ) {
+    public Trip {
+        activity = Activity.normalize(activity);
+    }
+
+    /** A trip without a default activity. */
+    public Trip(int year, String slug, String name, LocalDate startDate, LocalDate endDate, String description) {
+        this(year, slug, name, startDate, endDate, description, null);
+    }
+
     public TripRef ref() {
         return new TripRef(year, slug);
     }

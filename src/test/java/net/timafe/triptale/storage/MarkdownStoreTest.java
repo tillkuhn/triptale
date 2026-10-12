@@ -102,6 +102,19 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void tripActivityIsFirstKeyRoundTripsAndIsOmittedWhenNotSet() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", "Bikepacking"));
+
+        Path readme = store.dataDir().resolve("2025").resolve("alps-2025").resolve("README.md");
+        assertTrue(Files.readString(readme).startsWith("---\nactivity: bikepacking\nstart_date:"), Files.readString(readme));
+        assertEquals("bikepacking", store.loadTrip(ALPS_2025).orElseThrow().activity());
+
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        assertFalse(Files.readString(readme).contains("activity"));
+        assertNull(store.loadTrip(ALPS_2025).orElseThrow().activity());
+    }
+
+    @Test
     void saveTripOmitsEndDateKeyWhenNull() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
 
