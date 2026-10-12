@@ -11,29 +11,47 @@ number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-w
 
 ## 53 Entry fact header in exports
 
-Show an entry's key facts as a header row under the entry title: 1–n centered items side by
-side, each with a big emoji, one or two short lines, and a separator between items. The
-title loses its date and day suffix.
+Show an entry's key facts as a "ticket stub" strip under the entry title: 1–n centered items
+side by side, each with a big emoji, a bold value line and an optional small muted line. Our
+own look, echoing the app's scalloped tale paper and teal accent: thin teal perforated edge,
+dotted teal "perforation" separators between items, the day number as a small round teal
+stamp badge. The title loses its ISO date, weekday and day suffix.
 
 ```
-## Title without dates, day
-
-   📅                    🚴                      🧭
-Wednesday (Day 3)     123 km, 100 m climbed    Frankfurt (if name available)
-July 23rd 2026        800 m altitude           50° 6' N, 8° 40' E
-
-Here goes the tale …
+╭┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╮
+┆ (3) Mittwoch      ┊ 🚴 123 km         ┊ 🧭 50°06′N 8°40′E  ┆
+┆     23. Juli 2026 ┊    100 m bergauf  ┊    Startpunkt       ┆
+╰┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╯
 ```
 
-- Depends on todo 30. i18n supplies the localized values (weekday, long date, day label,
-  distance/altitude, coordinates); this todo only does the layout in the templates.
-- Items without data drop out (no coordinates → no 🧭 item), so the row has 1–n items.
-- Entry activity (todo 55): `ExportTexts.activity()` gives e.g. "🚴 Radeln"; a trip-level
-  activity in the trip header (todo 57) could come with it.
-- Layout only works in the HTML outputs (`html-shell.html`, WordPress preview). Decide what
-  plain Markdown gets: a single line (`📅 Wed, 23 July · 🚴 123 km · 📍 Frankfurt`) or a table.
-- Place name comes from todo 51 (reverse geocoding) once it exists; until then coordinates only.
-- Coordinates in degrees/minutes/seconds (DMS) with N/S/E/W, unlike the decimal frontmatter.
+Decisions (grilled 2026-10-12):
+
+- **Everything localized** via `ExportTexts` (trip language): weekday, long date, day label,
+  numbers, "climbed", "Starting point"/"Destination". No ISO date anywhere readers see.
+- **Heading** = title only. Empty or `DiaryEntry.DEFAULT_ROUTE` title → localized day label
+  (`## Tag 3`); without a trip start date → weekday and date (`## Mittwoch, 23. Juli`).
+- **Date item**: day stamp badge, weekday, long date.
+- **Activity item** (todo 55): the activity emoji leads distance and climb (`altitude` is the
+  climb: `123 km` / `100 m bergauf`). Activity without values (🏖 relaxing, 🏰 sightseeing) →
+  emoji + localized activity name. Values without activity → neutral 📏. Zero values hidden
+  (train days), as the WordPress export already does.
+- **🧭 item**: start-focused, coordinates in the app's existing format (`Coordinates.toDdm`),
+  not DMS. Start only (the common case) → coordinates + muted "Starting point". Start and
+  stop → second line `→ <stop>`. Stop only → `→ <stop>` + "Destination". No coordinates → no
+  item. Place names from todo 51 later take line 1 (`Frankfurt → Darmstadt`).
+- Items without data drop out; no item at all → no strip.
+- **Markdown** stays clean Markdown: one italic byline under the heading, replacing today's
+  `Distance:` / `Altitude:` / `Start:` lines:
+  `*Mittwoch, 23. Juli 2026 · Tag 3 · 🚴 123 km, 100 m bergauf · 🧭 50°06′N 8°40′E → 49°52′N 8°39′E*`
+- **HTML export** renders from that Markdown: in HTML mode emit a marker instead of the
+  byline and swap in the strip after rendering (like the impressions marker); styles in
+  `html-shell.html`.
+- **WordPress**: native `wp:columns` block, one column per item (centered emoji / bold value /
+  small muted line); editable, stacks on phones, blog theme look. The preview shell gets a
+  rough stand-in style. No real draft until the preview is approved.
+- The trip default activity (todo 57) is an author-side helper only and never exported.
+- Verify: unit tests for byline, HTML strip and columns markup (all item combinations, `en`
+  and `de`); then the user reviews a live HTML export and WordPress preview and we refine.
 
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
