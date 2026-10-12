@@ -11,6 +11,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.Coordinates;
@@ -21,7 +24,8 @@ import java.util.function.Function;
 /**
  * Edits an entry's start and end point: manual lat/lon entry per row, or parsed from a pasted
  * URL/GPX/GeoJSON into either row. A start alone is a complete answer (a day spent in one
- * place); an end requires a start.
+ * place); an end requires a start. Each row can be opened in Google Maps (🔗) or cleared (🗑),
+ * like the rows in {@link LinksDialog}; with both points set, the route start → end can be opened too.
  */
 public final class CoordinatesDialog {
 
@@ -33,12 +37,13 @@ public final class CoordinatesDialog {
 
     private static final int COORD_COLUMNS = 11;
 
-    /** One Start/End row: its two fields and the DDM preview label. */
-    private record Row(TextField lat, TextField lon, Label ddm) {
+    /** One Start/End row: its two fields, the DDM preview label and the open-in-maps button. */
+    private record Row(TextField lat, TextField lon, Label ddm, Button open) {
 
         static Row of(Double initialLat, Double initialLon) {
             Row row = new Row(new TextField(initialLat == null ? "" : initialLat.toString()),
-                    new TextField(initialLon == null ? "" : initialLon.toString()), new Label("—"));
+                    new TextField(initialLon == null ? "" : initialLon.toString()), new Label("—"),
+                    new Button("🔗"));
             row.lat.setPrefColumnCount(COORD_COLUMNS);
             row.lon.setPrefColumnCount(COORD_COLUMNS);
             return row;
@@ -67,6 +72,12 @@ public final class CoordinatesDialog {
         }
     }
 
+    private final BrowserLauncher browser;
+
+    public CoordinatesDialog(BrowserLauncher browser) {
+        this.browser = browser;
+    }
+
     /** Empty when the user cancelled or dismissed the dialog. */
     public Optional<Result> showAndWait(Double startLat, Double startLon, Double stopLat, Double stopLon) {
         Dialog<ButtonType> dlg = new Dialog<>();
@@ -90,11 +101,20 @@ public final class CoordinatesDialog {
         addRow(grid, 1, "📍", "Start", start);
         addRow(grid, 2, "🏁", "End", stop);
         grid.add(new Label("Parse from:"), 0, 3);
-        grid.add(parseArea, 1, 3, 4, 1);
+        grid.add(parseArea, 1, 3, 5, 1);
         Button parseStart = new Button("Parse → Start");
         Button parseStop = new Button("Parse → End");
-        grid.add(new HBox(8, parseStart, parseStop), 1, 4, 4, 1);
-        grid.add(hintLabel, 1, 5, 4, 1);
+        Button route = new Button("🔗 Route");
+        route.setTooltip(new Tooltip("Show route start → end on Google Maps"));
+        route.setOnAction(e -> {
+            if (start.value() != null && stop.value() != null) {
+                browser.open(Coordinates.googleMapsUrl(start.value(), stop.value()));
+            }
+        });
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        grid.add(new HBox(8, parseStart, parseStop, spacer, route), 1, 4, 5, 1);
+        grid.add(hintLabel, 1, 5, 5, 1);
 
         ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().setContent(grid);
@@ -109,11 +129,13 @@ public final class CoordinatesDialog {
             for (Row row : new Row[] {start, stop}) {
                 Coordinates.LatLon value = row.value();
                 row.ddm.setText(value == null ? "—" : Coordinates.toDdm(value.lat(), value.lon()));
+                row.open.setDisable(value == null);
                 if (value == null && !row.isEmpty()) {
                     problem = (row == start ? "Start" : "End") + " needs a valid latitude and longitude.";
                 }
             }
             if (problem == null && start.isEmpty() && !stop.isEmpty()) problem = "Set a start point first.";
+            route.setDisable(start.value() == null || stop.value() == null);
             hintLabel.setText(problem == null ? "" : problem);
             saveButtonNode.setDisable(problem != null);
         };
@@ -131,15 +153,16 @@ public final class CoordinatesDialog {
         return Optional.of(new Result(start.value(), stop.value()));
     }
 
-    private static void addRow(GridPane grid, int rowIndex, String icon, String name, Row row) {
-        Button clear = new Button("✕");
+    private void addRow(GridPane grid, int rowIndex, String icon, String name, Row row) {
+        row.open.setTooltip(new Tooltip("Show " + name.toLowerCase() + " point on Google Maps"));
+        row.open.setOnAction(e -> {
+            Coordinates.LatLon value = row.value();
+            if (value != null) browser.open(Coordinates.googleMapsUrl(value, null));
+        });
+        Button clear = new Button("🗑");
         clear.setTooltip(new Tooltip("Clear " + name.toLowerCase() + " point"));
         clear.setOnAction(e -> row.clear());
-        grid.add(new Label(icon + " " + name + ":"), 0, rowIndex);
-        grid.add(row.lat, 1, rowIndex);
-        grid.add(row.lon, 2, rowIndex);
-        grid.add(row.ddm, 3, rowIndex);
-        grid.add(clear, 4, rowIndex);
+        grid.addRow(rowIndex, new Label(icon + " " + name + ":"), row.lat, row.lon, row.ddm, row.open, clear);
     }
 
     private static void wireParse(Button button, TextArea source, Label hintLabel, Runnable refresh,

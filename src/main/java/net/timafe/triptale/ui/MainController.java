@@ -120,7 +120,6 @@ public class MainController implements StatusSink {
     @FXML private TextField titleField;
     @FXML private Button linksButton;
     @FXML private Button coordinatesButton;
-    @FXML private Button openCoordinatesButton;
     @FXML private Button impressionsButton;
     @FXML private TextArea talesArea;
     @FXML private VBox taleEmptyOverlay;
@@ -875,19 +874,6 @@ public class MainController implements StatusSink {
                     ? "Start " + Coordinates.toDdm(startLat, startLon) + " · End " + Coordinates.toDdm(stopLat, stopLon)
                     : "Set start and end point"));
         }
-        if (openCoordinatesButton != null) {
-            openCoordinatesButton.setDisable(!set);
-            openCoordinatesButton.setTooltip(new Tooltip(stopSet
-                    ? "Show route start → end on Google Maps"
-                    : "Show start point on Google Maps"));
-        }
-    }
-
-    @FXML
-    public void onOpenCoordinates() {
-        if (startLat == null || startLon == null) return;
-        Coordinates.LatLon stop = stopLat == null || stopLon == null ? null : new Coordinates.LatLon(stopLat, stopLon);
-        browser.open(Coordinates.googleMapsUrl(new Coordinates.LatLon(startLat, startLon), stop));
     }
 
     /** Map Assistant on the current day (entry form button). */
@@ -1710,7 +1696,7 @@ public class MainController implements StatusSink {
     @FXML
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
-                new CoordinatesDialog().showAndWait(startLat, startLon, stopLat, stopLon);
+                new CoordinatesDialog(browser).showAndWait(startLat, startLon, stopLat, stopLon);
         if (result.isEmpty()) return;
         Coordinates.LatLon start = result.get().start();
         Coordinates.LatLon stop = result.get().stop();

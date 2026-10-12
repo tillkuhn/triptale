@@ -165,9 +165,6 @@
                         <Button fx:id="coordinatesButton" text="🗺 Uncharted" onAction="#onCoordinates">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
-                        <Button fx:id="openCoordinatesButton" text="🔗" onAction="#onOpenCoordinates" disable="true">
-                            <tooltip><Tooltip text="Show start point on Google Maps"/></tooltip>
-                        </Button>
                         <Button text="🗺 Map Assistant" onAction="#onMapAssistant">
                             <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
                         </Button>
