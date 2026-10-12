@@ -20,6 +20,9 @@ import java.util.Map;
  */
 final class EntryRangePicker {
 
+    /** Caps each combo; otherwise it grows to fit its longest label. Longer labels are ellipsized. */
+    private static final double COMBO_WIDTH = 300;
+
     private final ComboBox<LocalDate> fromCombo = new ComboBox<>();
     private final ComboBox<LocalDate> toCombo = new ComboBox<>();
     private final HBox node;
@@ -37,6 +40,8 @@ final class EntryRangePicker {
             c.getItems().setAll(dates);
             c.setConverter(converter);
             c.setDisable(dates.isEmpty());
+            c.setPrefWidth(COMBO_WIDTH);
+            c.setMaxWidth(COMBO_WIDTH);
         }
         if (!dates.isEmpty()) {
             fromCombo.setValue(from != null && dates.contains(from) ? from : dates.getFirst());

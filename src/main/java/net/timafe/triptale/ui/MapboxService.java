@@ -32,7 +32,8 @@ public final class MapboxService {
     private static final String STYLE = "mapbox/streets-v12";
     private static final String START_PIN = "pin-s+f74e4e";
     private static final String STOP_PIN = "pin-s+3bb2d0";
-    private static final String PHOTO_PIN = "pin-s-camera+f5c242";
+    /** Maki's "attraction" icon is the camera glyph; there is no "camera" symbol (HTTP 422). */
+    private static final String PHOTO_PIN = "pin-s-attraction+f5c242";
     /** Zoom used for a single point, where "auto" bbox-fitting would zoom in to building level. */
     private static final int SINGLE_POINT_ZOOM = 12;
 
@@ -67,6 +68,11 @@ public final class MapboxService {
         return "https://api.mapbox.com/styles/v1/" + STYLE + "/static/" + pins
                 + "/" + viewport + "/" + width + "x" + height + "@2x"
                 + "?access_token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+    }
+
+    /** {@code text} (e.g. an image loader error quoting the URL) with the access token masked. */
+    public static String redact(String text) {
+        return text == null ? null : text.replaceAll("access_token=[^&\\s]+", "access_token=***");
     }
 
     private static String pin(String pin, LatLon p) {

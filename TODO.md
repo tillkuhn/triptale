@@ -6,7 +6,7 @@
 
 Rename Trip Map / Cartographer to Map Assistant, add a From/To range (current day from the
 entry form, whole trip from My Trips), render on demand (🖥 On Screen), optional photo pins from
-backpack faves. See [docs/54_map_assistant.md](docs/54_map_assistant.md).
+backpack images. See [docs/54_map_assistant.md](docs/54_map_assistant.md).
 
 ## 53 Entry fact header in exports
 

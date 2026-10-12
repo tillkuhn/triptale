@@ -12,7 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
@@ -33,7 +32,7 @@ import java.util.List;
 
 /**
  * Map Assistant (todo 54): plots a range of a trip's entries on a Mapbox static map — a start
- * pin per day, the last day's stop pin and, optionally, the locations of the backpack faves.
+ * pin per day, the last day's stop pin and, optionally, the locations of the backpack images.
  * Nothing is requested from Mapbox until "On Screen" is clicked; changing the range afterwards
  * marks the shown map as stale. See {@link MapboxService} for the token setup.
  */
@@ -88,7 +87,7 @@ public final class MapAssistantDialog {
         private final Trip trip;
         private final List<DiaryEntry> entries;
         private final EntryRangePicker range;
-        private final CheckBox photosCheck = new CheckBox("📷 Include photo locations");
+        private final CheckBox photosCheck = new CheckBox("📷 Photo Locations from Backpack");
         private final ImageView imageView = new ImageView();
         private final Label message = new Label();
         private final Dialog<Void> dlg = new Dialog<>();
@@ -104,12 +103,7 @@ public final class MapAssistantDialog {
 
         void show() {
             dlg.setTitle("🗺 Map Assistant");
-            if (!photoLocations.available()) {
-                photosCheck.setText("📷 Include photo locations (no fave pattern defined)");
-                photosCheck.setDisable(true);
-            } else {
-                photosCheck.setTooltip(new Tooltip("Locations of the backpack faves of these days, from their EXIF GPS"));
-            }
+            photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
 
             imageView.setFitWidth(WIDTH);
             imageView.setFitHeight(HEIGHT);
@@ -122,13 +116,18 @@ public final class MapAssistantDialog {
             mapArea.setPrefSize(WIDTH, HEIGHT);
             mapArea.setMinSize(WIDTH, HEIGHT);
 
-            HBox controls = new HBox(16, range.node(), photosCheck);
-            controls.setAlignment(Pos.CENTER_LEFT);
-            dlg.getDialogPane().setContent(new VBox(8, controls, mapArea));
+            dlg.getDialogPane().setContent(new VBox(8, range.node(), mapArea));
 
-            ButtonType onScreenType = new ButtonType(ON_SCREEN, ButtonBar.ButtonData.OTHER);
+            // APPLY sits next to Close; OTHER would float it to the middle of the button bar.
+            ButtonType onScreenType = new ButtonType(ON_SCREEN, ButtonBar.ButtonData.APPLY);
             dlg.getDialogPane().getButtonTypes().setAll(onScreenType, ButtonType.CLOSE);
             onScreenButton = (Button) dlg.getDialogPane().lookupButton(onScreenType);
+            // The only option shares the button bar, on the left. Added after setAll(): the pane
+            // rebuilds the bar's buttons whenever the button types change.
+            ButtonBar buttonBar = (ButtonBar) dlg.getDialogPane().lookup(".button-bar");
+            ButtonBar.setButtonData(photosCheck, ButtonBar.ButtonData.LEFT);
+            ButtonBar.setButtonUniformSize(photosCheck, false);
+            buttonBar.getButtons().add(photosCheck);
             // consume() keeps the dialog open: putting a map on screen is repeatable, not a result.
             onScreenButton.addEventFilter(ActionEvent.ACTION, ev -> {
                 onScreen();
@@ -174,7 +173,7 @@ public final class MapAssistantDialog {
             LocalDate to = range.to();
             Task<List<LatLon>> task = new Task<>() {
                 @Override protected List<LatLon> call() {
-                    return photoLocations.locations(photoLocations.faves(trip, from, to));
+                    return photoLocations.locations(photoLocations.images(trip, from, to));
                 }
             };
             task.setOnSucceeded(e -> {
@@ -199,11 +198,11 @@ public final class MapAssistantDialog {
             if (points.isEmpty()) {
                 imageView.setImage(null);
                 String hint = "";
-                if (!withPhotos && photoLocations.available()) {
-                    int faves = photoLocations.faves(trip, range.from(), range.to()).size();
-                    if (faves > 0) {
-                        hint = "\nTick 📷 Include photo locations to look for the locations of its "
-                                + faves + (faves == 1 ? " fave." : " faves.");
+                if (!withPhotos) {
+                    int images = photoLocations.images(trip, range.from(), range.to()).size();
+                    if (images > 0) {
+                        hint = "\nTick 📷 Photo Locations from Backpack to look for the locations of its "
+                                + images + (images == 1 ? " backpack image." : " backpack images.");
                     }
                 }
                 setMessage("Nothing to put on screen for this range." + hint);
@@ -218,7 +217,7 @@ public final class MapAssistantDialog {
                 if (isError && imageView.getImage() == image) {
                     Throwable ex = image.getException();
                     setMessage("Failed to load map"
-                            + (ex != null && ex.getMessage() != null ? ": " + ex.getMessage() : "."));
+                            + (ex != null && ex.getMessage() != null ? ": " + MapboxService.redact(ex.getMessage()) : "."));
                 }
             });
             image.progressProperty().addListener((obs, oldV, newV) -> {

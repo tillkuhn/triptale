@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PhotoLocationsTest {
 
@@ -47,7 +45,6 @@ class PhotoLocationsTest {
         settingsStore = new SettingsStore(props);
         AppSettings settings = new AppSettings();
         settings.setDataDir(tempDir.resolve("data").toString());
-        settings.setImpressionsFaveFilter("*_fave.jpg");
         settingsStore.save(settings);
         attachmentsDir = new AttachmentsDir(new MarkdownStore(settingsStore));
         ImpressionsService impressions = new ImpressionsService(
@@ -74,28 +71,27 @@ class PhotoLocationsTest {
     }
 
     @Test
-    void favesOfTheRangeInDateOrder() throws IOException {
-        Path day2 = pack(DAY.plusDays(1), "with_exif.jpg", "b_fave.jpg");
-        Path day1 = pack(DAY, "with_exif.jpg", "a_fave.jpg");
-        pack(DAY, "with_exif.jpg", "other.jpg");
-        pack(DAY.plusDays(2), "with_exif.jpg", "outside_fave.jpg");
+    void backpackImagesOfTheRangeInDateOrder() throws IOException {
+        Path day2 = pack(DAY.plusDays(1), "with_exif.jpg", "b.jpg");
+        Path day1 = pack(DAY, "with_exif.jpg", "a.jpg");
+        pack(DAY, "with_exif.jpg", "notes.txt");
+        pack(DAY.plusDays(2), "with_exif.jpg", "outside.jpg");
 
-        assertEquals(List.of(day1, day2), photoLocations.faves(trip, DAY, DAY.plusDays(1)));
+        assertEquals(List.of(day1, day2), photoLocations.images(trip, DAY, DAY.plusDays(1)));
     }
 
     @Test
-    void noFaveFilterMeansNoPhotoLocations() throws IOException {
-        update(s -> s.setImpressionsFaveFilter(""));
-        pack(DAY, "with_exif.jpg", "a_fave.jpg");
+    void faveFilterDoesNotApply() throws IOException {
+        update(s -> s.setImpressionsFaveFilter("*_fave.jpg"));
+        Path image = pack(DAY, "with_exif.jpg", "a_mini.jpg");
 
-        assertFalse(photoLocations.available());
-        assertTrue(photoLocations.faves(trip, DAY, DAY).isEmpty());
+        assertEquals(List.of(image), photoLocations.images(trip, DAY, DAY));
     }
 
     @Test
     void locationsAreRoundedAndSkipImagesWithoutGps() throws IOException {
-        Path withGps = pack(DAY, "with_exif.jpg", "a_fave.jpg");
-        Path withoutGps = pack(DAY, "no_exif.jpg", "b_fave.jpg");
+        Path withGps = pack(DAY, "with_exif.jpg", "a.jpg");
+        Path withoutGps = pack(DAY, "no_exif.jpg", "b.jpg");
 
         List<LatLon> locations = photoLocations.locations(List.of(withGps, withoutGps));
 

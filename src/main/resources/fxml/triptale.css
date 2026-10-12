@@ -106,6 +106,19 @@
     -fx-fill: #1e2a2a;
 }
 
+/* ── Export preview text (tale colours, no scallops) ── */
+.text-area.export-text {
+    -fx-background-color: #f5f0e1;
+    -fx-border-color: #c9bfa3;
+    -fx-text-fill: #0a1428;
+}
+.text-area.export-text .content {
+    -fx-background-color: #f5f0e1;
+}
+.text-area.export-text:focused {
+    -fx-border-color: #4ec9b0;
+}
+
 /* ── Tale text (no entry yet — muted, matches app background) ── */
 .text-area.tale-text-empty,
 .text-area.tale-text-empty .content {

@@ -1,7 +1,6 @@
 package net.timafe.triptale.map;
 
 import net.timafe.triptale.domain.Trip;
-import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ExifInfo;
@@ -16,9 +15,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Photo locations for Map Assistant (todo 54): the EXIF GPS of the backpack faves of a range of
- * days. Only the backpack, never the photo library, and only faves — without a fave filter there
- * are no photo locations at all.
+ * Photo locations for Map Assistant (todo 54): the EXIF GPS of the backpack images of a range of
+ * days. Only the backpack, never the photo library; the backpack is already a curated pick, so
+ * the fave filter doesn't apply (backpack copies like {@code _mini.jpg} rarely match it anyway).
  *
  * <p>No JavaFX imports (package boundary rule).
  */
@@ -32,18 +31,12 @@ public class PhotoLocations {
         this.exifReader = exifReader;
     }
 
-    /** True if a fave filter is configured, i.e. there can be photo locations at all. */
-    public boolean available() {
-        return !impressions.faveFilter().isEmpty();
-    }
-
-    /** The backpack faves of the days {@code from}..{@code to}, in date order. Cheap: no EXIF reads. */
-    public List<Path> faves(Trip trip, LocalDate from, LocalDate to) {
-        ImageFilter faves = impressions.faveFilter();
-        if (faves.isEmpty() || trip == null || from == null || to == null) return List.of();
+    /** The backpack images of the days {@code from}..{@code to}, in date order. Cheap: no EXIF reads. */
+    public List<Path> images(Trip trip, LocalDate from, LocalDate to) {
+        if (trip == null || from == null || to == null) return List.of();
         List<Path> result = new ArrayList<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            result.addAll(faves.apply(impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d)));
+            result.addAll(impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
         }
         return result;
     }

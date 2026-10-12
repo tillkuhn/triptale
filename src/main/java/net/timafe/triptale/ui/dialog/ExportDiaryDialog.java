@@ -103,6 +103,7 @@ public final class ExportDiaryDialog {
         ta.setEditable(false);
         ta.setWrapText(false);
         ta.setStyle("-fx-font-family: 'monospace';");
+        ta.getStyleClass().add("export-text");
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
 
