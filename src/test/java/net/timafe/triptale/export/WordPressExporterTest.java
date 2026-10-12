@@ -84,6 +84,22 @@ class WordPressExporterTest {
     }
 
     @Test
+    void privateSectionsAreDropped() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).title("A → B")
+                .tales("Public text.\n\n## Internal\n\nKomoot said 87 km.").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY2).title("B → C")
+                .tales("## Private\n\nall secret").build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.contains("<p>Public text.</p>"), out);
+        assertFalse(out.contains("Internal"), out);
+        assertFalse(out.contains("Komoot"), out);
+        assertFalse(out.contains("secret"), out);
+        assertTrue(out.contains("Day 2: B → C"), out);
+    }
+
+    @Test
     void statsParagraphHasDistanceAndClimb() {
         store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).distance(42.0).altitudeMeters(650.4)
                 .startLat(1.0).startLon(2.0).build());

@@ -78,17 +78,17 @@ no deletes), see [ADR-0002](docs/adr/0002-attachment-sync.md).
 
 [Details](docs/33c_attachment_delete_propagation.md)
 
-## 48 Internal paragraphs: hide private notes from exports
+## 48 Private sections: hide internal notes from exports
 
-A tale heading `internal` or `private` (any level, case-insensitive, exact word, optional
-trailing `:`) marks a private block, e.g. `## internal` followed by original distance/route
-notes. On export, drop the heading and everything up to the next heading of the **same or
-higher** level (subheadings stay inside the block), or to the end of the tale.
+A heading starting with `internal`, `private`, `intern` or `privat` (any level,
+case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
+of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
+both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay unchanged.
 
-- Strip centrally in `DiaryExporter` before `Markdown.shiftHeadings`, so every export format
-  is covered; the editor and the word count stay unchanged.
-- Ignore `#` lines inside fenced code blocks; a tale that ends up blank is treated as empty.
-- Unit tests: nesting, end of tale, `Private:` vs. `Private beach`, code fences.
+- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
+- New "🔒 Add Private Section" menu item appends `## Internal` + placeholder at the end.
+
+[Details](docs/48_private_sections.md)
 
 ## 47 Impressions / exporter refactor: images as attachments
 

@@ -1,9 +1,12 @@
 package net.timafe.triptale.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class MarkdownTest {
 
@@ -109,5 +112,61 @@ class MarkdownTest {
     void shiftHeadingsHandlesNullAndEmpty() {
         assertNull(Markdown.shiftHeadings(null, 1));
         assertEquals("", Markdown.shiftHeadings("", 1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"## Internal", "### privat:", "## Private: costs", "## Internal notes",
+            "## Intern: Strecke", "## Private beach at Kalamaki", "# INTERNAL", "###### private",
+            "##   Internal  "})
+    void stripPrivateRecognizesMarkerHeadings(String heading) {
+        assertEquals("Public.", Markdown.stripPrivate("Public.\n\n" + heading + "\nsecret"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"## Private-Strand", "## Internals", "## Privatstrand", "## Private!",
+            "## Notes: internal", "Internal", "#Internal", "####### Internal"})
+    void stripPrivateIgnoresNonMarkerLines(String line) {
+        String body = "Public.\n\n" + line + "\nstill public";
+        assertSame(body, Markdown.stripPrivate(body));
+    }
+
+    @Test
+    void stripPrivateEndsBlockAtSameOrHigherLevelHeading() {
+        String body = "Intro\n\n## Internal\nsecret\n\n## Evening\npublic\n\n### Private\nx\n# Next day\ny";
+        assertEquals("Intro\n\n## Evening\npublic\n\n# Next day\ny", Markdown.stripPrivate(body));
+    }
+
+    @Test
+    void stripPrivateKeepsSubheadingsInsideBlock() {
+        String body = "Intro\n\n## Internal\nsecret\n### Distances\n87 km\n#### Detail\nmore";
+        assertEquals("Intro", Markdown.stripPrivate(body));
+    }
+
+    @Test
+    void stripPrivateIgnoresHeadingsInCodeFences() {
+        String fenced = "Intro\n```\n## Internal\n```\nafter";
+        assertSame(fenced, Markdown.stripPrivate(fenced));
+        // A fenced "# heading" inside a private block does not end it
+        String inside = "Intro\n\n## Private\n~~~\n# Not a heading\n~~~\nsecret";
+        assertEquals("Intro", Markdown.stripPrivate(inside));
+    }
+
+    @Test
+    void stripPrivateOfEntirelyPrivateTaleIsBlank() {
+        assertEquals("", Markdown.stripPrivate("## Internal\n\nall secret\n"));
+    }
+
+    @Test
+    void stripPrivateHandlesNullAndEmpty() {
+        assertNull(Markdown.stripPrivate(null));
+        assertEquals("", Markdown.stripPrivate(""));
+    }
+
+    @Test
+    void privateHeadingOffsetFindsFirstMarkerOutsideFences() {
+        String body = "Intro\n```\n## Internal\n```\n## Private: x\nsecret";
+        assertEquals(body.indexOf("## Private"), Markdown.privateHeadingOffset(body));
+        assertEquals(-1, Markdown.privateHeadingOffset("Intro\n## Internals"));
+        assertEquals(-1, Markdown.privateHeadingOffset(null));
     }
 }

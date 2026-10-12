@@ -63,7 +63,7 @@
                                 <MenuItem fx:id="addAttachmentsMenuItem" text="🎒 Add to Backpack…" onAction="#onAddAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
-                                <MenuItem fx:id="copyMenuItem" text="📋 Copy Tale" onAction="#onCopyTale" disable="true"/>
+                                <MenuItem fx:id="addPrivateMenuItem" text="🔒 Add Private Section" onAction="#onAddPrivateSection" disable="true"/>
                                 <MenuItem fx:id="exportTaleMenuItem" text="⇧ Export Tale…" onAction="#onExportTale" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="deleteEntryMenuItem" text="🗑 Delete Tale Entry…" onAction="#onDeleteTaleEntry" disable="true"/>

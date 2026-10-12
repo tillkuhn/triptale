@@ -159,7 +159,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem impressionsMenuItem;
     @FXML private MenuItem exportTaleMenuItem;
     @FXML private MenuItem saveMenuItem;
-    @FXML private MenuItem copyMenuItem;
+    @FXML private MenuItem addPrivateMenuItem;
     @FXML private MenuItem deleteEntryMenuItem;
     @FXML private Menu appMenu;
     @FXML private Menu radioMenu;
@@ -171,6 +171,8 @@ public class MainController implements StatusSink {
     private static final String DELETE = "Delete";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
 
+    /** Placeholder body of a section added by 🔒 Add Private Section (todo 48). */
+    private static final String PRIVATE_PLACEHOLDER = "Private notes, not exported.";
     private static final String TALE_FONT_SIZE_STATE_KEY = "taleFontSizePx";
     private static final int TALE_FONT_SIZE_DEFAULT_PX = 13;
     private static final int TALE_FONT_SIZE_MIN_PX = 10;
@@ -821,6 +823,9 @@ public class MainController implements StatusSink {
         distanceField.setDisable(showEmpty);
         altField.setDisable(showEmpty);
         if (linksButton != null) linksButton.setDisable(showEmpty);
+        if (addPrivateMenuItem != null) {
+            addPrivateMenuItem.setDisable(showEmpty || tripCombo.getValue() == null || datePicker.getValue() == null);
+        }
         if (showEmpty) {
             if (!talesArea.getStyleClass().contains("tale-text-empty")) {
                 talesArea.getStyleClass().add("tale-text-empty");
@@ -1015,16 +1020,11 @@ public class MainController implements StatusSink {
             saveMenuItem.setDisable(!saveEnabled);
             saveMenuItem.setText(saveLabel);
         }
-        boolean hasContent = talesArea != null && !talesArea.getText().isBlank()
-                && tripCombo.getValue() != null && datePicker.getValue() != null;
         // Export Tale saves pending edits first, so a savable new entry counts as exportable.
         boolean exportable = tripCombo.getValue() != null && datePicker.getValue() != null
                 && (entryExists || saveEnabled);
         if (exportTaleButton != null) exportTaleButton.setDisable(!exportable);
         if (exportTaleMenuItem != null) exportTaleMenuItem.setDisable(!exportable);
-        if (copyMenuItem != null) {
-            copyMenuItem.setDisable(!hasContent);
-        }
         updateCommitButton();
     }
 
@@ -1242,15 +1242,22 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onCopyTale() {
-        String title = titleField.getText();
-        String tales = talesArea.getText();
-        StringBuilder sb = new StringBuilder();
-        if (title != null && !title.isBlank() && !title.equals(DiaryEntry.DEFAULT_TITLE)) {
-            sb.append(title).append("\n\n");
+    public void onAddPrivateSection() {
+        if (talesArea.isDisabled()) return;
+        String text = talesArea.getText();
+        int existing = Markdown.privateHeadingOffset(text);
+        talesArea.requestFocus();
+        if (existing >= 0) {
+            talesArea.positionCaret(existing);
+            status("Tale already has a private section");
+            return;
         }
-        if (tales != null) sb.append(tales);
-        Clipboards.putString(sb.toString());
+        // replaceText (not setText) keeps the insert undoable
+        int end = text.stripTrailing().length();
+        String insert = (end == 0 ? "" : "\n\n") + "## Internal\n\n" + PRIVATE_PLACEHOLDER;
+        talesArea.replaceText(end, text.length(), insert);
+        int start = end + insert.length() - PRIVATE_PLACEHOLDER.length();
+        talesArea.selectRange(start, start + PRIVATE_PLACEHOLDER.length());
     }
 
     @FXML

@@ -93,9 +93,11 @@ public class WordPressExporter {
             String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
             blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
             stats(e, texts).ifPresent(blocks::add);
-            if (e.tales() != null && !e.tales().isBlank()) {
+            // Private sections (todo 48) never leave the app
+            String tales = e.tales() == null ? "" : Markdown.stripPrivate(e.tales()).strip();
+            if (!tales.isEmpty()) {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
-                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(e.tales().strip(), 1))));
+                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(tales, 1))));
             }
             links(e, texts).ifPresent(blocks::add);
             if (!baseUrl.isEmpty()) {

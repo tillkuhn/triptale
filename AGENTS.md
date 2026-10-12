@@ -181,6 +181,12 @@ export time). Templates reference words as `{{t.<key>}}`, resolved from
 `export_en.properties` would fall back to the JVM default locale. Entry filenames stay English.
 A future per-trip override will be the `lang` key in the trip `README.md`.
 
+**Private sections (todo 48):** a tale heading starting with `internal`/`private`/`intern`/`privat`
+(case-insensitive, then end/whitespace/`:`) hides itself and everything up to the next heading of the
+same or higher level. Every exporter must run tales through `Markdown.stripPrivate` before
+`shiftHeadings` — `WordPressExporter` has its own tale path, so a new exporter needs it too. See
+`docs/48_private_sections.md`.
+
 `DiaryEntry.DEFAULT_ROUTE` (`"From → To"`) is a UI placeholder. Export headings suppress it; `routeSegment()` returns `""` for this value.
 
 ---

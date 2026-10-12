@@ -339,6 +339,24 @@ class DiaryExporterTest {
 
 
     @Test
+    void exportDropsPrivateSections() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .title("A → B").tales("Public text.\n\n## Internal\n\nKomoot said 87 km.").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2))
+                .title("B → C").tales("## Private: costs\n\n45 EUR cash").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("Public text."), out);
+        assertFalse(out.contains("Internal"), out);
+        assertFalse(out.contains("Komoot"), out);
+        assertFalse(out.contains("45 EUR"), out);
+        assertTrue(out.contains("Day 2: B → C"), "an all-private tale still exports its day heading");
+    }
+
+    @Test
     void exportShiftsTaleSubheadingsSoTheyDontCollideWithEntryHeading() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
