@@ -157,10 +157,14 @@
                             <tooltip><Tooltip text="Track, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
-                    <Label text="Distance (km):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                    <Label text="Altitude (m):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                    <Label text="Distance:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                        <tooltip><Tooltip text="In km; append m to enter metres, e.g. 850 m"/></tooltip>
+                    </TextField>
+                    <Label text="Altitude:" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3">
+                        <tooltip><Tooltip text="In m; append km to enter kilometres, e.g. 1.2 km"/></tooltip>
+                    </TextField>
                     <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
                         <Button fx:id="coordinatesButton" text="🗺 Uncharted" onAction="#onCoordinates">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>

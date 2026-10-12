@@ -68,6 +68,7 @@ import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
 import net.timafe.triptale.util.Greetings;
 import net.timafe.triptale.util.Greetings.Greeting;
+import net.timafe.triptale.util.Lengths;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
@@ -99,6 +100,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 /**
  * Controller for the single main window: trip/date navigation, the entry form and its dirty
@@ -411,6 +413,8 @@ public class MainController implements StatusSink {
         });
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
+        normalizeOnFocusLost(distanceField, Lengths::parseDistanceKm, Lengths::formatDistance);
+        normalizeOnFocusLost(altField, Lengths::parseAltitudeM, Lengths::formatAltitude);
         titleField.textProperty().addListener((o, a, b) -> updateDirty());
         talesArea.textProperty().addListener((o, a, b) -> updateDirty());
         if (ready) {
@@ -662,9 +666,9 @@ public class MainController implements StatusSink {
         startLon = p.lon();
         stopLat = p.stopLat();
         stopLon = p.stopLon();
-        distanceField.setText(String.valueOf(p.distanceKm()));
+        distanceField.setText(Lengths.formatDistance(p.distanceKm()));
         if (p.altitudeGainM() != null) {
-            altField.setText(String.valueOf(p.altitudeGainM()));
+            altField.setText(Lengths.formatAltitude(p.altitudeGainM()));
         }
         updateCoordinatesButton();
         updateDirty();
@@ -788,8 +792,8 @@ public class MainController implements StatusSink {
         updateViewSourceMenuItem(entryExists);
         updateDeleteEntryMenuItem(entryExists);
         DiaryEntry e = store.loadEntry(trip.ref(), date);
-        distanceField.setText(e.distance() == null ? "" : e.distance().toString());
-        altField.setText(e.altitudeMeters() == null ? "" : e.altitudeMeters().toString());
+        distanceField.setText(Lengths.formatDistance(e.distance()));
+        altField.setText(Lengths.formatAltitude(e.altitudeMeters()));
         titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
         links = e.links();
         updateLinksButton();
@@ -945,8 +949,8 @@ public class MainController implements StatusSink {
     }
 
     private boolean isDirty() {
-        return !Objects.equals(distanceField.getText(), baselineDistance)
-                || !Objects.equals(altField.getText(), baselineAlt)
+        return !sameLength(distanceField.getText(), baselineDistance, Lengths::parseDistanceKm)
+                || !sameLength(altField.getText(), baselineAlt, Lengths::parseAltitudeM)
                 || !Objects.equals(titleField.getText(), baselineTitle)
                 || !Objects.equals(links, baselineLinks)
                 || !Objects.equals(startLat, baselineStartLat)
@@ -1160,10 +1164,14 @@ public class MainController implements StatusSink {
      * already have advanced to a new selection (see {@link SaveTarget} and {@link #confirmNavigateAway}).
      */
     private void doSave(TripRef trip, LocalDate date) {
-        Double distance = parseDouble(distanceField.getText(), "distance");
-        Double alt = parseDouble(altField.getText(), "altitude");
-        if (distance == null && !distanceField.getText().isBlank()) return;
-        if (alt == null && !altField.getText().isBlank()) return;
+        Double distance;
+        Double alt;
+        try {
+            distance = parseLength(distanceField.getText(), "distance", Lengths::parseDistanceKm);
+            alt = parseLength(altField.getText(), "altitude", Lengths::parseAltitudeM);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
         DiaryEntry entry = DiaryEntry.builder(date)
                 .distance(distance)
                 .altitudeMeters(alt)
@@ -1185,6 +1193,8 @@ public class MainController implements StatusSink {
         updateEmptyState();
         addPending(trip.path() + "/" + date, wasNew ? CREATE : UPDATE);
         talesArea.setText(Markdown.demoteH1(talesArea.getText()));
+        distanceField.setText(Lengths.formatDistance(distance));
+        altField.setText(Lengths.formatAltitude(alt));
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.path() + "/" + date);
@@ -1756,11 +1766,37 @@ public class MainController implements StatusSink {
         });
     }
 
-    private Double parseDouble(String s, String field) {
-        if (s == null || s.isBlank()) return null;
-        Double value = UiText.parseDecimal(s);
-        if (value == null) error("Invalid " + field + ": " + s);
-        return value;
+    /** Parses a length field, showing an error alert (and rethrowing) if the text is invalid. */
+    private Double parseLength(String s, String field, Function<String, Double> parser) {
+        try {
+            return parser.apply(s);
+        } catch (IllegalArgumentException e) {
+            error("Invalid " + field + ": " + s.strip() + " (use a number, optionally followed by km or m)");
+            throw e;
+        }
+    }
+
+    /** Same value if both parse (so "101.64" equals "101.64 km"), otherwise same text. */
+    private static boolean sameLength(String a, String b, Function<String, Double> parser) {
+        try {
+            return Objects.equals(parser.apply(a), parser.apply(b));
+        } catch (IllegalArgumentException e) {
+            return Objects.equals(a, b);
+        }
+    }
+
+    /** Rewrites valid input as "value unit" when the field loses focus; invalid text is left for save-time validation. */
+    private static void normalizeOnFocusLost(TextField field, Function<String, Double> parser,
+                                             Function<Double, String> formatter) {
+        field.focusedProperty().addListener((o, was, focused) -> {
+            if (focused) return;
+            try {
+                String formatted = formatter.apply(parser.apply(field.getText()));
+                if (!formatted.equals(field.getText())) field.setText(formatted);
+            } catch (IllegalArgumentException ignored) {
+                // keep what the user typed; doSave reports it
+            }
+        });
     }
 
     @Override

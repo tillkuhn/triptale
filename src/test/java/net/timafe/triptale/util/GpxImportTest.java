@@ -90,6 +90,32 @@ class GpxImportTest {
     }
 
     @Test
+    void roundsAltitudeGainToWholeMetres() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Fractional climb</name>
+                    <trkseg>
+                      <trkpt lat="50.0000" lon="7.0000">
+                        <ele>100.0</ele>
+                        <time>2025-04-18T09:00:00Z</time>
+                      </trkpt>
+                      <trkpt lat="50.0010" lon="7.0000">
+                        <ele>112.6</ele>
+                        <time>2025-04-18T09:01:00Z</time>
+                      </trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals(13.0, result.get().altitudeGainM());
+    }
+
+    @Test
     void altitudeGainIsNullWhenAnyPointLacksElevation() throws IOException {
         Path file = writeGpx("""
                 <gpx>

@@ -18,6 +18,7 @@ import java.util.Optional;
  * Reads a track's name, first/last track point coordinates, first point's date, and whole-track
  * distance/altitude-gain totals out of a GPX file, for prefilling {@code NewTripDialog} and
  * the Tale Entry import. Only {@code trk/trkseg/trkpt} is read (no {@code rte}).
+ * Totals are rounded like {@link Lengths}: distance to 2 decimals, altitude gain to whole metres.
  */
 public final class GpxImport {
 
@@ -60,7 +61,7 @@ public final class GpxImport {
 
             double distanceKm = round2(totalDistanceKm(points));
             Double altitudeGainM = totalAltitudeGainM(points);
-            if (altitudeGainM != null) altitudeGainM = round2(altitudeGainM);
+            if (altitudeGainM != null) altitudeGainM = (double) Math.round(altitudeGainM);
 
             return Optional.of(new Parsed(name.getTextContent().trim(), date,
                     first.lat(), first.lon(), last.lat(), last.lon(), distanceKm, altitudeGainM));
