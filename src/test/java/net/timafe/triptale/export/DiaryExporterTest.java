@@ -156,7 +156,7 @@ class DiaryExporterTest {
     }
 
     @Test
-    void linksListedAtEndOfEntryInKindOrder() {
+    void linksListedAtEndOfEntryAlphabetically() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Long day.")
@@ -171,10 +171,10 @@ class DiaryExporterTest {
         assertTrue(out.contains("""
                 Long day.
 
-                * 🗺 Track: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))
                 * 🍲 Eat at: [Muc Food](https://mucfood.com/)
                 * 🛏 Sleep at: [nice.hotel.com](https://nice.hotel.com/)
-                * 🔗 Tour: supertour"""), out);
+                * 🔗 Tour: supertour
+                * 🗺 Track tour: [en.wikipedia.org](https://en.wikipedia.org/wiki/Bonn_(city))"""), out);
     }
 
     @Test

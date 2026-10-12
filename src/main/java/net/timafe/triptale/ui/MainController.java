@@ -1096,11 +1096,12 @@ public class MainController implements StatusSink {
         if (prevDayMenuItem != null) prevDayMenuItem.setDisable(prevDisabled);
         if (firstDayMenuItem != null) firstDayMenuItem.setDisable(prevDisabled);
         if (todayButton != null || todayMenuItem != null) {
-            LocalDate target = LocalDate.now();
-            if (trip != null && trip.startDate() != null && target.isBefore(trip.startDate())) {
-                target = trip.startDate();
-            }
-            boolean todayDisabled = date == null || date.equals(target);
+            // Outside the trip, Today would only snap to its first/last day, which those buttons already do
+            LocalDate today = LocalDate.now();
+            boolean outsideTrip = trip != null
+                    && ((trip.startDate() != null && today.isBefore(trip.startDate()))
+                        || (trip.endDate() != null && today.isAfter(trip.endDate())));
+            boolean todayDisabled = date == null || date.equals(today) || outsideTrip;
             if (todayButton != null) todayButton.setDisable(todayDisabled);
             if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }
@@ -1697,9 +1698,10 @@ public class MainController implements StatusSink {
             linksButton.setText("🕸 No Weblinks yet");
             return;
         }
+        // En spaces: a plain space next to a color emoji renders almost zero-width in JavaFX
         StringBuilder label = new StringBuilder("🕸 Weblinks:");
-        links.keySet().forEach(verb -> label.append(' ').append(LinkKind.emojiFor(verb)));
-        if (links.values().stream().anyMatch(l -> !l.valid())) label.append(" ⚠");
+        links.keySet().forEach(verb -> label.append('\u2002').append(LinkKind.emojiFor(verb)));
+        if (links.values().stream().anyMatch(l -> !l.valid())) label.append("\u2002⚠");
         linksButton.setText(label.toString());
     }
 

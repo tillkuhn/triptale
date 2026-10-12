@@ -67,14 +67,14 @@ class LinkTest {
     }
 
     @Test
-    void entryOrdersKnownKindsFirstThenUnknownAlphabetically() {
+    void entryOrdersLinksAlphabeticallyByVerb() {
         DiaryEntry e = DiaryEntry.builder(LocalDate.of(2026, 7, 24)).links(Map.of(
                 "zoo", Link.parse("https://z.com"),
                 "sleep", Link.parse("https://s.com"),
                 "tour", Link.parse("https://t.com"),
                 "track", Link.parse("https://tr.com"),
                 "eat", Link.parse("https://e.com"))).build();
-        assertEquals(List.of("track", "eat", "sleep", "tour", "zoo"), List.copyOf(e.links().keySet()));
+        assertEquals(List.of("eat", "sleep", "tour", "track", "zoo"), List.copyOf(e.links().keySet()));
     }
 
     @Test

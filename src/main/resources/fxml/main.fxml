@@ -154,7 +154,7 @@
                             <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
                         </Button>
                         <Button fx:id="linksButton" text="🕸 No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
-                            <tooltip><Tooltip text="Track, dive, eat, drink and sleep weblinks for this day"/></tooltip>
+                            <tooltip><Tooltip text="Track, explore, visit, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
                     <Label text="Distance:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>

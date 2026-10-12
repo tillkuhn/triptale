@@ -5,17 +5,19 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * The curated verbs an entry link can have, stored as {@code url_<key>} in frontmatter. Declaration
- * order is display/export order (roughly the course of a day). Keys outside this list are still
- * preserved on load/save, see {@link #ORDER} and {@link #emojiFor}.
+ * The curated verbs an entry link can have, stored as {@code url_<key>} in frontmatter. Declared
+ * alphabetically by key, matching display/export order ({@link #ORDER}). Keys outside this list are
+ * still preserved on load/save, see {@link #emojiFor}.
  */
 public enum LinkKind {
-    TRACK("track", "🗺", "Track"),
     DIVE("dive", "🐠", "Dive at"),
-    EAT("eat", "🍲", "Eat at"),
     DRINK("drink", "🍺", "Drink at"),
-    SLEEP("sleep", "🛏", "Sleep at"),
+    EAT("eat", "🍲", "Eat at"),
+    EXPLORE("explore", "🧭", "Explore"),
     LISTEN("listen", "🎵", "Listen to"),
+    SLEEP("sleep", "🛏", "Sleep at"),
+    TRACK("track", "🗺", "Track tour"),
+    VISIT("visit", "🏛", "Visit"),
     WATCH("watch", "🎬", "Watch");
 
     /** Frontmatter key prefix, e.g. {@code url_track}. */
@@ -23,10 +25,8 @@ public enum LinkKind {
     /** Emoji for verbs that are not in this enum (hand-edited or from a newer app version). */
     public static final String UNKNOWN_EMOJI = "🔗";
 
-    /** Known kinds in declaration order first, then unknown verbs alphabetically. */
-    public static final Comparator<String> ORDER = Comparator
-            .comparingInt((String key) -> of(key).map(Enum::ordinal).orElse(Integer.MAX_VALUE))
-            .thenComparing(Comparator.naturalOrder());
+    /** Alphabetical by verb, known and unknown kinds alike. */
+    public static final Comparator<String> ORDER = Comparator.naturalOrder();
 
     private final String key;
     private final String emoji;

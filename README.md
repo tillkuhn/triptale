@@ -23,7 +23,7 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 
 ## Features ✨
 
-- **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, links (track, dive, eat, drink, sleep) and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
+- **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, links (track, explore, visit, dive, eat, drink, sleep, …) and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
 - **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …).
 - **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a Mapbox static map (needs a Mapbox token in Settings).
 - **Impressions & Faves** — show that day's photos straight from your picture folders, see [below](#impressions--faves-).
@@ -80,7 +80,7 @@ The trip's `README.md` works the same way: `start_date`, `end_date` and `type: T
 
 - Frontmatter keys are always written in alphabetical order, so saving never produces a noisy diff.
 - Fields you didn't fill in are left out; `0` is a real measurement, a missing key means "not recorded".
-- `url_<verb>` keys hold a few links per day, at most one each for `track`, `dive`, `eat`, `drink` and `sleep`: either a bare URL or `"[Name](url)"`. You edit them in the 🕸️ Weblinks Manager, and the exports list them at the end of each day (e.g. `🛏️ Sleep at: Hotel Lepontina`). `url_*` keys with any other verb are kept as they are.
+- `url_<verb>` keys hold a few links per day, at most one each for `track`, `explore`, `visit`, `dive`, `eat`, `drink`, `sleep`, `listen` and `watch`: either a bare URL or `"[Name](url)"`. You edit them in the 🕸️ Weblinks Manager, and the exports list them at the end of each day (e.g. `🛏️ Sleep at: Hotel Lepontina`). `url_*` keys with any other verb are kept as they are.
 - `type: Tale` / `type: Trip`, the `belongs_to` wiki link and the `trip.md`/`tale.md`/`type.md` definitions make the data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault, so you can browse and edit your trips there too.
 - A trip's slug (its directory name) is derived from its name once and never changes, even if you rename the trip later.
 

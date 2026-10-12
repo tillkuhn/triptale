@@ -32,18 +32,22 @@ before more consumers depend on the current spelling.
 4. **Validation lives in `MainController`, not storage.** Rejects `endDate.isBefore(startDate)`
    or `endDate.isBefore(maxEntryDate)` (max of `store.listEntryDates(trip.ref())`), evaluated at
    save time in the Trip Details dialog. Equality is allowed (`>=`, not strict `>`) — required
-   for the End Trip button to work at all on a single-day trip or when ending exactly on the
+   for the Set to last entry button to work at all on a single-day trip or when ending exactly on the
    last logged entry. `storage`/`domain` stay free of domain validation, per existing
    `StorageException`-only convention.
 
 5. **End date is directly editable**, not button-only. A `DatePicker` for end date sits next to
    the start-date display in the Trip Details dialog (same line, per the todo — there's room).
    It supports manual prolongation to any valid future date, and clearing it back to empty
-   un-ends the trip (`endDate` → `null`, `end_date` key dropped on next save). The **End Trip**
-   button is a convenience that fills this picker from the last entry's date
-   (`listEntryDates(trip.ref())` max, existence-only — not content-aware). The button is
-   disabled when the trip has zero entries. No confirmation dialog on click — the picker value
-   is staged behind the dialog's existing OK/Cancel, same as name/description edits.
+   un-ends the trip (`endDate` → `null`, `end_date` key dropped on next save). The picker's
+   editor text is committed as you type (blank → `null`, complete ISO date → that date) — a
+   plain `DatePicker` only commits on Enter/focus loss, which left OK disabled after clearing
+   the field; the empty field shows an "open-ended" placeholder. The **Set to last entry**
+   button (originally "End Trip") is a convenience that fills this picker from the last entry's
+   date (`listEntryDates(trip.ref())` max, existence-only — not content-aware). The button is
+   disabled when the trip has zero entries or the end date already is that date. No
+   confirmation dialog on click — the picker value is staged behind the dialog's existing
+   OK/Cancel, same as name/description edits.
 
 6. **Forward navigation mirrors the existing backward navigation exactly.**
    - Add `fx:id="nextDayButton"` to the existing `▶` button in `main.fxml` (currently has none).
@@ -77,6 +81,6 @@ before more consumers depend on the current spelling.
 
 - No migration support inside the app for the `startDate` → `start_date` rename — external
   `sed` pass only, once, on the real data dir.
-- No content-aware "last entry" detection for the End Trip button — existence via
+- No content-aware "last entry" detection for the Set to last entry button — existence via
   `listEntryDates` is sufficient, matching how "does this day have an entry" is determined
   everywhere else in the codebase.

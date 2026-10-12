@@ -9,6 +9,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import net.timafe.triptale.domain.DiaryEntry;
@@ -93,12 +94,23 @@ public final class TripDetailsDialog {
 
         DatePicker endField = new DatePicker(trip.endDate());
         endField.setConverter(Dialogs.isoDateConverter());
-        Button endTripButton = new Button("End Trip");
-        endTripButton.setDisable(maxEntryDate == null);
-        endTripButton.setOnAction(ev -> endField.setValue(maxEntryDate));
+        endField.setPromptText("open-ended");
+        // DatePicker only commits typed text on Enter/focus loss; commit blank (reopen) and
+        // complete dates right away so OK reflects the field as shown
+        endField.getEditor().textProperty().addListener((o, a, text) -> {
+            LocalDate typed = endField.getConverter().fromString(text);
+            if ((typed != null || text.isBlank()) && !Objects.equals(typed, endField.getValue())) {
+                endField.setValue(typed);
+            }
+        });
+        Button lastEntryButton = new Button("Set to last entry");
+        if (maxEntryDate != null) {
+            lastEntryButton.setTooltip(new Tooltip("Set the end date to " + maxEntryDate));
+        }
+        lastEntryButton.setOnAction(ev -> endField.setValue(maxEntryDate));
         HBox dateBox = new HBox(10,
                 new Label(trip.startDate() == null ? "—" : trip.startDate().toString()),
-                endField, endTripButton);
+                endField, lastEntryButton);
         dateBox.setAlignment(Pos.CENTER_LEFT);
 
         GridPane grid = Dialogs.formGrid();
@@ -130,6 +142,7 @@ public final class TripDetailsDialog {
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
         Runnable refreshOk = () -> {
             LocalDate newEnd = endField.getValue();
+            lastEntryButton.setDisable(maxEntryDate == null || maxEntryDate.equals(newEnd));
             boolean endInvalid = newEnd != null
                     && ((trip.startDate() != null && newEnd.isBefore(trip.startDate()))
                             || (maxEntryDate != null && newEnd.isBefore(maxEntryDate)));
