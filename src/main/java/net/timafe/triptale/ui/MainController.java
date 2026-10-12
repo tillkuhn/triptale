@@ -862,7 +862,7 @@ public class MainController implements StatusSink {
         int attached = noDay ? 0 : impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).size();
         impressionsButton.setText(photoLib == 0 && attached == 0
                 ? "📷 No Impressions yet"
-                : "📷 Impressions " + photoLib + " 🗂 / " + attached + " 🎒 ›");
+                : "📷 Impressions: 🗂 " + photoLib + "  🎒 " + attached);
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }

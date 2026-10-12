@@ -81,9 +81,11 @@ date-ordered list (so every part of the range keeps some coverage), and the head
 
 ## Code
 
-- `map.MapPoints` (new package `map`, no JavaFX): collects the points for a trip and range —
-  starts, last stop, and (optionally) backpack photo locations via `ImpressionsService` +
-  `ExifReader` — and thins photos to a budget. Unit-tested.
+- `map.MapPoints` (new package `map`, no JavaFX): the points of a range — starts, last stop,
+  and optional photo locations — and thins photos to a budget. Unit-tested.
+- `map.PhotoLocations`: the backpack images of a date range (`images`, no EXIF reads) and their
+  EXIF GPS locations (`ImpressionsService` + `ExifReader`). Created in `MainController`, passed
+  to the dialog.
 - `ui.MapboxService`: takes the three point lists; adds the camera pin type; `redact()` masks the token in load errors shown in the dialog.
 - `ui.dialog.TripMapDialog` → `ui.dialog.MapAssistantDialog`: owns the range combos,
   checkbox, placeholder and On Screen button; loads entries itself (like `ExportDiaryDialog`).

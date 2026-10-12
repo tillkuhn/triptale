@@ -2,12 +2,6 @@
 
 ## Next Todo: 55
 
-## 54 Map Assistant
-
-Rename Trip Map / Cartographer to Map Assistant, add a From/To range (current day from the
-entry form, whole trip from My Trips), render on demand (🖥 On Screen), optional photo pins from
-backpack images. See [docs/54_map_assistant.md](docs/54_map_assistant.md).
-
 ## 53 Entry fact header in exports
 
 Show an entry's key facts as a header row under the entry title: 1–n centered items side by
@@ -248,6 +242,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 54 Map Assistant
+
+see docs/done/54_map_assistant.md
 
 ## DONE 30 Localization and i18n for Trip Language
 

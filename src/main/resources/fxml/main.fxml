@@ -150,10 +150,10 @@
                     <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
-                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="weblinks-button">
-                            <tooltip><Tooltip text="Show images for this day: photo library 🗂 / backpack 🎒"/></tooltip>
+                        <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="fixed-width-button">
+                            <tooltip><Tooltip text="Show images for this day: 🗂 photo library, 🎒 backpack"/></tooltip>
                         </Button>
-                        <Button fx:id="linksButton" text="🕸 No Weblinks yet" onAction="#onLinks" styleClass="weblinks-button">
+                        <Button fx:id="linksButton" text="🕸 No Weblinks yet" onAction="#onLinks" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Track, explore, visit, dive, eat, drink and sleep weblinks for this day"/></tooltip>
                         </Button>
                     </HBox>
@@ -165,8 +165,8 @@
                     <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3">
                         <tooltip><Tooltip text="In m; append km to enter kilometres, e.g. 1.2 km"/></tooltip>
                     </TextField>
-                    <HBox spacing="4" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <Button fx:id="coordinatesButton" text="🗺 Uncharted" onAction="#onCoordinates">
+                    <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
+                        <Button fx:id="coordinatesButton" text="📍 Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
                         <Button text="🗺 Map Assistant" onAction="#onMapAssistant">

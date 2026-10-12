@@ -511,9 +511,9 @@
     -fx-max-width: 40px;
 }
 /* ── Weblinks & Impressions buttons ──────────────── */
-/* Fixed width: room for the label plus six verb emojis, so neither jumps as its label changes.
-   Shared by the Impressions button so the two line up. */
-.weblinks-button {
+/* Fixed width so Impressions, Weblinks and Coordinates don't jump as their labels change, and
+   line up in two columns. Sized for the Weblinks label plus six verb emojis. */
+.fixed-width-button {
     -fx-alignment: center-left;
     -fx-min-width: 225px;
     -fx-pref-width: 225px;
