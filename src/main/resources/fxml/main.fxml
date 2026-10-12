@@ -147,7 +147,7 @@
             <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
             <VBox styleClass="card" spacing="6">
                 <GridPane hgap="12" vgap="8">
-                    <Label fx:id="titleLabel" text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label fx:id="titleLabel" text="Title:" minWidth="80" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                     <TextField fx:id="titleField" prefWidth="380" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4"/>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="5">
                         <Button fx:id="impressionsButton" text="📷 Impressions" onAction="#onShowImpressions" disable="true" styleClass="fixed-width-button">
@@ -158,19 +158,25 @@
                         </Button>
                     </HBox>
                     <Label text="Distance:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="distanceField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <TextField fx:id="distanceField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="1">
                         <tooltip><Tooltip text="In km; append m to enter metres, e.g. 850 m"/></tooltip>
                     </TextField>
-                    <Label text="Altitude:" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                    <TextField fx:id="altField" prefWidth="120" GridPane.rowIndex="1" GridPane.columnIndex="3">
+                    <Label text="Altitude:" minWidth="-Infinity" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="3">
                         <tooltip><Tooltip text="In m; append km to enter kilometres, e.g. 1.2 km"/></tooltip>
                     </TextField>
+                    <ComboBox fx:id="activityCombo" prefWidth="190" maxWidth="Infinity" GridPane.rowIndex="1" GridPane.columnIndex="4">
+                        <tooltip><Tooltip text="Main activity of the day"/></tooltip>
+                    </ComboBox>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
                         <Button fx:id="coordinatesButton" text="📍 Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
-                        <Button text="🗺 Map Assistant" onAction="#onMapAssistant">
+                        <Button text="🗺 Map Assistant" onAction="#onMapAssistant" styleClass="half-width-button">
                             <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
+                        </Button>
+                        <Button fx:id="backpackButton" text="🎒 Backpack" onAction="#onAddAttachments" disable="true" styleClass="half-width-button">
+                            <tooltip><Tooltip text="Add files to this day's backpack"/></tooltip>
                         </Button>
                     </HBox>
                 </GridPane>

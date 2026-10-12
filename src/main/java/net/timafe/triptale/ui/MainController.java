@@ -38,6 +38,7 @@ import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
+import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
@@ -119,6 +120,7 @@ public class MainController implements StatusSink {
     @FXML private DatePicker datePicker;
     @FXML private TextField distanceField;
     @FXML private TextField altField;
+    @FXML private ComboBox<String> activityCombo;
     @FXML private TextField titleField;
     @FXML private Button linksButton;
     @FXML private Button coordinatesButton;
@@ -149,6 +151,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem pullAttachmentsMenuItem;
     @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
+    @FXML private Button backpackButton;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
@@ -188,9 +191,13 @@ public class MainController implements StatusSink {
     private static final String CONN_ICON_CONNECTED    = "📶";
     private static final String CONN_ICON_DISCONNECTED = "📵";
 
+    /** {@link #activityCombo} item for "not set" (stored as null); a null combo value is awkward to render. */
+    private static final String NO_ACTIVITY = "";
+
     private String baselineDistance = "";
     private String baselineAlt = "";
     private String baselineTitle = "";
+    private String baselineActivity = NO_ACTIVITY;
     private SequencedMap<String, Link> baselineLinks = new LinkedHashMap<>();
     private Double baselineStartLat;
     private Double baselineStartLon;
@@ -318,6 +325,13 @@ public class MainController implements StatusSink {
             @Override public String toString(Trip t) { return t == null ? "" : t.name(); }
             @Override public Trip fromString(String s) { return null; }
         });
+        activityCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(String a) {
+                return a == null || a.isEmpty() ? "😴 No activity yet" : Activity.emojiFor(a) + " " + Activity.labelFor(a);
+            }
+            @Override public String fromString(String s) { return null; }
+        });
+        showActivity(null);
         yearCombo.setConverter(new StringConverter<>() {
             @Override public String toString(Integer y) { return y == null ? "" : y.toString(); }
             @Override public Integer fromString(String s) { return null; }
@@ -413,6 +427,7 @@ public class MainController implements StatusSink {
         });
         distanceField.textProperty().addListener((o, a, b) -> updateDirty());
         altField.textProperty().addListener((o, a, b) -> updateDirty());
+        activityCombo.valueProperty().addListener((o, a, b) -> updateDirty());
         normalizeOnFocusLost(distanceField, Lengths::parseDistanceKm, Lengths::formatDistance);
         normalizeOnFocusLost(altField, Lengths::parseAltitudeM, Lengths::formatAltitude);
         titleField.textProperty().addListener((o, a, b) -> updateDirty());
@@ -782,6 +797,7 @@ public class MainController implements StatusSink {
         updateTourDay(trip, date);
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
+        if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
             updateDeleteEntryMenuItem(false);
@@ -794,6 +810,7 @@ public class MainController implements StatusSink {
         DiaryEntry e = store.loadEntry(trip.ref(), date);
         distanceField.setText(Lengths.formatDistance(e.distance()));
         altField.setText(Lengths.formatAltitude(e.altitudeMeters()));
+        showActivity(e.activity());
         titleField.setText(!entryExists ? "" : (e.title() == null ? DiaryEntry.DEFAULT_TITLE : e.title()));
         links = e.links();
         updateLinksButton();
@@ -825,6 +842,7 @@ public class MainController implements StatusSink {
         titleField.setDisable(showEmpty);
         distanceField.setDisable(showEmpty);
         altField.setDisable(showEmpty);
+        activityCombo.setDisable(showEmpty);
         if (linksButton != null) linksButton.setDisable(showEmpty);
         if (addPrivateMenuItem != null) {
             addPrivateMenuItem.setDisable(showEmpty || tripCombo.getValue() == null || datePicker.getValue() == null);
@@ -936,10 +954,21 @@ public class MainController implements StatusSink {
         talesLabel.setText("🐉 Tales · " + words + " word" + (words == 1 ? "" : "s") + " updated " + ago);
     }
 
+    /** "Not set", the curated activities, and {@code activity} itself if it isn't one of them (kept, never dropped). */
+    private void showActivity(String activity) {
+        List<String> items = new ArrayList<>();
+        items.add(NO_ACTIVITY);
+        for (Activity a : Activity.values()) items.add(a.key());
+        if (activity != null && Activity.of(activity).isEmpty()) items.add(activity);
+        activityCombo.getItems().setAll(items);
+        activityCombo.setValue(activity == null ? NO_ACTIVITY : activity);
+    }
+
     private void snapshotBaseline() {
         baselineDistance = distanceField.getText();
         baselineAlt = altField.getText();
         baselineTitle = titleField.getText();
+        baselineActivity = activityCombo.getValue();
         baselineLinks = links;
         baselineStartLat = startLat;
         baselineStartLon = startLon;
@@ -952,6 +981,7 @@ public class MainController implements StatusSink {
         return !sameLength(distanceField.getText(), baselineDistance, Lengths::parseDistanceKm)
                 || !sameLength(altField.getText(), baselineAlt, Lengths::parseAltitudeM)
                 || !Objects.equals(titleField.getText(), baselineTitle)
+                || !Objects.equals(activityCombo.getValue(), baselineActivity)
                 || !Objects.equals(links, baselineLinks)
                 || !Objects.equals(startLat, baselineStartLat)
                 || !Objects.equals(startLon, baselineStartLon)
@@ -1174,6 +1204,7 @@ public class MainController implements StatusSink {
             return;
         }
         DiaryEntry entry = DiaryEntry.builder(date)
+                .activity(activityCombo.getValue())
                 .distance(distance)
                 .altitudeMeters(alt)
                 .title(titleField.getText())

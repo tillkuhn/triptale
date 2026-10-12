@@ -325,6 +325,39 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void activityIsFirstKeyAndOmittedWhenNotSet() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
+
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).activity("cycling").altitudeMeters(500.0).build());
+        String raw = Files.readString(file);
+        assertTrue(raw.startsWith("---\nactivity: cycling\naltitude:") || raw.startsWith("---\nactivity: \"cycling\"\naltitude:"), raw);
+        assertEquals("cycling", store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4)).activity());
+
+        store.saveEntry(ALPS_2025, DiaryEntry.empty(LocalDate.of(2025, 7, 4)));
+        assertFalse(Files.readString(file).contains("activity"));
+    }
+
+    @Test
+    void loadEntryNormalizesKnownActivityAndKeepsUnknown() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        Path july4 = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));
+        Path july5 = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 5));
+        Path july6 = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 6));
+        Files.writeString(july4, "---\nactivity: \" Hiking \"\n---\n\n# Day\n");
+        Files.writeString(july5, "---\nactivity: Kayaking\n---\n\n# Day\n");
+        Files.writeString(july6, "---\nactivity: \"\"\n---\n\n# Day\n");
+
+        assertEquals("hiking", store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4)).activity());
+        assertNull(store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 6)).activity());
+        DiaryEntry kayaking = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 5));
+        assertEquals("Kayaking", kayaking.activity());
+
+        store.saveEntry(ALPS_2025, kayaking);
+        assertTrue(Files.readString(july5).contains("activity: Kayaking") || Files.readString(july5).contains("activity: \"Kayaking\""));
+    }
+
+    @Test
     void loadEntryKeepsUnknownAndInvalidLinksAcrossSave() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
         Path file = store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4));

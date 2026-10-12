@@ -200,6 +200,7 @@ public class MarkdownStore {
         ensureDir(entriesDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
+        if (entry.activity() != null) fm.put("activity", entry.activity());
         if (entry.altitudeMeters() != null) fm.put("altitude", entry.altitudeMeters());
         fm.put("belongs_to", "[[" + ref.path() + "/README]]");
         fm.put("date", entry.date().toString());
@@ -319,6 +320,7 @@ public class MarkdownStore {
         boolean hasTitle = title != null && !title.isBlank();
         String tales = hasTitle ? titleAndBody.remainder() : body;
         return DiaryEntry.builder(date)
+                .activity(asString(data.get("activity")))
                 .distance(asDouble(data.get("distance")))
                 .altitudeMeters(asDouble(data.get("altitude")))
                 .title(title)

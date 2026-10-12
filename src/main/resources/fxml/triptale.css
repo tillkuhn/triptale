@@ -515,9 +515,16 @@
    line up in two columns. Sized for the Weblinks label plus six verb emojis. */
 .fixed-width-button {
     -fx-alignment: center-left;
-    -fx-min-width: 225px;
-    -fx-pref-width: 225px;
-    -fx-max-width: 225px;
+    -fx-min-width: 266px;
+    -fx-pref-width: 266px;
+    -fx-max-width: 266px;
+}
+/* Two of these plus the 6px HBox spacing span one .fixed-width-button (Map Assistant, Backpack). */
+.half-width-button {
+    -fx-alignment: center-left;
+    -fx-min-width: 130px;
+    -fx-pref-width: 130px;
+    -fx-max-width: 130px;
 }
 
 /* Drawn, not the 🔊 emoji: colour emoji ignore -fx-text-fill and render grey. */
