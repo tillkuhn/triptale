@@ -192,7 +192,7 @@ same or higher level. Every exporter must run tales through `Markdown.stripPriva
 → "Day N", or the date without a trip start). Date, activity + distance/climb and start/stop
 point come from `export.EntryFacts`: an italic byline in Markdown, a "ticket stub" HTML block
 (styled in `html-shell.html`) in the HTML export, a `wp:columns` block on WordPress. Readers
-never see an ISO date. See `docs/53_entry_fact_strip.md`.
+never see an ISO date. See `docs/done/53_entry_fact_strip.md`.
 
 ---
 

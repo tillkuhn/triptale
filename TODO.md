@@ -9,15 +9,6 @@ The 🎒 Backpack button next to Map Assistant (added with todo 55) currently ju
 current day (e.g. show the day's backpack files, with adding as one option), and show the
 number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
 
-## 53 Entry fact header in exports
-
-Show an entry's key facts as a "ticket stub" strip under the title: day stamp + date, activity
-emoji with distance and climb, start (→ stop) point. Our own look (teal perforation, punched
-notches). Markdown gets a one-line byline, HTML the strip, WordPress a `wp:columns` block;
-headings are the title only, no ISO dates. PoC built 2026-10-12, awaiting the live review.
-
-[Details](docs/53_entry_fact_strip.md)
-
 ## 51 Reverse geocoding: place name and country from entry coordinates
 
 Placeholder. First build the lookup service (public Nominatim, see
@@ -234,6 +225,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 53 Entry fact header in exports
+
+see docs/done/53_entry_fact_strip.md
 
 ## DONE 57 Trip default activity
 
