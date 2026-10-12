@@ -10,6 +10,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.text.Font;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -101,8 +102,9 @@ public final class ExportDiaryDialog {
 
         TextArea ta = new TextArea();
         ta.setEditable(false);
-        ta.setWrapText(false);
-        ta.setStyle("-fx-font-family: 'monospace';");
+        ta.setWrapText(true);
+        // The generic 'monospace' is a hairline typewriter face on macOS; Menlo reads much darker
+        ta.setStyle("-fx-font-family: '" + (Font.getFamilies().contains("Menlo") ? "Menlo" : "monospace") + "';");
         ta.getStyleClass().add("export-text");
         ta.setPrefRowCount(28);
         ta.setPrefColumnCount(90);
