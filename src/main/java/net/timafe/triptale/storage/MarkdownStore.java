@@ -209,8 +209,10 @@ public class MarkdownStore {
         if (entry.distance() != null) fm.put("distance", entry.distance());
         if (entry.startLat() != null) fm.put("start_lat", entry.startLat());
         if (entry.startLon() != null) fm.put("start_lon", entry.startLon());
+        if (entry.startPlace() != null) fm.put("start_place", entry.startPlace());
         if (entry.stopLat() != null) fm.put("stop_lat", entry.stopLat());
         if (entry.stopLon() != null) fm.put("stop_lon", entry.stopLon());
+        if (entry.stopPlace() != null) fm.put("stop_place", entry.stopPlace());
         fm.put("type", ENTRY_TYPE);
         // url_* sorts after type; among themselves alphabetically by verb (not LinkKind order)
         entry.links().entrySet().stream()
@@ -331,6 +333,8 @@ public class MarkdownStore {
                 .startLon(asDouble(data.get("start_lon")))
                 .stopLat(asDouble(data.get("stop_lat")))
                 .stopLon(asDouble(data.get("stop_lon")))
+                .startPlace(asString(data.get("start_place")))
+                .stopPlace(asString(data.get("stop_place")))
                 .tales(tales)
                 .build();
     }

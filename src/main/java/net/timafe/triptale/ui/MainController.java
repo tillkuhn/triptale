@@ -35,6 +35,7 @@ import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.map.PhotoLocations;
+import net.timafe.triptale.map.PlaceLookup;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -199,6 +200,8 @@ public class MainController implements StatusSink {
     private Double baselineStartLon;
     private Double baselineStopLat;
     private Double baselineStopLon;
+    private String baselineStartPlace;
+    private String baselineStopPlace;
     private String baselineTales = "";
     /** The form's links; replaced (never mutated) by the Links dialog. */
     private SequencedMap<String, Link> links = baselineLinks;
@@ -206,6 +209,8 @@ public class MainController implements StatusSink {
     private Double startLon;
     private Double stopLat;
     private Double stopLon;
+    private String startPlace;
+    private String stopPlace;
     private boolean entryExists;
     /** True once the user has clicked through the "here be dragons" placeholder for a new entry. */
     private boolean taleUnlocked;
@@ -254,6 +259,8 @@ public class MainController implements StatusSink {
     private final ExportDiaryDialog exportDiaryDialog;
     private final ImageViewerDialog imageViewerDialog;
     private final AboutDialog aboutDialog;
+    /** One instance, so its 1 req/s limit spans all Coordinator dialogs (todo 51). */
+    private final PlaceLookup placeLookup;
     private final MapAssistantDialog mapAssistantDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
@@ -284,6 +291,7 @@ public class MainController implements StatusSink {
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
+        this.placeLookup = new PlaceLookup(version);
         this.mapAssistantDialog = new MapAssistantDialog(store, new MapboxService(settingsStore),
                 new PhotoLocations(impressions, exifReader), this);
     }
@@ -810,6 +818,8 @@ public class MainController implements StatusSink {
         startLon = e.startLon();
         stopLat = e.stopLat();
         stopLon = e.stopLon();
+        startPlace = e.startPlace();
+        stopPlace = e.stopPlace();
         updateCoordinatesButton();
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
@@ -877,7 +887,7 @@ public class MainController implements StatusSink {
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
-    /** "🧭 Coordinator: 📍 ✓  🏁 –" once either point is set; the coordinates go in the tooltip. */
+    /** "🧭 Coordinator: 📍 ✓  🏁 –" once either point is set; places and coordinates go in the tooltip. */
     private void updateCoordinatesButton() {
         boolean startSet = startLat != null && startLon != null;
         boolean stopSet = stopLat != null && stopLon != null;
@@ -885,11 +895,18 @@ public class MainController implements StatusSink {
             coordinatesButton.setText(startSet || stopSet
                     ? "🧭 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
                     : "🧭 Uncharted");
-            coordinatesButton.setTooltip(new Tooltip(startSet || stopSet
-                    ? "Start " + (startSet ? Coordinates.toDdm(startLat, startLon) : "not set")
-                            + " · End " + (stopSet ? Coordinates.toDdm(stopLat, stopLon) : "not set")
+            boolean anything = startSet || stopSet || startPlace != null || stopPlace != null;
+            coordinatesButton.setTooltip(new Tooltip(anything
+                    ? "Start " + pointSummary(startPlace, startSet ? Coordinates.toDdm(startLat, startLon) : null)
+                            + " · End " + pointSummary(stopPlace, stopSet ? Coordinates.toDdm(stopLat, stopLon) : null)
                     : "Set start and end point"));
         }
+    }
+
+    /** "Soest, DE (51°29′N 8°20′E)", "Soest, DE (no coordinates)", "51°29′N 8°20′E" or "not set". */
+    private static String pointSummary(String place, String ddm) {
+        if (place == null) return ddm != null ? ddm : "not set";
+        return place + " (" + (ddm != null ? ddm : "no coordinates") + ")";
     }
 
     /** Map Assistant on the current day (entry form button). */
@@ -958,6 +975,8 @@ public class MainController implements StatusSink {
         baselineStartLon = startLon;
         baselineStopLat = stopLat;
         baselineStopLon = stopLon;
+        baselineStartPlace = startPlace;
+        baselineStopPlace = stopPlace;
         baselineTales = talesArea.getText();
     }
 
@@ -971,6 +990,8 @@ public class MainController implements StatusSink {
                 || !Objects.equals(startLon, baselineStartLon)
                 || !Objects.equals(stopLat, baselineStopLat)
                 || !Objects.equals(stopLon, baselineStopLon)
+                || !Objects.equals(startPlace, baselineStartPlace)
+                || !Objects.equals(stopPlace, baselineStopPlace)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
@@ -1197,6 +1218,8 @@ public class MainController implements StatusSink {
                 .startLon(startLon)
                 .stopLat(stopLat)
                 .stopLon(stopLon)
+                .startPlace(startPlace)
+                .stopPlace(stopPlace)
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
@@ -1723,7 +1746,8 @@ public class MainController implements StatusSink {
     @FXML
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
-                new CoordinatesDialog(browser).showAndWait(startLat, startLon, stopLat, stopLon);
+                new CoordinatesDialog(browser, placeLookup, Boolean.TRUE.equals(connected))
+                        .showAndWait(startLat, startLon, stopLat, stopLon, startPlace, stopPlace);
         if (result.isEmpty()) return;
         Coordinates.LatLon start = result.get().start();
         Coordinates.LatLon stop = result.get().stop();
@@ -1731,6 +1755,8 @@ public class MainController implements StatusSink {
         startLon = start == null ? null : start.lon();
         stopLat = stop == null ? null : stop.lat();
         stopLon = stop == null ? null : stop.lon();
+        startPlace = result.get().startPlace();
+        stopPlace = result.get().stopPlace();
         updateCoordinatesButton();
         updateDirty();
     }

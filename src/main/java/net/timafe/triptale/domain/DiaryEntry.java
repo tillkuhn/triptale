@@ -10,7 +10,8 @@ import java.util.TreeMap;
 /**
  * One diary day. {@code links} is keyed by verb (see {@link LinkKind}) and ordered by
  * {@link LinkKind#ORDER}; never null. {@code activity} is normalized by {@link Activity#normalize},
- * null means not set.
+ * null means not set. {@code startPlace}/{@code stopPlace} are free text like {@code "Soest, DE"}
+ * (todo 51), trimmed, null when blank; they may be set without coordinates.
  */
 public record DiaryEntry(
         LocalDate date,
@@ -23,6 +24,8 @@ public record DiaryEntry(
         Double startLon,
         Double stopLat,
         Double stopLon,
+        String startPlace,
+        String stopPlace,
         String tales
 ) {
     public static final String DEFAULT_TITLE = "Untitled";
@@ -41,6 +44,8 @@ public record DiaryEntry(
         private Double startLon;
         private Double stopLat;
         private Double stopLon;
+        private String startPlace;
+        private String stopPlace;
         private String tales = "";
 
         private Builder(LocalDate date) { this.date = date; }
@@ -63,12 +68,18 @@ public record DiaryEntry(
         public Builder startLon(Double v)       { this.startLon = v; return this; }
         public Builder stopLat(Double v)        { this.stopLat = v; return this; }
         public Builder stopLon(Double v)        { this.stopLon = v; return this; }
+        public Builder startPlace(String v)     { this.startPlace = blankToNull(v); return this; }
+        public Builder stopPlace(String v)      { this.stopPlace = blankToNull(v); return this; }
         public Builder tales(String v)          { this.tales = v != null ? v : ""; return this; }
 
         public DiaryEntry build() {
             return new DiaryEntry(date, activity, distance, altitudeMeters, title,
                     Collections.unmodifiableSequencedMap(new LinkedHashMap<>(links)),
-                    startLat, startLon, stopLat, stopLon, tales);
+                    startLat, startLon, stopLat, stopLon, startPlace, stopPlace, tales);
+        }
+
+        private static String blankToNull(String v) {
+            return v == null || v.isBlank() ? null : v.trim();
         }
     }
 }

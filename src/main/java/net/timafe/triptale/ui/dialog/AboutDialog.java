@@ -20,6 +20,8 @@ public final class AboutDialog {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final String appName;
+    private static final String OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
+
     private final BuildProperties buildProperties;
     private final BrowserLauncher browser;
 
@@ -65,7 +67,12 @@ public final class AboutDialog {
         grid.add(new Label("Source:"), 0, row);
         Hyperlink link = new Hyperlink("github.com/tillkuhn/triptale");
         link.setOnAction(e -> browser.open(REPO_URL));
-        grid.add(link, 1, row);
+        grid.add(link, 1, row++);
+        // Required attribution for looked-up place names (ODbL, todo 51 / ADR-0003)
+        grid.add(new Label("Place names:"), 0, row);
+        Hyperlink osm = new Hyperlink("© OpenStreetMap contributors");
+        osm.setOnAction(e -> browser.open(OSM_COPYRIGHT_URL));
+        grid.add(osm, 1, row);
 
         Dialogs.showInfo("About " + appName, header, grid);
     }

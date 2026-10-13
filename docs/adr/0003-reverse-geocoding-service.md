@@ -1,6 +1,6 @@
 # ADR-0003: Reverse geocoding via the public Nominatim API
 
-Status: Accepted. Not implemented yet, see todo 51.
+Status: Accepted. Implemented in todo 51 (`map.PlaceLookup`).
 
 ## Context
 
@@ -56,8 +56,9 @@ Follow the [usage policy](https://operations.osmfoundation.org/policies/nominati
 - Credit "© OpenStreetMap contributors" (ODbL) wherever looked-up names are shown, e.g. in
   the About dialog.
 
-The base URL is configurable, so switching to Photon or a self-hosted Nominatim doesn't need
-a code change beyond the response mapping.
+The base URL is a single constant in the lookup service, not a setting. Switching to Photon
+needs a different response mapping anyway, so a URL setting alone wouldn't help. A
+self-hosted Nominatim is a one-line change.
 
 ## Consequences
 

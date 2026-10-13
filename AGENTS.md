@@ -79,6 +79,7 @@ ui.MainController ──► storage.MarkdownStore ──► storage.SettingsStor
                   ├── sync.BucketSyncer ──► sync.S3Client (SigV4, java.net.http)   (for attachments/ and radio/)
                   ├── ui.ConnectivityService
                   ├── map.PhotoLocations ──► ImpressionsService, storage.ExifReader   (for ui.dialog.MapAssistantDialog)
+                  ├── map.PlaceLookup (Nominatim reverse geocoding, java.net.http)   (for ui.dialog.CoordinatesDialog)
                   ├── radio.RadioLibrary ──► MarkdownStore   (played by ui.RadioPlayer, created lazily)
                   └── ui.dialog.* ──► the services each dialog needs
 ```
@@ -139,7 +140,8 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 `docs/13_settings_handling.md`.
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
-- Entries: `activity`, `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `stop_lat`, `stop_lon`, `type`, `url_<verb>`
+- Entries: `activity`, `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `start_place`, `stop_lat`, `stop_lon`, `stop_place`, `type`, `url_<verb>`
+- `start_place`/`stop_place` (todo 51) are free text like `"Soest, DE"`, filled by the Coordinator's 🔍 reverse lookup (`map.PlaceLookup`, public Nominatim, ≤ 1 req/s, see ADR-0003) or typed by hand; allowed without coordinates. See `docs/done/51_reverse_geocoding.md`.
 - Trips (`README.md`): `activity`, `end_date`, `start_date`, `type`
 - Single-word keys stay flat lowercase (`altitude`, `date`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
 - Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji and label, live in `domain.LinkKind`; links are listed and exported alphabetically by verb (`LinkKind.ORDER`), unknown verbs included. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/done/09_entry_links.md`.

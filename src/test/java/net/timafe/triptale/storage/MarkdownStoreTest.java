@@ -248,6 +248,25 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void saveAndLoadEntryRoundTripsPlacesWithAndWithoutCoordinates() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .startLat(51.478536)
+                .startLon(8.336688)
+                .startPlace("  Soest, DE ")
+                .stopPlace("Hagen, DE")
+                .stopLat(null)
+                .build());
+
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("start_place: \"Soest, DE\"") || raw.contains("start_place: Soest, DE"), raw);
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals("Soest, DE", loaded.startPlace());
+        assertEquals("Hagen, DE", loaded.stopPlace());
+        assertNull(loaded.stopLat());
+    }
+
+    @Test
     void loadEntryLeavesStartPointNullWhenNotRecorded() {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("No coordinates.").build());
@@ -268,6 +287,10 @@ class MarkdownStoreTest {
                 .link("eat", Link.of("https://food.example.com", "Bistro"))
                 .startLat(51.553443)
                 .startLon(7.915507)
+                .startPlace("Innsbruck, AT")
+                .stopPlace("Brenner, IT")
+                .stopLat(47.0)
+                .stopLon(11.5)
                 .tales("Hot day.")
                 .build());
 

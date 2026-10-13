@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 58
+## Next Todo: 59
+
+## 58 Show start/stop place in exports
+
+Todo 51 stores `start_place`/`stop_place` ("Warstein, DE"); show them in `export.EntryFacts`
+(Markdown byline, HTML ticket stub, WordPress columns), e.g. "Warstein, DE → Hagen, DE".
+Open: replace or append to the DDM coordinates; show the country code always, or hide it for
+the trip's home country. Exports with looked-up names need a small
+"Place names © OpenStreetMap contributors" line (ODbL).
+Background: docs/done/51_reverse_geocoding.md
 
 ## 56 Open the backpack from the main window
 
@@ -8,17 +17,6 @@ The 🎒 Backpack button next to Map Assistant (added with todo 55) currently ju
 "Add to Backpack…" (`onAddAttachments`). Give it a proper "open backpack" action for the
 current day (e.g. show the day's backpack files, with adding as one option), and show the
 number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
-
-## 51 Reverse geocoding: place name and country from entry coordinates
-
-Placeholder. First build the lookup service (public Nominatim, see
-[ADR-0003](docs/adr/0003-reverse-geocoding-service.md)): non-UI, `java.net.http`, own
-User-Agent, ≤ 1 req/s, quick timeout, fails quietly. Credit OSM in the About dialog.
-
-What to do with it is decided once the service exists. Ideas so far: suggest a title like
-"Vechta → Bremen" instead of "Untitled", store place/country in frontmatter, run on
-Coordinates dialog OK / GPX import / an explicit "Look up" button.
-
 
 ## 50 WordPress export follow-ups
 
@@ -225,6 +223,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 51 Reverse geocoding: place name and country from entry coordinates
+
+see docs/done/51_reverse_geocoding.md
 
 ## DONE 53 Entry fact header in exports
 
