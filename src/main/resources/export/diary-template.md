@@ -7,3 +7,5 @@
 - {{t.stats.altitude}}: {{totalAltitude}} m
 
 {{entries}}
+
+{{attribution}}

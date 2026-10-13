@@ -116,11 +116,27 @@ class WordPressExporterTest {
                 <p class="has-text-align-center"><strong>42.0 km</strong><br><small>650 m climbed</small></p>
                 <!-- /wp:paragraph --></div>
                 <!-- /wp:column -->"""), out);
-        assertTrue(out.contains(">📅</p>"), out);
+        assertTrue(out.contains(">🗓\uFE0F</p>"), out);
         assertTrue(out.contains("<strong>Tuesday · Day 1</strong><br><small>July 1st 2025</small>"), out);
         assertTrue(out.contains("<strong>1°00′N 2°00′E</strong><br><small>Starting point</small>"), out);
         assertTrue(out.contains("<!-- wp:columns -->\n<div class=\"wp-block-columns\"><!-- wp:column -->"), out);
         assertTrue(out.indexOf("</h2>") < out.indexOf("wp:columns") && out.indexOf("wp:columns") < out.indexOf("<p>tale</p>"), out);
+    }
+
+    @Test
+    void placeNamesGetCoordinatesBelowAndOneOsmCredit() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).startLat(1.0).startLon(2.0).startPlace("Soest, DE").tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY2).stopPlace("Hagen, DE").tales("b").build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.contains("<strong>Soest, DE</strong><br><small>Starting point</small><br><small>1°00′N 2°00′E</small>"), out);
+        assertTrue(out.contains("<strong>→ Hagen, DE</strong><br><small>Destination</small></p>"), out);
+        assertTrue(out.strip().endsWith("""
+                <!-- wp:paragraph {"fontSize":"small"} -->
+                <p class="has-small-font-size">Place names © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</p>
+                <!-- /wp:paragraph -->"""), out);
+        assertEquals(1, out.split("OpenStreetMap</a>", -1).length - 1, out);
     }
 
     @Test

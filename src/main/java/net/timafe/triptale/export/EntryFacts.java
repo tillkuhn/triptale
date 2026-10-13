@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 /**
  * The key facts shown under an entry's title (todo 53): the day, the activity with distance and
- * climb, and the start/stop point. Items without data drop out, so there are 0–3 of them. Each
+ * climb, and the start/stop point, by place name where there is one (todo 58). Items without data drop out, so there are 0–3 of them. Each
  * exporter lays them out its own way: a byline in Markdown, a "ticket stub" strip in HTML,
  * columns on WordPress.
  */
@@ -25,13 +25,15 @@ record EntryFacts(List<Item> items) {
     /** Shown when there is distance or climb but no activity. */
     static final String NO_ACTIVITY_EMOJI = "📏";
     static final String LOCATION_EMOJI = "🧭";
-    static final String DATE_EMOJI = "📅";
+    /** The spiral calendar, not 📅: that one shows a fixed date ("JUL 17"), which clashes with the real one. */
+    static final String DATE_EMOJI = "🗓\uFE0F";
 
     /**
      * One fact: an emoji, or for the date a day {@code stamp} ("Tag", "3"); a bold value; an
-     * optional muted note; and {@code inline}, the whole fact on one line for the byline.
+     * optional muted note; an optional smaller {@code detail} (the coordinates behind place
+     * names); and {@code inline}, the whole fact on one line for the byline.
      */
-    record Item(String emoji, Stamp stamp, String value, String note, String inline) {}
+    record Item(String emoji, Stamp stamp, String value, String note, String detail, String inline) {}
 
     /** The day number badge, e.g. "Tag" over "3". */
     record Stamp(String label, long day) {}
@@ -42,6 +44,11 @@ record EntryFacts(List<Item> items) {
         activity(e, texts).ifPresent(items::add);
         location(e, texts).ifPresent(items::add);
         return new EntryFacts(List.copyOf(items));
+    }
+
+    /** Whether the entry names a start or stop place, i.e. the export needs the OpenStreetMap credit. */
+    static boolean hasPlace(DiaryEntry e) {
+        return e.startPlace() != null || e.stopPlace() != null;
     }
 
     /** Day N relative to the trip start; null without a start date. */
@@ -69,6 +76,9 @@ record EntryFacts(List<Item> items) {
             if (item.note() != null) {
                 sb.append("<span class=\"fact-note\">").append(DiaryExporter.escapeHtml(item.note())).append("</span>");
             }
+            if (item.detail() != null) {
+                sb.append("<span class=\"fact-detail\">").append(DiaryExporter.escapeHtml(item.detail())).append("</span>");
+            }
             sb.append("</div>\n");
         }
         return sb.append("</div>").toString();
@@ -80,7 +90,7 @@ record EntryFacts(List<Item> items) {
         String longDate = texts.longDate(date);
         String inline = weekday + ", " + longDate + (day == null ? "" : " · " + texts.word("day") + " " + day);
         Stamp stamp = day == null ? null : new Stamp(texts.word("day"), day);
-        return new Item(DATE_EMOJI, stamp, weekday, longDate, inline);
+        return new Item(DATE_EMOJI, stamp, weekday, longDate, null, inline);
     }
 
     /** Distance and climb led by the activity emoji; an activity alone shows its name. Zero values count as absent (train days). */
@@ -94,23 +104,35 @@ record EntryFacts(List<Item> items) {
             String value = distance != null ? distance : climb;
             String note = distance != null ? climb : null;
             String inline = emoji + " " + Stream.of(distance, climb).filter(Objects::nonNull).collect(Collectors.joining(", "));
-            return Optional.of(new Item(emoji, null, value, note, inline));
+            return Optional.of(new Item(emoji, null, value, note, null, inline));
         }
         if (activity == null) return Optional.empty();
         return Optional.of(new Item(Activity.emojiFor(activity), null, texts.activityLabel(activity), null,
-                texts.activity(activity)));
+                null, texts.activity(activity)));
     }
 
-    /** Start-focused: the start point with "Starting point" below, or "→ stop" below when there is one. */
+    /**
+     * Start-focused: the start point with "Starting point" below, or "→ stop" below when there is
+     * one. A point shows its place name if it has one, else its coordinates; the coordinates
+     * behind place names go into the smaller detail line (HTML/WordPress only, the byline stays short).
+     */
     private static Optional<Item> location(DiaryEntry e, ExportTexts texts) {
-        String start = e.startLat() != null && e.startLon() != null ? Coordinates.toDdm(e.startLat(), e.startLon()) : null;
-        String stop = e.stopLat() != null && e.stopLon() != null ? "→ " + Coordinates.toDdm(e.stopLat(), e.stopLon()) : null;
+        String startDdm = e.startLat() != null && e.startLon() != null ? Coordinates.toDdm(e.startLat(), e.startLon()) : null;
+        String stopDdm = e.stopLat() != null && e.stopLon() != null ? Coordinates.toDdm(e.stopLat(), e.stopLon()) : null;
+        String start = e.startPlace() != null ? e.startPlace() : startDdm;
+        String stop = e.stopPlace() != null ? e.stopPlace() : stopDdm;
         if (start == null && stop == null) return Optional.empty();
-        String inline = LOCATION_EMOJI + " " + Stream.of(start, stop).filter(Objects::nonNull).collect(Collectors.joining(" "));
+        String arrowStop = stop == null ? null : "→ " + stop;
+        String inline = LOCATION_EMOJI + " " + Stream.of(start, arrowStop).filter(Objects::nonNull).collect(Collectors.joining(" "));
+        // Only coordinates that a place name hides; a point shown by its coordinates already has them
+        String startDetail = e.startPlace() != null ? startDdm : null;
+        String stopDetail = e.stopPlace() != null && stopDdm != null ? "→ " + stopDdm : null;
+        String detail = Stream.of(startDetail, stopDetail).filter(Objects::nonNull).collect(Collectors.joining(" "));
+        if (detail.isEmpty()) detail = null;
         if (start == null) {
-            return Optional.of(new Item(LOCATION_EMOJI, null, stop, texts.word("facts.stop"), inline));
+            return Optional.of(new Item(LOCATION_EMOJI, null, arrowStop, texts.word("facts.stop"), detail, inline));
         }
         return Optional.of(new Item(LOCATION_EMOJI, null, start,
-                stop != null ? stop : texts.word("facts.start"), inline));
+                arrowStop != null ? arrowStop : texts.word("facts.start"), detail, inline));
     }
 }

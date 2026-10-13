@@ -2,7 +2,7 @@
 
 Todo 51 stores `start_place` / `stop_place` on entries (free text like `"Warstein, DE"`,
 filled by the Coordinator's 🔍 lookup or typed by hand, see
-[docs/done/51_reverse_geocoding.md](done/51_reverse_geocoding.md)). Exports still only show
+[docs/51_reverse_geocoding.md](51_reverse_geocoding.md)). Exports still only show
 the DDM coordinates. This todo puts the place names into the exports.
 
 ## Where
@@ -13,7 +13,7 @@ the DDM coordinates. This todo puts the place names into the exports.
 - HTML: "ticket stub" block (styled in `html-shell.html`)
 - WordPress: `wp:columns` block
 
-See `docs/done/53_entry_fact_strip.md` for how the facts strip is built.
+See `docs/53_entry_fact_strip.md` for how the facts strip is built.
 
 ## Country flags (discussed 2026-10-13)
 
@@ -48,19 +48,21 @@ Leaning towards:
   everywhere, which is harmless. Nominatim always returns valid ISO codes. England/Scotland
   use tag-sequence flags; Nominatim returns `gb` for them, so they aren't an issue.
 
-## Open questions
+## Decisions (2026-10-13)
 
-- Replace the DDM coordinates with the place, or append it (place first, coordinates
-  smaller or in a tooltip/title attribute in HTML)?
-- Flag noise: on a single-country trip every entry shows 🇩🇪. Options: hide flags when all
-  places of the trip/export share one country; or a trip-level "home country". The first
-  needs no new data.
-- Fallbacks: a place without coordinates shows the place only; coordinates without a place
-  stay as today (DDM).
-- Attribution: exports that contain looked-up names should carry a small
-  "Place names © OpenStreetMap contributors" line (ODbL). We can't tell whether a name was
-  looked up or typed, so add the line whenever any place is present? Translate via
-  `ExportTexts` (`export.properties` / `export_de.properties`).
+- **Place first, coordinates small:** a point shows its place name if it has one, else its DDM
+  coordinates. In HTML and WordPress the coordinates behind place names go into a smaller third
+  line under the place(s) (`.fact-detail`). The Markdown byline shows only the names, so it
+  stays one short line.
+- A place without coordinates shows the place only. Coordinates without a place stay as before (DDM).
+- **No flags yet:** the stored text is printed as-is (`Koh Tao, TH`). Flags, and how to avoid
+  showing the same flag on every entry of a one-country trip, are left for a later todo.
+- **OSM credit once per export:** if any exported entry has a place, the export ends with one
+  line, "Place names © OpenStreetMap contributors", linked to openstreetmap.org/copyright.
+  Always English (OSM's own wording), not translated. In HTML it's a small grey `p.credits`. OSM's attribution guidelines accept a single credit in
+  the usual credits spot. Typed and looked-up names can't be told apart, so any place counts.
+- **Bigger emojis in the HTML strip:** `.fact-emoji` is now as tall as the day stamp (2.8rem box),
+  so the three columns line up.
 
 ## Relevant files
 

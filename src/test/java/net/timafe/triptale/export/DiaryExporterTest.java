@@ -273,6 +273,58 @@ class DiaryExporterTest {
     }
 
     @Test
+    void placeNamesReplaceCoordinatesInTheByline() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .startLat(51.488).startLon(-0.013).startPlace("London, GB")
+                .stopLat(50.1).stopLon(8.67).tales("Far.").build());
+
+        String out = exporter.exportTrip(trip);
+
+        // A stop without a place keeps its coordinates
+        assertTrue(out.contains("· 🧭 London, GB → 50°06′N 8°40′E*"), out);
+        assertTrue(out.strip().endsWith("*Place names © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors*"), out);
+    }
+
+    @Test
+    void placeWithoutCoordinatesIsEnough() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).stopPlace("Hagen, DE").tales("x").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("<span class=\"fact-value\">→ Hagen, DE</span><span class=\"fact-note\">Destination</span></div>"), html);
+        assertFalse(html.contains("class=\"fact-detail\""), html);
+    }
+
+    @Test
+    void noPlacesNoOsmCredit() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).startLat(1.0).startLon(2.0).tales("x").build());
+
+        assertFalse(exporter.exportTrip(trip).contains("OpenStreetMap"));
+    }
+
+    @Test
+    void htmlFactsShowPlacesWithTheirCoordinatesBelow() {
+        setDefaultTripLanguage("de");
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .startLat(51.488).startLon(-0.013).startPlace("London, GB")
+                .stopLat(50.1).stopLon(8.67).stopPlace("Frankfurt am Main, DE").tales("x").build());
+
+        String html = exporter.exportTripAsHtml(trip);
+
+        assertTrue(html.contains("<span class=\"fact-value\">London, GB</span><span class=\"fact-note\">→ Frankfurt am Main, DE</span>"
+                + "<span class=\"fact-detail\">51°29′N 0°01′W → 50°06′N 8°40′E</span>"), html);
+        assertTrue(html.contains("<p class=\"credits\">Place names © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors</p>"), html);
+    }
+
+    @Test
     void exportTripAsHtmlRendersFactsStripInsteadOfByline() {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);

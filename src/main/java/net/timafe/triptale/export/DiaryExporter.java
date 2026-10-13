@@ -42,6 +42,8 @@ public class DiaryExporter {
     private static final String ENTRY_TALES = "/export/entry-tales.md";
     private static final String HTML_SHELL = "/export/html-shell.html";
 
+    static final String OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
+
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final String MISSING = "—";
     // {{t.stats.distance}} in a template: a word from ExportTexts
@@ -147,6 +149,14 @@ public class DiaryExporter {
         vars.put("entriesLabel", texts.plural("entries", dates.size()));
         vars.put("totalDistance", texts.distance(totalDistance));
         vars.put("totalAltitude", texts.altitude(totalAltitude));
+        // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
+        String attribution = "";
+        if (entries.stream().anyMatch(EntryFacts::hasPlace)) {
+            attribution = htmlFacts
+                    ? "<p class=\"credits\">" + placesCredit("<a href=\"" + OSM_COPYRIGHT_URL + "\">OpenStreetMap</a>") + "</p>"
+                    : "*" + placesCredit("[OpenStreetMap](" + OSM_COPYRIGHT_URL + ")") + "*";
+        }
+        vars.put("attribution", attribution);
 
         // Words go in before the entries, so a "{{t.…}}" typed in a tale stays as written
         String out = substitute(translate(load(SHELL), texts), vars);
@@ -180,6 +190,11 @@ public class DiaryExporter {
         }
         sb.append("</div>\n");
         return sb.toString();
+    }
+
+    /** The OpenStreetMap credit, always in English (OSM's own wording); {@code osmLink} is the exporter's link markup. */
+    static String placesCredit(String osmLink) {
+        return "Place names © " + osmLink + " contributors";
     }
 
     static String escapeHtml(String s) {

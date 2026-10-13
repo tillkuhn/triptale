@@ -87,12 +87,14 @@ public class WordPressExporter {
         int columns = Math.max(1, settingsStore.load().getImpressionsGridColumns());
         ExportTexts texts = DiaryExporter.texts(settingsStore);
         List<String> blocks = new ArrayList<>();
+        boolean places = false;
         for (LocalDate date : store.listEntryDates(trip.ref())) {
             if ((from != null && date.isBefore(from)) || (to != null && date.isAfter(to))) continue;
             DiaryEntry e = store.loadEntry(trip.ref(), date);
             String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
             blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
             blocks.add(facts(EntryFacts.of(trip.startDate(), e, texts)));
+            places |= EntryFacts.hasPlace(e);
             // Private sections (todo 48) never leave the app
             String tales = e.tales() == null ? "" : Markdown.stripPrivate(e.tales()).strip();
             if (!tales.isEmpty()) {
@@ -104,6 +106,11 @@ public class WordPressExporter {
                 List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
                 gallery(faves.apply(dayImages), baseUrl, columns).ifPresent(blocks::add);
             }
+        }
+        // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
+        if (places) {
+            String credit = DiaryExporter.placesCredit("<a href=\"" + DiaryExporter.OSM_COPYRIGHT_URL + "\">OpenStreetMap</a>");
+            blocks.add(block("paragraph", "{\"fontSize\":\"small\"}", "<p class=\"has-small-font-size\">" + credit + "</p>"));
         }
         return blocks.isEmpty() ? "" : String.join("\n\n", blocks) + "\n";
     }
@@ -129,6 +136,7 @@ public class WordPressExporter {
                     : item.value() + " · " + item.stamp().label() + " " + item.stamp().day();
             StringBuilder text = new StringBuilder("<strong>").append(DiaryExporter.escapeHtml(value)).append("</strong>");
             if (item.note() != null) text.append("<br><small>").append(DiaryExporter.escapeHtml(item.note())).append("</small>");
+            if (item.detail() != null) text.append("<br><small>").append(DiaryExporter.escapeHtml(item.detail())).append("</small>");
             String emoji = block("paragraph", "{\"align\":\"center\",\"fontSize\":\"x-large\"}",
                     "<p class=\"has-text-align-center has-x-large-font-size\">" + item.emoji() + "</p>");
             String body = block("paragraph", "{\"align\":\"center\"}", "<p class=\"has-text-align-center\">" + text + "</p>");
