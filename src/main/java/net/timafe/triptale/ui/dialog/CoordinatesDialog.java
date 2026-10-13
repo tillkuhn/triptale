@@ -3,7 +3,6 @@ package net.timafe.triptale.ui.dialog;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -143,9 +142,12 @@ public final class CoordinatesDialog {
         this.online = online;
     }
 
-    /** Empty when the user cancelled or dismissed the dialog. */
+    /**
+     * Empty when the user cancelled or dismissed the dialog. {@code canSaveDay} only picks the
+     * confirm button's label (see {@link Dialogs#addSaveDayButtons}).
+     */
     public Optional<Result> showAndWait(Double startLat, Double startLon, Double stopLat, Double stopLon,
-                                        String startPlace, String stopPlace) {
+                                        String startPlace, String stopPlace, boolean canSaveDay) {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("🧭 Coordinator");
         dlg.setHeaderText("Start and end point");
@@ -183,11 +185,8 @@ public final class CoordinatesDialog {
         grid.add(new HBox(8, parseStart, parseStop, spacer, route), 1, 4, 7, 1);
         grid.add(hintLabel, 1, 5, 7, 1);
 
-        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().setContent(grid);
-        // ButtonType.CANCEL also re-enables the dialog window's native close (X) button —
-        // JavaFX disables it unless a CANCEL_CLOSE-data button is present.
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveType);
+        ButtonType saveType = Dialogs.addSaveDayButtons(dlg.getDialogPane(), canSaveDay);
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         Node saveButtonNode = dlg.getDialogPane().lookupButton(saveType);

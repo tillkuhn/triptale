@@ -1037,7 +1037,7 @@ public class MainController implements StatusSink {
     private boolean confirmNavigateAway(SaveTarget target, Runnable revert) {
         if (!isDirty()) return true;
         String dateLabel = target != null && target.date() != null ? target.date().toString() : "current entry";
-        ButtonType save    = new ButtonType("Save");
+        ButtonType save    = new ButtonType(Dialogs.SAVE_THE_DAY);
         ButtonType discard = new ButtonType("Discard");
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
                 "You have unsaved changes for " + dateLabel + ". What would you like to do?",
@@ -1064,15 +1064,8 @@ public class MainController implements StatusSink {
 
     private void updateDirty() {
         boolean saveEnabled = isDirty() && isValidEntry();
-        String saveLabel = "💾 Save Tale";
-        if (saveButton != null) {
-            saveButton.setDisable(!saveEnabled);
-            saveButton.setText(saveLabel);
-        }
-        if (saveMenuItem != null) {
-            saveMenuItem.setDisable(!saveEnabled);
-            saveMenuItem.setText(saveLabel);
-        }
+        if (saveButton != null) saveButton.setDisable(!saveEnabled);
+        if (saveMenuItem != null) saveMenuItem.setDisable(!saveEnabled);
         // Export Tale saves pending edits first, so a savable new entry counts as exportable.
         boolean exportable = tripCombo.getValue() != null && datePicker.getValue() != null
                 && (entryExists || saveEnabled);
@@ -1213,6 +1206,19 @@ public class MainController implements StatusSink {
         if (delta == 1) return "tomorrow";
         if (delta < -1) return (-delta) + " days ago";
         return "in " + delta + " days";
+    }
+
+    /**
+     * Saves the day straight from a frontmatter dialog (Weblinks, Coordinator, image viewer) when
+     * it is savable, so the edit doesn't need a second save on the main window. Returns true if
+     * the day was saved; otherwise the change stays in the form as unsaved.
+     */
+    private boolean saveTheDayIfPossible() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null || !isValidEntry() || !isDirty()) return false;
+        doSave(trip.ref(), date);
+        return !isDirty();
     }
 
     @FXML
@@ -1754,11 +1760,13 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onLinks() {
-        Optional<SequencedMap<String, Link>> result = new LinksDialog(browser).showAndWait(links);
+        Optional<SequencedMap<String, Link>> result =
+                new LinksDialog(browser).showAndWait(links, isValidEntry());
         if (result.isEmpty()) return;
         links = result.get();
         updateLinksButton();
         updateDirty();
+        saveTheDayIfPossible();
     }
 
     /** "🕸 Weblinks: 🗺 🍲" (🔗 for unknown verbs, ⚠ if a value isn't a URL), or "🕸 No Weblinks yet". */
@@ -1779,7 +1787,7 @@ public class MainController implements StatusSink {
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
                 new CoordinatesDialog(browser, placeLookup, Boolean.TRUE.equals(connected))
-                        .showAndWait(startLat, startLon, stopLat, stopLon, startPlace, stopPlace);
+                        .showAndWait(startLat, startLon, stopLat, stopLon, startPlace, stopPlace, isValidEntry());
         if (result.isEmpty()) return;
         Coordinates.LatLon start = result.get().start();
         Coordinates.LatLon stop = result.get().stop();
@@ -1791,6 +1799,7 @@ public class MainController implements StatusSink {
         stopPlace = result.get().stopPlace();
         updateCoordinatesButton();
         updateDirty();
+        saveTheDayIfPossible();
     }
 
     @FXML
@@ -1827,7 +1836,7 @@ public class MainController implements StatusSink {
             }
 
             @Override
-            public void set(ImageViewerDialog.RoutePoint point, Coordinates.LatLon value) {
+            public boolean set(ImageViewerDialog.RoutePoint point, Coordinates.LatLon value) {
                 if (point == ImageViewerDialog.RoutePoint.START) {
                     startLat = value.lat();
                     startLon = value.lon();
@@ -1837,6 +1846,7 @@ public class MainController implements StatusSink {
                 }
                 updateCoordinatesButton();
                 updateDirty();
+                return saveTheDayIfPossible();
             }
         });
     }

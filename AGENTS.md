@@ -212,18 +212,23 @@ The contract: **a dialog returns its outcome as data and never mutates controlle
 `NewTripDialog` → `Optional<Spec>`, `TripDetailsDialog` → `Optional<Trip>`,
 `CoordinatesDialog` → `Optional<Result>` (`start()`/`stop()`, a null point means "unset";
 `Optional.empty()` means Cancel). Persisting, `addPending(...)`, and combo reselection stay in
-the controller. `SmartSyncDialog` inverts this — it owns its worker threads and reports an
+the controller. **One save per day:** a dialog that edits the day's frontmatter (Weblinks, Coordinator, the
+image viewer's "Set as Start/End") confirms with `Dialogs.addSaveDayButtons` — "📅 Save the Day"
+(Cmd/Ctrl+S too) when the entry is savable, "Apply" otherwise. On confirm the controller applies
+the result and calls `saveTheDayIfPossible()`, which saves the whole entry, main-window edits
+included. New frontmatter dialogs should do the same rather than leave the day dirty.
+`SmartSyncDialog` inverts this — it owns its worker threads and reports an
 `Outcome` through a callback that runs on the FX thread.
 
 Shared UI helpers, all in `ui/`:
 
-- `Dialogs` — `applyStylesheet`, `formGrid()`, `infoGrid()`, `showInfo(...)`
+- `Dialogs` — `applyStylesheet`, `formGrid()`, `infoGrid()`, `showInfo(...)`, `addSaveDayButtons(...)`
 - `UiText` — `homeRelative`, `friendlyDate`, `describe` (flattens a cause chain), `isValidHttpUrl`, `parseDecimal`
 - `Clipboards.putString`, `BrowserLauncher.open`, `StatusSink`
 
 ## UI gotchas
 
-- Button look lives in `src/main/resources/fxml/triptale.css` under `/* ── Buttons ── */`. Buttons are deliberately "raised" (lighter gradient fill, 1px top highlight via a two-layer background, soft drop shadow) and inputs "sunken" (darker than the surface), so buttons don't read as bordered text. To tune: the gradient stops on `.button` / `.button:hover` and the shadow alpha. The teal filled button is `:default` (`defaultButton="true"`, e.g. Save Tale — Enter fires it unless the focused control consumes Enter, like a TextArea). `.nav-button-group` carries one shared shadow; its child buttons and the date-picker popup's spinner arrows have `-fx-effect: none`.
+- Button look lives in `src/main/resources/fxml/triptale.css` under `/* ── Buttons ── */`. Buttons are deliberately "raised" (lighter gradient fill, 1px top highlight via a two-layer background, soft drop shadow) and inputs "sunken" (darker than the surface), so buttons don't read as bordered text. To tune: the gradient stops on `.button` / `.button:hover` and the shadow alpha. The teal filled button is `:default` (`defaultButton="true"`, e.g. 📅 Save the Day — Enter fires it unless the focused control consumes Enter, like a TextArea). `.nav-button-group` carries one shared shadow; its child buttons and the date-picker popup's spinner arrows have `-fx-effect: none`.
 - Every new `Alert` or `Dialog` must call `Dialogs.applyStylesheet(dialogPane)` to inherit the dark theme. Going through `Dialogs.showInfo(...)` instead of `new Alert(...)` makes that impossible to forget.
 - `BuildProperties` (version/build-date in About) and JavaFX `HostServices` (opening URLs in the system browser) are both resolved via `ObjectProvider` on `MainController` and may be null. `BuildProperties` is absent only if the data dir has no reachable git tag at all — `spring-boot-maven-plugin:build-info`'s `build-info` goal actually binds to the `generate-resources` phase (not `prepare-package`, despite what its own docs/javadoc imply), so it already runs on `mvn compile`/`process-classes`, and therefore on `make run`/`run-fast` too (`javafx:run` forks the build up through `process-classes`, which is after `generate-resources`) — not just `package`/`verify`. Its `version` is populated from `git-commit-id-maven-plugin`'s `git.closest.tag.name` (most recent reachable tag, e.g. `v0.9.0` — no commit-distance suffix, no dirty marker), overriding the Maven coordinate (`0.1.0-SNAPSHOT`), which is never bumped. `HostServices` is wrapped in `ui.BrowserLauncher`, which degrades to a log warning when absent.
 - Decimal input (`UiText.parseDecimal`) accepts both `.` and `,` as separators. The distance/altitude fields go through `util.Lengths` instead: a non-negative number with optional `km`/`m` suffix (bare = km for distance, m for altitude), converted and rounded (2 decimals km, whole m), shown as `"101.64 km"` / `"493 m"` (normalized on focus loss and save). Frontmatter stays a plain number. Dirty tracking compares the parsed values, not the text.

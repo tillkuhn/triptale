@@ -2,7 +2,6 @@ package net.timafe.triptale.ui.dialog;
 
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
@@ -65,8 +64,11 @@ public final class LinksDialog {
         this.browser = browser;
     }
 
-    /** The edited links keyed by verb in {@link LinkKind#ORDER}, or empty when the user cancelled. */
-    public Optional<SequencedMap<String, Link>> showAndWait(SequencedMap<String, Link> links) {
+    /**
+     * The edited links keyed by verb in {@link LinkKind#ORDER}, or empty when the user cancelled.
+     * {@code canSaveDay} only picks the confirm button's label (see {@link Dialogs#addSaveDayButtons}).
+     */
+    public Optional<SequencedMap<String, Link>> showAndWait(SequencedMap<String, Link> links, boolean canSaveDay) {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("🕸 Weblinks Manager");
         dlg.setHeaderText("Weblinks for this day");
@@ -87,10 +89,8 @@ public final class LinksDialog {
         hintLabel.getStyleClass().add("hint-label");
 
         GridPane grid = Dialogs.formGrid();
-        ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
         dlg.getDialogPane().setContent(grid);
-        // ButtonType.CANCEL also re-enables the dialog window's native close (X) button
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, okType);
+        ButtonType okType = Dialogs.addSaveDayButtons(dlg.getDialogPane(), canSaveDay);
         Dialogs.applyStylesheet(dlg.getDialogPane());
         Node okButton = dlg.getDialogPane().lookupButton(okType);
 

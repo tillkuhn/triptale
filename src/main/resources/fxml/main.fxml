@@ -62,7 +62,7 @@
                                 <MenuItem fx:id="impressionsMenuItem" text="📷 Show Impressions" onAction="#onShowImpressions" disable="true"/>
                                 <MenuItem fx:id="addAttachmentsMenuItem" text="🎒 Add to Backpack…" onAction="#onAddAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
-                                <MenuItem fx:id="saveMenuItem" text="💾 Save Tale" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
+                                <MenuItem fx:id="saveMenuItem" text="📅 Save the Day" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
                                 <MenuItem fx:id="addPrivateMenuItem" text="🔒 Add Private Section" onAction="#onAddPrivateSection" disable="true"/>
                                 <MenuItem fx:id="exportTaleMenuItem" text="⇧ Export Tale…" onAction="#onExportTale" disable="true"/>
                                 <SeparatorMenuItem/>
@@ -244,7 +244,7 @@
                 <Button fx:id="exportTaleButton" text="⇧ Export Tale" onAction="#onExportTale" disable="true">
                     <tooltip><Tooltip text="Export just this day (saves pending edits first)"/></tooltip>
                 </Button>
-                <Button fx:id="saveButton" text="💾 Save Tale" onAction="#onSave" defaultButton="true"/>
+                <Button fx:id="saveButton" text="📅 Save the Day" onAction="#onSave" defaultButton="true"/>
                 <Button fx:id="syncButton" text="🔄 Smart Sync" onAction="#onSync"/>
             </HBox>
         </VBox>

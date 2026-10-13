@@ -66,7 +66,7 @@ tale and would have been the one remaining leak path. It is removed instead of p
 
 ## 🔒 Add Private Section
 
-New Tale Entries menu item, in the slot Copy Tale leaves free (after 💾 Save Tale, before
+New Tale Entries menu item, in the slot Copy Tale leaves free (after 📅 Save the Day, before
 ⇧ Export Tale). No accelerator. Makes the feature discoverable without reading the docs.
 
 - Appends `## Internal` and the placeholder `Private notes, not exported.` at the end of the
@@ -76,7 +76,7 @@ New Tale Entries menu item, in the slot Copy Tale leaves free (after 💾 Save T
   marker heading and the status line says "Tale already has a private section".
 - A plain text edit: the entry gets dirty and is saved/committed through the normal
   Save → `addPending(...)` → Smart Sync flow.
-- Enabled whenever the editor is editable (same condition as 💾 Save Tale).
+- Enabled whenever the editor is editable (same condition as 📅 Save the Day).
 
 ## Tests
 

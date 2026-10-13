@@ -95,7 +95,9 @@ public final class ImageViewerDialog {
      */
     public interface RoutePoints {
         Coordinates.LatLon get(RoutePoint point);
-        void set(RoutePoint point, Coordinates.LatLon value);
+
+        /** Applies the point and saves the day if it can; true when the day was saved. */
+        boolean set(RoutePoint point, Coordinates.LatLon value);
     }
 
     /** The source combo's entries; {@link #FOLDER} gets its directory from the chooser. */
@@ -498,9 +500,10 @@ public final class ImageViewerDialog {
             }
             if (!warnings.isEmpty() && !confirmRoutePoint(point, warnings)) return;
 
-            route.set(point, value);
+            boolean saved = route.set(point, value);
             refresh();
-            statusSink.status(point.emoji + " " + point.label + " set from " + photo.getFileName() + " (unsaved)");
+            statusSink.status(point.emoji + " " + point.label + " set from " + photo.getFileName()
+                    + (saved ? " — day saved" : " (unsaved — add a title and tale to save the day)"));
         }
 
         private boolean confirmRoutePoint(RoutePoint point, List<String> warnings) {
