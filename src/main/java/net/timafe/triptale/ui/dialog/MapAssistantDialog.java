@@ -1,8 +1,11 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -12,6 +15,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
@@ -24,6 +28,8 @@ import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.MapboxService;
 import net.timafe.triptale.ui.StatusSink;
 import net.timafe.triptale.util.Coordinates.LatLon;
+
+import javafx.util.Duration;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -40,6 +46,10 @@ public final class MapAssistantDialog {
 
     private static final int WIDTH = 960;
     private static final int HEIGHT = 640;
+    /** Resting opacity of the teal viewscreen frame; it pulses up to 1.0 while a map loads. */
+    private static final double FRAME_OPACITY = 0.3;
+    private static final String AWAITING_ORDERS = "Awaiting your orders, Captain.";
+    private static final String CHOOSE_RANGE = "Choose a range, then put it on screen.";
     private static final String ON_SCREEN = "🖥 On Screen";
     private static final double STALE_OPACITY = 0.35;
 
@@ -90,6 +100,12 @@ public final class MapAssistantDialog {
         private final CheckBox photosCheck = new CheckBox("📷 Photo Locations from Backpack");
         private final ImageView imageView = new ImageView();
         private final Label message = new Label();
+        private final Label icon = new Label("🗺");
+        private final Label heading = new Label();
+        private final VBox placeholder = new VBox(14, icon, heading, message);
+        /** Teal frame on top of the map; pulses while a map is loading. Only its opacity animates. */
+        private final Region frame = new Region();
+        private final FadeTransition pulse = new FadeTransition(Duration.millis(700), frame);
         private final Dialog<Void> dlg = new Dialog<>();
         private Button onScreenButton;
         /** Bumped on every range/checkbox change, so a slow photo scan can tell it's outdated. */
@@ -112,7 +128,20 @@ public final class MapAssistantDialog {
             message.setMaxWidth(WIDTH - 80);
             message.setTextAlignment(TextAlignment.CENTER);
             message.setAlignment(Pos.CENTER);
-            StackPane mapArea = new StackPane(imageView, message);
+            message.getStyleClass().add("map-screen-message");
+            icon.getStyleClass().add("map-screen-icon");
+            heading.getStyleClass().add("map-screen-heading");
+            placeholder.setAlignment(Pos.CENTER);
+            placeholder.setMouseTransparent(true);
+            frame.getStyleClass().add("map-screen-frame");
+            frame.setMouseTransparent(true);
+            frame.setOpacity(FRAME_OPACITY);
+            pulse.setFromValue(FRAME_OPACITY);
+            pulse.setToValue(1.0);
+            pulse.setAutoReverse(true);
+            pulse.setCycleCount(Animation.INDEFINITE);
+            StackPane mapArea = new StackPane(imageView, placeholder, frame);
+            mapArea.getStyleClass().add("map-screen");
             mapArea.setPrefSize(WIDTH, HEIGHT);
             mapArea.setMinSize(WIDTH, HEIGHT);
 
@@ -122,6 +151,8 @@ public final class MapAssistantDialog {
             ButtonType onScreenType = new ButtonType(ON_SCREEN, ButtonBar.ButtonData.APPLY);
             dlg.getDialogPane().getButtonTypes().setAll(onScreenType, ButtonType.CLOSE);
             onScreenButton = (Button) dlg.getDialogPane().lookupButton(onScreenType);
+            onScreenButton.setDefaultButton(true);
+            onScreenButton.setTooltip(new Tooltip("Engage! Put the chosen range on screen (Enter)"));
             // The only option shares the button bar, on the left. Added after setAll(): the pane
             // rebuilds the bar's buttons whenever the button types change.
             ButtonBar buttonBar = (ButtonBar) dlg.getDialogPane().lookup(".button-bar");
@@ -139,15 +170,16 @@ public final class MapAssistantDialog {
             photosCheck.selectedProperty().addListener((obs, old, sel) -> changed());
             updateHeader(dayPoints(), false);
             if (!mapboxService.hasToken()) {
-                setMessage("No Mapbox token configured — set one in Edit Settings.");
+                setMessage("Viewscreen offline", "No Mapbox token configured — set one in Edit Settings.");
             } else if (entries.isEmpty()) {
-                setMessage("No entries in this trip yet.");
+                setMessage("Nothing on sensors", "No entries in this trip yet.");
             } else {
-                setMessage("Choose a range, then put it on screen.");
+                setMessage(AWAITING_ORDERS, CHOOSE_RANGE);
             }
 
             Dialogs.applyStylesheet(dlg.getDialogPane());
             dlg.showAndWait();
+            pulse.stop();
         }
 
         /** Range or checkbox changed: the shown map, if any, no longer matches. */
@@ -158,7 +190,7 @@ public final class MapAssistantDialog {
                 imageView.setOpacity(STALE_OPACITY);
                 setMessage("Range changed — " + ON_SCREEN + " to update.");
             } else if (mapboxService.hasToken() && !entries.isEmpty()) {
-                setMessage("Choose a range, then put it on screen.");
+                setMessage(AWAITING_ORDERS, CHOOSE_RANGE);
             }
         }
 
@@ -205,28 +237,41 @@ public final class MapAssistantDialog {
                                 + images + (images == 1 ? " backpack image." : " backpack images.");
                     }
                 }
-                setMessage("Nothing to put on screen for this range." + hint);
+                setMessage("Nothing on sensors", "Nothing to put on screen for this range." + hint);
                 return;
             }
             Image image = new Image(mapboxService.staticImageUrl(points, WIDTH, HEIGHT), true);
             imageView.setImage(image);
             imageView.setOpacity(1.0);
             setMessage("Loading map…");
+            pulse.playFromStart();
             // Guard on the current image: an older, slower request must not touch the label.
             image.errorProperty().addListener((obs, wasError, isError) -> {
                 if (isError && imageView.getImage() == image) {
+                    stopPulse();
                     Throwable ex = image.getException();
                     setMessage("Failed to load map"
                             + (ex != null && ex.getMessage() != null ? ": " + MapboxService.redact(ex.getMessage()) : "."));
                 }
             });
             image.progressProperty().addListener((obs, oldV, newV) -> {
-                if (newV.doubleValue() >= 1.0 && !image.isError() && imageView.getImage() == image
-                        && imageView.getOpacity() == 1.0) {
-                    setMessage(null);
+                if (newV.doubleValue() >= 1.0 && !image.isError() && imageView.getImage() == image) {
+                    loaded(points, withPhotos, imageView.getOpacity() == 1.0);
                 }
             });
-            if (image.getProgress() >= 1.0 && !image.isError()) setMessage(null);
+            if (image.getProgress() >= 1.0 && !image.isError()) loaded(points, withPhotos, true);
+        }
+
+        /** The current map arrived; {@code current} is false once the range changed meanwhile. */
+        private void loaded(MapPoints points, boolean withPhotos, boolean current) {
+            stopPulse();
+            if (current) setMessage(null);
+            statusSink.status("🖖 Engage! On screen: " + describe(points, withPhotos));
+        }
+
+        private void stopPulse() {
+            pulse.stop();
+            frame.setOpacity(FRAME_OPACITY);
         }
 
         private MapPoints dayPoints() {
@@ -244,10 +289,26 @@ public final class MapAssistantDialog {
 
         /** A null or blank text hides the message. */
         private void setMessage(String text) {
-            boolean visible = text != null && !text.isBlank();
-            message.setText(visible ? text : "");
-            message.setVisible(visible);
-            message.setManaged(visible);
+            setMessage(null, text);
+        }
+
+        /**
+         * The big 🗺 shows only while there's no map on screen, so a stale map isn't covered by it;
+         * a null or blank heading or text hides that line.
+         */
+        private void setMessage(String headingText, String text) {
+            Image image = imageView.getImage();
+            show(icon, image == null || image.isError());
+            heading.setText(headingText != null ? headingText : "");
+            show(heading, headingText != null && !headingText.isBlank());
+            message.setText(text != null ? text : "");
+            show(message, text != null && !text.isBlank());
+            show(placeholder, icon.isVisible() || heading.isVisible() || message.isVisible());
+        }
+
+        private static void show(Node node, boolean visible) {
+            node.setVisible(visible);
+            node.setManaged(visible);
         }
     }
 

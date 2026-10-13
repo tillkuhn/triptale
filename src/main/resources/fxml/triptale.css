@@ -584,6 +584,30 @@
     -fx-fill: #4ec9b0;
 }
 
+/* ── Map Assistant "viewscreen" (the map area and its placeholder) ── */
+.map-screen {
+    -fx-background-color: #243434;
+    -fx-background-radius: 8;
+    -fx-border-color: #2e4040;
+    -fx-border-radius: 8;
+}
+.map-screen-frame {
+    -fx-border-color: #4ec9b0;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+}
+.map-screen-icon {
+    -fx-font-size: 96px;
+}
+.map-screen-heading {
+    -fx-text-fill: #7a9490;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+.map-screen-message {
+    -fx-text-fill: #a8bdb9;
+}
+
 /* ── Inline validation message in dialogs ───────────────── */
 .form-error {
     -fx-text-fill: #e06c6c;
