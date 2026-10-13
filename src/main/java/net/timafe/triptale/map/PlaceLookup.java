@@ -7,17 +7,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Reverse geocoding (todo 51, ADR-0003): coordinates in, a place name like {@code "Soest, DE"}
- * out, from the public Nominatim instance. Follows its usage policy: an identifying
- * User-Agent and at most one request per second, the second caller simply waits.
+ * Place lookups against the public Nominatim instance (ADR-0003): reverse (todo 51,
+ * coordinates in, a place name like {@code "Soest, DE"} out) and forward (todo 59, a place
+ * name in, its centre point out). Follows the usage policy: an identifying User-Agent and at
+ * most one request per second for both directions together, the second caller simply waits.
  *
  * <p>Failures are thrown as {@link LookupException} with a short message meant for a tooltip.
  * No JavaFX imports (package boundary rule).
@@ -31,6 +36,8 @@ public class PlaceLookup {
     static final Duration TIMEOUT = Duration.ofSeconds(5);
     private static final Duration MIN_INTERVAL = Duration.ofSeconds(1);
     private static final String[] NAME_KEYS = {"city", "town", "village"};
+    /** A trailing {@code ", XX"} two-letter country code, as in {@code "Bangkok, TH"}. */
+    private static final Pattern TRAILING_COUNTRY = Pattern.compile("^(.*?)\\s*,\\s*([A-Za-z]{2})$");
 
     /** A looked-up place; {@code kind} is the address key the name came from (city, town, …). */
     public record Place(String name, String countryCode, String kind) {
@@ -39,6 +46,12 @@ public class PlaceLookup {
             return countryCode == null ? name : name + ", " + countryCode;
         }
     }
+
+    /** A forward lookup's hit: the place's centre point and the place itself. */
+    public record Match(double lat, double lon, Place place) {}
+
+    /** A search text split into the query and an optional lowercase country code. */
+    record Query(String text, String countryCode) {}
 
     /** A failed lookup; the message is short and human, e.g. "Timed out after 5 s". */
     public static class LookupException extends RuntimeException {
@@ -65,10 +78,53 @@ public class PlaceLookup {
         this.http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
     }
 
-    /** Blocks (network, rate limit): call off the FX thread. */
+    /** Reverse lookup. Blocks (network, rate limit): call off the FX thread. */
     public Place lookup(double lat, double lon) {
-        URI uri = baseUrl.resolve(String.format(Locale.ROOT,
+        String body = get(String.format(Locale.ROOT,
                 "/reverse?lat=%.6f&lon=%.6f&format=jsonv2&zoom=10&accept-language=en", lat, lon));
+        try {
+            Place place = parse(body);
+            log.debug("Place lookup result: {} ({})", place.label(), place.kind());
+            return place;
+        } catch (LookupException e) {
+            log.debug("Place lookup result: none ({})", e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Forward lookup: the best match for a place name, optionally ending in a two-letter
+     * country code ({@code "Bangkok, TH"}). Blocks (network, rate limit): call off the FX thread.
+     */
+    public Match search(String text) {
+        Query query = splitQuery(text);
+        if (query.text().isBlank()) throw new LookupException("Enter a place name first");
+        String path = "/search?q=" + URLEncoder.encode(query.text(), StandardCharsets.UTF_8)
+                + (query.countryCode() == null ? "" : "&countrycodes=" + query.countryCode())
+                + "&format=jsonv2&limit=1&addressdetails=1&accept-language=en";
+        String body = get(path);
+        try {
+            Match match = parseSearch(body);
+            log.debug("Place search result: {} at {}, {} ({})",
+                    match.place().label(), match.lat(), match.lon(), match.place().kind());
+            return match;
+        } catch (LookupException e) {
+            log.debug("Place search result: none ({})", e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Splits off a trailing {@code ", XX"} country code; package-private for tests. */
+    static Query splitQuery(String text) {
+        String trimmed = text == null ? "" : text.trim();
+        Matcher m = TRAILING_COUNTRY.matcher(trimmed);
+        if (m.matches()) return new Query(m.group(1), m.group(2).toLowerCase(Locale.ROOT));
+        return new Query(trimmed, null);
+    }
+
+    /** GETs a path below the base URL and returns the body of a 200 answer. */
+    private String get(String pathAndQuery) {
+        URI uri = baseUrl.resolve(pathAndQuery);
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .header("User-Agent", userAgent)
                 .header("Accept", "application/json")
@@ -97,26 +153,38 @@ public class PlaceLookup {
         if (response.statusCode() != 200) {
             throw new LookupException("OpenStreetMap answered HTTP " + response.statusCode());
         }
-        try {
-            Place place = parse(response.body());
-            log.debug("Place lookup result: {} ({})", place.label(), place.kind());
-            return place;
-        } catch (LookupException e) {
-            log.debug("Place lookup result: none ({})", e.getMessage());
-            throw e;
-        }
+        return response.body();
     }
 
     /** Maps a Nominatim {@code jsonv2} reverse response to a place; package-private for tests. */
     Place parse(String body) {
-        JsonNode root;
+        JsonNode root = readTree(body);
+        if (root == null || root.hasNonNull("error")) throw new LookupException("No place found here");
+        return placeFrom(root, "No place found here");
+    }
+
+    /** Maps a Nominatim {@code jsonv2} search response (an array) to its first hit; package-private for tests. */
+    Match parseSearch(String body) {
+        JsonNode root = readTree(body);
+        if (root == null || !root.isArray() || root.isEmpty()) throw new LookupException("No place found with that name");
+        JsonNode first = root.get(0);
+        Double lat = number(first, "lat");
+        Double lon = number(first, "lon");
+        if (lat == null || lon == null) throw new LookupException("Unreadable answer from OpenStreetMap");
+        return new Match(lat, lon, placeFrom(first, "No place found with that name"));
+    }
+
+    private JsonNode readTree(String body) {
         try {
-            root = json.readTree(body);
+            return json.readTree(body);
         } catch (IOException e) {
             throw new LookupException("Unreadable answer from OpenStreetMap");
         }
-        if (root == null || root.hasNonNull("error")) throw new LookupException("No place found here");
-        JsonNode address = root.path("address");
+    }
+
+    /** Name from city → town → village → top-level name, country from {@code address.country_code}. */
+    private static Place placeFrom(JsonNode item, String notFound) {
+        JsonNode address = item.path("address");
         String name = null;
         String kind = null;
         for (String key : NAME_KEYS) {
@@ -128,10 +196,10 @@ public class PlaceLookup {
             }
         }
         if (name == null) {
-            name = text(root, "name");
+            name = text(item, "name");
             kind = "place";
         }
-        if (name == null) throw new LookupException("No place found here");
+        if (name == null) throw new LookupException(notFound);
         String cc = text(address, "country_code");
         return new Place(name, cc == null ? null : cc.toUpperCase(Locale.ROOT), kind);
     }
@@ -143,6 +211,17 @@ public class PlaceLookup {
         }
         anyRequest = true;
         lastRequestNanos = System.nanoTime();
+    }
+
+    /** Nominatim sends coordinates as strings ({@code "13.7524938"}). */
+    private static Double number(JsonNode node, String field) {
+        String v = text(node, field);
+        if (v == null) return null;
+        try {
+            return Double.parseDouble(v);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String text(JsonNode node, String field) {

@@ -1,6 +1,7 @@
 # ADR-0003: Reverse geocoding via the public Nominatim API
 
-Status: Accepted. Implemented in todo 51 (`map.PlaceLookup`).
+Status: Accepted. Implemented in todo 51 (`map.PlaceLookup`); todo 59 added the forward
+direction (`/search`) under the same rules, see the addendum at the end.
 
 ## Context
 
@@ -70,3 +71,17 @@ self-hosted Nominatim is a one-line change.
   GeoNames dump is the planned addition, not a replacement for Nominatim.
 - `accept-language=en` gives English names ("Munich", not "München"). Native names would
   need another setting; not done for now.
+
+## Addendum: forward lookup (todo 59)
+
+The Coordinator's 🔍 also works the other way: a place without coordinates (`"Bangkok, TH"`)
+is sent to
+
+```
+GET https://nominatim.openstreetmap.org/search?q=Bangkok&countrycodes=th&format=jsonv2&limit=1&addressdetails=1&accept-language=en
+```
+
+A trailing `", XX"` becomes `countrycodes`; without it the whole text is the query. The first
+(most important) hit's `lat`/`lon` fill the row; that's the place's centre, which the tooltip
+says. Same User-Agent and shared 1 req/s limiter; triggered only by the button, never while
+typing, as the usage policy requires for search.

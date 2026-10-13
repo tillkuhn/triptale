@@ -21,7 +21,10 @@ import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.Coordinates;
 
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Edits an entry's start and end point: manual lat/lon entry per row, or parsed from a pasted
@@ -30,8 +33,10 @@ import java.util.function.Function;
  * like the rows in {@link LinksDialog}; with both points set, the route start → end can be opened too.
  *
  * <p>Each row also has a free-text place ("Soest, DE", todo 51), filled by the 🔍 reverse lookup
- * or typed by hand. The lookup's progress and outcome live on the 🔍 button and its tooltip:
- * ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still clickable to retry).
+ * or typed by hand. 🔍 works the other way too (todo 59): with a place but no coordinates it
+ * fills in the place's centre point. The lookup's progress and outcome live on the 🔍 button
+ * and its tooltip: ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still
+ * clickable to retry). Editing the row resets it.
  */
 public final class CoordinatesDialog {
 
@@ -43,11 +48,10 @@ public final class CoordinatesDialog {
     public record Result(Coordinates.LatLon start, Coordinates.LatLon stop, String startPlace, String stopPlace) {}
 
     private static final int COORD_COLUMNS = 7;
-    private static final int PLACE_COLUMNS = 12;
+    private static final int PLACE_COLUMNS = 16;
     private static final String LOOKUP_IDLE = "🔍";
     private static final String LOOKUP_BUSY = "⏳";
     private static final String LOOKUP_FAILED = "⚠️";
-    private static final String LOOKUP_HINT = "Look up place name (OpenStreetMap)";
 
     /** One Start/End row: lat/lon fields, DDM preview, place field and the lookup, open-in-maps and clear buttons. */
     private static final class Row {
@@ -60,6 +64,9 @@ public final class CoordinatesDialog {
         final Button open = new Button("🔗");
         final Button clearButton = new Button("🗑");
         boolean busy;
+        /** Icon and tooltip of the last lookup's outcome; null while idle (the hint follows the row). */
+        String outcomeIcon;
+        String outcomeText;
 
         Row(String name, Double initialLat, Double initialLon, String initialPlace) {
             this.name = name;
@@ -70,6 +77,10 @@ public final class CoordinatesDialog {
             lon.setPrefColumnCount(COORD_COLUMNS);
             place.setPrefColumnCount(PLACE_COLUMNS);
             place.setPromptText("Place, CC");
+            // The dialog is sized when it opens; a DDM that appears later (lookup, parse) must
+            // not squeeze the icon buttons to "…". 8.5em fits the widest, "90°00′S 180°00′W".
+            ddm.setStyle("-fx-min-width: 8.5em;");
+            for (Button b : new Button[] {lookup, open, clearButton}) b.setMinWidth(Region.USE_PREF_SIZE);
         }
 
         boolean isEmpty() {
@@ -92,6 +103,17 @@ public final class CoordinatesDialog {
             return place.getText().isBlank() ? null : place.getText().trim();
         }
 
+        /** Forward lookup applies: a place to search for and no coordinates to keep. */
+        boolean canSearch() {
+            return !hasCoordinates() && placeValue() != null;
+        }
+
+        String lookupHint() {
+            if (value() != null) return "Look up the place name for this point (OpenStreetMap)";
+            if (canSearch()) return "Find coordinates for “" + placeValue() + "” (OpenStreetMap)";
+            return "Enter a point, or a place like “Bangkok, TH”, to look up";
+        }
+
         void set(Coordinates.LatLon coords) {
             lat.setText(Double.toString(coords.lat()));
             lon.setText(Double.toString(coords.lon()));
@@ -104,9 +126,9 @@ public final class CoordinatesDialog {
             place.clear();
         }
 
-        void lookupState(String icon, String tooltip) {
-            lookup.setText(icon);
-            lookup.setTooltip(new Tooltip(tooltip));
+        void outcome(String icon, String tooltip) {
+            outcomeIcon = icon;
+            outcomeText = tooltip;
         }
     }
 
@@ -187,13 +209,14 @@ public final class CoordinatesDialog {
             saveButtonNode.setDisable(problem != null);
         };
         for (Row row : new Row[] {start, stop}) {
-            row.lat.textProperty().addListener((o, a, b) -> refresh.run());
-            row.lon.textProperty().addListener((o, a, b) -> refresh.run());
-            row.place.textProperty().addListener((o, a, b) -> row.clearButton.setDisable(row.isEmpty()));
-            // A changed point makes the last lookup's outcome stale.
-            Runnable resetLookup = () -> { if (!row.busy) row.lookupState(LOOKUP_IDLE, LOOKUP_HINT); };
-            row.lat.textProperty().addListener((o, a, b) -> resetLookup.run());
-            row.lon.textProperty().addListener((o, a, b) -> resetLookup.run());
+            // Any edit makes the last lookup's outcome stale.
+            Runnable changed = () -> {
+                if (!row.busy) row.outcome(null, null);
+                refresh.run();
+            };
+            row.lat.textProperty().addListener((o, a, b) -> changed.run());
+            row.lon.textProperty().addListener((o, a, b) -> changed.run());
+            row.place.textProperty().addListener((o, a, b) -> changed.run());
             row.lookup.setOnAction(e -> lookUp(row));
         }
         refresh.run();
@@ -214,47 +237,96 @@ public final class CoordinatesDialog {
         });
         row.clearButton.setTooltip(new Tooltip("Clear " + name.toLowerCase() + " point"));
         row.clearButton.setOnAction(e -> row.clear());
-        row.lookupState(LOOKUP_IDLE, LOOKUP_HINT);
+        row.lookup.setTooltip(new Tooltip());
         grid.addRow(rowIndex, new Label(icon + " " + name + ":"), row.lat, row.lon, row.ddm, row.place,
                 row.lookup, row.open, row.clearButton);
     }
 
-    /** Enables 🔍 only with a valid point, while online and not already looking up. */
+    /**
+     * Shows the lookup state on 🔍: enabled with a valid point (reverse) or a place without
+     * coordinates (forward), while online and not already looking up.
+     */
     private void refreshLookup(Row row) {
+        String icon;
+        String tooltip;
         if (!online) {
+            icon = LOOKUP_IDLE;
+            tooltip = "Offline — re-check connectivity (top right) and reopen";
             row.lookup.setDisable(true);
-            row.lookupState(LOOKUP_IDLE, "Offline — re-check connectivity (top right) and reopen");
         } else {
-            row.lookup.setDisable(row.busy || row.value() == null);
+            if (row.busy) {
+                icon = LOOKUP_BUSY;
+                tooltip = "Looking up " + row.name.toLowerCase() + "…";
+            } else if (row.outcomeIcon != null) {
+                icon = row.outcomeIcon;
+                tooltip = row.outcomeText;
+            } else {
+                icon = LOOKUP_IDLE;
+                tooltip = row.lookupHint();
+            }
+            row.lookup.setDisable(row.busy || (row.value() == null && !row.canSearch()));
+        }
+        row.lookup.setText(icon);
+        row.lookup.getTooltip().setText(tooltip);
+    }
+
+    /** Reverse lookup for a valid point, otherwise forward lookup for the place. */
+    private void lookUp(Row row) {
+        if (row.busy) return;
+        if (row.value() != null) {
+            reverse(row);
+        } else if (row.canSearch()) {
+            forward(row);
         }
     }
 
-    /** Runs the lookup off the FX thread; a result for a point edited meanwhile is dropped. */
-    private void lookUp(Row row) {
+    /** Runs the reverse lookup off the FX thread; a result for a point edited meanwhile is dropped. */
+    private void reverse(Row row) {
         Coordinates.LatLon point = row.value();
-        if (point == null || row.busy) return;
+        runLookup(row, () -> placeLookup.lookup(point.lat(), point.lon()), () -> point.equals(row.value()), place -> {
+            row.place.setText(place.label());
+            row.outcome(LOOKUP_IDLE, "Found " + place.label() + " (" + place.kind() + ") via OpenStreetMap");
+        });
+    }
+
+    /** Runs the forward lookup off the FX thread; dropped if the place was edited or coordinates typed meanwhile. */
+    private void forward(Row row) {
+        String query = row.placeValue();
+        runLookup(row, () -> placeLookup.search(query),
+                () -> row.canSearch() && query.equals(row.placeValue()), match -> {
+            row.set(new Coordinates.LatLon(match.lat(), match.lon()));
+            row.outcome(LOOKUP_IDLE, "Found " + match.place().label() + " (" + match.place().kind()
+                    + ") via OpenStreetMap: approx. centre, refine if needed");
+        });
+    }
+
+    /**
+     * Runs {@code call} on a virtual thread and hands its result to {@code onSuccess} on the
+     * FX thread; a failure shows ⚠️ with the error. Either is dropped (back to idle) when
+     * {@code stillCurrent} says the row was edited meanwhile.
+     */
+    private <T> void runLookup(Row row, Supplier<T> call, BooleanSupplier stillCurrent, Consumer<T> onSuccess) {
         row.busy = true;
-        row.lookupState(LOOKUP_BUSY, "Looking up " + row.name.toLowerCase() + "…");
+        row.outcome(null, null);
         refreshLookup(row);
         Thread.ofVirtual().name("place-lookup").start(() -> {
+            T found = null;
             String error = null;
-            PlaceLookup.Place found = null;
             try {
-                found = placeLookup.lookup(point.lat(), point.lon());
+                found = call.get();
             } catch (RuntimeException e) {
                 error = e instanceof PlaceLookup.LookupException ? e.getMessage() : UiText.describe(e);
             }
-            PlaceLookup.Place place = found;
+            T result = found;
             String message = error;
             Platform.runLater(() -> {
                 row.busy = false;
-                if (!point.equals(row.value())) {
-                    row.lookupState(LOOKUP_IDLE, LOOKUP_HINT);
-                } else if (place != null) {
-                    row.place.setText(place.label());
-                    row.lookupState(LOOKUP_IDLE, "Found " + place.label() + " (" + place.kind() + ") via OpenStreetMap");
+                if (!stillCurrent.getAsBoolean()) {
+                    row.outcome(null, null);
+                } else if (result != null) {
+                    onSuccess.accept(result);
                 } else {
-                    row.lookupState(LOOKUP_FAILED, message);
+                    row.outcome(LOOKUP_FAILED, message);
                 }
                 refreshLookup(row);
             });

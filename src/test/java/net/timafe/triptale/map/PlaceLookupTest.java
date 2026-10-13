@@ -2,7 +2,9 @@ package net.timafe.triptale.map;
 
 import com.sun.net.httpserver.HttpServer;
 import net.timafe.triptale.map.PlaceLookup.LookupException;
+import net.timafe.triptale.map.PlaceLookup.Match;
 import net.timafe.triptale.map.PlaceLookup.Place;
+import net.timafe.triptale.map.PlaceLookup.Query;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -97,9 +99,59 @@ class PlaceLookupTest {
         assertTrue(elapsedMs >= 300, "second request should wait, took " + elapsedMs + " ms");
     }
 
+    @Test
+    void splitQuery_takesTrailingTwoLetterCodeOnly() {
+        assertEquals(new Query("Bangkok", "th"), PlaceLookup.splitQuery("  Bangkok, TH "));
+        assertEquals(new Query("Frankfurt am Main", "de"), PlaceLookup.splitQuery("Frankfurt am Main,de"));
+        assertEquals(new Query("Bangkok", null), PlaceLookup.splitQuery("Bangkok"));
+        assertEquals(new Query("Paris, Texas", null), PlaceLookup.splitQuery("Paris, Texas"));
+        assertEquals(new Query("Ulm, DEU", null), PlaceLookup.splitQuery("Ulm, DEU"));
+        assertEquals(new Query("", null), PlaceLookup.splitQuery(null));
+    }
+
+    @Test
+    void parseSearch_takesFirstHit() {
+        Match match = parser.parseSearch("""
+                [{"lat":"13.7524938","lon":"100.4935089","name":"Bangkok",
+                  "address":{"city":"Bangkok","country_code":"th"}},
+                 {"lat":"1","lon":"2","name":"Other"}]""");
+        assertEquals(new Match(13.7524938, 100.4935089, new Place("Bangkok", "TH", "city")), match);
+    }
+
+    @Test
+    void parseSearch_emptyOrBrokenIsNoPlace() {
+        LookupException e = assertThrows(LookupException.class, () -> parser.parseSearch("[]"));
+        assertEquals("No place found with that name", e.getMessage());
+        assertThrows(LookupException.class, () -> parser.parseSearch("[{\"name\":\"X\"}]"));
+        assertThrows(LookupException.class, () -> parser.parseSearch("{\"error\":\"x\"}"));
+    }
+
+    @Test
+    void search_sendsEncodedQueryAndCountryCode() throws IOException {
+        List<String> queries = new CopyOnWriteArrayList<>();
+        URI base = serve(200, "[{\"lat\":\"48.4\",\"lon\":\"9.99\",\"address\":{\"town\":\"Ulm\",\"country_code\":\"de\"}}]",
+                new CopyOnWriteArrayList<>(), queries);
+        PlaceLookup lookup = new PlaceLookup(base, null, Duration.ZERO);
+
+        Match match = lookup.search("Neu-Ulm Süd, DE");
+        lookup.search("São Paulo");
+
+        assertEquals(48.4, match.lat());
+        assertEquals("Ulm, DE", match.place().label());
+        assertEquals("q=Neu-Ulm+S%C3%BCd&countrycodes=de&format=jsonv2&limit=1&addressdetails=1&accept-language=en",
+                queries.get(0));
+        assertEquals("q=S%C3%A3o+Paulo&format=jsonv2&limit=1&addressdetails=1&accept-language=en", queries.get(1));
+    }
+
+    @Test
+    void search_blankTextFailsWithoutRequest() {
+        LookupException e = assertThrows(LookupException.class, () -> parser.search(" , DE"));
+        assertEquals("Enter a place name first", e.getMessage());
+    }
+
     private URI serve(int status, String body, List<String> agents, List<String> queries) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/reverse", exchange -> {
+        server.createContext("/", exchange -> {
             agents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
             queries.add(exchange.getRequestURI().getRawQuery());
             byte[] bytes = body.getBytes(StandardCharsets.UTF_8);

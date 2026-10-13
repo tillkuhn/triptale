@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 59
+## Next Todo: 60
 
 ## 58 Show start/stop place in exports
 
@@ -223,6 +223,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 59 Forward place lookup (place name → coordinates)
+
+The reverse of todo 51: type `"Bangkok, TH"` in the Coordinator's Place field and let 🔍 fill
+in lat/lon (city centre) via Nominatim `/search` (`q=`, `countrycodes=` from a trailing
+two-letter code, `limit=1`). Same `map.PlaceLookup`, rate limiter and User-Agent; button only,
+never on typing (usage policy). 🔍 picks the direction from the row: coordinates set → reverse,
+only place set → forward. Decided: take the first hit and name its country in the tooltip
+("approx. city centre"), keep the typed place text as it is, store no "approximate" flag.
 
 ## DONE 51 Reverse geocoding: place name and country from entry coordinates
 
