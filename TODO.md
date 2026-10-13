@@ -4,12 +4,12 @@
 
 ## 58 Show start/stop place in exports
 
-Todo 51 stores `start_place`/`stop_place` ("Warstein, DE"); show them in `export.EntryFacts`
-(Markdown byline, HTML ticket stub, WordPress columns), e.g. "Warstein, DE → Hagen, DE".
-Open: replace or append to the DDM coordinates; show the country code always, or hide it for
-the trip's home country. Exports with looked-up names need a small
-"Place names © OpenStreetMap contributors" line (ODbL).
-Background: docs/done/51_reverse_geocoding.md
+Show todo 51's `start_place`/`stop_place` in `export.EntryFacts` (Markdown, HTML, WordPress),
+e.g. "🇩🇪 Warstein → 🇩🇪 Hagen". Leaning: a flag replaces the country code (Windows shows "DE"
+as the fallback), no polyfill font. Open: replace or append to DDM, flag noise on
+single-country trips, OSM attribution line.
+
+[Details](docs/58_places_in_exports.md)
 
 ## 56 Open the backpack from the main window
 
