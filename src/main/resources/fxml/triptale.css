@@ -467,6 +467,49 @@
 }
 
 
+/* ── Settings dialog: tabs + scroll fallback ──────────── */
+.settings-tabs > .tab-header-area {
+    -fx-padding: 0 0 6 0;
+}
+.settings-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #202e2e;
+    -fx-background-radius: 6 6 0 0;
+    -fx-border-color: #2e4040;
+    -fx-border-width: 1 1 2 1;
+    -fx-border-radius: 6 6 0 0;
+    -fx-padding: 4 14 4 14;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: #253333;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #253333;
+    -fx-border-color: #2e4040 #2e4040 #4ec9b0 #2e4040;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #b0ccc8;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: #4ec9b0;
+    -fx-font-weight: bold;
+}
+.settings-tabs > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+.settings-tabs > .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4 8 4;
+}
+.settings-scroll,
+.settings-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
 /* ── Card panel (metrics grid) ────────────────────────── */
 .card {
     -fx-background-color: #202e2e;

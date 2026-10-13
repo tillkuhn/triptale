@@ -1,15 +1,22 @@
 package net.timafe.triptale.ui.dialog;
 
 import javafx.event.ActionEvent;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Screen;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.i18n.TripLanguage;
@@ -87,57 +94,73 @@ public final class EditSettingsDialog {
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("form-error");
+        errorLabel.managedProperty().bind(errorLabel.textProperty().isNotEmpty());
 
-        GridPane grid = Dialogs.formGrid();
+        GridPane general = Dialogs.formGrid();
         int row = 0;
-        grid.add(new Label("Data directory:"), 0, row);
-        grid.add(dataDirField, 1, row++);
-        grid.add(new Label("Git author name:"), 0, row);
-        grid.add(authorNameField, 1, row++);
-        grid.add(new Label("Git author email:"), 0, row);
-        grid.add(authorEmailField, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
+        general.add(new Label("Data directory:"), 0, row);
+        general.add(dataDirField, 1, row++);
+        general.add(new Label("Git author name:"), 0, row);
+        general.add(authorNameField, 1, row++);
+        general.add(new Label("Git author email:"), 0, row);
+        general.add(authorEmailField, 1, row++);
+        general.add(new Separator(), 0, row, 2, 1);
         row++;
-        grid.add(new Label("Impressions file pattern:"), 0, row);
-        grid.add(patternField, 1, row++);
-        grid.add(new Label("Impressions grid columns:"), 0, row);
-        grid.add(columnsField, 1, row++);
-        grid.add(new Label("Impressions base filter:"), 0, row);
-        grid.add(baseFilterField, 1, row++);
-        grid.add(new Label("Impressions fave filter:"), 0, row);
-        grid.add(faveFilterField, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
-        row++;
-        grid.add(new Label("Trip language:"), 0, row);
-        grid.add(languageCombo, 1, row++);
+        general.add(new Label("Trip language:"), 0, row);
+        general.add(languageCombo, 1, row++);
         Label languageHint = new Label("For words the exports add (Day, Distance, …); the app itself stays English");
         languageHint.getStyleClass().add("hint-label");
-        grid.add(languageHint, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
+        general.add(languageHint, 1, row++);
+        general.add(new Separator(), 0, row, 2, 1);
         row++;
-        grid.add(new Label("Mapbox token:"), 0, row);
-        grid.add(mapboxTokenField, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
-        row++;
-        grid.add(new Label("Backpack sync:"), 0, row);
-        grid.add(syncCombo, 1, row++);
-        grid.add(new Label("Backpack bucket URL:"), 0, row);
-        grid.add(bucketUrlField, 1, row++);
-        grid.add(new Label("Backpack region:"), 0, row);
-        grid.add(regionField, 1, row++);
-        grid.add(new Label("Access key ID:"), 0, row);
-        grid.add(accessKeyIdField, 1, row++);
-        grid.add(new Label("Secret access key:"), 0, row);
-        grid.add(secretField, 1, row++);
-        grid.add(new Label("Backpack public URL:"), 0, row);
-        grid.add(publicBaseUrlField, 1, row++);
-        grid.add(new Separator(), 0, row, 2, 1);
-        row++;
-        grid.add(radioEnabledCheck, 1, row++);
-        grid.add(errorLabel, 1, row);
+        general.add(radioEnabledCheck, 1, row);
 
-        dlg.getDialogPane().setContent(grid);
+        GridPane photos = Dialogs.formGrid();
+        row = 0;
+        photos.add(new Label("Impressions file pattern:"), 0, row);
+        photos.add(patternField, 1, row++);
+        photos.add(new Label("Impressions grid columns:"), 0, row);
+        photos.add(columnsField, 1, row++);
+        photos.add(new Label("Impressions base filter:"), 0, row);
+        photos.add(baseFilterField, 1, row++);
+        photos.add(new Label("Impressions fave filter:"), 0, row);
+        photos.add(faveFilterField, 1, row++);
+        photos.add(new Separator(), 0, row, 2, 1);
+        row++;
+        photos.add(new Label("Mapbox token:"), 0, row);
+        photos.add(mapboxTokenField, 1, row);
+
+        GridPane backpack = Dialogs.formGrid();
+        row = 0;
+        backpack.add(new Label("Backpack sync:"), 0, row);
+        backpack.add(syncCombo, 1, row++);
+        backpack.add(new Label("Backpack bucket URL:"), 0, row);
+        backpack.add(bucketUrlField, 1, row++);
+        backpack.add(new Label("Backpack region:"), 0, row);
+        backpack.add(regionField, 1, row++);
+        backpack.add(new Label("Access key ID:"), 0, row);
+        backpack.add(accessKeyIdField, 1, row++);
+        backpack.add(new Label("Secret access key:"), 0, row);
+        backpack.add(secretField, 1, row++);
+        backpack.add(new Label("Backpack public URL:"), 0, row);
+        backpack.add(publicBaseUrlField, 1, row);
+
+        Tab backpackTab = tab("Backpack", backpack);
+        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab);
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabs.getStyleClass().add("settings-tabs");
+
+        // Tabs keep the dialog short; the scroll pane is the fallback for screens that are
+        // still too small, so OK/Cancel (outside the content) always stay reachable.
+        ScrollPane scroll = new ScrollPane(new VBox(8, tabs, errorLabel));
+        scroll.setFitToWidth(true);
+        scroll.setFitToHeight(true);
+        scroll.getStyleClass().add("settings-scroll");
+
+        dlg.getDialogPane().setContent(scroll);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dlg.setResizable(true);
+        dlg.setOnShown(e -> fitToScreen(dlg.getDialogPane().getScene().getWindow()));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         // Keep the dialog open while the attachment fields are malformed
@@ -145,7 +168,10 @@ public final class EditSettingsDialog {
             Optional<String> error = readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField)
                     .validationError();
             errorLabel.setText(error.orElse(""));
-            if (error.isPresent()) ev.consume();
+            if (error.isPresent()) {
+                tabs.getSelectionModel().select(backpackTab);
+                ev.consume();
+            }
         });
 
         Optional<ButtonType> result = dlg.showAndWait();
@@ -165,6 +191,22 @@ public final class EditSettingsDialog {
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
         return Optional.of(settings);
+    }
+
+    private static Tab tab(String title, GridPane content) {
+        Tab tab = new Tab(title, content);
+        tab.setClosable(false);
+        return tab;
+    }
+
+    /** Shrinks the window to the screen's usable area (the content then scrolls) and keeps it on screen. */
+    private static void fitToScreen(Window window) {
+        Rectangle2D bounds = Screen.getScreensForRectangle(window.getX(), window.getY(), window.getWidth(), window.getHeight())
+                .stream().findFirst().orElse(Screen.getPrimary()).getVisualBounds();
+        if (window.getHeight() > bounds.getHeight()) window.setHeight(bounds.getHeight());
+        if (window.getWidth() > bounds.getWidth()) window.setWidth(bounds.getWidth());
+        window.setY(Math.max(bounds.getMinY(), Math.min(window.getY(), bounds.getMaxY() - window.getHeight())));
+        window.setX(Math.max(bounds.getMinX(), Math.min(window.getX(), bounds.getMaxX() - window.getWidth())));
     }
 
     private static String syncLabel(AppSettings.AttachmentSync sync) {
