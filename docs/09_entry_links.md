@@ -38,7 +38,7 @@ url_track: <migrated from former trackurl key>
 - **Migration** uses a one-off `sed` outside the app (`s/^trackurl: /url_track: /`), with no legacy code in the app. Keys are not re-sorted; the next save fixes the order.
 - **Value format** is a bare URL or `"[Name](url)"`, parsed with `^\[(.+?)\]\((.+)\)$` so URLs containing `(…)` work. `[`/`]` are stripped from names. A name that is blank or equal to the URL is stored as a bare URL. Only http(s) can be added (`UiText.isValidHttpUrl`). Invalid values are kept and flagged with ⚠️, and exported as plain text.
 - **Domain:** a `domain.LinkKind` enum with `key()`, `emoji()` and `label()`; its declaration order is the export order. `DiaryEntry.trackUrl` → `SequencedMap<String, Link> links`, where `Link(url, name, valid)` has `parse`/`format`.
-- **Kinds, in export order:** 🗺️ Track: · 🐠 Dive at: · 🍲 Eat at: · 🍺 Drink at: · 🛏️ Sleep at: · 🎵 Listen to: · 🎬 Watch: — then unknown verbs alphabetically as `🔗 <Verb>:`.
+- **Kinds, in export order:** 😎 Chill at: (not translated) · 🗺️ Track: · 🐠 Dive at: · 🍲 Eat at: · 🍺 Drink at: · 🛏️ Sleep at: · 🎵 Listen to: · 🎬 Watch: — then unknown verbs alphabetically as `🔗 <Verb>:`.
 - **YAML:** global alphabetical key order is kept, so `url_*` keys come after `type`.
 - **Export:** the list goes at the end of each entry. `entry-track.md` → `entry-links.md`, one line per link. Link text is the name, otherwise the domain only; the href is always the full URL. WordPress gets the same list as a `<ul>`, replacing the inline `Track` part.
 - **Naming:** "Links" in code; "🕸️ Weblinks" in the UI (button, and the "🕸️ Weblinks Manager" dialog, renamed 2026-10). The YAML prefix stays `url_`.

@@ -10,6 +10,7 @@ import java.util.Optional;
  * still preserved on load/save, see {@link #emojiFor}.
  */
 public enum LinkKind {
+    CHILL("chill", "😎", "Chill at"),
     DIVE("dive", "🐠", "Dive at"),
     DRINK("drink", "🍺", "Drink at"),
     EAT("eat", "🍲", "Eat at"),
