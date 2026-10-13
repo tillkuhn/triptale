@@ -231,7 +231,9 @@ in lat/lon (city centre) via Nominatim `/search` (`q=`, `countrycodes=` from a t
 two-letter code, `limit=1`). Same `map.PlaceLookup`, rate limiter and User-Agent; button only,
 never on typing (usage policy). 🔍 picks the direction from the row: coordinates set → reverse,
 only place set → forward. Decided: take the first hit and name its country in the tooltip
-("approx. city centre"), keep the typed place text as it is, store no "approximate" flag.
+("approx. city centre"), store no "approximate" flag. Revised: the typed name is kept, but the
+hit's country code is appended as an uppercase `", XX"` (`"Krung Thep Aphiwat"` →
+`"Krung Thep Aphiwat, TH"`, `"ulm,de"` → `"ulm, DE"`), so a wrong pick (Hamburg, US) is visible.
 
 ## DONE 51 Reverse geocoding: place name and country from entry coordinates
 

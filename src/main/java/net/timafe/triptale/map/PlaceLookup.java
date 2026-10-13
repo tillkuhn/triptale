@@ -122,6 +122,19 @@ public class PlaceLookup {
         return new Query(trimmed, null);
     }
 
+    /**
+     * The place text to keep after a forward lookup: the typed name as it is, with the hit's
+     * country code as an uppercase {@code ", XX"} suffix ({@code "Krung Thep Aphiwat"} →
+     * {@code "Krung Thep Aphiwat, TH"}), so a wrong country catches the eye. A typed code is
+     * replaced, which normalizes {@code "ulm,de"} to {@code "ulm, DE"}; a hit without a country
+     * keeps the typed code, uppercased.
+     */
+    public static String labelFor(String typed, Place hit) {
+        Query query = splitQuery(typed);
+        String cc = hit != null && hit.countryCode() != null ? hit.countryCode() : query.countryCode();
+        return cc == null ? query.text() : query.text() + ", " + cc.toUpperCase(Locale.ROOT);
+    }
+
     /** GETs a path below the base URL and returns the body of a 200 answer. */
     private String get(String pathAndQuery) {
         URI uri = baseUrl.resolve(pathAndQuery);

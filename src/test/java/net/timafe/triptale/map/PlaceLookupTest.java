@@ -110,6 +110,16 @@ class PlaceLookupTest {
     }
 
     @Test
+    void labelFor_keepsTypedNameAndAppendsHitCountry() {
+        Place th = new Place("Bangkok", "TH", "city");
+        assertEquals("Krung Thep Aphiwat, TH", PlaceLookup.labelFor("Krung Thep Aphiwat", th));
+        assertEquals("Krung Thep Aphiwat, TH", PlaceLookup.labelFor(" Krung Thep Aphiwat ,th ", th));
+        assertEquals("Hamburg, US", PlaceLookup.labelFor("Hamburg", new Place("Hamburg", "US", "town")));
+        assertEquals("ulm, DE", PlaceLookup.labelFor("ulm,de", new Place("Ulm", null, "place")));
+        assertEquals("Atlantis", PlaceLookup.labelFor("Atlantis", new Place("Atlantis", null, "place")));
+    }
+
+    @Test
     void parseSearch_takesFirstHit() {
         Match match = parser.parseSearch("""
                 [{"lat":"13.7524938","lon":"100.4935089","name":"Bangkok",

@@ -85,3 +85,7 @@ A trailing `", XX"` becomes `countrycodes`; without it the whole text is the que
 (most important) hit's `lat`/`lon` fill the row; that's the place's centre, which the tooltip
 says. Same User-Agent and shared 1 req/s limiter; triggered only by the button, never while
 typing, as the usage policy requires for search.
+
+The typed name stays as entered, but the hit's country code replaces or adds the `", XX"`
+suffix, uppercased (`"Krung Thep Aphiwat"` → `"Krung Thep Aphiwat, TH"`). Users rarely type a
+country, and showing the one the lookup chose flags a wrong pick (Hamburg, US).

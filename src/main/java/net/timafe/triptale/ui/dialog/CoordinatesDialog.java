@@ -34,8 +34,8 @@ import java.util.function.Supplier;
  *
  * <p>Each row also has a free-text place ("Soest, DE", todo 51), filled by the 🔍 reverse lookup
  * or typed by hand. 🔍 works the other way too (todo 59): with a place but no coordinates it
- * fills in the place's centre point. The lookup's progress and outcome live on the 🔍 button
- * and its tooltip: ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still
+ * fills in the place's centre point and appends the hit's country code to the typed name. The
+ * lookup's progress and outcome live on the 🔍 button and its tooltip: ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still
  * clickable to retry). Editing the row resets it.
  */
 public final class CoordinatesDialog {
@@ -295,6 +295,7 @@ public final class CoordinatesDialog {
         runLookup(row, () -> placeLookup.search(query),
                 () -> row.canSearch() && query.equals(row.placeValue()), match -> {
             row.set(new Coordinates.LatLon(match.lat(), match.lon()));
+            row.place.setText(PlaceLookup.labelFor(query, match.place()));
             row.outcome(LOOKUP_IDLE, "Found " + match.place().label() + " (" + match.place().kind()
                     + ") via OpenStreetMap: approx. centre, refine if needed");
         });
