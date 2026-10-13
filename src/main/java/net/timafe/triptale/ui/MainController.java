@@ -922,7 +922,7 @@ public class MainController implements StatusSink {
         if (coordinatesButton != null) {
             coordinatesButton.setText(startSet || stopSet
                     ? "🧭 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
-                    : "🧭 Uncharted");
+                    : "🧭 Coordinator: Uncharted");
             boolean anything = startSet || stopSet || startPlace != null || stopPlace != null;
             coordinatesButton.setTooltip(new Tooltip(anything
                     ? "Start " + pointSummary(startPlace, startSet ? Coordinates.toDdm(startLat, startLon) : null)
