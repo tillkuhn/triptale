@@ -6,9 +6,10 @@
 
 Replace copy & paste with "Send to WordPress": OAuth2 login once (browser + loopback redirect,
 token in `settings.yml`), then create/update a draft via `public-api.wordpress.com/wp/v2`.
-The post ID is stored per entry (`wp_post`) so re-exporting a range updates its draft instead
-of creating a new one; warn before overwriting published or WordPress-side edited posts.
-First step: verify localhost redirect and token lifetime.
+A new Tolaria type `Post` in the trip folder (title, intro, `has` links to its days) is the
+export source and carries `wp_id`/`wp_modified`; entries stay untouched. The app reads Posts
+only (editing them in-app is a follow-up). Warn before overwriting published or WordPress-side
+edited posts. First step: verify localhost redirect and token lifetime.
 
 [Details](docs/60_wordpress_api_draft.md)
 
