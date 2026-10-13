@@ -1,6 +1,16 @@
 # ToDos for this app
 
-## Next Todo: 60
+## Next Todo: 61
+
+## 60 Send the WordPress export as a draft via the API
+
+Replace copy & paste with "Send to WordPress": OAuth2 login once (browser + loopback redirect,
+token in `settings.yml`), then create/update a draft via `public-api.wordpress.com/wp/v2`.
+The post ID is stored per entry (`wp_post`) so re-exporting a range updates its draft instead
+of creating a new one; warn before overwriting published or WordPress-side edited posts.
+First step: verify localhost redirect and token lifetime.
+
+[Details](docs/60_wordpress_api_draft.md)
 
 ## 56 Open the backpack from the main window
 
@@ -17,10 +27,7 @@ Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, C
   Day 1: …`).
 - Watch the CloudFront bill in Cost Explorer for a few weeks; if it isn't ~€0, set
   `enable_cdn = false` and host images on our own webserver (the blog is a Simple site, no SFTP).
-- Optional stage 2: create the post as a draft via the API. **Works** (2026-10-10): app
-  "TripTale" (id 150174) at developer.wordpress.com, OAuth2 token, `POST
-  public-api.wordpress.com/wp/v2/sites/timafe.wordpress.com/posts` with `status=draft`. Open:
-  browser login (no stored password) vs. password grant.
+- Stage 2 (draft via the API) moved to todo 60.
 
 [Background](docs/44_wordpress_export.md)
 
