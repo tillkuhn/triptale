@@ -85,7 +85,7 @@ public final class MapAssistantDialog {
                     .map(d -> store.loadEntry(trip.ref(), d))
                     .toList();
         } catch (RuntimeException e) {
-            statusSink.error("Map Assistant failed: " + e.getMessage());
+            statusSink.error("Sgt. Mapper failed: " + e.getMessage());
             return;
         }
         new Session(trip, entries, from, to).show();
@@ -118,7 +118,7 @@ public final class MapAssistantDialog {
         }
 
         void show() {
-            dlg.setTitle("🗺 Map Assistant");
+            dlg.setTitle("🗺 Sgt. Mapper");
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
 
             imageView.setFitWidth(WIDTH);

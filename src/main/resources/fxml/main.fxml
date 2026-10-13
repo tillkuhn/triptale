@@ -46,7 +46,7 @@
                                 <MenuItem text="📝 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
-                                <MenuItem text="🗺 Map Assistant…" onAction="#onMapAssistantTrip"/>
+                                <MenuItem text="🗺 Sgt. Mapper…" onAction="#onMapAssistantTrip"/>
                             </items>
                         </Menu>
                         <Menu text="Tale Entries">
@@ -174,7 +174,7 @@
                         <Button fx:id="coordinatesButton" text="🧭 Coordinator: Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
-                        <Button text="🗺 Map Assistant" onAction="#onMapAssistant" styleClass="half-width-button">
+                        <Button text="🗺 Sgt. Mapper" onAction="#onMapAssistant" styleClass="half-width-button">
                             <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
                         </Button>
                         <Button fx:id="backpackButton" text="🎒 Backpack" onAction="#onAddAttachments" disable="true" styleClass="half-width-button">
