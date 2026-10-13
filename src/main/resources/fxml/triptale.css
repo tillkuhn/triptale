@@ -370,7 +370,7 @@
     -fx-opacity: 0.35;
 }
 
-/* ── Nav button group (first/prev/next/today segmented block) ── */
+/* ── Nav button group (first/prev/next/last segmented block) ── */
 /* One shadow for the whole block, not per segment (those would overlap at the seams). */
 .nav-button-group {
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 4, 0, 0, 1);

@@ -124,13 +124,15 @@
                     </Button>
                     <Button fx:id="prevDayButton" minWidth="-Infinity" text="◀" onAction="#onPrevDay"/>
                     <Button fx:id="nextDayButton" minWidth="-Infinity" text="▶" onAction="#onNextDay"/>
-                    <Button fx:id="todayButton" minWidth="-Infinity" text="◉" onAction="#onToday">
-                        <tooltip><Tooltip text="Go to today"/></tooltip>
-                    </Button>
                     <Button fx:id="lastDayButton" minWidth="-Infinity" text="⏭" onAction="#onLastDay">
                         <tooltip><Tooltip text="Go to last day"/></tooltip>
                     </Button>
                 </HBox>
+                <!-- Only shown while it would do something (see MainController.updatePrevButtonState) -->
+                <Button fx:id="todayButton" minWidth="-Infinity" text="◉" onAction="#onToday"
+                        visible="false" managed="false">
+                    <tooltip><Tooltip text="Go to today"/></tooltip>
+                </Button>
                 <Region HBox.hgrow="ALWAYS" minWidth="24"/>
                 <Button fx:id="radioButton" minWidth="-Infinity" onAction="#onRadioToggle" styleClass="radio-button">
                     <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>

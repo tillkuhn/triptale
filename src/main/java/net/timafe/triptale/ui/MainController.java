@@ -1165,7 +1165,11 @@ public class MainController implements StatusSink {
                     && ((trip.startDate() != null && today.isBefore(trip.startDate()))
                         || (trip.endDate() != null && today.isAfter(trip.endDate())));
             boolean todayDisabled = date == null || date.equals(today) || outsideTrip;
-            if (todayButton != null) todayButton.setDisable(todayDisabled);
+            if (todayButton != null) {
+                // Hidden rather than greyed out, so it doesn't clutter the nav block
+                todayButton.setVisible(!todayDisabled);
+                todayButton.setManaged(!todayDisabled);
+            }
             if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }
         boolean nextDisabled;
