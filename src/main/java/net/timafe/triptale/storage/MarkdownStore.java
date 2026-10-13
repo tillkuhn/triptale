@@ -234,6 +234,7 @@ public class MarkdownStore {
 
     private static final String STATE_FILE = ".state.yml";
     private static final String STATE_LAST_TRIP_KEY = "lastTripPath";
+    private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
             "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
@@ -282,6 +283,22 @@ public class MarkdownStore {
             return Optional.of(TripRef.parse(raw));
         } catch (RuntimeException e) {
             log.warn("Ignoring malformed {}: '{}'", STATE_LAST_TRIP_KEY, raw);
+            return Optional.empty();
+        }
+    }
+
+    /** The entry date open when the app was last closed; written once on close, not on navigation. */
+    public void saveLastEntryDate(LocalDate date) {
+        saveState(STATE_LAST_ENTRY_KEY, date.toString());
+    }
+
+    public Optional<LocalDate> loadLastEntryDate() {
+        String raw = asString(loadState().get(STATE_LAST_ENTRY_KEY));
+        if (raw == null) return Optional.empty();
+        try {
+            return Optional.of(LocalDate.parse(raw));
+        } catch (RuntimeException e) {
+            log.warn("Ignoring malformed {}: '{}'", STATE_LAST_ENTRY_KEY, raw);
             return Optional.empty();
         }
     }

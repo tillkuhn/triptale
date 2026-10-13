@@ -10,6 +10,8 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.ui.MainController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -20,7 +22,10 @@ import org.springframework.context.ConfigurableApplicationContext;
 @EnableConfigurationProperties(TripTaleProperties.class)
 public class TripTaleApplication extends Application {
 
+    private static final Logger log = LoggerFactory.getLogger(TripTaleApplication.class);
+
     private ConfigurableApplicationContext spring;
+    private MainController controller;
 
     /**
      * Set by {@code make aot-train}: the app quits on its own shortly after the window is shown,
@@ -46,7 +51,12 @@ public class TripTaleApplication extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/main.fxml"));
         loader.setControllerFactory(spring::getBean);
         Parent root = loader.load();
-        MainController controller = loader.getController();
+        controller = loader.getController();
+        // Red close button goes through the same unsaved-changes prompt as Quit.
+        stage.setOnCloseRequest(e -> {
+            e.consume();
+            controller.onExit();
+        });
         stage.titleProperty().bind(controller.windowTitleProperty());
         stage.setScene(new Scene(root, 1150, 650));
         stage.setMinWidth(1100);
@@ -63,6 +73,8 @@ public class TripTaleApplication extends Application {
 
     @Override
     public void stop() {
+        log.info("Shutting down");
+        if (controller != null) controller.saveSessionState();
         if (spring != null) spring.close();
         Platform.exit();
     }

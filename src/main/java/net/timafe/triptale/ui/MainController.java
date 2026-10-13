@@ -220,6 +220,9 @@ public class MainController implements StatusSink {
     /** Guard flag to prevent listener re-entrancy when reverting a navigation on Cancel. */
     private boolean navigating = false;
 
+    /** Entry date open at the last close; consumed by the first trip selection after startup. */
+    private LocalDate restoreEntryDate;
+
     /** Tri-state: null = checking/unknown, true = online, false = offline */
     private Boolean connected = null;
 
@@ -385,7 +388,12 @@ public class MainController implements StatusSink {
             List<LocalDate> dates = store.listEntryDates(sel.ref());
             LocalDate target;
             String reason;
-            if (!dates.isEmpty()) {
+            LocalDate restore = restoreEntryDate;
+            restoreEntryDate = null;
+            if (restore != null && dates.contains(restore)) {
+                target = restore;
+                reason = "Reopened entry from last session (" + target + ")";
+            } else if (!dates.isEmpty()) {
                 target = dates.get(dates.size() - 1);
                 reason = "Opened last entry (" + target + ")";
             } else if (sel.startDate() != null) {
@@ -551,7 +559,27 @@ public class MainController implements StatusSink {
             toSelect = tripCombo.getItems().get(0);
         }
         if (toSelect != null) {
+            if (toSelect.ref().equals(last)) restoreEntryDate = store.loadLastEntryDate().orElse(null);
             tripCombo.getSelectionModel().select(toSelect);
+        }
+        restoreEntryDate = null;
+    }
+
+    /**
+     * Remembers the open entry's date in .state.yml so the next launch reopens it. Called once
+     * from {@code TripTaleApplication.stop()}, i.e. on every normal shutdown (Quit, window close,
+     * Cmd+Q) — never on navigation. The trip itself is already saved on selection.
+     */
+    public void saveSessionState() {
+        log.info("Normal close — saving session state");
+        if (!gitService.isConfigured()) return;
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null) return;
+        try {
+            store.saveLastEntryDate(date);
+        } catch (RuntimeException e) {
+            log.warn("Could not save session state: {}", e.getMessage());
         }
     }
 

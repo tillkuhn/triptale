@@ -528,4 +528,24 @@ class MarkdownStoreTest {
         store.saveState("lastTripPath", "not-a-valid-path");
         assertTrue(store.loadLastTripPath().isEmpty());
     }
+
+    @Test
+    void saveAndLoadLastEntryDateRoundTrip() {
+        store.saveLastTripPath(ALPS_2025);
+        store.saveLastEntryDate(LocalDate.of(2026, 8, 22));
+        assertEquals(LocalDate.of(2026, 8, 22), store.loadLastEntryDate().orElseThrow());
+        assertEquals(ALPS_2025, store.loadLastTripPath().orElseThrow());
+    }
+
+    @Test
+    void loadLastEntryDateReturnsEmptyWhenKeyMissing() {
+        store.saveLastTripPath(ALPS_2025);
+        assertTrue(store.loadLastEntryDate().isEmpty());
+    }
+
+    @Test
+    void loadLastEntryDateReturnsEmptyForMalformedValue() {
+        store.saveState("lastEntryDate", "not-a-date");
+        assertTrue(store.loadLastEntryDate().isEmpty());
+    }
 }
