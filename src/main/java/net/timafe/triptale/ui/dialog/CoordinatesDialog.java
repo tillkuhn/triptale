@@ -37,13 +37,13 @@ public final class CoordinatesDialog {
 
     private static final int COORD_COLUMNS = 11;
 
-    /** One Start/End row: its two fields, the DDM preview label and the open-in-maps button. */
-    private record Row(TextField lat, TextField lon, Label ddm, Button open) {
+    /** One Start/End row: its two fields, the DDM preview label and the open-in-maps and clear buttons. */
+    private record Row(TextField lat, TextField lon, Label ddm, Button open, Button clearButton) {
 
         static Row of(Double initialLat, Double initialLon) {
             Row row = new Row(new TextField(initialLat == null ? "" : initialLat.toString()),
                     new TextField(initialLon == null ? "" : initialLon.toString()), new Label("—"),
-                    new Button("🔗"));
+                    new Button("🔗"), new Button("🗑"));
             row.lat.setPrefColumnCount(COORD_COLUMNS);
             row.lon.setPrefColumnCount(COORD_COLUMNS);
             return row;
@@ -97,7 +97,7 @@ public final class CoordinatesDialog {
         grid.add(new Label("Latitude"), 1, 0);
         grid.add(new Label("Longitude"), 2, 0);
         grid.add(new Label("DDM"), 3, 0);
-        // Same icons as the main window's coordinates button ("📍 … ⇢ 🏁").
+        // Same icons as the main window's coordinates button ("📍 ✓  🏁 –").
         addRow(grid, 1, "📍", "Start", start);
         addRow(grid, 2, "🏁", "End", stop);
         grid.add(new Label("Parse from:"), 0, 3);
@@ -130,6 +130,7 @@ public final class CoordinatesDialog {
                 Coordinates.LatLon value = row.value();
                 row.ddm.setText(value == null ? "—" : Coordinates.toDdm(value.lat(), value.lon()));
                 row.open.setDisable(value == null);
+                row.clearButton.setDisable(row.isEmpty());
                 if (value == null && !row.isEmpty()) {
                     problem = (row == start ? "Start" : "End") + " needs a valid latitude and longitude.";
                 }
@@ -159,10 +160,9 @@ public final class CoordinatesDialog {
             Coordinates.LatLon value = row.value();
             if (value != null) browser.open(Coordinates.googleMapsUrl(value, null));
         });
-        Button clear = new Button("🗑");
-        clear.setTooltip(new Tooltip("Clear " + name.toLowerCase() + " point"));
-        clear.setOnAction(e -> row.clear());
-        grid.addRow(rowIndex, new Label(icon + " " + name + ":"), row.lat, row.lon, row.ddm, row.open, clear);
+        row.clearButton.setTooltip(new Tooltip("Clear " + name.toLowerCase() + " point"));
+        row.clearButton.setOnAction(e -> row.clear());
+        grid.addRow(rowIndex, new Label(icon + " " + name + ":"), row.lat, row.lon, row.ddm, row.open, row.clearButton);
     }
 
     private static void wireParse(Button button, TextArea source, Label hintLabel, Runnable refresh,

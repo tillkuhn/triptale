@@ -877,15 +877,17 @@ public class MainController implements StatusSink {
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
+    /** "🧭 Coordinator: 📍 ✓  🏁 –" once either point is set; the coordinates go in the tooltip. */
     private void updateCoordinatesButton() {
-        boolean set = startLat != null && startLon != null;
-        boolean stopSet = set && stopLat != null && stopLon != null;
+        boolean startSet = startLat != null && startLon != null;
+        boolean stopSet = stopLat != null && stopLon != null;
         if (coordinatesButton != null) {
-            coordinatesButton.setText(set
-                    ? "📍 " + Coordinates.toDdm(startLat, startLon) + (stopSet ? " ⇢ 🏁" : "")
-                    : "📍 Uncharted");
-            coordinatesButton.setTooltip(new Tooltip(stopSet
-                    ? "Start " + Coordinates.toDdm(startLat, startLon) + " · End " + Coordinates.toDdm(stopLat, stopLon)
+            coordinatesButton.setText(startSet || stopSet
+                    ? "🧭 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
+                    : "🧭 Uncharted");
+            coordinatesButton.setTooltip(new Tooltip(startSet || stopSet
+                    ? "Start " + (startSet ? Coordinates.toDdm(startLat, startLon) : "not set")
+                            + " · End " + (stopSet ? Coordinates.toDdm(stopLat, stopLon) : "not set")
                     : "Set start and end point"));
         }
     }
