@@ -2,15 +2,6 @@
 
 ## Next Todo: 60
 
-## 58 Show start/stop place in exports
-
-Show todo 51's `start_place`/`stop_place` in `export.EntryFacts` (Markdown, HTML, WordPress),
-e.g. "🇩🇪 Warstein → 🇩🇪 Hagen". Leaning: a flag replaces the country code (Windows shows "DE"
-as the fallback), no polyfill font. Open: replace or append to DDM, flag noise on
-single-country trips, OSM attribution line.
-
-[Details](docs/58_places_in_exports.md)
-
 ## 56 Open the backpack from the main window
 
 The 🎒 Backpack button next to Map Assistant (added with todo 55) currently just triggers
@@ -31,7 +22,7 @@ Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, C
   public-api.wordpress.com/wp/v2/sites/timafe.wordpress.com/posts` with `status=draft`. Open:
   browser login (no stored password) vs. password grant.
 
-[Background](docs/done/44_wordpress_export.md)
+[Background](docs/44_wordpress_export.md)
 
 ## 49 Bulk import a whole trip's photo-lib impressions as attachments
 
@@ -224,6 +215,15 @@ sites for a consistent fix rather than patching one.
 
 ---
 
+## DONE 58 Show start/stop place in exports
+
+The location fact in all three exports shows `start_place`/`stop_place` instead of
+coordinates where set; HTML/WordPress add the coordinates behind them as a small line. Exports
+with any place end with one "Place names © OpenStreetMap contributors" line (English, ODbL).
+Bigger fact emojis in HTML; 🗓️ instead of 📅 on WordPress. Country flags deferred.
+
+see docs/58_places_in_exports.md
+
 ## DONE 59 Forward place lookup (place name → coordinates)
 
 The reverse of todo 51: type `"Bangkok, TH"` in the Coordinator's Place field and let 🔍 fill
@@ -237,39 +237,39 @@ hit's country code is appended as an uppercase `", XX"` (`"Krung Thep Aphiwat"` 
 
 ## DONE 51 Reverse geocoding: place name and country from entry coordinates
 
-see docs/done/51_reverse_geocoding.md
+see docs/51_reverse_geocoding.md
 
 ## DONE 53 Entry fact header in exports
 
-see docs/done/53_entry_fact_strip.md
+see docs/53_entry_fact_strip.md
 
 ## DONE 57 Trip default activity
 
-see docs/done/57_trip_default_activity.md
+see docs/57_trip_default_activity.md
 
 ## DONE 55 Activity per entry
 
-see docs/done/55_activity_per_entry.md
+see docs/55_activity_per_entry.md
 
 ## DONE 54 Map Assistant
 
-see docs/done/54_map_assistant.md
+see docs/54_map_assistant.md
 
 ## DONE 30 Localization and i18n for Trip Language
 
-see docs/done/30_trip_language_i18n.md
+see docs/30_trip_language_i18n.md
 
 ## DONE 09 Links per entry (`url_<verb>`)
 
-see docs/done/09_entry_links.md
+see docs/09_entry_links.md
 
 ## DONE 52 Sync Tracks: cloud sync for radio/
 
-see docs/done/52_radio_sync.md
+see docs/52_radio_sync.md
 
 ## DONE 44 Support export trip as WordPress.com post (markup code)
 
-see docs/done/44_wordpress_export.md
+see docs/44_wordpress_export.md
 
 ## DONE 34 support html export for trip entries
 
@@ -279,7 +279,7 @@ Covered by todo 47: "⇧ Export Tale" opens the export dialog for the current da
 
 ## DONE 45 Random travel wisdom and greeting in the window title bar
 
-see docs/done/45_travel_wisdom_title.md
+see docs/45_travel_wisdom_title.md
 
 ## DONE 33b Attachment pull (download from cloud)
 
@@ -333,7 +333,7 @@ But to preserve space, only show the day number without slash and remarks in bra
 
 ## DONE 37 shortcuts for zoom in / zoom out in View Menu group
 
-see docs/done/37_zoom_shortcuts.md
+see docs/37_zoom_shortcuts.md
 
 ## DONE 25 Delete Tale Entry / Trip
 
@@ -516,7 +516,7 @@ also switch to emojis in menu (like "export diary") since the current icons for 
 
 ## DONE 10 Impressions Feature
 
-see docs/done/10_impressions_feature.md
+see docs/10_impressions_feature.md
 
 ## DONE 08 Fix Save Bug when navigating away from unsaved entry
 
@@ -551,7 +551,7 @@ Wiring in `MainController`: update label at entry load and in `onSave()` alongsi
 
 ## DONE 07 Check feasability of HTML Preview for markdown export
 
-see docs/done/07_html-preview-export.md
+see docs/07_html-preview-export.md
 
 ## DONE 05 Tale testbox light background
 

@@ -1,6 +1,6 @@
 # 57 Trip default activity
 
-Follow-up to todo 55 (activity per entry, `docs/done/55_activity_per_entry.md`). On trips like
+Follow-up to todo 55 (activity per entry, `docs/55_activity_per_entry.md`). On trips like
 bikepacking tours most days share the same activity, so picking it for every day is tedious. A
 trip can now name a default activity that new entries start with. Design agreed in a grilling
 session on 2026-10-12.

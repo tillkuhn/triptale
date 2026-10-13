@@ -124,7 +124,7 @@ green (278), app boots; user's first look: "very cool at a glance". Still open:
   impressions label + "⇧ Export Tale"; viewer's lower two rows (dir label ellipsis, dialog
   height); Pick Folder chooser auto-opening on a day with no images; export From/To combos and
   From > To auto-correction.
-- Mark todo 47 done after review (move doc to `docs/done/`).
+- Mark todo 47 done after review (move doc to `docs/`).
 
 Where things live:
 - `impressions/ImpressionSource` (sealed records), `ImpressionsService` (directory, images with

@@ -38,6 +38,17 @@ java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -j
 
 ---
 
+## Todos and docs
+
+- `TODO.md` is the single source of truth for status. Open todos sit at the top as
+  `## <n> Title`, finished ones below the `---` as `## DONE <n> Title`, newest first. `## Next Todo: <n>` holds the next free number.
+- `docs/<n>_<topic>.md` holds a todo's background, options and decisions, a light ADR. It
+  **stays in `docs/` when the todo is done** (there is no `docs/done/` any more); record the
+  final decisions in it and mark the todo DONE in `TODO.md`. Bigger architecture decisions
+  go to `docs/adr/`.
+
+---
+
 ## Visual verification (screenshots, UI review) — not possible for an agent
 
 You **can** launch the app (`make run` in the background) to confirm it boots and check logs. But this is a native macOS JavaFX desktop app — it does **not** run in a browser or Electron, so there is no Playwright/xvfb-style driver available.
@@ -141,11 +152,11 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 
 **YAML frontmatter keys** (exact strings — do not camelCase):
 - Entries: `activity`, `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `start_place`, `stop_lat`, `stop_lon`, `stop_place`, `type`, `url_<verb>`
-- `start_place`/`stop_place` (todo 51) are free text like `"Soest, DE"`, filled by the Coordinator's 🔍 reverse lookup (`map.PlaceLookup`, public Nominatim, ≤ 1 req/s, see ADR-0003) or typed by hand; allowed without coordinates. With a place but no coordinates, 🔍 runs a forward lookup (todo 59), fills in the place's centre point and appends the hit's country code to the typed name (`"Krung Thep Aphiwat, TH"`). See `docs/done/51_reverse_geocoding.md`.
+- `start_place`/`stop_place` (todo 51) are free text like `"Soest, DE"`, filled by the Coordinator's 🔍 reverse lookup (`map.PlaceLookup`, public Nominatim, ≤ 1 req/s, see ADR-0003) or typed by hand; allowed without coordinates. With a place but no coordinates, 🔍 runs a forward lookup (todo 59), fills in the place's centre point and appends the hit's country code to the typed name (`"Krung Thep Aphiwat, TH"`). See `docs/51_reverse_geocoding.md`.
 - Trips (`README.md`): `activity`, `end_date`, `start_date`, `type`
 - Single-word keys stay flat lowercase (`altitude`, `date`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
-- Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji and label, live in `domain.LinkKind`; links are listed and exported alphabetically by verb (`LinkKind.ORDER`), unknown verbs included. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/done/09_entry_links.md`.
-- `activity` (todo 55) holds one `domain.Activity` key (lowercase) or a tolerated unknown value; absent = not set. On a trip it's only the default that **new** entries are pre-filled with (todo 57) — copied on first save, never inherited at read time. See `docs/done/55_activity_per_entry.md`, `docs/done/57_trip_default_activity.md`.
+- Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji and label, live in `domain.LinkKind`; links are listed and exported alphabetically by verb (`LinkKind.ORDER`), unknown verbs included. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/09_entry_links.md`.
+- `activity` (todo 55) holds one `domain.Activity` key (lowercase) or a tolerated unknown value; absent = not set. On a trip it's only the default that **new** entries are pre-filled with (todo 57) — copied on first save, never inherited at read time. See `docs/55_activity_per_entry.md`, `docs/57_trip_default_activity.md`.
 - `MarkdownStore.saveEntry`/`saveTrip` write these keys in **alphabetical order** — keep them alphabetical when adding new ones, so serialized YAML stays diff-stable.
 - Every entry is written with `type: Tale` (see `MarkdownStore.ENTRY_TYPE`); every trip `README.md` is written with `type: Trip` (see `MarkdownStore.TRIP_TYPE`). These are [Tolaria](https://github.com/refactoringhq/tolaria) note-type tags: they let the data dir double as a Tolaria vault. `trip.md`/`tale.md` at the data-dir root are the corresponding Tolaria type definitions (`type: Type`); `type.md` is Tolaria's self-referential meta-type definition for `Type` itself. `GitService.initRepo()` creates all three if missing, alongside `.gitignore` setup.
 - Trip `name` is **not** in frontmatter — it's the first `# Heading` line of the README.md body (Tolaria/most Markdown viewers title a note from its first `#` heading, or the filename otherwise; since every trip file is named `README.md`, the name must live in the heading so it doesn't just show up as "README"). `MarkdownStore.loadTrip` parses it back out of that heading; `description` is everything after it.
@@ -194,7 +205,10 @@ same or higher level. Every exporter must run tales through `Markdown.stripPriva
 → "Day N", or the date without a trip start). Date, activity + distance/climb and start/stop
 point come from `export.EntryFacts`: an italic byline in Markdown, a "ticket stub" HTML block
 (styled in `html-shell.html`) in the HTML export, a `wp:columns` block on WordPress. Readers
-never see an ISO date. See `docs/done/53_entry_fact_strip.md`.
+never see an ISO date. See `docs/53_entry_fact_strip.md`.
+The location fact prefers `start_place`/`stop_place` over coordinates (todo 58). An export
+that contains any place ends with one OpenStreetMap credit line (ODbL, always English). See
+`docs/58_places_in_exports.md`.
 
 ---
 

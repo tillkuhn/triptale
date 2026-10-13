@@ -2,7 +2,7 @@
 
 Look up a place name ("Soest, DE") for an entry's start and end point from inside the
 Coordinator dialog, and store it in the entry's frontmatter. The service choice (public
-Nominatim) is settled in [ADR-0003](../adr/0003-reverse-geocoding-service.md).
+Nominatim) is settled in [ADR-0003](adr/0003-reverse-geocoding-service.md).
 
 ## Status
 

@@ -1,7 +1,7 @@
 # Todo 52 — Sync Tracks: cloud sync for radio/
 
 Status: **done 2026-10-10**, verified against the real bucket. Stage 2 of
-[todo 46](../46_radio.md).
+[todo 46](46_radio.md).
 
 ## Goal
 
