@@ -1,6 +1,16 @@
 # ToDos for this app
 
-## Next Todo: 61
+## Next Todo: 62
+
+## 61 Self-rendered trip maps from OSM tiles
+
+Replace the Mapbox static map in Map Assistant with our own: stitch OSM tiles and draw the pins
+with plain JDK (`java.net.http`, AWT `Graphics2D`, `ImageIO`), saved as PNG so maps can go into
+the blog. Mapbox terms forbid storing/publishing its images, so Mapbox (token setting included)
+goes away. Tile source is configurable; OpenTopoMap preferred for a nature look, CyclOSM etc.
+as alternatives, each with its own attribution.
+
+[Details](docs/61_osm_trip_maps.md)
 
 ## 60 Send the WordPress export as a draft via the API
 
