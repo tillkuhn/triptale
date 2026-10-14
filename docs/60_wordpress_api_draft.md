@@ -61,23 +61,16 @@ This was a nice short weekend trip
 
 ## Pieces
 
-1. **Auth (OAuth2, once).**
-   - Preferred: authorization code flow. The app opens the WordPress.com authorize page in the
-     browser; the redirect lands on a short-lived loopback listener (`http://127.0.0.1:<port>/…`);
-     the app exchanges the code for a token. No password stored, only the token in `settings.yml`
-     (like the S3 secret).
-   - Fallback: password grant (client secret + username + application password). Simpler, but
-     `settings.yml` holds a password.
-   - **Verify first:** does WordPress.com accept a localhost redirect URI for the app? How long
-     do its tokens live (believed not to expire unless revoked, not confirmed)?
+1. **Auth (OAuth2, once). ✅ Done**, see Progress below.
 2. **Storage:** `domain.Post` (title, intro, entry dates, `wpId`, `wpModified`), loaded/listed
    by `MarkdownStore`; frontmatter keys in alphabetical order; `wp_id` accepted quoted or bare.
 3. **Client:** new `wordpress` package (no JavaFX), `java.net.http` like `sync.S3Client`:
    create post, update post (`POST …/posts/<id>`), get post (`status`, `modified_gmt`, `link`).
+   (The package already exists with the OAuth2 client — this is the REST-call part.)
 4. **Dialog:** Export Diary gets a Post source; with a Post selected, "Send to WordPress" next
    to Copy. Afterwards it shows a link to open the post in the editor. Copy stays as the
    offline/no-token fallback.
-5. **Settings:** site, client ID/secret, token, in ⚙ Edit Settings next to the S3 settings.
+5. **Settings: ✅ Done**, see Progress below.
 
 ## Send rules
 
