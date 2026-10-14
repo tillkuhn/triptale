@@ -1,7 +1,9 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -14,6 +16,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Screen;
 import javafx.stage.Window;
@@ -21,9 +24,12 @@ import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.i18n.TripLanguage;
 import net.timafe.triptale.radio.Station;
+import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
+import net.timafe.triptale.wordpress.WordPressAuthClient;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -34,6 +40,12 @@ import java.util.Optional;
 public final class EditSettingsDialog {
 
     private static final int DEFAULT_GRID_COLUMNS = 2;
+
+    private final BrowserLauncher browser;
+
+    public EditSettingsDialog(BrowserLauncher browser) {
+        this.browser = browser;
+    }
 
     public Optional<AppSettings> showAndWait(AppSettings settings, Path settingsFile) {
         Dialog<ButtonType> dlg = new Dialog<>();
@@ -92,6 +104,21 @@ public final class EditSettingsDialog {
         publicBaseUrlField.setPrefColumnCount(36);
         CheckBox radioEnabledCheck = new CheckBox("Enable " + Station.NAME + " radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
+        AppSettings.WordPress wordPress = settings.getWordPress();
+        TextField wpSiteField = new TextField(wordPress.getSite());
+        wpSiteField.setPromptText("e.g. timafe.wordpress.com");
+        wpSiteField.setPrefColumnCount(36);
+        TextField wpClientIdField = new TextField(wordPress.getClientId());
+        wpClientIdField.setPrefColumnCount(36);
+        PasswordField wpClientSecretField = new PasswordField();
+        wpClientSecretField.setText(wordPress.getClientSecret());
+        wpClientSecretField.setPrefColumnCount(36);
+        // Mutated only by the Connect action below, not by typing — the token comes from the
+        // OAuth2 flow, never from a text field. A one-element array since it's captured by lambdas.
+        String[] accessToken = { wordPress.getAccessToken() };
+        Label wpTokenStatus = new Label(connectedLabel(accessToken[0]));
+        wpTokenStatus.getStyleClass().add("hint-label");
+        Button wpConnectButton = new Button("🔗 Connect to WordPress");
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("form-error");
         errorLabel.managedProperty().bind(errorLabel.textProperty().isNotEmpty());
@@ -146,9 +173,56 @@ public final class EditSettingsDialog {
         backpack.add(publicBaseUrlField, 1, row);
 
         Tab backpackTab = tab("Backpack", backpack);
-        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab);
+
+        GridPane wordpress = Dialogs.formGrid();
+        row = 0;
+        wordpress.add(new Label("Site:"), 0, row);
+        wordpress.add(wpSiteField, 1, row++);
+        wordpress.add(new Label("Client ID:"), 0, row);
+        wordpress.add(wpClientIdField, 1, row++);
+        wordpress.add(new Label("Client secret:"), 0, row);
+        wordpress.add(wpClientSecretField, 1, row++);
+        wordpress.add(new Label("Status:"), 0, row);
+        wordpress.add(new HBox(8, wpConnectButton, wpTokenStatus), 1, row);
+        Tab wordpressTab = tab("WordPress", wordpress);
+
+        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab, wordpressTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
+
+        wpConnectButton.setOnAction(e -> {
+            AppSettings.WordPress candidate = readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0]);
+            Optional<String> candidateError = candidate.validationError();
+            if (candidateError.isPresent()) {
+                errorLabel.setText(candidateError.get());
+                tabs.getSelectionModel().select(wordpressTab);
+                return;
+            }
+            errorLabel.setText("");
+            wpConnectButton.setDisable(true);
+            wpTokenStatus.setText("Opening browser for WordPress login…");
+            Task<WordPressAuthClient.TokenResult> task = new Task<>() {
+                @Override
+                protected WordPressAuthClient.TokenResult call() {
+                    return new WordPressAuthClient().connect(candidate, browser::open, Duration.ofMinutes(2));
+                }
+            };
+            task.setOnSucceeded(ev -> {
+                accessToken[0] = task.getValue().accessToken();
+                wpTokenStatus.setText(connectedLabel(accessToken[0]));
+                wpConnectButton.setDisable(false);
+            });
+            task.setOnFailed(ev -> {
+                wpConnectButton.setDisable(false);
+                wpTokenStatus.setText(connectedLabel(accessToken[0]));
+                Throwable ex = task.getException();
+                errorLabel.setText(ex == null ? "Connection failed" : String.valueOf(ex.getMessage()));
+            });
+            Thread thread = new Thread(task, "wordpress-oauth");
+            thread.setDaemon(true);
+            thread.start();
+        });
+
 
         // Tabs keep the dialog short; the scroll pane is the fallback for screens that are
         // still too small, so OK/Cancel (outside the content) always stay reachable.
@@ -167,6 +241,16 @@ public final class EditSettingsDialog {
         dlg.getDialogPane().lookupButton(ButtonType.OK).addEventFilter(ActionEvent.ACTION, ev -> {
             Optional<String> error = readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField)
                     .validationError();
+            if (error.isEmpty()) {
+                error = readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0])
+                        .validationError();
+                errorLabel.setText(error.orElse(""));
+                if (error.isPresent()) {
+                    tabs.getSelectionModel().select(wordpressTab);
+                    ev.consume();
+                }
+                return;
+            }
             errorLabel.setText(error.orElse(""));
             if (error.isPresent()) {
                 tabs.getSelectionModel().select(backpackTab);
@@ -190,6 +274,7 @@ public final class EditSettingsDialog {
         settings.setDefaultTripLanguage(languageCombo.getValue().code());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
+        settings.setWordPress(readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0]));
         return Optional.of(settings);
     }
 
@@ -229,6 +314,21 @@ public final class EditSettingsDialog {
         attachments.setSecretAccessKey(secretField.getText().trim());
         attachments.setPublicBaseUrl(publicBaseUrlField.getText().trim());
         return attachments;
+    }
+
+    private static AppSettings.WordPress readWordPress(TextField siteField, TextField clientIdField,
+                                                        PasswordField clientSecretField, String existingAccessToken) {
+        AppSettings.WordPress wordPress = new AppSettings.WordPress();
+        wordPress.setSite(siteField.getText().trim());
+        wordPress.setClientId(clientIdField.getText().trim());
+        wordPress.setClientSecret(clientSecretField.getText().trim());
+        // Not editable here — set only by the OAuth2 flow (todo 60); preserved across saves.
+        wordPress.setAccessToken(existingAccessToken);
+        return wordPress;
+    }
+
+    private static String connectedLabel(String accessToken) {
+        return accessToken == null || accessToken.isBlank() ? "Not connected" : "Connected (access token stored)";
     }
 
     /** Garbage or a sub-1 value falls back rather than rejecting the whole save. */

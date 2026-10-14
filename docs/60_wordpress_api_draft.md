@@ -94,6 +94,38 @@ returns them anyway.
   - then update **without sending `status`** — WordPress keeps draft/scheduled/published.
     Publishing always happens in WordPress, never from TripTale.
 
+## Progress
+
+- **Settings piece done (2026-10-14):** `AppSettings.WordPress` (site, clientId, clientSecret,
+  accessToken) added alongside `Attachments`, with a `validationError()` that only complains
+  about a *partially* filled site/clientId/clientSecret (accessToken is excluded — it's written
+  by the OAuth2 flow, not typed in, so blank is the normal "not connected yet" state). Wired into
+  ⚙ Edit Settings as a new "WordPress" tab (site, client ID, client secret fields + a read-only
+  "Connected"/"Not connected" status label); OK is blocked like the Backpack tab on an invalid
+  combination.
+- **OAuth2 flow done and verified live (2026-10-14):** new `wordpress` package (no JavaFX,
+  `java.net.http` + JDK's built-in `com.sun.net.httpserver.HttpServer`, same style as
+  `sync.S3Client`): `WordPressAuthClient.connect(settings, openUrl, timeout)` runs the full
+  Authorization Code Flow — starts the loopback listener, hands the authorize URL to a
+  `Consumer<String>` (the caller opens it via `ui.BrowserLauncher`), blocks for the redirect
+  (with CSRF `state` check), exchanges the code for a token. `WordPressException` is the
+  unchecked failure type (denied/timeout/HTTP error/state mismatch all map to it, with the
+  specific cause message). `EditSettingsDialog`'s WordPress tab got a "🔗 Connect to WordPress"
+  button that runs this on a daemon thread (`javafx.concurrent.Task`, same pattern as
+  `ConnectivityService`) and updates the status label on success/failure; the obtained
+  `accessToken` is written into `settings.yml` on the dialog's own OK (stored as plain text,
+  same as the S3 secret).
+- **Live end-to-end test (2026-10-14):** registered the WordPress.com app (id 150174, type
+  "Native") with Redirect URL `http://127.0.0.1:8765/callback` (exact match required — the
+  loopback port is hard-coded in `WordPressAuthClient` for this reason). Clicking Connect opened
+  the browser, user approved, callback landed, token exchange succeeded, `accessToken` appeared
+  in `settings.yml`. This resolves both open questions below.
+
 ## Open questions
 
-- Auth verification (localhost redirect, token lifetime), see Pieces 1.
+- ~~Auth verification~~ — **resolved 2026-10-14**, see Progress above: WordPress.com's "Native"
+  app type accepts a `http://127.0.0.1:<port>/<path>` redirect URI (exact string match, as the
+  docs warn) and the Authorization Code Flow works end-to-end from a desktop app with a loopback
+  listener. Access token lifetime for this flow still isn't documented anywhere found — only the
+  Implicit Flow's 2-week expiry is documented — so Piece 3 (the API client) should still treat a
+  401 as "token expired/revoked, reconnect" rather than assume indefinite validity.

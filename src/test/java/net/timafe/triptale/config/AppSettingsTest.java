@@ -83,4 +83,27 @@ class AppSettingsTest {
         attachments.setRegion(region);
         return attachments;
     }
+
+    @Test
+    void wordPress_defaultsAreBlankAndValid() {
+        AppSettings.WordPress wordPress = new AppSettings().getWordPress();
+        assertEquals("", wordPress.getSite());
+        assertEquals("", wordPress.getClientId());
+        assertEquals("", wordPress.getClientSecret());
+        assertEquals("", wordPress.getAccessToken());
+        assertTrue(wordPress.validationError().isEmpty());
+    }
+
+    @Test
+    void wordPress_partiallyFilledIsInvalid() {
+        AppSettings.WordPress wordPress = new AppSettings.WordPress();
+        wordPress.setSite("example.wordpress.com");
+        assertTrue(wordPress.validationError().isPresent());
+
+        wordPress.setClientId("12345");
+        assertTrue(wordPress.validationError().isPresent());
+
+        wordPress.setClientSecret("secret");
+        assertTrue(wordPress.validationError().isEmpty());
+    }
 }

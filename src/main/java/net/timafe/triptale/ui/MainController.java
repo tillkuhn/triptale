@@ -1807,7 +1807,7 @@ public class MainController implements StatusSink {
         AppSettings settings = settingsStore.load();
         String previousDataDir = settings.getDataDir();
         Optional<AppSettings> edited =
-                new EditSettingsDialog().showAndWait(settings, settingsStore.settingsFile());
+                new EditSettingsDialog(browser).showAndWait(settings, settingsStore.settingsFile());
         if (edited.isEmpty()) return;
         settingsStore.save(edited.get());
         syncAttachmentsGitFiles();

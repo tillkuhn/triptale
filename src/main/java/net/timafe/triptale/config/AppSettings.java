@@ -37,6 +37,7 @@ public class AppSettings {
     private Attachments attachments = new Attachments();
     private boolean radioEnabled = false;
     private String defaultTripLanguage = "en";
+    private WordPress wordPress = new WordPress();
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -79,6 +80,8 @@ public class AppSettings {
     /** Language code ({@code en}, {@code de}) for words the exports add around the tales (todo 30); kept as a string so a hand-edited unknown value doesn't break loading. */
     public String getDefaultTripLanguage() { return defaultTripLanguage; }
     public void setDefaultTripLanguage(String defaultTripLanguage) { this.defaultTripLanguage = defaultTripLanguage == null ? "" : defaultTripLanguage; }
+    public WordPress getWordPress() { return wordPress; }
+    public void setWordPress(WordPress wordPress) { this.wordPress = wordPress == null ? new WordPress() : wordPress; }
 
     public static class Git {
         private String authorName = "";
@@ -88,6 +91,44 @@ public class AppSettings {
         public void setAuthorName(String authorName) { this.authorName = authorName; }
         public String getAuthorEmail() { return authorEmail; }
         public void setAuthorEmail(String authorEmail) { this.authorEmail = authorEmail; }
+    }
+
+    /**
+     * WordPress.com OAuth2 app registration and token for "Send to WordPress" (todo 60). The
+     * client secret and token are stored in plain text, which is why {@code SettingsStore} keeps
+     * {@code settings.yml} owner-only.
+     */
+    public static class WordPress {
+        private String site = "";
+        private String clientId = "";
+        private String clientSecret = "";
+        private String accessToken = "";
+
+        /**
+         * A user-facing message if the fields needed to start the OAuth2 flow are incomplete;
+         * empty if valid. {@link #accessToken} is excluded — it's obtained through that flow,
+         * not typed in, so its absence is the normal "not connected yet" state, not an error.
+         */
+        public Optional<String> validationError() {
+            boolean anySet = !isBlank(site) || !isBlank(clientId) || !isBlank(clientSecret);
+            if (anySet && (isBlank(site) || isBlank(clientId) || isBlank(clientSecret))) {
+                return Optional.of("WordPress needs a site, client ID and client secret to connect");
+            }
+            return Optional.empty();
+        }
+
+        private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+
+        /** The WordPress.com site, e.g. {@code timafe.wordpress.com}. */
+        public String getSite() { return site; }
+        public void setSite(String site) { this.site = site == null ? "" : site; }
+        public String getClientId() { return clientId; }
+        public void setClientId(String clientId) { this.clientId = clientId == null ? "" : clientId; }
+        public String getClientSecret() { return clientSecret; }
+        public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret == null ? "" : clientSecret; }
+        /** Set once the OAuth2 authorization-code flow (todo 60) completes; blank = not connected. */
+        public String getAccessToken() { return accessToken; }
+        public void setAccessToken(String accessToken) { this.accessToken = accessToken == null ? "" : accessToken; }
     }
 
     /** How the data dir's {@code attachments/} folder is synced (todo 33a). */
