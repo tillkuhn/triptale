@@ -3,6 +3,7 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.impressions.ImageFilter;
@@ -82,14 +83,26 @@ public class WordPressExporter {
      */
     public String export(Trip trip, LocalDate from, LocalDate to, boolean images, boolean favesOnly) {
         Objects.requireNonNull(trip, "trip");
+        List<LocalDate> dates = store.listEntryDates(trip.ref()).stream()
+                .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
+                .toList();
+        return export(trip, dates, images, favesOnly);
+    }
+
+    /**
+     * Block markup for exactly {@code dates} (already resolved and sorted, possibly with gaps —
+     * a Post's {@code has:} list, see {@link #exportPost}), same rendering as the range-based
+     * {@link #export(Trip, LocalDate, LocalDate, boolean, boolean)}.
+     */
+    public String export(Trip trip, List<LocalDate> dates, boolean images, boolean favesOnly) {
+        Objects.requireNonNull(trip, "trip");
         String baseUrl = images ? publicBaseUrl() : "";
         ImageFilter faves = favesOnly ? impressions.faveFilter() : ImageFilter.parse("");
         int columns = Math.max(1, settingsStore.load().getImpressionsGridColumns());
         ExportTexts texts = DiaryExporter.texts(settingsStore);
         List<String> blocks = new ArrayList<>();
         boolean places = false;
-        for (LocalDate date : store.listEntryDates(trip.ref())) {
-            if ((from != null && date.isBefore(from)) || (to != null && date.isAfter(to))) continue;
+        for (LocalDate date : dates) {
             DiaryEntry e = store.loadEntry(trip.ref(), date);
             String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
             blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
@@ -113,6 +126,24 @@ public class WordPressExporter {
             blocks.add(block("paragraph", "{\"fontSize\":\"small\"}", "<p class=\"has-small-font-size\">" + credit + "</p>"));
         }
         return blocks.isEmpty() ? "" : String.join("\n\n", blocks) + "\n";
+    }
+
+    /**
+     * Block markup for a Post (todo 60): its own title/intro as a leading heading + paragraph
+     * block(s), followed by the per-day blocks for {@code post.entryDates()}.
+     */
+    public String exportPost(Trip trip, Post post, boolean images, boolean favesOnly) {
+        Objects.requireNonNull(trip, "trip");
+        Objects.requireNonNull(post, "post");
+        List<String> leading = new ArrayList<>();
+        leading.add(heading(1, DiaryExporter.escapeHtml(post.title() == null ? "" : post.title())));
+        String intro = post.intro() == null ? "" : Markdown.stripPrivate(post.intro()).strip();
+        if (!intro.isEmpty()) {
+            leading.addAll(blocks(PARSER.parse(intro)));
+        }
+        String body = export(trip, post.entryDates(), images, favesOnly);
+        String leadingBlock = String.join("\n\n", leading);
+        return body.isEmpty() ? leadingBlock + "\n" : leadingBlock + "\n\n" + body;
     }
 
     /** A standalone HTML page that roughly shows how {@code markup} will look on the blog. */

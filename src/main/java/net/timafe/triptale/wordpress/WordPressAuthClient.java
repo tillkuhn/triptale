@@ -9,8 +9,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -41,7 +39,10 @@ public final class WordPressAuthClient {
     private static final String TOKEN_URL = "https://public-api.wordpress.com/oauth2/token";
     private static final int PORT = 8765;
     private static final String REDIRECT_URI = "http://127.0.0.1:" + PORT + "/callback";
-    private static final String SCOPE = "posts";
+    // Verified 2026-10-14: the wp/v2 REST namespace (used for posts create/update/get, todo 60)
+    // rejects a "posts"-scoped token with HTTP 403 "Required scope: global" — unlike the older
+    // v1.1 API, it needs the broader "global" scope.
+    private static final String SCOPE = "global";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration TOKEN_REQUEST_TIMEOUT = Duration.ofSeconds(20);
 
@@ -77,7 +78,7 @@ public final class WordPressAuthClient {
         params.put("scope", SCOPE);
         params.put("blog", settings.getSite());
         params.put("state", state);
-        return AUTHORIZE_URL + "?" + encodeForm(params);
+        return AUTHORIZE_URL + "?" + FormCodec.encode(params);
     }
 
     private HttpServer startCallbackServer(String expectedState, CompletableFuture<String> codeFuture) {
@@ -90,7 +91,7 @@ public final class WordPressAuthClient {
         }
         server.createContext("/callback", exchange -> {
             try {
-                Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
+                Map<String, String> query = FormCodec.decode(exchange.getRequestURI().getRawQuery());
                 String message;
                 if (query.containsKey("error")) {
                     codeFuture.completeExceptionally(
@@ -150,7 +151,7 @@ public final class WordPressAuthClient {
                 .uri(URI.create(TOKEN_URL))
                 .timeout(TOKEN_REQUEST_TIMEOUT)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(encodeForm(form)))
+                .POST(HttpRequest.BodyPublishers.ofString(FormCodec.encode(form)))
                 .build();
         HttpResponse<String> response;
         try {
@@ -181,27 +182,5 @@ public final class WordPressAuthClient {
         byte[] bytes = new byte[24];
         new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private static String encodeForm(Map<String, String> params) {
-        StringBuilder sb = new StringBuilder();
-        params.forEach((k, v) -> {
-            if (!sb.isEmpty()) sb.append('&');
-            sb.append(URLEncoder.encode(k, StandardCharsets.UTF_8)).append('=')
-                    .append(URLEncoder.encode(v == null ? "" : v, StandardCharsets.UTF_8));
-        });
-        return sb.toString();
-    }
-
-    private static Map<String, String> parseQuery(String raw) {
-        Map<String, String> params = new LinkedHashMap<>();
-        if (raw == null || raw.isBlank()) return params;
-        for (String pair : raw.split("&")) {
-            int eq = pair.indexOf('=');
-            String key = eq < 0 ? pair : pair.substring(0, eq);
-            String value = eq < 0 ? "" : pair.substring(eq + 1);
-            params.put(URLDecoder.decode(key, StandardCharsets.UTF_8), URLDecoder.decode(value, StandardCharsets.UTF_8));
-        }
-        return params;
     }
 }

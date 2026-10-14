@@ -113,6 +113,29 @@ returns them anyway.
   loopback port is hard-coded in `WordPressAuthClient` for this reason). Clicking Connect opened
   the browser, user approved, callback landed, token exchange succeeded, `accessToken` appeared
   in `settings.yml`. This resolves both open questions below.
+- **Pieces 2–4 done (2026-10-14):** `domain.Post` (slug, title, intro, entryDates, wpId,
+  wpModified); lives at `<trip>/posts/<slug>.md` (a dedicated subfolder — simpler than filtering
+  entry-dir listings by `type:`, and keeps every file in that folder unambiguously a Post).
+  `MarkdownStore.listPosts/loadPost/savePost` resolve `has:` wikilinks back to dates, dropping a
+  link to a missing entry file with a warning (never throws). `DiaryExporter`/`WordPressExporter`
+  generalized to take an explicit `List<LocalDate>` internally, with `exportPost`/`exportPostAsHtml`
+  added alongside the existing range-based methods (public signatures unchanged, all existing
+  tests pass unmodified). New `wordpress.WordPressApiClient` (`createDraft`/`updatePost`/`getPost`,
+  `java.net.http`, same style as `S3Client`) implements the send rules from this doc.
+  `ExportDiaryDialog` gained a "Source: 📅 Date range / 📰 <Post title>" combo and a
+  "📡 Send to WordPress" button, enabled when a Post + WordPress format are selected; the actual
+  send runs synchronously on the FX thread (acceptable for a one-off user action; a background
+  `Task` like the OAuth connect button would be a nice follow-up, not done here). `GitService`
+  gained `updateTypeDefinitions()` (force-overwrite trip.md/tale.md/type.md/post.md, unlike
+  `initRepo`'s create-if-missing) plus a "🧩 Update Type Definitions…" Repository-menu action with
+  a confirm dialog, since `post.md` didn't exist in data dirs set up before this todo.
+- **Scope bug found and fixed in live testing (2026-10-14):** the first real send hit
+  `HTTP 403 {"code":"unauthorized","message":"That API call is not allowed for this account.
+  Required scope: \`global\`. Granted scope(s): \`posts\`."}`. The `wp/v2` REST namespace (used
+  here) needs the broader `global` OAuth scope, unlike the older `v1.1` API which accepts a
+  narrower `posts` scope. Fixed in `WordPressAuthClient.SCOPE`; anyone who connected before this
+  fix needs to reconnect (Edit Settings → WordPress → Connect again) to get a token with the
+  right scope — no in-app detection/prompt for this yet, it just fails with the same 403 again.
 
 ## Open questions
 
@@ -122,3 +145,6 @@ returns them anyway.
   listener. Access token lifetime for this flow still isn't documented anywhere found — only the
   Implicit Flow's 2-week expiry is documented — so Piece 3 (the API client) should still treat a
   401 as "token expired/revoked, reconnect" rather than assume indefinite validity.
+- A full live send (create + update + conflict path) with the corrected `global` scope is still
+  pending as of this writing — the 403 above happened before the scope fix; next step is to
+  reconnect and retry.

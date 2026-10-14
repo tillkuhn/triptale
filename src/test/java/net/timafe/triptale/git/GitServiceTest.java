@@ -76,12 +76,15 @@ class GitServiceTest {
         Path tripMd = dataDir.resolve("trip.md");
         Path taleMd = dataDir.resolve("tale.md");
         Path typeMd = dataDir.resolve("type.md");
+        Path postMd = dataDir.resolve("post.md");
         assertTrue(Files.exists(tripMd));
         assertTrue(Files.exists(taleMd));
         assertTrue(Files.exists(typeMd));
+        assertTrue(Files.exists(postMd));
         assertTrue(Files.readString(tripMd).contains("type: Type"));
         assertTrue(Files.readString(taleMd).contains("type: Type"));
         assertTrue(Files.readString(typeMd).contains("type: Type"));
+        assertTrue(Files.readString(postMd).contains("type: Type"));
     }
 
     @Test

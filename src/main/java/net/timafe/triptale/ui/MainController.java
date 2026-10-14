@@ -288,8 +288,8 @@ public class MainController implements StatusSink {
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
         this.exportDiaryDialog =
-                new ExportDiaryDialog(diaryExporter, wordPressExporter, store, impressions, exportTempFiles,
-                        browser, this);
+                new ExportDiaryDialog(diaryExporter, wordPressExporter, store, settingsStore, impressions,
+                        exportTempFiles, browser, this, this::addPending);
         this.imageViewerDialog = new ImageViewerDialog(impressions, exifReader, browser, this, recentFolder);
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
@@ -1676,6 +1676,34 @@ public class MainController implements StatusSink {
     @FXML
     public void onRemoteInfo() {
         new RemoteInfoDialog(gitService, settingsStore).show();
+    }
+
+    /**
+     * Force-overwrites trip.md/tale.md/type.md/post.md with the app's current built-in templates
+     * (todo 60: post.md didn't exist in data dirs set up before it was added). Any hand edits to
+     * these files are lost — warn first; the files stay git-trackable like everything else, so
+     * the change is reviewable (Smart Sync's diff) and revertable before a commit.
+     */
+    @FXML
+    public void onUpdateTypeDefinitions() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "This overwrites " + String.join(", ", GitService.MANAGED_TYPE_DEFINITIONS)
+                        + " at the data dir root with " + appName + "'s current built-in templates.\n\n"
+                        + "Any manual edits to these files will be lost. The change is written to disk "
+                        + "immediately; review it (e.g. via Smart Sync's diff) before committing.",
+                ButtonType.YES, ButtonType.NO);
+        confirm.setTitle(appName);
+        confirm.setHeaderText("Update Tolaria type definitions");
+        Dialogs.applyStylesheet(confirm.getDialogPane());
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.YES) return;
+        try {
+            gitService.updateTypeDefinitions();
+            GitService.MANAGED_TYPE_DEFINITIONS.forEach(label -> addPending(label, UPDATE));
+            status("Type definitions updated — review and Smart Sync to commit");
+        } catch (RuntimeException e) {
+            error("Update failed: " + e.getMessage());
+        }
     }
 
     @FXML

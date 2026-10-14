@@ -101,6 +101,8 @@
                                 <MenuItem text="ℹ Remote Info…" onAction="#onRemoteInfo"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
+                                <SeparatorMenuItem/>
+                                <MenuItem text="🧩 Update Type Definitions…" onAction="#onUpdateTypeDefinitions"/>
                             </items>
                         </Menu>
                     </menus>

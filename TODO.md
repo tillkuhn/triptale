@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 62
+## Next Todo: 63
+
+## 62 Polish "Send to WordPress" and add in-app Post management
+
+Todo 60's send flow works end-to-end (create + update verified live) but is rough: the network
+calls block the FX thread (a background `Task` like the OAuth connect button would be smoother),
+error messages are raw exception text, and Posts can only be created/edited by hand (in Tolaria
+or a text editor) — no "Save as Post" from a date range, no in-app title/intro/day editing or
+deletion. `postSlug()` also produces a different style than the one example file created before
+this todo (`Slugs.toSlug()`'s camelCase vs. that file's kebab-case) — worth a consistency pass.
 
 ## 61 Self-rendered trip maps from OSM tiles
 
@@ -11,17 +20,6 @@ goes away. Tile source is configurable; OpenTopoMap preferred for a nature look,
 as alternatives, each with its own attribution.
 
 [Details](docs/61_osm_trip_maps.md)
-
-## 60 Send the WordPress export as a draft via the API
-
-Replace copy & paste with "Send to WordPress": OAuth2 login once (browser + loopback redirect,
-token in `settings.yml`), then create/update a draft via `public-api.wordpress.com/wp/v2`.
-A new Tolaria type `Post` in the trip folder (title, intro, `has` links to its days) is the
-export source and carries `wp_id`/`wp_modified`; entries stay untouched. The app reads Posts
-only (editing them in-app is a follow-up). Warn before overwriting published or WordPress-side
-edited posts. First step: verify localhost redirect and token lifetime.
-
-[Details](docs/60_wordpress_api_draft.md)
 
 ## 56 Open the backpack from the main window
 
@@ -232,6 +230,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 60 Send the WordPress export as a draft via the API
+
+OAuth2 login (browser + loopback redirect, `global`-scope token in `settings.yml`), a `Post`
+Tolaria type (`<trip>/posts/<slug>.md`, title/intro/`has` day links) as the export source, and
+create/update via `public-api.wordpress.com/wp/v2` — all live-verified (create + update, 404 and
+scope-error handling). Rough edges and in-app Post management tracked as todo 62.
+
+[Details](docs/60_wordpress_api_draft.md)
 
 ## DONE 58 Show start/stop place in exports
 

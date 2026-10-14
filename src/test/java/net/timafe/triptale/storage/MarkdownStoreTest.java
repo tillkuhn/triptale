@@ -548,4 +548,104 @@ class MarkdownStoreTest {
         store.saveState("lastEntryDate", "not-a-date");
         assertTrue(store.loadLastEntryDate().isEmpty());
     }
+
+    // -------------------------------------------------------------------------
+    // Posts (todo 60)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void saveAndLoadPostRoundTrip() {
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 2)).tales("b").build());
+        net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
+                "weekend-trip", "Weekend Trip", "A nice weekend.",
+                List.of(LocalDate.of(2025, 7, 2), LocalDate.of(2025, 7, 1)));
+
+        store.savePost(ALPS_2025, post);
+        Optional<net.timafe.triptale.domain.Post> loaded = store.loadPost(ALPS_2025, "weekend-trip");
+
+        assertTrue(loaded.isPresent());
+        assertEquals("weekend-trip", loaded.get().slug());
+        assertEquals("Weekend Trip", loaded.get().title());
+        assertEquals("A nice weekend.", loaded.get().intro());
+        // Sorted ascending regardless of input order
+        assertEquals(List.of(LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2)), loaded.get().entryDates());
+        assertNull(loaded.get().wpId());
+        assertNull(loaded.get().wpModified());
+    }
+
+    @Test
+    void postFileLivesInPostsSubfolder() {
+        Path file = store.postFile(ALPS_2025, "weekend-trip");
+        assertEquals(store.tripDir(ALPS_2025).resolve("posts").resolve("weekend-trip.md"), file);
+    }
+
+    @Test
+    void savePostWritesTypePostAndHasWikilinks() throws Exception {
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
+        net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
+                "weekend-trip", "Weekend Trip", "", List.of(LocalDate.of(2025, 7, 1)));
+
+        store.savePost(ALPS_2025, post);
+
+        String content = Files.readString(store.postFile(ALPS_2025, "weekend-trip"));
+        assertTrue(content.contains("type: Post"), content);
+        assertTrue(content.contains("[[2025/alps-2025/2025-07-01-Tuesday]]"), content);
+        assertTrue(content.contains("# Weekend Trip"), content);
+    }
+
+    @Test
+    void loadPostSkipsMissingEntryWithoutThrowing() throws Exception {
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
+        net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of("weekend-trip", "Weekend Trip", "",
+                List.of(LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2)));
+        store.savePost(ALPS_2025, post);
+        // 2025-07-02 was never saved as an entry
+
+        Optional<net.timafe.triptale.domain.Post> loaded = store.loadPost(ALPS_2025, "weekend-trip");
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of(LocalDate.of(2025, 7, 1)), loaded.get().entryDates());
+    }
+
+    @Test
+    void saveAndLoadPostRoundTripsWordPressFields() {
+        net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
+                "weekend-trip", "Weekend Trip", "", List.of())
+                .withWordPress("12345677", java.time.Instant.parse("2026-10-13T14:02:11Z"));
+
+        store.savePost(ALPS_2025, post);
+        Optional<net.timafe.triptale.domain.Post> loaded = store.loadPost(ALPS_2025, "weekend-trip");
+
+        assertTrue(loaded.isPresent());
+        assertEquals("12345677", loaded.get().wpId());
+        assertEquals(java.time.Instant.parse("2026-10-13T14:02:11Z"), loaded.get().wpModified());
+    }
+
+    @Test
+    void loadPostReturnsEmptyForUnknownSlug() {
+        assertTrue(store.loadPost(ALPS_2025, "nope").isEmpty());
+    }
+
+    @Test
+    void listPostsReturnsEmptyListWhenNoPostsFolder() {
+        assertTrue(store.listPosts(ALPS_2025).isEmpty());
+    }
+
+    @Test
+    void listPostsReturnsAllPostsSortedByTitle() {
+        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("b-post", "B Post", "", List.of()));
+        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("a-post", "A Post", "", List.of()));
+
+        List<net.timafe.triptale.domain.Post> posts = store.listPosts(ALPS_2025);
+
+        assertEquals(2, posts.size());
+        assertEquals("A Post", posts.get(0).title());
+        assertEquals("B Post", posts.get(1).title());
+    }
+
+    @Test
+    void postSlugDerivesFromTitleLikeTripSlug() {
+        assertEquals("WeekendTrip", MarkdownStore.postSlug("Weekend Trip"));
+    }
 }

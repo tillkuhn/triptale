@@ -3,6 +3,7 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.i18n.TripLanguage;
@@ -69,7 +70,31 @@ public class DiaryExporter {
      * totals cover that range only; "Day N" stays relative to the trip start.
      */
     public String exportTrip(Trip trip, LocalDate from, LocalDate to) {
-        return buildMarkdown(trip, from, to, false, false);
+        Objects.requireNonNull(trip, "trip");
+        List<LocalDate> allDates = store.listEntryDates(trip.ref());
+        List<LocalDate> dates = allDates.stream()
+                .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
+                .toList();
+        // A range starting at the trip's first entry keeps the trip's own start date.
+        LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
+                ? trip.startDate() : dates.getFirst();
+        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
+        return buildMarkdown(trip, dates, trip.name(), trip.description(), startDate, endDate, false, false);
+    }
+
+    /**
+     * Exports a Post (todo 60): its own {@code title}/{@code intro} replace the trip name/description
+     * in the header, and {@code entryDates} (already resolved and sorted by {@code MarkdownStore})
+     * stand in for a contiguous range — a Post's days may have gaps. "Day N" still stays relative to
+     * the trip start, same as a range export.
+     */
+    public String exportPost(Trip trip, Post post) {
+        Objects.requireNonNull(trip, "trip");
+        Objects.requireNonNull(post, "post");
+        List<LocalDate> dates = post.entryDates();
+        LocalDate startDate = dates.isEmpty() ? null : dates.getFirst();
+        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
+        return buildMarkdown(trip, dates, post.title(), post.intro(), startDate, endDate, false, false);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
@@ -85,14 +110,37 @@ public class DiaryExporter {
      */
     public String exportTripAsHtml(Trip trip, LocalDate from, LocalDate to,
                                    ImpressionSource images, boolean favesOnly) {
+        Objects.requireNonNull(trip, "trip");
+        List<LocalDate> allDates = store.listEntryDates(trip.ref());
+        List<LocalDate> dates = allDates.stream()
+                .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
+                .toList();
+        LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
+                ? trip.startDate() : dates.getFirst();
+        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
+        return renderHtml(trip, dates, trip.name(), trip.description(), startDate, endDate, images, favesOnly);
+    }
+
+    /** Renders a Post (see {@link #exportPost(Trip, Post)}) as a standalone HTML document. */
+    public String exportPostAsHtml(Trip trip, Post post, ImpressionSource images, boolean favesOnly) {
+        Objects.requireNonNull(trip, "trip");
+        Objects.requireNonNull(post, "post");
+        List<LocalDate> dates = post.entryDates();
+        LocalDate startDate = dates.isEmpty() ? null : dates.getFirst();
+        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
+        return renderHtml(trip, dates, post.title(), post.intro(), startDate, endDate, images, favesOnly);
+    }
+
+    private String renderHtml(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
+                              LocalDate startDate, LocalDate endDate, ImpressionSource images, boolean favesOnly) {
         boolean includeMarkers = images != null;
-        String markdown = buildMarkdown(trip, from, to, includeMarkers, true);
+        String markdown = buildMarkdown(trip, dates, headingTitle, headingDescription, startDate, endDate, includeMarkers, true);
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
         if (includeMarkers) {
             bodyHtml = injectImpressions(bodyHtml, trip, images, favesOnly);
         }
-        String title = trip.name() == null ? "" : escapeHtml(trip.name());
+        String title = headingTitle == null ? "" : escapeHtml(headingTitle);
         return substitute(load(HTML_SHELL), Map.of("lang", texts().language().code(), "title", title, "body", bodyHtml));
     }
 
@@ -106,14 +154,10 @@ public class DiaryExporter {
     }
 
     /** With {@code htmlFacts}, each entry gets the facts strip as an HTML block instead of the Markdown byline. */
-    private String buildMarkdown(Trip trip, LocalDate from, LocalDate to, boolean includeImpressionMarkers,
-                                 boolean htmlFacts) {
-        Objects.requireNonNull(trip, "trip");
+    private String buildMarkdown(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
+                                 LocalDate startDate, LocalDate endDate,
+                                 boolean includeImpressionMarkers, boolean htmlFacts) {
         ExportTexts texts = texts();
-        List<LocalDate> allDates = store.listEntryDates(trip.ref());
-        List<LocalDate> dates = allDates.stream()
-                .filter(d -> (from == null || !d.isBefore(from)) && (to == null || !d.isAfter(to)))
-                .toList();
         List<DiaryEntry> entries = dates.stream()
                 .map(d -> store.loadEntry(trip.ref(), d))
                 .toList();
@@ -126,10 +170,6 @@ public class DiaryExporter {
                 .filter(e -> e.altitudeMeters() != null)
                 .mapToDouble(DiaryEntry::altitudeMeters)
                 .sum();
-        // A range starting at the trip's first entry keeps the trip's own start date.
-        LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
-                ? trip.startDate() : dates.getFirst();
-        LocalDate endDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
 
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
@@ -138,8 +178,8 @@ public class DiaryExporter {
         }
 
         Map<String, String> vars = new LinkedHashMap<>();
-        vars.put("tripName", trip.name() == null ? "" : trip.name());
-        vars.put("tripDescription", trip.description() == null ? "" : trip.description().strip());
+        vars.put("tripName", headingTitle == null ? "" : headingTitle);
+        vars.put("tripDescription", headingDescription == null ? "" : headingDescription.strip());
         vars.put("startDate", startDate == null ? MISSING : texts.longDate(startDate));
         vars.put("endDate", endDate == null ? MISSING : texts.longDate(endDate));
         long totalDays = totalDays(startDate, endDate);

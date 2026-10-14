@@ -8,9 +8,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.util.Markdown;
+import net.timafe.triptale.util.Slugs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -41,6 +44,9 @@ public class MarkdownStore {
     private static final String ENTRY_TYPE = "Tale";
     /** Tolaria note type assigned to every trip README.md. */
     private static final String TRIP_TYPE = "Trip";
+    /** Tolaria note type assigned to every Post file (todo 60). */
+    private static final String POST_TYPE = "Post";
+    private static final String POSTS_DIR = "posts";
     private static final Pattern YEAR_DIR = Pattern.compile("\\d{4}");
 
     private final SettingsStore settingsStore;
@@ -229,6 +235,123 @@ public class MarkdownStore {
     }
 
     // -------------------------------------------------------------------------
+    // Posts (todo 60): <trip>/posts/<slug>.md, a Tolaria `type: Post` grouping of entry dates
+    // -------------------------------------------------------------------------
+
+    public Path postsDir(TripRef ref) {
+        return tripDir(ref).resolve(POSTS_DIR);
+    }
+
+    public Path postFile(TripRef ref, String slug) {
+        return postsDir(ref).resolve(slug + ".md");
+    }
+
+    /** Posts for a trip, each with {@code entryDates} resolved and sorted; malformed files are skipped (logged). */
+    public List<Post> listPosts(TripRef ref) {
+        Path dir = postsDir(ref);
+        if (!Files.isDirectory(dir)) return List.of();
+        try (Stream<Path> s = Files.list(dir)) {
+            return s.filter(p -> p.toString().endsWith(".md"))
+                    .map(p -> {
+                        String slug = p.getFileName().toString();
+                        slug = slug.substring(0, slug.length() - 3);
+                        return loadPost(ref, slug).orElse(null);
+                    })
+                    .filter(p -> p != null)
+                    .sorted(Comparator.comparing(Post::title, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+        } catch (IOException e) {
+            throw new StorageException("Failed to list posts for " + ref.path(), e);
+        }
+    }
+
+    public Optional<Post> loadPost(TripRef ref, String slug) {
+        Path file = postFile(ref, slug);
+        if (!Files.exists(file)) return Optional.empty();
+        try {
+            String content = Files.readString(file);
+            if (!content.startsWith(FRONTMATTER_DELIM)) return Optional.empty();
+            int end = content.indexOf("\n" + FRONTMATTER_DELIM, FRONTMATTER_DELIM.length());
+            if (end < 0) return Optional.empty();
+            String fm = content.substring(FRONTMATTER_DELIM.length(), end).trim();
+            String body = content.substring(end + ("\n" + FRONTMATTER_DELIM).length()).stripLeading();
+            Map<String, Object> data = yaml.readValue(fm, Map.class);
+            String title = null;
+            String intro = body;
+            if (body.startsWith("# ")) {
+                int nl = body.indexOf('\n');
+                title = (nl < 0 ? body.substring(2) : body.substring(2, nl)).trim();
+                intro = (nl < 0 ? "" : body.substring(nl + 1)).stripLeading();
+            }
+            List<LocalDate> dates = resolveEntryDates(ref, slug, data.get("has"));
+            return Optional.of(new Post(slug, title, intro, dates, asString(data.get("wp_id")), asInstant(data.get("wp_modified"))));
+        } catch (IOException e) {
+            throw new StorageException("Failed to load post: " + ref.path() + "/" + slug, e);
+        }
+    }
+
+    /** {@code has:} wikilinks resolved back to dates; a link to a missing entry file is skipped with a warning. */
+    private List<LocalDate> resolveEntryDates(TripRef ref, String slug, Object hasValue) {
+        List<LocalDate> dates = new ArrayList<>();
+        if (!(hasValue instanceof List<?> raw)) return dates;
+        for (Object o : raw) {
+            String target = stripWikilink(String.valueOf(o));
+            String stem = target.substring(target.lastIndexOf('/') + 1);
+            String dateStr = stem.length() < 10 ? stem : stem.substring(0, 10);
+            try {
+                LocalDate date = LocalDate.parse(dateStr);
+                if (entryExists(ref, date)) {
+                    dates.add(date);
+                } else {
+                    log.warn("Post '{}' references missing entry {} — skipping", slug, date);
+                }
+            } catch (RuntimeException e) {
+                log.warn("Post '{}' has a malformed has: entry '{}' — skipping", slug, o);
+            }
+        }
+        dates.sort(Comparator.naturalOrder());
+        return dates;
+    }
+
+    private static String stripWikilink(String raw) {
+        String s = raw.strip();
+        if (s.startsWith("[[") && s.endsWith("]]")) s = s.substring(2, s.length() - 2);
+        return s;
+    }
+
+    public void savePost(TripRef ref, Post post) {
+        ensureDir(postsDir(ref));
+        // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
+        Map<String, Object> fm = new LinkedHashMap<>();
+        List<String> has = post.entryDates().stream()
+                .sorted(Comparator.naturalOrder())
+                .map(d -> "[[" + ref.path() + "/" + entryStem(d) + "]]")
+                .toList();
+        fm.put("has", has);
+        fm.put("type", POST_TYPE);
+        if (post.wpId() != null) fm.put("wp_id", post.wpId());
+        if (post.wpModified() != null) fm.put("wp_modified", post.wpModified().toString());
+        try {
+            String intro = post.intro() == null ? "" : post.intro();
+            String body = "# " + post.title() + "\n\n" + intro;
+            String content = FRONTMATTER_DELIM + "\n" + yaml.writeValueAsString(fm) + FRONTMATTER_DELIM + "\n\n" + body;
+            Files.writeString(postFile(ref, post.slug()), content);
+        } catch (IOException e) {
+            throw new StorageException("Failed to save post: " + ref.path() + "/" + post.slug(), e);
+        }
+    }
+
+    /** The entry file stem (no extension), e.g. {@code 2025-09-15-Monday}, as used in a Post's {@code has:} wikilinks. */
+    private static String entryStem(LocalDate date) {
+        return date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY);
+    }
+
+    /** Slug for a new post's title; a post is addressed within its trip by this slug alone. */
+    public static String postSlug(String title) {
+        return Slugs.toSlug(title);
+    }
+
+    // -------------------------------------------------------------------------
     // Repo-local internal state (gitignored, not synced, never UI-edited)
     // -------------------------------------------------------------------------
 
@@ -385,5 +508,12 @@ public class MarkdownStore {
         if (o == null) return null;
         if (o instanceof LocalDate d) return d;
         return LocalDate.parse(o.toString());
+    }
+    /** Handles both a quoted ISO instant string and YAML's own implicit-timestamp typing (java.util.Date). */
+    private static Instant asInstant(Object o) {
+        if (o == null) return null;
+        if (o instanceof Instant i) return i;
+        if (o instanceof java.util.Date d) return d.toInstant();
+        return Instant.parse(o.toString());
     }
 }

@@ -71,6 +71,15 @@ public class GitService {
             _order: 4
             _sort: "modified:desc"
             ---""";
+    private static final String POST_MD = """
+            ---
+            type: Type
+            _icon: signpost
+            ---
+            # Post
+
+            Like a WordPress post, may combine multiple [[tale]]s of a [[trip]]
+            """;
 
     /** True when a data directory has been configured (see {@link SettingsStore#isConfigured()}). */
     public boolean isConfigured() {
@@ -120,6 +129,41 @@ public class GitService {
         ensureFile(root.resolve("trip.md"), TRIP_MD);
         ensureFile(root.resolve("tale.md"), TALE_MD);
         ensureFile(root.resolve("type.md"), TYPE_MD);
+        ensureFile(root.resolve("post.md"), POST_MD);
+    }
+
+    /**
+     * Repo-relative paths of the Tolaria type definitions managed by this app ({@code trip.md},
+     * {@code tale.md}, {@code type.md}, {@code post.md}) — the files {@link #updateTypeDefinitions()}
+     * overwrites. Exposed so the UI can warn before the action (any hand edits to these files are
+     * lost) and label the resulting pending changes.
+     */
+    public static final List<String> MANAGED_TYPE_DEFINITIONS = List.of("trip.md", "tale.md", "type.md", "post.md");
+
+    /**
+     * Force-overwrites the Tolaria type definitions at the data-dir root with the app's current
+     * built-in templates — unlike {@link #initRepo()}'s {@code ensureFile} (create-if-missing,
+     * never touches an existing file), this always rewrites all four, so a new or changed type
+     * (e.g. {@code post.md}, added for todo 60) reaches a data dir that was initialized before it
+     * existed. Any manual edits to these files are overwritten; the caller should warn first (the
+     * files are {@link #dirtyFiles() git-trackable} like everything else, so the change is still
+     * reviewable and revertable before a commit).
+     */
+    public void updateTypeDefinitions() {
+        Path root = store.dataDir();
+        writeFile(root.resolve("trip.md"), TRIP_MD);
+        writeFile(root.resolve("tale.md"), TALE_MD);
+        writeFile(root.resolve("type.md"), TYPE_MD);
+        writeFile(root.resolve("post.md"), POST_MD);
+    }
+
+    private void writeFile(Path file, String content) {
+        try {
+            Files.writeString(file, content);
+            log.info("Updated {}", file);
+        } catch (IOException e) {
+            throw new GitException("Failed to update " + file, e);
+        }
     }
 
     private void ensureFile(Path file, String content) {
