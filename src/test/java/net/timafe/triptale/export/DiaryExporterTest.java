@@ -545,7 +545,7 @@ class DiaryExporterTest {
         String html = exporter.exportTripAsHtml(trip);
 
         assertTrue(html.contains("<span class=\"fact-stamp\"><small>Tag</small>1</span><span class=\"fact-value\">Dienstag</span><span class=\"fact-note\">1. Juli 2025</span>"), html);
-        assertTrue(html.contains("<span class=\"fact-emoji\">🥾</span><span class=\"fact-value\">Wandern</span></div>"), html);
+        assertTrue(html.contains("<span class=\"fact-emoji\">🚶</span><span class=\"fact-value\">Wandern</span></div>"), html);
         assertTrue(html.contains("<span class=\"fact-value\">→ 50°06′N 8°40′E</span><span class=\"fact-note\">Ziel</span>"), html);
         assertTrue(html.contains("<h2>Tag 1</h2>"), html);
     }

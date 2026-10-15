@@ -14,17 +14,21 @@ emoji and English label, declared alphabetically by key.
 | backpacking  | 🎒    | Backpacking  | –                 |
 | bikepacking  | 🚵    | Bikepacking  | –                 |
 | cycling      | 🚴    | Cycling      | Radeln            |
-| hiking       | 🥾    | Hiking       | Wandern           |
+| hiking       | 🚶    | Hiking       | Wandern           |
+| motorcycling | 🏍    | Motorcycling | Motorradfahren    |
 | railtripping | 🚆    | Railtripping | –                 |
 | relaxing     | 🏖    | Relaxing     | –                 |
 | roadtripping | 🚗    | Roadtripping | –                 |
 | sightseeing  | 🏰    | Sightseeing  | –                 |
 
 - English label = key with uppercase first letter.
-- Only `cycling` and `hiking` are translated (`activity.<key>` in `export_de.properties`); the
+- Only `cycling`, `hiking` and `motorcycling` are translated (`activity.<key>` in `export_de.properties`); the
   others stay English in German exports too (bundle falls back to `export.properties`).
-- Emojis avoid ones already used elsewhere (🧭 explore, 🏛 visit, 🗺 track, 📷 impressions,
+- Emojis avoid ones already used elsewhere (🔭 explore, 🏛 visit, 🗺 track, 📷 impressions,
   📍 coordinates, 🛏 sleep link).
+- Emojis must exist in Segoe UI Symbol: JavaFX on Windows draws emoji from that monochrome
+  font and shows a box otherwise. 🥾 (hiking) and 🧭 (Coordinator button, explore link) were missing, hence
+  🚶, 🌐 and 🔭.
 
 ## Null and unknown values
 

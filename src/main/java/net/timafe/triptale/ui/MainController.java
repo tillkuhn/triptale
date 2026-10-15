@@ -915,14 +915,14 @@ public class MainController implements StatusSink {
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
-    /** "🧭 Coordinator: 📍 ✓  🏁 –" once either point is set; places and coordinates go in the tooltip. */
+    /** "🌐 Coordinator: 📍 ✓  🏁 –" once either point is set; places and coordinates go in the tooltip. */
     private void updateCoordinatesButton() {
         boolean startSet = startLat != null && startLon != null;
         boolean stopSet = stopLat != null && stopLon != null;
         if (coordinatesButton != null) {
             coordinatesButton.setText(startSet || stopSet
-                    ? "🧭 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
-                    : "🧭 Coordinator: Uncharted");
+                    ? "🌐 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
+                    : "🌐 Coordinator: Uncharted");
             boolean anything = startSet || stopSet || startPlace != null || stopPlace != null;
             coordinatesButton.setTooltip(new Tooltip(anything
                     ? "Start " + pointSummary(startPlace, startSet ? Coordinates.toDdm(startLat, startLon) : null)

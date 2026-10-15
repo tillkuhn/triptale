@@ -149,7 +149,7 @@ public final class CoordinatesDialog {
     public Optional<Result> showAndWait(Double startLat, Double startLon, Double stopLat, Double stopLon,
                                         String startPlace, String stopPlace, boolean canSaveDay) {
         Dialog<ButtonType> dlg = new Dialog<>();
-        dlg.setTitle("🧭 Coordinator");
+        dlg.setTitle("🌐 Coordinator");
         dlg.setHeaderText("Start and end point");
 
         Row start = new Row("Start", startLat, startLon, startPlace);

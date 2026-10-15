@@ -173,7 +173,7 @@
                         <tooltip><Tooltip text="Main activity of the day"/></tooltip>
                     </ComboBox>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
-                        <Button fx:id="coordinatesButton" text="🧭 Coordinator: Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
+                        <Button fx:id="coordinatesButton" text="🌐 Coordinator: Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>
                         </Button>
                         <Button text="🗺 Sgt. Mapper" onAction="#onMapAssistant" styleClass="half-width-button">

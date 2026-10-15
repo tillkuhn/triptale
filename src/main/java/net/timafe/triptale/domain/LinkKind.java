@@ -14,7 +14,7 @@ public enum LinkKind {
     DIVE("dive", "🐠", "Dive at"),
     DRINK("drink", "🍺", "Drink at"),
     EAT("eat", "🍲", "Eat at"),
-    EXPLORE("explore", "🧭", "Explore"),
+    EXPLORE("explore", "🔭", "Explore"),
     LISTEN("listen", "🎵", "Listen to"),
     SLEEP("sleep", "🛏", "Sleep at"),
     TRACK("track", "🗺", "Track tour"),

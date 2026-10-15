@@ -51,7 +51,7 @@ class ExportTextsTest {
     @Test
     void activityLabels() {
         assertEquals("🚴 Radeln", de.activity("cycling"));
-        assertEquals("🥾 Wandern", de.activity("hiking"));
+        assertEquals("🚶 Wandern", de.activity("hiking"));
         assertEquals("🚆 Railtripping", de.activity("railtripping"));
         assertEquals("🚴 Cycling", en.activity("cycling"));
         assertEquals("❓ Kayaking", de.activity("kayaking"));
