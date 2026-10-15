@@ -157,6 +157,38 @@ class WordPressExporterTest {
     }
 
     @Test
+    void watchYouTubeLinkBecomesEmbedBlockInsteadOfListItem() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("tale")
+                .link("sleep", Link.of("https://hotel.example.com/x", null))
+                .link("watch", Link.parse("https://youtu.be/2EJm0nYbovw"))
+                .build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertFalse(out.contains("Watch"), out);
+        assertTrue(out.contains("""
+                <!-- wp:embed {"url":"https://youtu.be/2EJm0nYbovw","type":"video","providerNameSlug":"youtube","responsive":true,"className":"wp-embed-aspect-16-9 wp-has-aspect-ratio"} -->
+                <figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
+                https://youtu.be/2EJm0nYbovw
+                </div></figure>
+                <!-- /wp:embed -->"""), out);
+        // The embed block comes after the list that still holds the other link
+        assertTrue(out.indexOf("<!-- wp:list -->") < out.indexOf("<!-- wp:embed"), out);
+    }
+
+    @Test
+    void watchNonYouTubeLinkStaysInList() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("tale")
+                .link("watch", Link.parse("https://vimeo.com/123456"))
+                .build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertFalse(out.contains("wp:embed"), out);
+        assertTrue(out.contains("<li>🎬 Watch: <a href=\"https://vimeo.com/123456\">vimeo.com</a></li>"), out);
+    }
+
+    @Test
     void zeroOrUnsetStatsAreLeftOut() {
         store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).distance(0.0).altitudeMeters(0.0).tales("train day").build());
 

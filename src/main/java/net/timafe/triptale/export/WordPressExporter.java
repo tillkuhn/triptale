@@ -2,6 +2,7 @@ package net.timafe.triptale.export;
 
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
@@ -28,12 +29,14 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -114,7 +117,7 @@ public class WordPressExporter {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
                 blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(tales, 1))));
             }
-            links(e, texts).ifPresent(blocks::add);
+            blocks.addAll(linkBlocks(e, texts));
             if (!baseUrl.isEmpty()) {
                 List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
                 gallery(faves.apply(dayImages), baseUrl, columns).ifPresent(blocks::add);
@@ -176,19 +179,64 @@ public class WordPressExporter {
         return block("columns", "", "<div class=\"wp-block-columns\">" + String.join("\n\n", columns) + "</div>");
     }
 
-    /** The entry's links as a list block, same wording as the Markdown export; invalid values as plain text. */
-    private static Optional<String> links(DiaryEntry e, ExportTexts texts) {
-        if (e.links().isEmpty()) return Optional.empty();
+    /**
+     * The entry's links, same wording as the Markdown export; invalid values as plain text. A
+     * {@code watch} link to a YouTube video is pulled out of the list and rendered as its own
+     * {@code wp:embed} block instead (matching what the block editor's "Embed" produces when you
+     * paste the URL directly), so the blog shows an inline player rather than a bare link.
+     */
+    private static List<String> linkBlocks(DiaryEntry e, ExportTexts texts) {
+        List<String> out = new ArrayList<>();
+        if (e.links().isEmpty()) return out;
         StringBuilder html = new StringBuilder("<ul class=\"wp-block-list\">");
-        e.links().forEach((verb, link) -> {
+        List<String> embeds = new ArrayList<>();
+        boolean anyListItem = false;
+        for (var entry : e.links().entrySet()) {
+            String verb = entry.getKey();
+            Link link = entry.getValue();
+            if (LinkKind.WATCH.key().equals(verb) && link.valid() && isYouTubeUrl(link.url())) {
+                embeds.add(youTubeEmbed(link.url()));
+                continue;
+            }
+            anyListItem = true;
             String text = DiaryExporter.escapeHtml(link.valid() ? link.displayText() : link.url());
             html.append("<!-- wp:list-item -->\n<li>")
                     .append(LinkKind.emojiFor(verb)).append(' ')
                     .append(DiaryExporter.escapeHtml(texts.linkLabel(verb))).append(": ")
                     .append(link.valid() ? "<a href=\"" + DiaryExporter.escapeHtml(link.url()) + "\">" + text + "</a>" : text)
                     .append("</li>\n<!-- /wp:list-item -->");
-        });
-        return Optional.of(block("list", "", html.append("</ul>").toString()));
+        }
+        if (anyListItem) out.add(block("list", "", html.append("</ul>").toString()));
+        out.addAll(embeds);
+        return out;
+    }
+
+    /** Hosts WordPress's own "Embed" block recognizes as YouTube: {@code youtube.com} (any subdomain) or {@code youtu.be}. */
+    private static boolean isYouTubeUrl(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.ROOT);
+            return host.equals("youtu.be") || host.equals("youtube.com") || host.endsWith(".youtube.com");
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    /** A {@code wp:embed} block for a YouTube URL, identical to what pasting the URL into the block editor produces. */
+    private static String youTubeEmbed(String url) {
+        String jsonUrl = jsonEscape(url);
+        String attrs = "{\"url\":\"" + jsonUrl + "\",\"type\":\"video\",\"providerNameSlug\":\"youtube\","
+                + "\"responsive\":true,\"className\":\"wp-embed-aspect-16-9 wp-has-aspect-ratio\"}";
+        String html = "<figure class=\"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube "
+                + "wp-embed-aspect-16-9 wp-has-aspect-ratio\"><div class=\"wp-block-embed__wrapper\">\n"
+                + DiaryExporter.escapeHtml(url) + "\n</div></figure>";
+        return block("embed", attrs, html);
+    }
+
+    /** Minimal JSON string escaping for a URL inside a {@code wp:embed} block's attribute comment. */
+    private static String jsonEscape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static List<String> blocks(Node parent) {
