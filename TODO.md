@@ -1,15 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 63
+## Next Todo: 64
 
-## 62 Polish "Send to WordPress" and add in-app Post management
+## 63 WordPress Post leftovers: delete Posts in-app, slug style
 
-Todo 60's send flow works end-to-end (create + update verified live) but is rough: the network
-calls block the FX thread (a background `Task` like the OAuth connect button would be smoother),
-error messages are raw exception text, and Posts can only be created/edited by hand (in Tolaria
-or a text editor) — no "Save as Post" from a date range, no in-app title/intro/day editing or
-deletion. `postSlug()` also produces a different style than the one example file created before
-this todo (`Slugs.toSlug()`'s camelCase vs. that file's kebab-case) — worth a consistency pass.
+Left over from todo 62. Posts can't be deleted from the app yet (only by hand or in Tolaria);
+a delete would also need to decide what happens to the WordPress draft. `MarkdownStore.postSlug`
+gives camelCase (`WeekendTrip`) while the one hand-made example from todo 60 is kebab-case —
+pick one style.
+
+[Background](docs/62_wordpress_publish_dialog.md)
 
 ## 61 Self-rendered trip maps from OSM tiles
 
@@ -230,6 +230,14 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 62 Polish "Send to WordPress" and add in-app Post management
+
+The Diary Composer has no Source combo any more; "📡 Send to WordPress" opens a WordPress
+dialog to pick or create a Post for the range, edit title/intro and send (background Tasks,
+result shown inline, Post file written only after a successful send). Leftovers: todo 63.
+
+[Details](docs/62_wordpress_publish_dialog.md)
 
 ## DONE 60 Send the WordPress export as a draft via the API
 

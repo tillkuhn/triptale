@@ -132,21 +132,18 @@ public class WordPressExporter {
     }
 
     /**
-     * Block markup for a Post (todo 60): its own title/intro as a leading heading + paragraph
-     * block(s), followed by the per-day blocks for {@code post.entryDates()}.
+     * Block markup for a Post (todo 60): its intro as leading paragraph block(s), followed by the
+     * per-day blocks for {@code post.entryDates()}. No title heading: WordPress shows the post
+     * title from its own field, a heading would repeat it.
      */
     public String exportPost(Trip trip, Post post, boolean images, boolean favesOnly) {
         Objects.requireNonNull(trip, "trip");
         Objects.requireNonNull(post, "post");
-        List<String> leading = new ArrayList<>();
-        leading.add(heading(1, DiaryExporter.escapeHtml(post.title() == null ? "" : post.title())));
         String intro = post.intro() == null ? "" : Markdown.stripPrivate(post.intro()).strip();
-        if (!intro.isEmpty()) {
-            leading.addAll(blocks(PARSER.parse(intro)));
-        }
         String body = export(trip, post.entryDates(), images, favesOnly);
-        String leadingBlock = String.join("\n\n", leading);
-        return body.isEmpty() ? leadingBlock + "\n" : leadingBlock + "\n\n" + body;
+        if (intro.isEmpty()) return body;
+        String leading = String.join("\n\n", blocks(PARSER.parse(intro)));
+        return body.isEmpty() ? leading + "\n" : leading + "\n\n" + body;
     }
 
     /** A standalone HTML page that roughly shows how {@code markup} will look on the blog. */

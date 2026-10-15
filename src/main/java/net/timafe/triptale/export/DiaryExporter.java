@@ -3,7 +3,6 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
-import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.i18n.TripLanguage;
@@ -82,21 +81,6 @@ public class DiaryExporter {
         return buildMarkdown(trip, dates, trip.name(), trip.description(), startDate, endDate, false, false);
     }
 
-    /**
-     * Exports a Post (todo 60): its own {@code title}/{@code intro} replace the trip name/description
-     * in the header, and {@code entryDates} (already resolved and sorted by {@code MarkdownStore})
-     * stand in for a contiguous range — a Post's days may have gaps. "Day N" still stays relative to
-     * the trip start, same as a range export.
-     */
-    public String exportPost(Trip trip, Post post) {
-        Objects.requireNonNull(trip, "trip");
-        Objects.requireNonNull(post, "post");
-        List<LocalDate> dates = post.entryDates();
-        LocalDate startDate = dates.isEmpty() ? null : dates.getFirst();
-        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        return buildMarkdown(trip, dates, post.title(), post.intro(), startDate, endDate, false, false);
-    }
-
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
     public String exportTripAsHtml(Trip trip) {
         return exportTripAsHtml(trip, null, null, null, false);
@@ -119,16 +103,6 @@ public class DiaryExporter {
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
         return renderHtml(trip, dates, trip.name(), trip.description(), startDate, endDate, images, favesOnly);
-    }
-
-    /** Renders a Post (see {@link #exportPost(Trip, Post)}) as a standalone HTML document. */
-    public String exportPostAsHtml(Trip trip, Post post, ImpressionSource images, boolean favesOnly) {
-        Objects.requireNonNull(trip, "trip");
-        Objects.requireNonNull(post, "post");
-        List<LocalDate> dates = post.entryDates();
-        LocalDate startDate = dates.isEmpty() ? null : dates.getFirst();
-        LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        return renderHtml(trip, dates, post.title(), post.intro(), startDate, endDate, images, favesOnly);
     }
 
     private String renderHtml(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,

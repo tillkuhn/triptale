@@ -5,6 +5,7 @@ import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ImpressionsResolver;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -294,10 +296,23 @@ class WordPressExporterTest {
     }
 
     @Test
+    void postStartsWithIntroWithoutRepeatingTheTitle() {
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).title("A → B").tales("one").build());
+        Post post = new Post("full", "Full Post", "This covers the trip", List.of(DAY1), null, null);
+
+        String out = exporter.exportPost(trip, post, false, false);
+
+        assertTrue(out.startsWith("<!-- wp:paragraph -->\n<p>This covers the trip</p>"), out);
+        assertFalse(out.contains("Full Post"), out);
+        assertTrue(out.contains(">A → B</h2>"), out);
+    }
+
+    @Test
     void previewWrapsMarkupInShell() {
         String html = exporter.previewHtml("A & B", "<p>x</p>");
 
         assertTrue(html.contains("<title>A &amp; B</title>"));
+        assertTrue(html.contains("<h1>A &amp; B</h1>"));
         assertTrue(html.contains("<p>x</p>"));
         assertTrue(html.contains("<html lang=\"en\">"));
     }
