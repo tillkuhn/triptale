@@ -22,4 +22,6 @@ logging:
     net.timafe.triptale: DEBUG
     org.eclipse.jgit: WARN
   pattern:
-    console: "%d{HH:mm:ss} %-5level %logger{36} : %replace(%msg){'${user.home}','~'}%n"
+    # %replace takes a regex: use the quoted home path set in TripTaleApplication.init(),
+    # a raw Windows path (C:\Users\...) is an illegal regex and breaks logging init.
+    console: "%d{HH:mm:ss} %-5level %logger{36} : %replace(%msg){'${triptale.home-regex}','~'}%n"

@@ -17,6 +17,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.util.regex.Pattern;
+
 
 @SpringBootApplication
 @EnableConfigurationProperties(TripTaleProperties.class)
@@ -40,6 +42,8 @@ public class TripTaleApplication extends Application {
 
     @Override
     public void init() {
+        // Read by logging.pattern.console in application.yml to shorten the home dir to "~".
+        System.setProperty("triptale.home-regex", Pattern.quote(System.getProperty("user.home")));
         javafx.application.HostServices hs = getHostServices();
         SpringApplication app = new SpringApplication(TripTaleApplication.class);
         app.addInitializers(ctx -> ctx.getBeanFactory().registerSingleton("hostServices", hs));
