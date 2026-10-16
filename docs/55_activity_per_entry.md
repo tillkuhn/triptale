@@ -14,12 +14,14 @@ emoji and English label, declared alphabetically by key.
 | backpacking  | 🎒    | Backpacking  | –                 |
 | bikepacking  | 🚵    | Bikepacking  | –                 |
 | cycling      | 🚴    | Cycling      | Radeln            |
+| ferryhopping | ⛴    | Ferryhopping | –                 |
 | hiking       | 🚶    | Hiking       | Wandern           |
 | motorcycling | 🏍    | Motorcycling | Motorradfahren    |
 | railtripping | 🚆    | Railtripping | –                 |
 | relaxing     | 🏖    | Relaxing     | –                 |
 | roadtripping | 🚗    | Roadtripping | –                 |
 | sightseeing  | 🏰    | Sightseeing  | –                 |
+| skyhopping   | ✈    | Skyhopping   | –                 |
 
 - English label = key with uppercase first letter.
 - Only `cycling`, `hiking` and `motorcycling` are translated (`activity.<key>` in `export_de.properties`); the

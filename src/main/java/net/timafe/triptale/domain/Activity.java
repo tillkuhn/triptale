@@ -12,12 +12,14 @@ public enum Activity {
     BACKPACKING("backpacking", "🎒"),
     BIKEPACKING("bikepacking", "🚵"),
     CYCLING("cycling", "🚴"),
+    FERRYHOPPING("ferryhopping", "⛴"),
     HIKING("hiking", "🚶"),
     MOTORCYCLING("motorcycling", "🏍"),
     RAILTRIPPING("railtripping", "🚆"),
     RELAXING("relaxing", "🏖"),
     ROADTRIPPING("roadtripping", "🚗"),
-    SIGHTSEEING("sightseeing", "🏰");
+    SIGHTSEEING("sightseeing", "🏰"),
+    SKYHOPPING("skyhopping", "✈");
 
     /** Emoji for values that are not in this enum (hand-edited or from a newer app version). */
     public static final String UNKNOWN_EMOJI = "❓";
