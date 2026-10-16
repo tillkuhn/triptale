@@ -1,6 +1,11 @@
 # ToDos for this app
 
-## Next Todo: 64
+## Next Todo: 65
+
+## 64 Cosmetic findings and small features during DUS->ATH Flight
+
+* New Activities: Ferrytripping and Diving
+* Sgt. Mapper should show if offline (On Screen causes Unknown host exception while offline)
 
 ## 63 WordPress Post leftovers: delete Posts in-app, slug style
 
