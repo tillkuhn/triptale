@@ -5,6 +5,7 @@ import javafx.animation.FadeTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -19,6 +20,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.Screen;
+import javafx.stage.Window;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.map.MapPoints;
@@ -44,8 +47,15 @@ import java.util.List;
  */
 public final class MapAssistantDialog {
 
-    private static final int WIDTH = 960;
-    private static final int HEIGHT = 640;
+    /** Default/maximum map size — also the Mapbox request's aspect ratio (3:2). */
+    private static final int DEFAULT_WIDTH = 960;
+    private static final int DEFAULT_HEIGHT = 640;
+    /** Never shrink the map below this, even on a tiny screen — it'd stop being useful. */
+    private static final int MIN_WIDTH = 480;
+    private static final int MIN_HEIGHT = 320;
+    /** Space reserved outside the map area for the dialog chrome, header, range row and button bar. */
+    private static final int RESERVED_WIDTH = 80;
+    private static final int RESERVED_HEIGHT = 240;
     /** Resting opacity of the teal viewscreen frame; it pulses up to 1.0 while a map loads. */
     private static final double FRAME_OPACITY = 0.3;
     private static final String AWAITING_ORDERS = "Awaiting your orders, Captain.";
@@ -110,22 +120,29 @@ public final class MapAssistantDialog {
         private Button onScreenButton;
         /** Bumped on every range/checkbox change, so a slow photo scan can tell it's outdated. */
         private int generation;
+        /** The map size actually used, shrunk from the default to fit the current screen. */
+        private final int width;
+        private final int height;
 
         Session(Trip trip, List<DiaryEntry> entries, LocalDate from, LocalDate to) {
             this.trip = trip;
             this.entries = entries;
             this.range = new EntryRangePicker(trip, entries, from, to);
+            int[] size = mapSize();
+            this.width = size[0];
+            this.height = size[1];
         }
 
         void show() {
             dlg.setTitle("🗺 Sgt. Mapper");
+            photosCheck.setSelected(true);
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
 
-            imageView.setFitWidth(WIDTH);
-            imageView.setFitHeight(HEIGHT);
+            imageView.setFitWidth(width);
+            imageView.setFitHeight(height);
             imageView.setPreserveRatio(true);
             message.setWrapText(true);
-            message.setMaxWidth(WIDTH - 80);
+            message.setMaxWidth(width - 80);
             message.setTextAlignment(TextAlignment.CENTER);
             message.setAlignment(Pos.CENTER);
             message.getStyleClass().add("map-screen-message");
@@ -142,10 +159,12 @@ public final class MapAssistantDialog {
             pulse.setCycleCount(Animation.INDEFINITE);
             StackPane mapArea = new StackPane(imageView, placeholder, frame);
             mapArea.getStyleClass().add("map-screen");
-            mapArea.setPrefSize(WIDTH, HEIGHT);
-            mapArea.setMinSize(WIDTH, HEIGHT);
+            mapArea.setPrefSize(width, height);
+            mapArea.setMinSize(width, height);
 
             dlg.getDialogPane().setContent(new VBox(8, range.node(), mapArea));
+            dlg.setResizable(true);
+            dlg.setOnShown(e -> fitToScreen(dlg.getDialogPane().getScene().getWindow()));
 
             // APPLY sits next to Close; OTHER would float it to the middle of the button bar.
             ButtonType onScreenType = new ButtonType(ON_SCREEN, ButtonBar.ButtonData.APPLY);
@@ -240,7 +259,7 @@ public final class MapAssistantDialog {
                 setMessage("Nothing on sensors", "Nothing to put on screen for this range." + hint);
                 return;
             }
-            Image image = new Image(mapboxService.staticImageUrl(points, WIDTH, HEIGHT), true);
+            Image image = new Image(mapboxService.staticImageUrl(points, width, height), true);
             imageView.setImage(image);
             imageView.setOpacity(1.0);
             setMessage("Loading map…");
@@ -332,5 +351,30 @@ public final class MapAssistantDialog {
                 .min(Comparator.comparingLong((LocalDate d) -> Math.abs(ChronoUnit.DAYS.between(d, date)))
                         .thenComparing(Comparator.naturalOrder()))
                 .orElse(null);
+    }
+
+    /**
+     * Shrinks the default 960×640 map (keeping its 3:2 aspect ratio) so the whole dialog — map,
+     * header, range row and button bar — fits the current screen's usable area, down to a
+     * {@value MIN_WIDTH}×{@value MIN_HEIGHT} floor. Returns {@code {width, height}}.
+     */
+    static int[] mapSize() {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        double maxWidth = bounds.getWidth() - RESERVED_WIDTH;
+        double maxHeight = bounds.getHeight() - RESERVED_HEIGHT;
+        double scale = Math.min(1.0, Math.min(maxWidth / DEFAULT_WIDTH, maxHeight / DEFAULT_HEIGHT));
+        int width = Math.max(MIN_WIDTH, (int) Math.round(DEFAULT_WIDTH * scale));
+        int height = Math.max(MIN_HEIGHT, (int) Math.round(DEFAULT_HEIGHT * scale));
+        return new int[] {width, height};
+    }
+
+    /** Shrinks the window to the screen's usable area and keeps it on screen (as in EditSettingsDialog). */
+    private static void fitToScreen(Window window) {
+        Rectangle2D bounds = Screen.getScreensForRectangle(window.getX(), window.getY(), window.getWidth(), window.getHeight())
+                .stream().findFirst().orElse(Screen.getPrimary()).getVisualBounds();
+        if (window.getHeight() > bounds.getHeight()) window.setHeight(bounds.getHeight());
+        if (window.getWidth() > bounds.getWidth()) window.setWidth(bounds.getWidth());
+        window.setY(Math.max(bounds.getMinY(), Math.min(window.getY(), bounds.getMaxY() - window.getHeight())));
+        window.setX(Math.max(bounds.getMinX(), Math.min(window.getX(), bounds.getMaxX() - window.getWidth())));
     }
 }
