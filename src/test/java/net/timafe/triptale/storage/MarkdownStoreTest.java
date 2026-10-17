@@ -287,7 +287,7 @@ class MarkdownStoreTest {
                 .build());
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
-        assertTrue(raw.contains("weather: \"15,22,1,Soest, DE\""), raw);
+        assertTrue(raw.contains("weather: \"15;22;1;Soest, DE\""), raw);
         DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertEquals(new Weather(15, 22, 1, "Soest, DE"), loaded.weather());
     }

@@ -154,11 +154,12 @@ dir is only initialized (`GitService.needsInit()` → `initRepo()`) after a yes/
 **YAML frontmatter keys** (exact strings — do not camelCase):
 - Entries: `activity`, `altitude`, `belongs_to`, `date`, `distance`, `start_lat`, `start_lon`, `start_place`, `stop_lat`, `stop_lon`, `stop_place`, `type`, `url_<verb>`, `weather`
 - `start_place`/`stop_place` (todo 51) are free text like `"Soest, DE"`, filled by the Coordinator's 🔍 reverse lookup (`map.PlaceLookup`, public Nominatim, ≤ 1 req/s, see ADR-0003) or typed by hand; allowed without coordinates. With a place but no coordinates, 🔍 runs a forward lookup (todo 59), fills in the place's centre point and appends the hit's country code to the typed name (`"Krung Thep Aphiwat, TH"`). See `docs/51_reverse_geocoding.md`.
-- `weather` (todo 65) is a packed scalar `"min,max,code[,place]"` (whole °C min/max, raw WMO
+- `weather` (todo 65) is a packed scalar `"min;max;code[;place]"` (whole °C min/max, raw WMO
   `weather_code`, optional place echoed from `start_place`), fetched automatically from
   Open-Meteo (`weather.OpenMeteoClient`) when `start_lat`/`start_lon` are set and `weather` is
-  still absent; never overwrites an existing value, never shown as an alert on failure. See
-  `docs/65_weather_per_day.md`.
+  still absent; never overwrites an existing value, never shown as an alert on failure.
+  Semicolon-separated, not comma: a comma is the German decimal separator and also turns up
+  inside place names (`"Essen, DE"`). See `docs/65_weather_per_day.md`.
 - Trips (`README.md`): `activity`, `end_date`, `start_date`, `type`
 - Single-word keys stay flat lowercase (`altitude`, `date`); multi-word keys use snake_case (`start_lat`, `belongs_to`, `start_date`). Coordinate keys were `startlat`/`startlon` (flat) before 2026-09; existing data dirs were migrated ad hoc with a one-time script, not shipped in the app.
 - Entry links are flat `url_<verb>` keys (`url_track`, `url_eat`, …), each holding a bare URL or `"[Name](url)"` (`domain.Link`). The curated verbs, with their emoji and label, live in `domain.LinkKind`; links are listed and exported alphabetically by verb (`LinkKind.ORDER`), unknown verbs included. Keys with any other verb are **preserved** on load and save, and values that aren't URLs are kept and flagged rather than dropped. `trackurl` was renamed to `url_track` in 2026-10 (migrated ad hoc, no fallback in the app). See `docs/09_entry_links.md`.

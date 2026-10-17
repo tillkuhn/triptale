@@ -8,7 +8,7 @@ Store a day's weather (temp min/max, condition) fetched automatically from Open-
 keyless, non-commercial) once an entry has a start point, and show it in exports alongside the
 other entry facts (todo 53/58).
 
-- New `weather` frontmatter key, packed comma string `"min,max,code[,place]"`, quoted.
+- New `weather` frontmatter key, packed semicolon string `"min;max;code[;place]"`.
 - `weather.OpenMeteoClient` (no JavaFX), forecast API only (~92 days back), silent on failure.
 - Auto-fetch on save when `start_lat`/`start_lon` present and `weather` absent; never overwrites.
 - New `domain.WeatherCode` enum (WMO code buckets, emoji) joins `export.EntryFacts`.

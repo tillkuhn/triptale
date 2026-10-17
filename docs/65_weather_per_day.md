@@ -29,12 +29,14 @@ block — both treated the same: no weather, no alert.
 One new key, **last alphabetically** (after `url_<verb>`) in `MarkdownStore.saveEntry`:
 
 ```
-weather: "15,22,1"
-weather: "15,22,1,Soest, DE"
+weather: 15;22;1
+weather: "15;22;1;Soest, DE"
 ```
 
-Comma-separated, fixed position, **always double-quoted** (avoids any YAML flow-sequence
-ambiguity around commas):
+Semicolon-separated, fixed position, quoted automatically by the YAML writer whenever the
+value needs it (a comma in the place field, or the usual leading-dash/colon cases — never
+hand-forced). Semicolon, not comma: a comma is the German decimal separator and also turns up
+inside place names (`"Essen, DE"`), which made the packed value confusing to read by eye.
 
 1. `temperature_2m_min`, whole °C, rounded.
 2. `temperature_2m_max`, whole °C, rounded.
