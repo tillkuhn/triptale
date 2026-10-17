@@ -19,6 +19,8 @@ import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.Coordinates;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -29,7 +31,10 @@ import java.util.function.Supplier;
  * Edits an entry's start and end point: manual lat/lon entry per row, or parsed from a pasted
  * URL/GPX/GeoJSON into either row. A start alone is a complete answer (a day spent in one
  * place); an end requires a start. Each row can be opened in Google Maps (🔗) or cleared (🗑),
- * like the rows in {@link LinksDialog}; with both points set, the route start → end can be opened too.
+ * like the rows in {@link LinksDialog}; with both points set, the route start → end can be opened too,
+ * next to a read-only straight-line distance (haversine, {@link Coordinates#distanceMeters}) shown
+ * rounded to the whole km — not the entry's travel {@code distance} field, which the user fills in
+ * separately and may differ (actual route vs. as-the-crow-flies).
  *
  * <p>Each row also has a free-text place ("Soest, DE", todo 51), filled by the 🔍 reverse lookup
  * or typed by hand. 🔍 works the other way too (todo 59): with a place but no coordinates it
@@ -173,6 +178,13 @@ public final class CoordinatesDialog {
         grid.add(parseArea, 1, 3, 7, 1);
         Button parseStart = new Button("Parse → Start");
         Button parseStop = new Button("Parse → End");
+        TextField distanceField = new TextField();
+        distanceField.setEditable(false);
+        distanceField.setFocusTraversable(false);
+        distanceField.setPrefColumnCount(7);
+        distanceField.setStyle("-fx-min-width: 6em;");
+        distanceField.setTooltip(new Tooltip(
+                "Straight-line distance start → end, rounded (not the travel route); copy into the Distance field if useful"));
         Button route = new Button("🔗 Route");
         route.setTooltip(new Tooltip("Show route start → end on Google Maps"));
         route.setOnAction(e -> {
@@ -182,7 +194,7 @@ public final class CoordinatesDialog {
         });
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        grid.add(new HBox(8, parseStart, parseStop, spacer, route), 1, 4, 7, 1);
+        grid.add(new HBox(8, parseStart, parseStop, spacer, distanceField, route), 1, 4, 7, 1);
         grid.add(hintLabel, 1, 5, 7, 1);
 
         dlg.getDialogPane().setContent(grid);
@@ -203,7 +215,10 @@ public final class CoordinatesDialog {
                 }
             }
             if (problem == null && !start.hasCoordinates() && stop.hasCoordinates()) problem = "Set a start point first.";
-            route.setDisable(start.value() == null || stop.value() == null);
+            boolean haveBoth = start.value() != null && stop.value() != null;
+            route.setDisable(!haveBoth);
+            distanceField.setText(haveBoth
+                    ? formatKm(Coordinates.distanceMeters(start.value(), stop.value()) / 1000.0) : "");
             hintLabel.setText(problem == null ? "" : problem);
             saveButtonNode.setDisable(problem != null);
         };
@@ -226,6 +241,11 @@ public final class CoordinatesDialog {
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != saveType) return Optional.empty();
         return Optional.of(new Result(start.value(), stop.value(), start.placeValue(), stop.placeValue()));
+    }
+
+    /** Whole km with unit, e.g. {@code "12 km"} — pastes straight into the Distance field; no decimals, since a straight-line distance is only ever approximate. */
+    private static String formatKm(double km) {
+        return BigDecimal.valueOf(km).setScale(0, RoundingMode.HALF_UP).toPlainString() + " km";
     }
 
     private void addRow(GridPane grid, int rowIndex, String icon, String name, Row row) {
