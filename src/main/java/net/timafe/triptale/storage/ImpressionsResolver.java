@@ -39,12 +39,14 @@ import java.util.stream.Stream;
  * <p>Variable substitution and directory-segment glob matching are delegated to
  * {@link PathPatternResolver}. The pattern's final {@code /}-separated segment is always treated
  * as a filename glob matched against files in the resolved directory; everything before it is
- * resolved as a directory (each segment may itself be a glob). The resolved directory is cached
- * per substituted directory pattern for the lifetime of the application — when it only uses
- * trip variables that is one lookup per trip, so only the filename glob is re-evaluated on every
- * date navigation; {@code ENTRY_*} variables in a directory segment make it one lookup per day.
- * Misses are cached too. Restart the app if the underlying folder is created or reorganized
- * mid-session.
+ * resolved as a directory (each segment may itself be a glob). A successfully resolved directory
+ * is cached per substituted directory pattern for the lifetime of the application — when it only
+ * uses trip variables that is one lookup per trip, so only the filename glob is re-evaluated on
+ * every date navigation; {@code ENTRY_*} variables in a directory segment make it one lookup per
+ * day. Misses are <em>not</em> cached — checking for absence is cheap (a handful of
+ * {@code Files.isDirectory}/{@code Files.list} calls that fail fast at the first missing
+ * segment) — so a folder created or reorganized mid-session is picked up on the next lookup
+ * without restarting the app.
  *
  * <p>No JavaFX dependency — kept in the {@code storage} package per the project's package
  * boundary rule so it stays independently unit-testable.
@@ -83,7 +85,9 @@ public class ImpressionsResolver {
      * Resolves the directory half of the pattern (everything before the last {@code /}) for the
      * given trip and date; empty if the pattern is blank, has no directory segment, or doesn't
      * resolve. A null date leaves {@code ENTRY_*} variables unsubstituted, so a directory that
-     * uses them won't resolve.
+     * uses them won't resolve. Only a successful resolution is cached — a miss is cheap to
+     * recheck and is retried on every call, so a folder created later in the session is found
+     * without a restart.
      */
     public Optional<Path> resolveDirectory(String pattern, Trip trip, LocalDate date) {
         if (pattern == null || pattern.isBlank()) return Optional.empty();
@@ -93,8 +97,14 @@ public class ImpressionsResolver {
             return Optional.empty();
         }
         String directoryPattern = PathPatternResolver.substitute(pattern.substring(0, sep), variables(trip, date));
-        return resolvedDirectoryCache.computeIfAbsent(directoryPattern,
-                k -> pathPatternResolver.resolveDirectory(directoryPattern, Map.of()));
+        Optional<Path> cached = resolvedDirectoryCache.get(directoryPattern);
+        if (cached != null) return cached;
+
+        Optional<Path> resolved = pathPatternResolver.resolveDirectory(directoryPattern, Map.of());
+        if (resolved.isPresent()) {
+            resolvedDirectoryCache.put(directoryPattern, resolved);
+        }
+        return resolved;
     }
 
     private static Map<String, String> variables(Trip trip, LocalDate date) {

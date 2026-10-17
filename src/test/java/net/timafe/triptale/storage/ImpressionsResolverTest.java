@@ -111,4 +111,32 @@ class ImpressionsResolverTest {
         String pattern = tempDir + "/${TRIP_SLUG}/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
         assertTrue(resolver.resolve(pattern, null, LocalDate.of(2026, 8, 7)).isEmpty());
     }
+
+    @Test
+    void findsDirectoryCreatedAfterAnInitialMiss() throws IOException {
+        Path libDir = tempDir.resolve("photolib");
+        String pattern = libDir + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
+
+        // First check: the folder doesn't exist yet.
+        assertTrue(resolver.resolveDirectory(pattern, TRIP, LocalDate.of(2026, 8, 7)).isEmpty());
+
+        // Folder appears mid-session (e.g. an external drive gets mounted).
+        Files.createDirectories(libDir);
+
+        // A miss must not have been cached, so the next check picks it up without a restart.
+        assertEquals(libDir, resolver.resolveDirectory(pattern, TRIP, LocalDate.of(2026, 8, 7)).orElseThrow());
+    }
+
+    @Test
+    void cachesASuccessfulResolutionEvenIfTheDirectoryIsLaterRemoved() throws IOException {
+        Path libDir = Files.createDirectories(tempDir.resolve("photolib2"));
+        String pattern = libDir + "/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg";
+
+        assertEquals(libDir, resolver.resolveDirectory(pattern, TRIP, LocalDate.of(2026, 8, 7)).orElseThrow());
+
+        Files.delete(libDir);
+
+        // Hits are cached for the session, so the stale (now-removed) directory is still returned.
+        assertEquals(libDir, resolver.resolveDirectory(pattern, TRIP, LocalDate.of(2026, 8, 7)).orElseThrow());
+    }
 }
