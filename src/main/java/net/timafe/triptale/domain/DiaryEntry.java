@@ -11,7 +11,8 @@ import java.util.TreeMap;
  * One diary day. {@code links} is keyed by verb (see {@link LinkKind}) and ordered by
  * {@link LinkKind#ORDER}; never null. {@code activity} is normalized by {@link Activity#normalize},
  * null means not set. {@code startPlace}/{@code stopPlace} are free text like {@code "Soest, DE"}
- * (todo 51), trimmed, null when blank; they may be set without coordinates.
+ * (todo 51), trimmed, null when blank; they may be set without coordinates. {@code weather}
+ * (todo 65) is fetched automatically, never user-edited; null means not fetched (yet).
  */
 public record DiaryEntry(
         LocalDate date,
@@ -26,6 +27,7 @@ public record DiaryEntry(
         Double stopLon,
         String startPlace,
         String stopPlace,
+        Weather weather,
         String tales
 ) {
     public static final String DEFAULT_TITLE = "Untitled";
@@ -46,6 +48,7 @@ public record DiaryEntry(
         private Double stopLon;
         private String startPlace;
         private String stopPlace;
+        private Weather weather;
         private String tales = "";
 
         private Builder(LocalDate date) { this.date = date; }
@@ -70,12 +73,13 @@ public record DiaryEntry(
         public Builder stopLon(Double v)        { this.stopLon = v; return this; }
         public Builder startPlace(String v)     { this.startPlace = blankToNull(v); return this; }
         public Builder stopPlace(String v)      { this.stopPlace = blankToNull(v); return this; }
+        public Builder weather(Weather v)       { this.weather = v; return this; }
         public Builder tales(String v)          { this.tales = v != null ? v : ""; return this; }
 
         public DiaryEntry build() {
             return new DiaryEntry(date, activity, distance, altitudeMeters, title,
                     Collections.unmodifiableSequencedMap(new LinkedHashMap<>(links)),
-                    startLat, startLon, stopLat, stopLon, startPlace, stopPlace, tales);
+                    startLat, startLon, stopLat, stopLon, startPlace, stopPlace, weather, tales);
         }
 
         private static String blankToNull(String v) {

@@ -11,6 +11,7 @@ import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
+import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.Slugs;
 import org.slf4j.Logger;
@@ -224,6 +225,7 @@ public class MarkdownStore {
         entry.links().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(l -> fm.put(LinkKind.KEY_PREFIX + l.getKey(), l.getValue().format()));
+        if (entry.weather() != null) fm.put("weather", entry.weather().toRaw());
         try {
             String tales = entry.tales() == null ? "" : entry.tales();
             String body = "# " + entry.title() + "\n\n" + Markdown.demoteH1(tales);
@@ -475,6 +477,7 @@ public class MarkdownStore {
                 .stopLon(asDouble(data.get("stop_lon")))
                 .startPlace(asString(data.get("start_place")))
                 .stopPlace(asString(data.get("stop_place")))
+                .weather(Weather.parse(asString(data.get("weather"))))
                 .tales(tales)
                 .build();
     }

@@ -44,6 +44,7 @@ import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
+import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
 import net.timafe.triptale.export.WordPressExporter;
@@ -76,6 +77,7 @@ import net.timafe.triptale.util.SaveTarget;
 import net.timafe.triptale.util.Slugs;
 import net.timafe.triptale.util.TextStats;
 import net.timafe.triptale.util.TravelWisdoms;
+import net.timafe.triptale.weather.OpenMeteoClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -211,6 +213,9 @@ public class MainController implements StatusSink {
     private Double stopLon;
     private String startPlace;
     private String stopPlace;
+    /** Fetched automatically (todo 65), never user-edited; carried through saves so a manual
+     * save of other fields doesn't wipe it out. */
+    private Weather weather;
     private boolean entryExists;
     /** True once the user has clicked through the "here be dragons" placeholder for a new entry. */
     private boolean taleUnlocked;
@@ -264,6 +269,8 @@ public class MainController implements StatusSink {
     private final AboutDialog aboutDialog;
     /** One instance, so its 1 req/s limit spans all Coordinator dialogs (todo 51). */
     private final PlaceLookup placeLookup;
+    /** No shared rate limit needed, unlike {@link #placeLookup} — Open-Meteo has no per-second policy. */
+    private final OpenMeteoClient weatherClient;
     private final MapAssistantDialog mapAssistantDialog;
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
@@ -295,6 +302,7 @@ public class MainController implements StatusSink {
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
         this.placeLookup = new PlaceLookup(version);
+        this.weatherClient = new OpenMeteoClient(version);
         this.mapAssistantDialog = new MapAssistantDialog(store, new MapboxService(settingsStore),
                 new PhotoLocations(impressions, exifReader), this);
     }
@@ -848,6 +856,7 @@ public class MainController implements StatusSink {
         stopLon = e.stopLon();
         startPlace = e.startPlace();
         stopPlace = e.stopPlace();
+        weather = e.weather();
         updateCoordinatesButton();
         talesArea.setText(e.tales() == null ? "" : e.tales());
         talesUpdatedAt = readTalesLastModified(trip, date);
@@ -1258,6 +1267,7 @@ public class MainController implements StatusSink {
                 .stopLon(stopLon)
                 .startPlace(startPlace)
                 .stopPlace(stopPlace)
+                .weather(weather)
                 .tales(talesArea.getText())
                 .build();
         boolean wasNew = !entryExists;
@@ -1275,6 +1285,69 @@ public class MainController implements StatusSink {
         snapshotBaseline();
         updateDirty();
         status("Saved " + trip.path() + "/" + date);
+        maybeFetchWeather(trip, entry);
+    }
+
+    /**
+     * Kicks off an async, silent weather fetch (todo 65) when the just-saved entry has a start
+     * point but no weather yet. Never overwrites an existing value, never blocks the FX thread,
+     * never shows an alert on failure (weather is background enrichment, not load-bearing).
+     */
+    private void maybeFetchWeather(TripRef trip, DiaryEntry entry) {
+        if (entry.weather() != null || entry.startLat() == null || entry.startLon() == null) return;
+        double lat = entry.startLat();
+        double lon = entry.startLon();
+        LocalDate date = entry.date();
+        String place = entry.startPlace();
+        Task<Weather> task = new Task<>() {
+            @Override
+            protected Weather call() {
+                return weatherClient.forecast(lat, lon, date);
+            }
+        };
+        task.setOnSucceeded(ev -> Platform.runLater(() -> applyFetchedWeather(trip, date, task.getValue(), place)));
+        task.setOnFailed(ev -> log.debug("Weather fetch failed for {}/{}: {}", trip.path(), date,
+                task.getException() != null ? task.getException().getMessage() : "unknown error"));
+        Thread thread = new Thread(task, "weather-fetch");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * Applies a background weather fetch result once it arrives. Reloads the entry from disk
+     * right before writing (not the possibly-stale in-memory copy) so a save made in the
+     * meantime isn't clobbered; bails out if something already set weather meanwhile.
+     */
+    private void applyFetchedWeather(TripRef trip, LocalDate date, Weather fetched, String place) {
+        if (fetched == null) return;
+        DiaryEntry current = store.loadEntry(trip, date);
+        if (current.weather() != null) return;
+        Weather withPlace = place == null ? fetched
+                : new Weather(fetched.tempMin(), fetched.tempMax(), fetched.code(), place);
+        DiaryEntry updated = DiaryEntry.builder(date)
+                .activity(current.activity())
+                .distance(current.distance())
+                .altitudeMeters(current.altitudeMeters())
+                .title(current.title())
+                .links(current.links())
+                .startLat(current.startLat())
+                .startLon(current.startLon())
+                .stopLat(current.stopLat())
+                .stopLon(current.stopLon())
+                .startPlace(current.startPlace())
+                .stopPlace(current.stopPlace())
+                .weather(withPlace)
+                .tales(current.tales())
+                .build();
+        store.saveEntry(trip, updated);
+        addPending(trip.path() + "/" + date, UPDATE);
+        log.debug("Weather saved for {}/{}: {}", trip.path(), date, withPlace.toRaw());
+        Trip selectedTrip = tripCombo.getValue();
+        LocalDate selectedDate = datePicker.getValue();
+        if (selectedTrip != null && selectedTrip.ref().equals(trip) && date.equals(selectedDate)) {
+            weather = withPlace;
+            status("Weather fetched for " + date);
+        }
     }
 
     @FXML

@@ -5,6 +5,7 @@ import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -342,6 +343,32 @@ class DiaryExporterTest {
                 </div>"""), html);
         assertFalse(html.contains("· Day 3"), "the byline is for plain Markdown only");
         assertTrue(html.indexOf("class=\"facts\"") < html.indexOf("<p>Tale.</p>"), html);
+    }
+
+    @Test
+    void weatherShowsInTheBylineAndFactsStrip() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .weather(new Weather(15, 22, 1, "Soest, DE")).tales("Nice weather.").build());
+
+        String out = exporter.exportTrip(trip);
+        assertTrue(out.contains("🌤️ 15–22° partly cloudy"), out);
+
+        String html = exporter.exportTripAsHtml(trip);
+        assertTrue(html.contains("<span class=\"fact-emoji\">🌤️</span>"
+                + "<span class=\"fact-value\">15–22°</span><span class=\"fact-note\">partly cloudy</span>"), html);
+    }
+
+    @Test
+    void weatherWithEqualMinMaxShowsOneTemperature() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .weather(new Weather(20, 20, 0, null)).tales("Steady.").build());
+
+        String out = exporter.exportTrip(trip);
+        assertTrue(out.contains("☀️ 20° clear"), out);
     }
 
     @Test

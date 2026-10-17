@@ -2,6 +2,8 @@ package net.timafe.triptale.export;
 
 import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Weather;
+import net.timafe.triptale.domain.WeatherCode;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.util.Coordinates;
 
@@ -42,6 +44,7 @@ record EntryFacts(List<Item> items) {
         List<Item> items = new ArrayList<>();
         items.add(date(tripStart, e.date(), texts));
         activity(e, texts).ifPresent(items::add);
+        weather(e, texts).ifPresent(items::add);
         location(e, texts).ifPresent(items::add);
         return new EntryFacts(List.copyOf(items));
     }
@@ -109,6 +112,17 @@ record EntryFacts(List<Item> items) {
         if (activity == null) return Optional.empty();
         return Optional.of(new Item(Activity.emojiFor(activity), null, texts.activityLabel(activity), null,
                 null, texts.activity(activity)));
+    }
+
+    /** Min–max temperature (just one value when they're equal) and the WMO code's bucket label. */
+    private static Optional<Item> weather(DiaryEntry e, ExportTexts texts) {
+        Weather w = e.weather();
+        if (w == null) return Optional.empty();
+        String emoji = WeatherCode.fromWmo(w.code()).emoji();
+        String value = w.tempMin() == w.tempMax() ? w.tempMin() + "°" : w.tempMin() + "–" + w.tempMax() + "°";
+        String note = texts.weatherLabel(w.code());
+        String inline = emoji + " " + value + " " + note;
+        return Optional.of(new Item(emoji, null, value, note, null, inline));
     }
 
     /**

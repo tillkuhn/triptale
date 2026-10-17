@@ -76,6 +76,16 @@ class ExportTextsTest {
     }
 
     @Test
+    void weatherLabels() {
+        assertEquals("partly cloudy", en.weatherLabel(1));
+        assertEquals("teils bewölkt", de.weatherLabel(1));
+        assertEquals("rain", en.weatherLabel(63));
+        assertEquals("Regen", de.weatherLabel(63));
+        // Unrecognized code falls back to the cloudy bucket
+        assertEquals("cloudy", en.weatherLabel(-1));
+    }
+
+    @Test
     void longDates() {
         assertEquals("July 23rd 2026", en.longDate(JULY_23));
         assertEquals("23. Juli 2026", de.longDate(JULY_23));

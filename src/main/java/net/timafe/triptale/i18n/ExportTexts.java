@@ -2,6 +2,7 @@ package net.timafe.triptale.i18n;
 
 import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.LinkKind;
+import net.timafe.triptale.domain.WeatherCode;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -61,6 +62,13 @@ public final class ExportTexts {
     public String activity(String activity) {
         if (Activity.normalize(activity) == null) return "";
         return Activity.emojiFor(activity) + " " + activityLabel(activity);
+    }
+
+    /** {@code weather.<key>} if translated, else the bucket key with underscores turned to spaces. */
+    public String weatherLabel(int wmoCode) {
+        WeatherCode bucket = WeatherCode.fromWmo(wmoCode);
+        String key = "weather." + bucket.key();
+        return bundle.containsKey(key) ? bundle.getString(key) : bucket.key().replace('_', ' ');
     }
 
     /** Full weekday name, e.g. "Donnerstag". */

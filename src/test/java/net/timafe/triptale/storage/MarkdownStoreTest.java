@@ -6,6 +6,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
+import net.timafe.triptale.domain.Weather;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -274,6 +275,30 @@ class MarkdownStoreTest {
         DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
         assertNull(loaded.startLat());
         assertNull(loaded.startLon());
+    }
+
+    @Test
+    void saveAndLoadEntryRoundTripsWeather() throws Exception {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
+                .startLat(51.478536).startLon(8.336688)
+                .weather(new Weather(15, 22, 1, "Soest, DE"))
+                .tales("Sunny day.")
+                .build());
+
+        String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
+        assertTrue(raw.contains("weather: \"15,22,1,Soest, DE\""), raw);
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertEquals(new Weather(15, 22, 1, "Soest, DE"), loaded.weather());
+    }
+
+    @Test
+    void loadEntryLeavesWeatherNullWhenNotRecorded() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
+        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4)).tales("No weather yet.").build());
+
+        DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
+        assertNull(loaded.weather());
     }
 
     @Test
