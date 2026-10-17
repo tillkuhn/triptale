@@ -12,6 +12,7 @@ other entry facts (todo 53/58).
 - `weather.OpenMeteoClient` (no JavaFX), forecast API only (~92 days back), silent on failure.
 - Auto-fetch on save when `start_lat`/`start_lon` present and `weather` absent; never overwrites.
 - New `domain.WeatherCode` enum (WMO code buckets, emoji) joins `export.EntryFacts`.
+- Coordinator dialog shows/updates/clears it by hand (🔄/🗑), dated so it reads as history.
 
 [Details](docs/65_weather_per_day.md)
 

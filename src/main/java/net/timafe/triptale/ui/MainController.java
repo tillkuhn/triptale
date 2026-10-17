@@ -204,6 +204,7 @@ public class MainController implements StatusSink {
     private Double baselineStopLon;
     private String baselineStartPlace;
     private String baselineStopPlace;
+    private Weather baselineWeather;
     private String baselineTales = "";
     /** The form's links; replaced (never mutated) by the Links dialog. */
     private SequencedMap<String, Link> links = baselineLinks;
@@ -1014,6 +1015,7 @@ public class MainController implements StatusSink {
         baselineStopLon = stopLon;
         baselineStartPlace = startPlace;
         baselineStopPlace = stopPlace;
+        baselineWeather = weather;
         baselineTales = talesArea.getText();
     }
 
@@ -1029,6 +1031,7 @@ public class MainController implements StatusSink {
                 || !Objects.equals(stopLon, baselineStopLon)
                 || !Objects.equals(startPlace, baselineStartPlace)
                 || !Objects.equals(stopPlace, baselineStopPlace)
+                || !Objects.equals(weather, baselineWeather)
                 || !Objects.equals(talesArea.getText(), baselineTales);
     }
 
@@ -1345,9 +1348,13 @@ public class MainController implements StatusSink {
         Trip selectedTrip = tripCombo.getValue();
         LocalDate selectedDate = datePicker.getValue();
         if (selectedTrip != null && selectedTrip.ref().equals(trip) && date.equals(selectedDate)) {
+            // Already persisted above, so the baseline moves too — otherwise isDirty() would
+            // report an unsaved change for a field the user never touched.
             weather = withPlace;
+            baselineWeather = withPlace;
             status("Weather fetched for " + date);
         }
+        updateDirty();
     }
 
     @FXML
@@ -1887,8 +1894,9 @@ public class MainController implements StatusSink {
     @FXML
     public void onCoordinates() {
         Optional<CoordinatesDialog.Result> result =
-                new CoordinatesDialog(browser, placeLookup, Boolean.TRUE.equals(connected))
-                        .showAndWait(startLat, startLon, stopLat, stopLon, startPlace, stopPlace, isValidEntry());
+                new CoordinatesDialog(browser, placeLookup, weatherClient, Boolean.TRUE.equals(connected))
+                        .showAndWait(startLat, startLon, stopLat, stopLon, startPlace, stopPlace, weather,
+                                datePicker.getValue(), isValidEntry());
         if (result.isEmpty()) return;
         Coordinates.LatLon start = result.get().start();
         Coordinates.LatLon stop = result.get().stop();
@@ -1898,6 +1906,7 @@ public class MainController implements StatusSink {
         stopLon = stop == null ? null : stop.lon();
         startPlace = result.get().startPlace();
         stopPlace = result.get().stopPlace();
+        weather = result.get().weather();
         updateCoordinatesButton();
         updateDirty();
         saveTheDayIfPossible();

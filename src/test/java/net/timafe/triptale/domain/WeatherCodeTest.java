@@ -33,6 +33,6 @@ class WeatherCodeTest {
     @Test
     void keyAndEmojiAreExposed() {
         assertEquals("partly_cloudy", WeatherCode.PARTLY_CLOUDY.key());
-        assertEquals("🌤️", WeatherCode.PARTLY_CLOUDY.emoji());
+        assertEquals("🌤", WeatherCode.PARTLY_CLOUDY.emoji());
     }
 }

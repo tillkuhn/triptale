@@ -94,7 +94,9 @@ same mechanism as `activity.<key>`, defaulting to the English base when a langua
 
 ## Auto-fetch on save
 
-No manual button (unlike the Coordinator's 🔍) — weather fills in automatically:
+Weather fills in automatically on a plain save, **and** can be fetched/cleared by hand in the
+Coordinator dialog (added after the first cut of this todo shipped — see "Coordinator row"
+below):
 
 - Hook into `MainController.saveTheDayIfPossible()` (~line 1216 area), after the entry is
   persisted: if the just-saved entry has `startLat`/`startLon` set and **no** `weather` yet,
@@ -105,19 +107,66 @@ No manual button (unlike the Coordinator's 🔍) — weather fills in automatica
   whatever Smart Sync already has pending. This is a **second**, independent save after the
   user's own save completes — it must not clobber any edits made in the meantime (reload the
   current on-disk entry, or guard on "controller still showing the same date", before writing).
+  The controller's own `weather`/`baselineWeather` fields are updated too (only when the form
+  is still showing that exact day), so `isDirty()` doesn't flag a change the user never made.
 - On failure (network, offline, date outside the ~92-day forecast window): leave `weather`
-  unset, log at DEBUG, no UI feedback at all — silent is fine for a sugar field with no retry
-  button in this iteration.
-- Never overwrites an existing `weather` value (including a value the user hand-typed or
-  cleared) — only fires when the field is absent, same "don't fight manual edits" rule as the
-  Coordinator's 🗑.
+  unset, log at DEBUG, no UI feedback at all — silent is fine for the automatic path.
+- The automatic path never overwrites an existing `weather` value — only fires when the field
+  is absent. The manual 🔄 in the Coordinator dialog (below) **does** overwrite, same as the
+  place lookup's 🔍.
 - Coordinates source: **`start_lat`/`start_lon` only**, even when a stop point exists — weather
   doesn't vary enough within a day's travel to justify a second lookup, and it sidesteps the
   "what if there's no stop point" case entirely.
-- Re-fetch: only triggered by *adding* `start_lat`/`start_lon` to an entry that didn't have
-  them yet (since the trigger is "coordinates present, weather absent"). Changing an existing
-  start point does **not** re-fetch (weather is already set) — a manual re-fetch path is future
-  work if this turns out to matter in practice.
+- Re-fetch: the automatic path only triggers by *adding* `start_lat`/`start_lon` to an entry
+  that didn't have them yet (since the trigger is "coordinates present, weather absent").
+  Changing an existing start point does **not** auto-re-fetch — use 🔄 in the Coordinator.
+
+## Coordinator row (manual fetch/clear, added after the first cut)
+
+`ui.dialog.CoordinatesDialog` gained a weather row between the Start/End rows and "Parse
+from:", resolving the "no manual control" gap from the first cut:
+
+- Shows the day's weather named with its date *and* the place it was fetched for — without the
+  place suffix it read as disconnected from the Start point, so this was added in a follow-up
+  pass: `"🌫 12–25° foggy on October 16th 2026 @ Rome, IT"` (`w.place()` appended as `" @ " +
+  place"` only when non-null; always English — the UI stays English per the trip-language rule;
+  `ExportTexts.of(TripLanguage.EN)` is reused purely as a label source, not because this dialog
+  participates in the trip-language setting). Empty/fetching states preview the **current**
+  Start row's place (else its DDM coordinates, else nothing) rather than just the date, so it's
+  clear *where* 🔄 would fetch for before the first fetch: `"Not recorded for October 16th 2026
+  yet — fetch for Rome, IT."` / `"Fetching weather for October 16th 2026 (Rome, IT)…"`.
+- 🔄 **Update** fetches for the **Start** row's *current* field values (not necessarily what's
+  saved yet — same "operate on the live row" precedent as 🔍's forward/reverse lookup) and
+  **overwrites without asking**, like 🔍. Disabled offline, without a start point, or without a
+  date (same gating/tooltip style as 🔍). Echoes the Start row's current place into the result,
+  same as the automatic path.
+- 🗑 **Clear** sets it back to absent; disabled when already absent.
+- The weather row's `HBox` needs an explicit `.setAlignment(Pos.CENTER_LEFT)` — unlike the
+  Start/End rows (individual same-height controls placed directly in `GridPane` cells, which
+  align fine on the default baseline), this row collapses label + 2 buttons into one wide `HBox`
+  spanning 7 columns, and `HBox`'s default top-left alignment visibly misaligns a plain `Label`
+  against taller `Button`s. Every other dialog's multi-control `HBox` row in this codebase
+  already sets this explicitly (`ImageViewerDialog`, `ExportDiaryDialog`, `TripDetailsDialog`,
+  etc.) — this one just missed it when first added.
+- The dialog's `Result` gained a `weather` field, applied by `MainController.onCoordinates()`
+  like the other fields, then persisted through the normal `saveTheDayIfPossible()` path — this
+  is why `weather`/`baselineWeather` needed to join the dirty-tracking fields (`isDirty()`):
+  without that, closing the dialog after only touching the weather row (not lat/lon/place)
+  wouldn't register as a change, and `saveTheDayIfPossible()` would skip the save.
+
+## Tofu glyph in the weather row (JavaFX, not a data problem)
+
+`domain.WeatherCode`'s `FOG`/`DRIZZLE`/`RAIN`/`PARTLY_CLOUDY` emoji were defined with a trailing
+`\uFE0F` variation selector (`"🌫️"` etc.) and rendered as a missing-glyph box in the Coordinator
+dialog. Root cause: these four are Supplementary Multilingual Plane pictographs that already
+default to emoji presentation — the selector was redundant everywhere — but JavaFX's text
+renderer appears to choke on the invisible trailing codepoint and draws a tofu box for it
+specifically (the base glyph renders fine). Fixed by dropping `\uFE0F` from just these four
+(`"🌫"`, `"🌦"`, `"🌧"`, `"🌤"`); since browsers already default these codepoints to color
+regardless of the selector, exports (Markdown/HTML/WordPress, which share `WeatherCode.emoji()`
+with the dialog) are visually unaffected. `CLEAR`/`CLOUDY`/`SNOW`/`THUNDERSTORM`
+(`☀️☁️❄️⛈️`) were left untouched: their default presentation genuinely is plain text, so the
+selector isn't redundant there, and they weren't confirmed broken.
 
 ## Export placement (`export.EntryFacts`, todo 53/58)
 
@@ -138,8 +187,6 @@ Joins the existing per-entry fact strip (date, activity, start/stop place) as on
 ## Open questions / later
 
 - Archive API fallback for entries older than ~92 days (noted above, deliberately deferred).
-- A manual re-fetch/retry action, if the silent auto-fetch turns out to miss too often in
-  practice (flaky network, entries saved before coordinates are set).
 - Whether `weather.OpenMeteoClient` and `map.PlaceLookup` should share a small `http`/user-agent
   helper package now that there'd be two keyless `java.net.http` clients with near-identical
   shapes — not done as part of this todo to avoid scope creep.

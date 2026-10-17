@@ -353,10 +353,10 @@ class DiaryExporterTest {
                 .weather(new Weather(15, 22, 1, "Soest, DE")).tales("Nice weather.").build());
 
         String out = exporter.exportTrip(trip);
-        assertTrue(out.contains("🌤️ 15–22° partly cloudy"), out);
+        assertTrue(out.contains("🌤 15–22° partly cloudy"), out);
 
         String html = exporter.exportTripAsHtml(trip);
-        assertTrue(html.contains("<span class=\"fact-emoji\">🌤️</span>"
+        assertTrue(html.contains("<span class=\"fact-emoji\">🌤</span>"
                 + "<span class=\"fact-value\">15–22°</span><span class=\"fact-note\">partly cloudy</span>"), html);
     }
 

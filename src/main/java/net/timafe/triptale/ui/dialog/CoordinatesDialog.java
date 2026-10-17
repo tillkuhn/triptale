@@ -1,6 +1,7 @@
 package net.timafe.triptale.ui.dialog;
 
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -13,14 +14,20 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import net.timafe.triptale.domain.Weather;
+import net.timafe.triptale.domain.WeatherCode;
+import net.timafe.triptale.i18n.ExportTexts;
+import net.timafe.triptale.i18n.TripLanguage;
 import net.timafe.triptale.map.PlaceLookup;
 import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.UiText;
 import net.timafe.triptale.util.Coordinates;
+import net.timafe.triptale.weather.OpenMeteoClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -41,15 +48,25 @@ import java.util.function.Supplier;
  * fills in the place's centre point and appends the hit's country code to the typed name. The
  * lookup's progress and outcome live on the 🔍 button and its tooltip: ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still
  * clickable to retry). Editing the row resets it.
+ *
+ * <p>A weather row (todo 65) shows the day's recorded weather, named with its date and the place
+ * it was fetched for, so it reads as history for a specific point, not today's forecast
+ * somewhere vague, e.g. "15–22° partly cloudy on October 23rd 2026 @ Rome, IT". 🔄 fetches (or
+ * re-fetches, overwriting without asking, like 🔍) for the start point's <em>current</em> field
+ * values, not necessarily what's saved; 🗑 clears it. Disabled without a start point or offline,
+ * same gating as the place lookups. Before a first fetch, the empty-state message previews the
+ * current Start row so it's clear what 🔄 would fetch for.
  */
 public final class CoordinatesDialog {
 
     /**
      * Outcome of the dialog: a {@code null} point means it should be unset on the entry, a
-     * {@code null} place likewise. Cancel is reported as an empty {@link Optional} from
-     * {@link #showAndWait} instead.
+     * {@code null} place likewise. {@code weather} (todo 65) is whatever the weather row held at
+     * confirm time — unchanged if the user never touched it, {@code null} after 🗑. Cancel is
+     * reported as an empty {@link Optional} from {@link #showAndWait} instead.
      */
-    public record Result(Coordinates.LatLon start, Coordinates.LatLon stop, String startPlace, String stopPlace) {}
+    public record Result(Coordinates.LatLon start, Coordinates.LatLon stop, String startPlace, String stopPlace,
+                          Weather weather) {}
 
     private static final int COORD_COLUMNS = 7;
     private static final int PLACE_COLUMNS = 16;
@@ -138,21 +155,27 @@ public final class CoordinatesDialog {
 
     private final BrowserLauncher browser;
     private final PlaceLookup placeLookup;
+    private final OpenMeteoClient weatherClient;
     private final boolean online;
 
     /** {@code online} is the main window's connectivity state; the dialog is modal, so it can't change meanwhile. */
-    public CoordinatesDialog(BrowserLauncher browser, PlaceLookup placeLookup, boolean online) {
+    public CoordinatesDialog(BrowserLauncher browser, PlaceLookup placeLookup, OpenMeteoClient weatherClient,
+                             boolean online) {
         this.browser = browser;
         this.placeLookup = placeLookup;
+        this.weatherClient = weatherClient;
         this.online = online;
     }
 
     /**
      * Empty when the user cancelled or dismissed the dialog. {@code canSaveDay} only picks the
-     * confirm button's label (see {@link Dialogs#addSaveDayButtons}).
+     * confirm button's label (see {@link Dialogs#addSaveDayButtons}). {@code date} names the
+     * weather row and is the day {@code weather} was recorded for; {@code date == null} disables
+     * weather fetching entirely (no day to fetch for).
      */
     public Optional<Result> showAndWait(Double startLat, Double startLon, Double stopLat, Double stopLon,
-                                        String startPlace, String stopPlace, boolean canSaveDay) {
+                                        String startPlace, String stopPlace, Weather weather,
+                                        LocalDate date, boolean canSaveDay) {
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle("🌐 Coordinator");
         dlg.setHeaderText("Start and end point");
@@ -166,6 +189,73 @@ public final class CoordinatesDialog {
         Label hintLabel = new Label();
         hintLabel.getStyleClass().add("hint-label");
 
+        // Weather row (todo 65): named by date so it reads as history, not today's forecast.
+        ExportTexts weatherTexts = ExportTexts.of(TripLanguage.EN);
+        Label weatherLabel = new Label();
+        weatherLabel.setWrapText(true);
+        Button weatherUpdate = new Button("🔄 Update");
+        Button weatherClear = new Button("🗑");
+        for (Button b : new Button[] {weatherUpdate, weatherClear}) b.setMinWidth(Region.USE_PREF_SIZE);
+        Weather[] currentWeather = {weather};
+        boolean[] weatherBusy = {false};
+        Runnable renderWeather = () -> {
+            Weather w = currentWeather[0];
+            String livePlace = wherePreview(start);
+            if (date == null) {
+                weatherLabel.setText("No date selected.");
+            } else if (weatherBusy[0]) {
+                weatherLabel.setText("Fetching weather for " + weatherTexts.longDate(date)
+                        + (livePlace == null ? "" : " (" + livePlace + ")") + "…");
+            } else if (w == null) {
+                weatherLabel.setText("Not recorded for " + weatherTexts.longDate(date) + " yet"
+                        + (livePlace == null ? "" : " — fetch for " + livePlace) + ".");
+            } else {
+                String value = w.tempMin() == w.tempMax() ? w.tempMin() + "°" : w.tempMin() + "–" + w.tempMax() + "°";
+                weatherLabel.setText(WeatherCode.fromWmo(w.code()).emoji() + " " + value + " "
+                        + weatherTexts.weatherLabel(w.code()) + " on " + weatherTexts.longDate(date)
+                        + (w.place() == null ? "" : " @ " + w.place()));
+            }
+            weatherClear.setDisable(w == null || weatherBusy[0]);
+            boolean canFetch = online && date != null && start.value() != null && !weatherBusy[0];
+            weatherUpdate.setDisable(!canFetch);
+            weatherUpdate.setTooltip(new Tooltip(!online ? "Offline — re-check connectivity (top right) and reopen"
+                    : date == null ? "No date selected"
+                    : start.value() == null ? "Set a start point first"
+                    : "Fetch weather for the start point (Open-Meteo); overwrites without asking, like 🔍"));
+        };
+        weatherUpdate.setOnAction(e -> {
+            Coordinates.LatLon point = start.value();
+            if (point == null || date == null || weatherBusy[0]) return;
+            String place = start.placeValue();
+            weatherBusy[0] = true;
+            renderWeather.run();
+            Thread.ofVirtual().name("weather-fetch").start(() -> {
+                Weather fetched = null;
+                String error = null;
+                try {
+                    Weather result = weatherClient.forecast(point.lat(), point.lon(), date);
+                    fetched = place == null ? result : new Weather(result.tempMin(), result.tempMax(), result.code(), place);
+                } catch (RuntimeException ex) {
+                    error = ex instanceof OpenMeteoClient.WeatherException ? ex.getMessage() : UiText.describe(ex);
+                }
+                Weather result = fetched;
+                String message = error;
+                Platform.runLater(() -> {
+                    weatherBusy[0] = false;
+                    if (result != null) {
+                        currentWeather[0] = result;
+                    } else {
+                        hintLabel.setText(message);
+                    }
+                    renderWeather.run();
+                });
+            });
+        });
+        weatherClear.setOnAction(e -> {
+            currentWeather[0] = null;
+            renderWeather.run();
+        });
+
         GridPane grid = Dialogs.formGrid();
         grid.add(new Label("Latitude"), 1, 0);
         grid.add(new Label("Longitude"), 2, 0);
@@ -174,8 +264,14 @@ public final class CoordinatesDialog {
         // Same icons as the main window's coordinates button ("📍 ✓  🏁 –").
         addRow(grid, 1, "📍", "Start", start);
         addRow(grid, 2, "🏁", "End", stop);
-        grid.add(new Label("Parse from:"), 0, 3);
-        grid.add(parseArea, 1, 3, 7, 1);
+        grid.add(new Label("🌦️ Weather:"), 0, 3);
+        Region weatherSpacer = new Region();
+        HBox.setHgrow(weatherSpacer, Priority.ALWAYS);
+        HBox weatherRow = new HBox(8, weatherLabel, weatherSpacer, weatherUpdate, weatherClear);
+        weatherRow.setAlignment(Pos.CENTER_LEFT);
+        grid.add(weatherRow, 1, 3, 7, 1);
+        grid.add(new Label("Parse from:"), 0, 4);
+        grid.add(parseArea, 1, 4, 7, 1);
         Button parseStart = new Button("Parse → Start");
         Button parseStop = new Button("Parse → End");
         TextField distanceField = new TextField();
@@ -194,8 +290,8 @@ public final class CoordinatesDialog {
         });
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        grid.add(new HBox(8, parseStart, parseStop, spacer, distanceField, route), 1, 4, 7, 1);
-        grid.add(hintLabel, 1, 5, 7, 1);
+        grid.add(new HBox(8, parseStart, parseStop, spacer, distanceField, route), 1, 5, 7, 1);
+        grid.add(hintLabel, 1, 6, 7, 1);
 
         dlg.getDialogPane().setContent(grid);
         ButtonType saveType = Dialogs.addSaveDayButtons(dlg.getDialogPane(), canSaveDay);
@@ -221,6 +317,7 @@ public final class CoordinatesDialog {
                     ? formatKm(Coordinates.distanceMeters(start.value(), stop.value()) / 1000.0) : "");
             hintLabel.setText(problem == null ? "" : problem);
             saveButtonNode.setDisable(problem != null);
+            renderWeather.run();
         };
         for (Row row : new Row[] {start, stop}) {
             // Any edit makes the last lookup's outcome stale.
@@ -240,12 +337,20 @@ public final class CoordinatesDialog {
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != saveType) return Optional.empty();
-        return Optional.of(new Result(start.value(), stop.value(), start.placeValue(), stop.placeValue()));
+        return Optional.of(new Result(start.value(), stop.value(), start.placeValue(), stop.placeValue(),
+                currentWeather[0]));
     }
 
     /** Whole km with unit, e.g. {@code "12 km"} — pastes straight into the Distance field; no decimals, since a straight-line distance is only ever approximate. */
     private static String formatKm(double km) {
         return BigDecimal.valueOf(km).setScale(0, RoundingMode.HALF_UP).toPlainString() + " km";
+    }
+
+    /** The Start row's current place, else its coordinates, else null — what 🔄 would fetch weather for right now. */
+    private static String wherePreview(Row start) {
+        if (start.placeValue() != null) return start.placeValue();
+        Coordinates.LatLon point = start.value();
+        return point == null ? null : Coordinates.toDdm(point.lat(), point.lon());
     }
 
     private void addRow(GridPane grid, int rowIndex, String icon, String name, Row row) {

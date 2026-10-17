@@ -8,11 +8,17 @@ package net.timafe.triptale.domain;
  */
 public enum WeatherCode {
     CLEAR("clear", "☀️"),
-    PARTLY_CLOUDY("partly_cloudy", "🌤️"),
+    // These 4 are Supplementary Multilingual Plane pictographs that already default to emoji
+    // presentation — the \uFE0F variation selector is redundant (no visual difference anywhere
+    // that follows the Unicode spec, browsers included), but JavaFX's text renderer seems to
+    // choke on the invisible trailing selector and draws a "tofu" box for it. Dropped here only
+    // for the glyphs this was confirmed on; CLEAR/CLOUDY/SNOW/THUNDERSTORM below genuinely need
+    // \uFE0F to force color (their default presentation is plain text), so they're left alone.
+    PARTLY_CLOUDY("partly_cloudy", "🌤"),
     CLOUDY("cloudy", "☁️"),
-    FOG("fog", "🌫️"),
-    DRIZZLE("drizzle", "🌦️"),
-    RAIN("rain", "🌧️"),
+    FOG("fog", "🌫"),
+    DRIZZLE("drizzle", "🌦"),
+    RAIN("rain", "🌧"),
     SNOW("snow", "❄️"),
     THUNDERSTORM("thunderstorm", "⛈️");
 
