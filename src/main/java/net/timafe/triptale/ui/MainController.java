@@ -56,6 +56,7 @@ import net.timafe.triptale.ui.dialog.AboutDialog;
 import net.timafe.triptale.ui.dialog.CoordinatesDialog;
 import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
+import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.LinksDialog;
 import net.timafe.triptale.ui.dialog.MapAssistantDialog;
@@ -694,38 +695,40 @@ public class MainController implements StatusSink {
             error("GPX date " + p.date() + " is outside " + trip.ref().path() + "'s date range");
             return;
         }
-        if (store.entryExists(trip.ref(), p.date())) {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Entry for " + p.date() + " already exists. Overwrite title and geo track data from GPX?",
-                    ButtonType.YES, ButtonType.NO);
-            confirm.setTitle(appName);
-            confirm.setHeaderText("Overwrite entry");
-            Dialogs.applyStylesheet(confirm.getDialogPane());
-            Optional<ButtonType> result = confirm.showAndWait();
-            if (result.isEmpty() || result.get() != ButtonType.YES) return;
-        }
-        Path attachmentCopy;
-        try {
-            attachmentCopy = attachmentsDir.addFiles(trip.ref(), p.date(), List.of(file.toPath())).getFirst();
-        } catch (RuntimeException e) {
-            error(UiText.describe(e));
-            return;
+        DiaryEntry existing = store.loadEntry(trip.ref(), p.date());
+        Optional<GpxImportDialog.Selection> selection = GpxImportDialog.showAndWait(p, existing, file.getName());
+        if (selection.isEmpty()) return;
+        GpxImportDialog.Selection sel = selection.get();
+
+        String attachmentStatus = "";
+        if (sel.copyAttachment()) {
+            try {
+                Path attachmentCopy = attachmentsDir.addFiles(trip.ref(), p.date(), List.of(file.toPath())).getFirst();
+                attachmentStatus = ", GPX saved to " + UiText.homeRelative(attachmentCopy);
+            } catch (RuntimeException e) {
+                error(UiText.describe(e));
+                return;
+            }
         }
         datePicker.setValue(p.date());
-        titleField.setText(p.name());
-        startLat = p.lat();
-        startLon = p.lon();
-        stopLat = p.stopLat();
-        stopLon = p.stopLon();
-        distanceField.setText(Lengths.formatDistance(p.distanceKm()));
-        if (p.altitudeGainM() != null) {
+        if (sel.title()) titleField.setText(p.name());
+        if (sel.startCoords()) {
+            startLat = p.lat();
+            startLon = p.lon();
+        }
+        if (sel.stopCoords()) {
+            stopLat = p.stopLat();
+            stopLon = p.stopLon();
+        }
+        if (sel.distance()) distanceField.setText(Lengths.formatDistance(p.distanceKm()));
+        if (sel.altitude() && p.altitudeGainM() != null) {
             altField.setText(Lengths.formatAltitude(p.altitudeGainM()));
         }
         updateCoordinatesButton();
         updateDirty();
-        status("Imported \"" + p.name() + "\" for " + p.date() + ", GPX saved to "
-                + UiText.homeRelative(attachmentCopy));
+        status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus);
     }
+
 
     @FXML
     public void onFirstDay() {

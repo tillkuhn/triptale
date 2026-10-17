@@ -1,6 +1,25 @@
 # ToDos for this app
 
-## Next Todo: 66
+## Next Todo: 67
+
+## 66 Per-field GPX import matrix
+
+Todo 24's `onImportGpx` confirmation is all-or-nothing: overwriting an existing entry means
+every derived field (title, start/stop coords, distance, altitude) gets clobbered at once, with
+no way to keep just the frontmatter the user already edited by hand. Replace the single
+YES/NO `Alert` with a matrix dialog — one row per field, each showing old value → new value with
+its own "overwrite" checkbox, defaulting checked only when the old value is empty/unset.
+
+- New `ui/dialog/GpxImportDialog.java`: rows for title, start coords, stop coords, distance,
+  altitude (omitted if the GPX has no altitude data), plus a "copy GPX to attachments" row
+  (always defaults checked).
+- Shown on every import, not just when an entry already exists — old values come from
+  `store.loadEntry(trip.ref(), parsed.date())` (disk state, not the live form).
+- Cancel aborts completely (no navigation, no field changes, no attachment copy — same as
+  today's "No"). OK navigates via `datePicker.setValue(...)` (unconditional, same as today) then
+  overlays only the checked fields on top of whatever `loadEntry()` populated.
+
+[Details](docs/66_gpx_import_field_matrix.md)
 
 ## 65 Weather per day
 
