@@ -184,7 +184,7 @@ public final class CoordinatesDialog {
         distanceField.setPrefColumnCount(7);
         distanceField.setStyle("-fx-min-width: 6em;");
         distanceField.setTooltip(new Tooltip(
-                "Straight-line distance start → end, rounded (not the travel route); copy into the Distance field if useful"));
+                "As the crow flies, rounded (not the travel route); copy into the Distance field if useful"));
         Button route = new Button("🔗 Route");
         route.setTooltip(new Tooltip("Show route start → end on Google Maps"));
         route.setOnAction(e -> {
