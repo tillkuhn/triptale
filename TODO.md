@@ -1,6 +1,19 @@
 # ToDos for this app
 
-## Next Todo: 65
+## Next Todo: 66
+
+## 65 Weather per day
+
+Store a day's weather (temp min/max, condition) fetched automatically from Open-Meteo (free,
+keyless, non-commercial) once an entry has a start point, and show it in exports alongside the
+other entry facts (todo 53/58).
+
+- New `weather` frontmatter key, packed comma string `"min,max,code[,place]"`, quoted.
+- `weather.OpenMeteoClient` (no JavaFX), forecast API only (~92 days back), silent on failure.
+- Auto-fetch on save when `start_lat`/`start_lon` present and `weather` absent; never overwrites.
+- New `domain.WeatherCode` enum (WMO code buckets, emoji) joins `export.EntryFacts`.
+
+[Details](docs/65_weather_per_day.md)
 
 ## 64 Cosmetic findings and small features during DUS->ATH Flight
 
