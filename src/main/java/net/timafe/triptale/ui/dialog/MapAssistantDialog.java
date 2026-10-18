@@ -11,11 +11,13 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -108,6 +110,7 @@ public final class MapAssistantDialog {
         private final List<DiaryEntry> entries;
         private final EntryRangePicker range;
         private final CheckBox photosCheck = new CheckBox("📷 Photo Locations from Backpack");
+        private final ComboBox<MapboxService.ZoomLevel> zoomCombo = new ComboBox<>();
         private final ImageView imageView = new ImageView();
         private final Label message = new Label();
         private final Label icon = new Label("🗺");
@@ -137,6 +140,9 @@ public final class MapAssistantDialog {
             dlg.setTitle("🗺 Sgt. Mapper");
             photosCheck.setSelected(true);
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
+            zoomCombo.getItems().setAll(MapboxService.ZoomLevel.values());
+            zoomCombo.setValue(MapboxService.DEFAULT_ZOOM);
+            zoomCombo.setTooltip(new Tooltip("How far to zoom out around the plotted pins"));
 
             imageView.setFitWidth(width);
             imageView.setFitHeight(height);
@@ -178,6 +184,11 @@ public final class MapAssistantDialog {
             ButtonBar.setButtonData(photosCheck, ButtonBar.ButtonData.LEFT);
             ButtonBar.setButtonUniformSize(photosCheck, false);
             buttonBar.getButtons().add(photosCheck);
+            HBox zoomBox = new HBox(6, new Label("Zoom:"), zoomCombo);
+            zoomBox.setAlignment(Pos.CENTER_LEFT);
+            ButtonBar.setButtonData(zoomBox, ButtonBar.ButtonData.LEFT);
+            ButtonBar.setButtonUniformSize(zoomBox, false);
+            buttonBar.getButtons().add(zoomBox);
             // consume() keeps the dialog open: putting a map on screen is repeatable, not a result.
             onScreenButton.addEventFilter(ActionEvent.ACTION, ev -> {
                 onScreen();
@@ -187,6 +198,7 @@ public final class MapAssistantDialog {
 
             range.onChange(this::changed);
             photosCheck.selectedProperty().addListener((obs, old, sel) -> changed());
+            zoomCombo.valueProperty().addListener((obs, old, sel) -> changed());
             updateHeader(dayPoints(), false);
             if (!mapboxService.hasToken()) {
                 setMessage("Viewscreen offline", "No Mapbox token configured — set one in Edit Settings.");
@@ -259,7 +271,7 @@ public final class MapAssistantDialog {
                 setMessage("Nothing on sensors", "Nothing to put on screen for this range." + hint);
                 return;
             }
-            Image image = new Image(mapboxService.staticImageUrl(points, width, height), true);
+            Image image = new Image(mapboxService.staticImageUrl(points, width, height, zoomCombo.getValue()), true);
             imageView.setImage(image);
             imageView.setOpacity(1.0);
             setMessage("Loading map…");

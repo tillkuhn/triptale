@@ -34,8 +34,36 @@ public final class MapboxService {
     private static final String STOP_PIN = "pin-s+3bb2d0";
     /** Maki's "attraction" icon is the camera glyph; there is no "camera" symbol (HTTP 422). */
     private static final String PHOTO_PIN = "pin-s-attraction+f5c242";
-    /** Zoom used for a single point, where "auto" bbox-fitting would zoom in to building level. */
-    private static final int SINGLE_POINT_ZOOM = 12;
+
+    /**
+     * How far Sgt. Mapper zooms out around the plotted pins. Mapbox's own {@code auto} default
+     * padding is capped at 12px per side, which crowds pins against the edge of the image; these
+     * levels instead request an explicit {@code padding} proportional to the image size (for
+     * multiple points) or an explicit {@code zoom} (for a single point, where {@code auto} would
+     * zoom all the way in to building level).
+     */
+    public enum ZoomLevel {
+        CLOSE("Close", 0.02, 16),
+        NORMAL("Normal", 0.12, 12),
+        WIDE("Wide", 0.28, 9),
+        VERY_WIDE("Very wide", 0.45, 5);
+
+        private final String label;
+        private final double paddingFraction;
+        private final int singlePointZoom;
+
+        ZoomLevel(String label, double paddingFraction, int singlePointZoom) {
+            this.label = label;
+            this.paddingFraction = paddingFraction;
+            this.singlePointZoom = singlePointZoom;
+        }
+
+        @Override public String toString() {
+            return label;
+        }
+    }
+
+    public static final ZoomLevel DEFAULT_ZOOM = ZoomLevel.NORMAL;
 
     private final SettingsStore settingsStore;
 
@@ -48,11 +76,17 @@ public final class MapboxService {
         return token != null && !token.isBlank();
     }
 
-    /** Photos first, then starts, then the stop, so the day pins are drawn on top. */
+    /** Same as {@link #staticImageUrl(MapPoints, int, int, ZoomLevel)} with {@link #DEFAULT_ZOOM}. */
     public String staticImageUrl(MapPoints points, int width, int height) {
+        return staticImageUrl(points, width, height, DEFAULT_ZOOM);
+    }
+
+    /** Photos first, then starts, then the stop, so the day pins are drawn on top. */
+    public String staticImageUrl(MapPoints points, int width, int height, ZoomLevel zoom) {
         String token = settingsStore.load().getMapboxToken();
         if (token == null || token.isBlank()) throw new IllegalStateException("No Mapbox token configured");
         if (points.isEmpty()) throw new IllegalArgumentException("No points to plot");
+        if (zoom == null) zoom = DEFAULT_ZOOM;
 
         List<String> pinParts = new ArrayList<>();
         points.photos().forEach(p -> pinParts.add(pin(PHOTO_PIN, p)));
@@ -61,13 +95,25 @@ public final class MapboxService {
         String pins = String.join(",", pinParts);
 
         List<LatLon> all = points.all();
-        String viewport = new HashSet<>(all).size() == 1
-                ? String.format(Locale.ROOT, "%.5f,%.5f,%d", all.getFirst().lon(), all.getFirst().lat(), SINGLE_POINT_ZOOM)
+        boolean singlePoint = new HashSet<>(all).size() == 1;
+        String viewport = singlePoint
+                ? String.format(Locale.ROOT, "%.5f,%.5f,%d", all.getFirst().lon(), all.getFirst().lat(), zoom.singlePointZoom)
                 : "auto";
+        // padding only applies to auto/bbox viewports, and must not exceed the image's own size
+        String padding = singlePoint ? "" : "&padding=" + autoPadding(width, height, zoom);
 
         return "https://api.mapbox.com/styles/v1/" + STYLE + "/static/" + pins
                 + "/" + viewport + "/" + width + "x" + height + "@2x"
-                + "?access_token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+                + "?access_token=" + URLEncoder.encode(token, StandardCharsets.UTF_8)
+                + padding;
+    }
+
+    private static int autoPadding(int width, int height, ZoomLevel zoom) {
+        int smallestSide = Math.min(width, height);
+        int padding = (int) Math.round(smallestSide * zoom.paddingFraction);
+        // Mapbox rejects padding that reaches half of either side of the image
+        int cap = smallestSide / 2 - 1;
+        return Math.max(1, Math.min(padding, cap));
     }
 
     /** {@code text} (e.g. an image loader error quoting the URL) with the access token masked. */
