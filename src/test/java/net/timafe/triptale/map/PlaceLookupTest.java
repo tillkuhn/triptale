@@ -115,7 +115,8 @@ class PlaceLookupTest {
         assertEquals("Krung Thep Aphiwat, TH", PlaceLookup.labelFor("Krung Thep Aphiwat", th));
         assertEquals("Krung Thep Aphiwat, TH", PlaceLookup.labelFor(" Krung Thep Aphiwat ,th ", th));
         assertEquals("Hamburg, US", PlaceLookup.labelFor("Hamburg", new Place("Hamburg", "US", "town")));
-        assertEquals("ulm, DE", PlaceLookup.labelFor("ulm,de", new Place("Ulm", null, "place")));
+        assertEquals("Ulm, DE", PlaceLookup.labelFor("ulm,de", new Place("Ulm", null, "place")));
+        assertEquals("Essen, DE", PlaceLookup.labelFor("essen", new Place("Essen", "DE", "city")));
         assertEquals("Atlantis", PlaceLookup.labelFor("Atlantis", new Place("Atlantis", null, "place")));
     }
 

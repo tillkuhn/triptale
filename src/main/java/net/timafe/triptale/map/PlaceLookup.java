@@ -123,16 +123,24 @@ public class PlaceLookup {
     }
 
     /**
-     * The place text to keep after a forward lookup: the typed name as it is, with the hit's
-     * country code as an uppercase {@code ", XX"} suffix ({@code "Krung Thep Aphiwat"} →
-     * {@code "Krung Thep Aphiwat, TH"}), so a wrong country catches the eye. A typed code is
-     * replaced, which normalizes {@code "ulm,de"} to {@code "ulm, DE"}; a hit without a country
-     * keeps the typed code, uppercased.
+     * The place text to keep after a forward lookup: the typed name with its first letter
+     * capitalized ({@code "essen"} → {@code "Essen"}), with the hit's country code as an
+     * uppercase {@code ", XX"} suffix ({@code "Krung Thep Aphiwat"} → {@code "Krung Thep
+     * Aphiwat, TH"}), so a wrong country catches the eye. A typed code is replaced, which
+     * normalizes {@code "ulm,de"} to {@code "Ulm, DE"}; a hit without a country keeps the
+     * typed code, uppercased.
      */
     public static String labelFor(String typed, Place hit) {
         Query query = splitQuery(typed);
         String cc = hit != null && hit.countryCode() != null ? hit.countryCode() : query.countryCode();
-        return cc == null ? query.text() : query.text() + ", " + cc.toUpperCase(Locale.ROOT);
+        String name = capitalizeFirst(query.text());
+        return cc == null ? name : name + ", " + cc.toUpperCase(Locale.ROOT);
+    }
+
+    /** Uppercases just the first character, leaving the rest of the text as typed. */
+    private static String capitalizeFirst(String text) {
+        if (text == null || text.isEmpty()) return text;
+        return Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
     /** GETs a path below the base URL and returns the body of a 200 answer. */
