@@ -48,6 +48,7 @@ import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.domain.WeatherCode;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
+import net.timafe.triptale.export.SocialMediaExporter;
 import net.timafe.triptale.export.WordPressExporter;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.ExifReader;
@@ -278,6 +279,7 @@ public class MainController implements StatusSink {
 
     public MainController(MarkdownStore store, GitService gitService, SettingsStore settingsStore,
                           DiaryExporter diaryExporter, WordPressExporter wordPressExporter,
+                          SocialMediaExporter socialMediaExporter,
                           ImpressionsService impressions,
                           ExifReader exifReader,
                           ConnectivityService connectivityService,
@@ -298,7 +300,7 @@ public class MainController implements StatusSink {
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
         this.exportDiaryDialog =
-                new ExportDiaryDialog(diaryExporter, wordPressExporter, store, settingsStore, impressions,
+                new ExportDiaryDialog(diaryExporter, wordPressExporter, socialMediaExporter, store, settingsStore, impressions,
                         exportTempFiles, browser, this, this::addPending);
         this.imageViewerDialog = new ImageViewerDialog(impressions, exifReader, browser, this, recentFolder);
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();

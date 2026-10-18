@@ -20,6 +20,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
+import net.timafe.triptale.export.SocialMediaExporter;
 import net.timafe.triptale.export.WordPressExporter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -40,16 +41,18 @@ import java.util.function.BiConsumer;
 
 /**
  * Shows the export of a range of a trip's entries (the whole trip from the Trip menu, a single
- * day from Export Tale) as Markdown or as WordPress block markup (todo 44), with actions to copy
- * it or preview it in the system browser. In WordPress format, "Send to WordPress" opens
- * {@link WordPressPublishDialog} for the range (todo 62). The image source defaults to the
- * richest one that has images (todo 47).
+ * day from Export Tale) as Markdown, WordPress block markup (todo 44) or a flattened plain-text
+ * Social Media summary (todo 67), with actions to copy it or preview it in the system browser. In
+ * WordPress format, "Post to WordPress" opens {@link WordPressPublishDialog} for the range
+ * (todo 62). The image source defaults to the richest one that has images (todo 47); Social
+ * Media has no images at all, it is plain text only.
  */
 public final class ExportDiaryDialog {
 
     private enum Format {
         MARKDOWN("Markdown"),
-        WORDPRESS("WordPress");
+        WORDPRESS("WordPress"),
+        SOCIAL_MEDIA("Social Media");
 
         final String label;
         Format(String label) { this.label = label; }
@@ -68,6 +71,7 @@ public final class ExportDiaryDialog {
 
     private final DiaryExporter diaryExporter;
     private final WordPressExporter wordPressExporter;
+    private final SocialMediaExporter socialMediaExporter;
     private final MarkdownStore store;
     private final SettingsStore settingsStore;
     private final ImpressionsService impressions;
@@ -76,11 +80,13 @@ public final class ExportDiaryDialog {
     private final StatusSink statusSink;
     private final BiConsumer<String, String> addPending;
 
-    public ExportDiaryDialog(DiaryExporter diaryExporter, WordPressExporter wordPressExporter, MarkdownStore store,
+    public ExportDiaryDialog(DiaryExporter diaryExporter, WordPressExporter wordPressExporter,
+                             SocialMediaExporter socialMediaExporter, MarkdownStore store,
                              SettingsStore settingsStore, ImpressionsService impressions, ExportTempFiles tempFiles,
                              BrowserLauncher browser, StatusSink statusSink, BiConsumer<String, String> addPending) {
         this.diaryExporter = diaryExporter;
         this.wordPressExporter = wordPressExporter;
+        this.socialMediaExporter = socialMediaExporter;
         this.store = store;
         this.settingsStore = settingsStore;
         this.impressions = impressions;
@@ -142,14 +148,17 @@ public final class ExportDiaryDialog {
             @Override public Format fromString(String s) { return null; }
         });
         formatCombo.setValue(Format.MARKDOWN);
-        formatCombo.setTooltip(new Tooltip("WordPress: block markup for the block editor's Code editor"));
+        formatCombo.setTooltip(new Tooltip("WordPress: block markup for the block editor's Code editor"
+                + " · Social Media: plain-text paragraphs, no facts, links or images"));
 
         Runnable render = () -> {
             try {
-                ta.setText(formatCombo.getValue() == Format.WORDPRESS
-                        ? wordPressExporter.export(trip, range.from(), range.to(),
-                                imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected())
-                        : diaryExporter.exportTrip(trip, range.from(), range.to()));
+                ta.setText(switch (formatCombo.getValue()) {
+                    case WORDPRESS -> wordPressExporter.export(trip, range.from(), range.to(),
+                            imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected());
+                    case SOCIAL_MEDIA -> socialMediaExporter.export(trip, range.from(), range.to());
+                    case MARKDOWN -> diaryExporter.exportTrip(trip, range.from(), range.to());
+                });
             } catch (RuntimeException e) {
                 statusSink.error("Export failed: " + e.getMessage());
             }
@@ -159,7 +168,8 @@ public final class ExportDiaryDialog {
             offerImages(f, imagesCombo);
             render.run();
         });
-        // Images only change the WordPress text; the Markdown export has no images
+        // Images only change the WordPress text; Markdown has no image combo use and Social Media
+        // has no images at all
         imagesCombo.valueProperty().addListener((obs, old, i) -> {
             if (formatCombo.getValue() == Format.WORDPRESS) render.run();
         });
@@ -178,28 +188,31 @@ public final class ExportDiaryDialog {
         dlg.getDialogPane().setContent(new VBox(8, range.node(), ta, imagesBox));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
-        ButtonType copyType = new ButtonType("Copy", ButtonBar.ButtonData.OTHER);
-        ButtonType previewType = new ButtonType("Preview in Browser", ButtonBar.ButtonData.OTHER);
-        ButtonType sendType = new ButtonType("📡 Send to WordPress", ButtonBar.ButtonData.OTHER);
-        dlg.getDialogPane().getButtonTypes().setAll(copyType, previewType, sendType, ButtonType.CLOSE);
+        ButtonType copyType = new ButtonType("📋 Clipboard", ButtonBar.ButtonData.OTHER);
+        ButtonType previewType = new ButtonType("👁 Browser Preview", ButtonBar.ButtonData.OTHER);
+        ButtonType sendType = new ButtonType("📡 Post to WordPress", ButtonBar.ButtonData.OTHER);
+        ButtonType closeType = new ButtonType("❌ Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dlg.getDialogPane().getButtonTypes().setAll(copyType, previewType, sendType, closeType);
 
         // Event filters with consume() keep the dialog open — these are repeatable actions,
         // not dialog results.
         Button copyBtn = (Button) dlg.getDialogPane().lookupButton(copyType);
         copyBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             Clipboards.putString(ta.getText());
-            statusSink.status(formatCombo.getValue() == Format.WORDPRESS
-                    ? "WordPress markup copied: paste it into the block editor's Code editor"
-                    : "Diary copied to clipboard");
+            statusSink.status(switch (formatCombo.getValue()) {
+                case WORDPRESS -> "WordPress markup copied: paste it into the block editor's Code editor";
+                case SOCIAL_MEDIA -> "Social Media text copied to clipboard";
+                case MARKDOWN -> "Diary copied to clipboard";
+            });
             ev.consume();
         });
 
         Button previewBtn = (Button) dlg.getDialogPane().lookupButton(previewType);
         previewBtn.addEventFilter(ActionEvent.ACTION, ev -> {
-            if (formatCombo.getValue() == Format.WORDPRESS) {
-                openInBrowser(wordPressExporter.previewHtml(trip.name(), ta.getText()));
-            } else {
-                previewInBrowser(trip, range.from(), range.to(),
+            switch (formatCombo.getValue()) {
+                case WORDPRESS -> openInBrowser(wordPressExporter.previewHtml(trip.name(), ta.getText()));
+                case SOCIAL_MEDIA -> openInBrowser(socialMediaExporter.previewHtml(trip.name(), ta.getText()));
+                case MARKDOWN -> previewInBrowser(trip, range.from(), range.to(),
                         imagesCombo.getValue().source, favesCheck.isSelected());
             }
             ev.consume();
@@ -215,7 +228,7 @@ public final class ExportDiaryDialog {
                             && (range.to() == null || !d.isAfter(range.to())))
                     .toList();
             if (wp.getAccessToken().isBlank()) {
-                Dialogs.showInfo("📡 Send to WordPress", "Not connected to WordPress",
+                Dialogs.showInfo("📡 Post to WordPress", "Not connected to WordPress",
                         new Label("Connect WordPress in ⚙ Edit Settings first."));
             } else if (dates.isEmpty()) {
                 statusSink.error("No entries in the selected range");
@@ -225,6 +238,7 @@ public final class ExportDiaryDialog {
                                 imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected());
             }
         });
+
 
         dlg.showAndWait();
     }
@@ -249,11 +263,16 @@ public final class ExportDiaryDialog {
 
     /**
      * WordPress can only hotlink backpack images, and only with a public base URL in Settings;
-     * Markdown offers every source. Keeps the current choice where it is still offered.
+     * Markdown offers every source; Social Media is plain text and has no images at all. Keeps
+     * the current choice where it is still offered.
      */
     private void offerImages(Format format, ComboBox<Images> imagesCombo) {
         Images current = imagesCombo.getValue();
-        if (format == Format.WORDPRESS) {
+        if (format == Format.SOCIAL_MEDIA) {
+            imagesCombo.getItems().setAll(Images.NONE);
+            imagesCombo.setTooltip(new Tooltip("Social Media is plain text only, no images"));
+            imagesCombo.setValue(Images.NONE);
+        } else if (format == Format.WORDPRESS) {
             boolean available = wordPressExporter.imagesAvailable();
             imagesCombo.getItems().setAll(available ? List.of(Images.NONE, Images.ATTACHMENTS) : List.of(Images.NONE));
             imagesCombo.setTooltip(new Tooltip(available
