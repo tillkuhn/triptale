@@ -96,22 +96,28 @@ record EntryFacts(List<Item> items) {
         return new Item(DATE_EMOJI, stamp, weekday, longDate, null, inline);
     }
 
-    /** Distance and climb led by the activity emoji; an activity alone shows its name. Zero values count as absent (train days). */
+    /**
+     * The activity's name leads when there is one, with distance/climb below it; without an
+     * activity, distance leads instead (climb below it, if any). Zero values count as absent (train days).
+     */
     private static Optional<Item> activity(DiaryEntry e, ExportTexts texts) {
         String activity = Activity.normalize(e.activity());
         String distance = e.distance() != null && e.distance() > 0 ? texts.distance(e.distance()) + " km" : null;
         String climb = e.altitudeMeters() != null && e.altitudeMeters() > 0
                 ? texts.altitude(e.altitudeMeters()) + " m " + texts.word("facts.climbed") : null;
-        if (distance != null || climb != null) {
-            String emoji = activity == null ? NO_ACTIVITY_EMOJI : Activity.emojiFor(activity);
-            String value = distance != null ? distance : climb;
-            String note = distance != null ? climb : null;
-            String inline = emoji + " " + Stream.of(distance, climb).filter(Objects::nonNull).collect(Collectors.joining(", "));
+        String distanceClimb = Stream.of(distance, climb).filter(Objects::nonNull).collect(Collectors.joining(", "));
+        if (activity == null && distanceClimb.isEmpty()) return Optional.empty();
+        String emoji = activity == null ? NO_ACTIVITY_EMOJI : Activity.emojiFor(activity);
+        if (activity != null) {
+            String value = texts.activityLabel(activity);
+            String note = distanceClimb.isEmpty() ? null : distanceClimb;
+            String inline = texts.activity(activity) + (distanceClimb.isEmpty() ? "" : ", " + distanceClimb);
             return Optional.of(new Item(emoji, null, value, note, null, inline));
         }
-        if (activity == null) return Optional.empty();
-        return Optional.of(new Item(Activity.emojiFor(activity), null, texts.activityLabel(activity), null,
-                null, texts.activity(activity)));
+        String value = distance != null ? distance : climb;
+        String note = distance != null ? climb : null;
+        String inline = emoji + " " + distanceClimb;
+        return Optional.of(new Item(emoji, null, value, note, null, inline));
     }
 
     /** Min–max temperature (just one value when they're equal) and the WMO code's bucket label. */
@@ -126,9 +132,12 @@ record EntryFacts(List<Item> items) {
     }
 
     /**
-     * Start-focused: the start point with "Starting point" below, or "→ stop" below when there is
-     * one. A point shows its place name if it has one, else its coordinates; the coordinates
-     * behind place names go into the smaller detail line (HTML/WordPress only, the byline stays short).
+     * Start-focused: the start point, with its own coordinates directly below it when it has a
+     * place name, and "→ stop" as the smallest line below that — the stop point never shows its
+     * own coordinates once there's also a start point (todo 58 follow-up: the pair of coordinate
+     * sets read as redundant once one of the two points already names a place). A lone start or
+     * stop point (no counterpart) keeps the older "Starting point"/"Destination" label instead,
+     * with its own coordinates as the detail line if it has a place name.
      */
     private static Optional<Item> location(DiaryEntry e, ExportTexts texts) {
         String startDdm = e.startLat() != null && e.startLon() != null ? Coordinates.toDdm(e.startLat(), e.startLon()) : null;
@@ -140,13 +149,12 @@ record EntryFacts(List<Item> items) {
         String inline = LOCATION_EMOJI + " " + Stream.of(start, arrowStop).filter(Objects::nonNull).collect(Collectors.joining(" "));
         // Only coordinates that a place name hides; a point shown by its coordinates already has them
         String startDetail = e.startPlace() != null ? startDdm : null;
-        String stopDetail = e.stopPlace() != null && stopDdm != null ? "→ " + stopDdm : null;
-        String detail = Stream.of(startDetail, stopDetail).filter(Objects::nonNull).collect(Collectors.joining(" "));
-        if (detail.isEmpty()) detail = null;
         if (start == null) {
-            return Optional.of(new Item(LOCATION_EMOJI, null, arrowStop, texts.word("facts.stop"), detail, inline));
+            return Optional.of(new Item(LOCATION_EMOJI, null, arrowStop, texts.word("facts.stop"), null, inline));
         }
-        return Optional.of(new Item(LOCATION_EMOJI, null, start,
-                arrowStop != null ? arrowStop : texts.word("facts.start"), detail, inline));
+        if (arrowStop == null) {
+            return Optional.of(new Item(LOCATION_EMOJI, null, start, texts.word("facts.start"), startDetail, inline));
+        }
+        return Optional.of(new Item(LOCATION_EMOJI, null, start, startDetail, arrowStop, inline));
     }
 }

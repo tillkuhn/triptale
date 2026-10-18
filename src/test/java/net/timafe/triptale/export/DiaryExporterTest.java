@@ -161,7 +161,7 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip);
 
-        assertTrue(out.contains("· Day 1 · 🚴 350 m climbed*"), out);
+        assertTrue(out.contains("· Day 1 · 🚴 Cycling, 350 m climbed*"), out);
     }
 
     @Test
@@ -320,8 +320,8 @@ class DiaryExporterTest {
 
         String html = exporter.exportTripAsHtml(trip);
 
-        assertTrue(html.contains("<span class=\"fact-value\">London, GB</span><span class=\"fact-note\">→ Frankfurt am Main, DE</span>"
-                + "<span class=\"fact-detail\">51°29′N 0°01′W → 50°06′N 8°40′E</span>"), html);
+        assertTrue(html.contains("<span class=\"fact-value\">London, GB</span><span class=\"fact-note\">51°29′N 0°01′W</span>"
+                + "<span class=\"fact-detail\">→ Frankfurt am Main, DE</span>"), html);
         assertTrue(html.contains("<p class=\"credits\">Place names © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors</p>"), html);
     }
 
@@ -338,7 +338,7 @@ class DiaryExporterTest {
         assertTrue(html.contains("""
                 <div class="facts">
                 <div class="fact"><span class="fact-stamp"><small>Day</small>3</span><span class="fact-value">Thursday</span><span class="fact-note">July 3rd 2025</span></div>
-                <div class="fact"><span class="fact-emoji">🚴</span><span class="fact-value">123.0 km</span><span class="fact-note">100 m climbed</span></div>
+                <div class="fact"><span class="fact-emoji">🚴</span><span class="fact-value">Cycling</span><span class="fact-note">123.0 km, 100 m climbed</span></div>
                 <div class="fact"><span class="fact-emoji">🧭</span><span class="fact-value">50°06′N 8°40′E</span><span class="fact-note">Starting point</span></div>
                 </div>"""), html);
         assertFalse(html.contains("· Day 3"), "the byline is for plain Markdown only");

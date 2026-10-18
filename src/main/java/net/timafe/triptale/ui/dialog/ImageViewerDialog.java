@@ -250,13 +250,11 @@ public final class ImageViewerDialog {
             prevBtn.setOnAction(ev -> go(index - 1));
             nextBtn.setOnAction(ev -> go(index + 1));
             lastBtn.setOnAction(ev -> go(visible.size() - 1));
-            selectCheck.setTooltip(new Tooltip("Select this image for import (Space)"));
             selectCheck.setOnAction(ev -> toggleSelected());
 
             // Stays managed when hidden, so the nav row doesn't shift between images.
+            // Tooltip text is set per-source in updatePacked().
             packedBadge.setVisible(false);
-            packedBadge.setTooltip(new Tooltip(
-                    "Already in this day's backpack (same name and size) — importing it again overwrites the copy"));
             HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn, selectCheck, packedBadge);
             nav.setAlignment(Pos.CENTER);
             nav.setPadding(new Insets(0, 0, 4, 0));
@@ -322,7 +320,8 @@ public final class ImageViewerDialog {
                 } else if (ev.getCode() == KeyCode.RIGHT) {
                     go(index + 1);
                     ev.consume();
-                } else if (ev.getCode() == KeyCode.SPACE && !visible.isEmpty()) {
+                } else if (ev.getCode() == KeyCode.SPACE && !visible.isEmpty()
+                        && !(source instanceof ImpressionSource.TripAttachments)) {
                     toggleSelected();
                     ev.consume();
                 }
@@ -404,14 +403,17 @@ public final class ImageViewerDialog {
                     });
         }
 
-        /** Not computed for the backpack itself, where every image is trivially packed. */
+        /** Trivially "all packed" for the backpack itself — every image shown is already in it. */
         private void updatePacked() {
-            packed = source == null || source instanceof ImpressionSource.TripAttachments
-                    ? Set.of()
-                    : impressions.alreadyImported(trip, date, all);
+            boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
+            packed = source == null ? Set.of() : fromAttachments ? Set.copyOf(all) : impressions.alreadyImported(trip, date, all);
             packedSummary.setText(packed.isEmpty() ? "" : "🎒 " + packed.size() + " packed");
-            packedSummary.setTooltip(packed.isEmpty() ? null
-                    : new Tooltip("Already in this day's backpack (same name and size)"));
+            packedSummary.setTooltip(packed.isEmpty() ? null : new Tooltip(fromAttachments
+                    ? "This is the backpack — everything here is already imported"
+                    : "Already in this day's backpack (same name and size)"));
+            packedBadge.setTooltip(new Tooltip(fromAttachments
+                    ? "This is the backpack — everything here is already imported"
+                    : "Already in this day's backpack (same name and size) — importing it again overwrites the copy"));
         }
 
         private void updateFavesCheck() {
@@ -447,7 +449,7 @@ public final class ImageViewerDialog {
         }
 
         private void toggleSelected() {
-            if (visible.isEmpty()) return;
+            if (visible.isEmpty() || source instanceof ImpressionSource.TripAttachments) return;
             Path p = visible.get(index);
             if (!selected.remove(p)) selected.add(p);
             refresh();
@@ -455,6 +457,7 @@ public final class ImageViewerDialog {
 
         /** Select All skips images that are already in the backpack; Unselect All clears them too. */
         private void toggleSelectAll() {
+            if (source instanceof ImpressionSource.TripAttachments) return;
             if (selectAllUnselects()) {
                 visible.forEach(selected::remove);
             } else {
@@ -538,6 +541,7 @@ public final class ImageViewerDialog {
 
         private void refresh() {
             boolean empty = visible.isEmpty();
+            boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
             placeholder.setVisible(empty);
             placeholder.setText(placeholderText());
             imageView.setVisible(!empty);
@@ -546,7 +550,13 @@ public final class ImageViewerDialog {
             prevBtn.setDisable(empty || index == 0);
             nextBtn.setDisable(empty || index == visible.size() - 1);
             lastBtn.setDisable(empty || index == visible.size() - 1);
-            selectCheck.setDisable(empty);
+            // Selecting is pointless here — everything in the backpack is already imported, and
+            // there's nowhere else to send it from this dialog (todo: revisit once the backpack
+            // supports its own actions, e.g. removing an item).
+            selectCheck.setDisable(empty || fromAttachments);
+            selectCheck.setTooltip(new Tooltip(fromAttachments
+                    ? "Nothing to select — these are already in the backpack"
+                    : "Select this image for import (Space)"));
             copyDirBtn.setDisable(empty);
 
             if (empty) {
@@ -577,8 +587,7 @@ public final class ImageViewerDialog {
 
             boolean unselects = selectAllUnselects();
             selectAllBtn.setText(unselects ? "☐ Unselect All" : "☑ Select All");
-            selectAllBtn.setDisable(empty || (!unselects && unpackedVisible().isEmpty()));
-            boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
+            selectAllBtn.setDisable(empty || fromAttachments || (!unselects && unpackedVisible().isEmpty()));
             importBtn.setText("🎒 Import Selected (" + selected.size() + ")");
             importBtn.setDisable(selected.isEmpty() || fromAttachments);
             importBtn.setTooltip(new Tooltip(fromAttachments

@@ -115,7 +115,7 @@ class WordPressExporterTest {
                 <!-- /wp:paragraph -->
 
                 <!-- wp:paragraph {"align":"center"} -->
-                <p class="has-text-align-center"><strong>42.0 km</strong><br><small>650 m climbed</small></p>
+                <p class="has-text-align-center"><strong>Cycling</strong><br><small>42.0 km, 650 m climbed</small></p>
                 <!-- /wp:paragraph --></div>
                 <!-- /wp:column -->"""), out);
         assertTrue(out.contains(">🗓\uFE0F</p>"), out);
