@@ -12,10 +12,20 @@ informally ~10k req/day. Two endpoints; this todo only uses the first:
 - **Forecast API** `GET https://api.open-meteo.com/v1/forecast` — covers roughly the past 92
   days through 16 days ahead via `past_days`. Good enough for a diary that's written during or
   soon after a trip.
-- **Historical archive** `archive-api.open-meteo.com/v1/archive` (ERA5, back to 1940) — **out of
-  scope for now**; only the forecast endpoint is wired. An entry whose date falls outside the
-  forecast window simply gets no weather (silent, see below) — a natural place to plug the
-  archive endpoint in later without changing the frontmatter shape.
+- **Historical archive** `archive-api.open-meteo.com/v1/archive` (ERA5, back to 1940) — wired
+  alongside the forecast endpoint: `OpenMeteoClient.fetch(lat, lon, date)` tries the forecast
+  endpoint first and only falls back to the archive if that fails, rather than picking a side
+  from the date — dates well inside the nominal 92-day window still occasionally came back
+  empty from the forecast API in practice, while the archive had them (seen with trip dates
+  ~80 days old), so a date-based cutoff was unreliable. On the fallback path this costs a
+  second network round-trip, but that's only ever the uncommon case (older or already-elapsed
+  entries), and callers (the auto-fetch on save and the Coordinator's 🔄) never need to care
+  which endpoint actually answered, or guess the cutoff themselves. Same request/response shape
+  as the forecast endpoint, just a different base URL and path (`/v1/archive` vs
+  `/v1/forecast`) — `forecast()`/`archive()` stay available individually too (used directly by
+  tests, and `archive()` underlies `archiveUrl()`'s 🔗 link). A date neither endpoint covers
+  (future beyond 16 days, or before ERA5's 1940 start) comes back as an API error (400) or an
+  empty `daily` block from both — both treated the same: no weather, no alert.
 
 Request shape: `?latitude=..&longitude=..&start_date=yyyy-MM-dd&end_date=yyyy-MM-dd` (same day
 twice) `&daily=weather_code,temperature_2m_min,temperature_2m_max&timezone=auto`. Response is
@@ -68,14 +78,14 @@ range it claims:
 
 | Bucket | WMO codes | Emoji |
 |---|---|---|
-| Clear | 0 | ☀️ |
+| Clear | 0 | 🌞 |
 | Partly cloudy | 1, 2 | 🌤️ |
-| Cloudy | 3 | ☁️ |
+| Cloudy | 3 | 🌥 |
 | Fog | 45, 48 | 🌫️ |
 | Drizzle | 51, 53, 55, 56, 57 | 🌦️ |
 | Rain | 61, 63, 65, 66, 67, 80, 81, 82 | 🌧️ |
-| Snow | 71, 73, 75, 77, 85, 86 | ❄️ |
-| Thunderstorm | 95, 96, 99 | ⛈️ |
+| Snow | 71, 73, 75, 77, 85, 86 | ❄ |
+| Thunderstorm | 95, 96, 99 | 🌩 |
 
 An unrecognized code falls back to `CLOUDY` rather than erroring. Labels go in
 `i18n/export.properties` / `export_de.properties` as `weather.<key>` (lowercase enum name),
@@ -141,6 +151,15 @@ from:", resolving the "no manual control" gap from the first cut:
   date (same gating/tooltip style as 🔍). Echoes the Start row's current place into the result,
   same as the automatic path.
 - 🗑 **Clear** sets it back to absent; disabled when already absent.
+- Min/max temperature are plain `TextField`s, normalized to `"8°"` on focus loss (parses either
+  `"8"` or `"8°"` back to the stored int) — same "value + unit" pattern as the entry form's
+  distance (`"101.64 km"`) and altitude (`"493 m"`) fields (`util.Lengths`). Fields are narrow
+  (`TEMP_COLUMNS = 2`, half the original 4) with a small muted `"min"`/`"max"` `Label` right next
+  to each (`.weather-unit-label` in `triptale.css`, wrapped together in an `HBox`) — user feedback
+  on the first cut was that two unlabeled temperature fields side by side read as ambiguous
+  (which one's the low, which one's the high), and the `"Min °C"`/`"Max °C"` prompt text wasn't
+  legible once the field was narrow enough to fit in the grid. The external label carries that
+  meaning now; the prompt text was simplified to just `"°C"`.
 - The weather row's `HBox` needs an explicit `.setAlignment(Pos.CENTER_LEFT)` — unlike the
   Start/End rows (individual same-height controls placed directly in `GridPane` cells, which
   align fine on the default baseline), this row collapses label + 2 buttons into one wide `HBox`
@@ -164,9 +183,27 @@ renderer appears to choke on the invisible trailing codepoint and draws a tofu b
 specifically (the base glyph renders fine). Fixed by dropping `\uFE0F` from just these four
 (`"🌫"`, `"🌦"`, `"🌧"`, `"🌤"`); since browsers already default these codepoints to color
 regardless of the selector, exports (Markdown/HTML/WordPress, which share `WeatherCode.emoji()`
-with the dialog) are visually unaffected. `CLEAR`/`CLOUDY`/`SNOW`/`THUNDERSTORM`
-(`☀️☁️❄️⛈️`) were left untouched: their default presentation genuinely is plain text, so the
-selector isn't redundant there, and they weren't confirmed broken.
+with the dialog) are visually unaffected.
+
+`CLOUDY`/`THUNDERSTORM` were originally the legacy BMP symbols `☁️`/`⛈️` (with `\uFE0F`), which
+also rendered as a tiny monochrome glyph rather than full color: those codepoints exist as a
+plain symbol in the UI font too (Segoe UI/Helvetica Neue/Arial), and JavaFX's font fallback
+picks that over the color emoji font regardless of the selector. Swapped for SMP pictographs
+`🌥`/`🌩`, same fix as the four above.
+
+`CLEAR` (`☀️`) and `SNOW` (`❄️`) were left on their BMP glyphs at first, on the assumption that
+genuinely text-default codepoints need `\uFE0F` to force color and were therefore a different
+case — but user feedback confirmed they render small/monochrome in the Coordinator dialog too,
+same root cause as the others: BMP codepoints with a UI-font fallback that wins regardless of
+the selector. `CLEAR` was fixed the same way as the others, swapping for an SMP alternative:
+`CLEAR` → `🌞` (U+1F31E, "sun with face"; there's no face-less SMP sun).
+
+`SNOW` first tried the same move, to `🌨` (U+1F328, "cloud with snow"; there's no SMP
+snowflake-only glyph) — but follow-up user feedback rejected it: next to `CLOUDY`/`RAIN`/etc. it
+reads as "just another cloud icon", not distinctly "snow". Reverted to the plain monochrome
+snowflake `❄` (BMP 2744, **no** `\uFE0F`) instead — mono is the right call here specifically,
+unlike the other six glyphs. No raw WMO/test/export fallout beyond the literal glyph itself —
+`WeatherCode.emoji()` is the only place any of these strings is produced.
 
 ## Export placement (`export.EntryFacts`, todo 53/58)
 
@@ -186,7 +223,6 @@ Joins the existing per-entry fact strip (date, activity, start/stop place) as on
 
 ## Open questions / later
 
-- Archive API fallback for entries older than ~92 days (noted above, deliberately deferred).
 - Whether `weather.OpenMeteoClient` and `map.PlaceLookup` should share a small `http`/user-agent
   helper package now that there'd be two keyless `java.net.http` clients with near-identical
   shapes — not done as part of this todo to avoid scope creep.

@@ -929,7 +929,7 @@ public class MainController implements StatusSink {
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
-    /** "🌐 Coordinator: 📍 ✓  🏁 –  ☀️ 22°" once either point is set; places and coordinates go in the tooltip. */
+    /** "🌐 Coordinator: 📍 ✓  🏁 –  🌞 22°" once either point is set; places and coordinates go in the tooltip. */
     private void updateCoordinatesButton() {
         boolean startSet = startLat != null && startLon != null;
         boolean stopSet = stopLat != null && stopLon != null;
@@ -946,12 +946,12 @@ public class MainController implements StatusSink {
         }
     }
 
-    /** "☀️ 22°" (just the max, the button is a fixed width) for the Coordinator button text. */
+    /** "🌞 22°" (just the max, the button is a fixed width) for the Coordinator button text. */
     private static String weatherBadge(Weather w) {
         return WeatherCode.fromWmo(w.code()).emoji() + " " + w.tempMax() + "°";
     }
 
-    /** "☀️ 15–22°C" (full range, min–max collapsed to one value when equal) for the tooltip. */
+    /** "🌞 15–22°C" (full range, min–max collapsed to one value when equal) for the tooltip. */
     private static String weatherTooltip(Weather w) {
         String range = w.tempMin() == w.tempMax() ? w.tempMin() + "°C" : w.tempMin() + "–" + w.tempMax() + "°C";
         return WeatherCode.fromWmo(w.code()).emoji() + " " + range;
@@ -1321,7 +1321,7 @@ public class MainController implements StatusSink {
         Task<Weather> task = new Task<>() {
             @Override
             protected Weather call() {
-                return weatherClient.forecast(lat, lon, date);
+                return weatherClient.fetch(lat, lon, date);
             }
         };
         task.setOnSucceeded(ev -> Platform.runLater(() -> applyFetchedWeather(trip, date, task.getValue(), place)));

@@ -37,20 +37,6 @@ its own "overwrite" checkbox, defaulting checked only when the old value is empt
 
 [Details](docs/66_gpx_import_field_matrix.md)
 
-## 65 Weather per day
-
-Store a day's weather (temp min/max, condition) fetched automatically from Open-Meteo (free,
-keyless, non-commercial) once an entry has a start point, and show it in exports alongside the
-other entry facts (todo 53/58).
-
-- New `weather` frontmatter key, packed semicolon string `"min;max;code[;place]"`.
-- `weather.OpenMeteoClient` (no JavaFX), forecast API only (~92 days back), silent on failure.
-- Auto-fetch on save when `start_lat`/`start_lon` present and `weather` absent; never overwrites.
-- New `domain.WeatherCode` enum (WMO code buckets, emoji) joins `export.EntryFacts`.
-- Coordinator dialog shows/updates/clears it by hand (🔄/🗑), dated so it reads as history.
-
-[Details](docs/65_weather_per_day.md)
-
 ## 64 Cosmetic findings and small features during DUS->ATH Flight
 
 * New Activities: Ferrytripping and Diving
@@ -284,6 +270,24 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 65 Weather per day
+
+Store a day's weather (temp min/max, condition) fetched automatically from Open-Meteo (free,
+keyless, non-commercial) once an entry has a start point, and show it in exports alongside the
+other entry facts (todo 53/58).
+
+- New `weather` frontmatter key, packed semicolon string `"min;max;code[;place]"`.
+- `weather.OpenMeteoClient` (no JavaFX): forecast API, falling back to the historical archive
+  API when the forecast endpoint has no data for the date — `fetch()` tries forecast first,
+  archive only on failure (a date-based cutoff proved unreliable); silent on failure.
+- Auto-fetch on save when `start_lat`/`start_lon` present and `weather` absent; never overwrites.
+- New `domain.WeatherCode` enum (WMO code buckets, emoji) joins `export.EntryFacts`.
+- Coordinator dialog shows/updates/clears it by hand (🔄/🗑), dated so it reads as history;
+  min/max temperature fields display as `"8°"`, normalized on focus loss like the distance/
+  altitude fields.
+
+[Details](docs/65_weather_per_day.md)
 
 ## DONE 62 Polish "Send to WordPress" and add in-app Post management
 

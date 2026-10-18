@@ -1,12 +1,16 @@
 package net.timafe.triptale.ui.dialog;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
@@ -14,6 +18,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.util.Callback;
 import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.domain.WeatherCode;
 import net.timafe.triptale.i18n.ExportTexts;
@@ -49,16 +54,20 @@ import java.util.function.Supplier;
  * lookup's progress and outcome live on the 🔍 button and its tooltip: ⏳ while running, back to 🔍 on success, ⚠️ with the error otherwise (still
  * clickable to retry). Editing the row resets it.
  *
- * <p>A weather row (todo 65) shows the day's recorded weather, named with its date and the place
- * it was fetched for, so it reads as history for a specific point, not today's forecast
- * somewhere vague, e.g. "15–22° partly cloudy on October 23rd 2026 @ Rome, IT". 🔄 fetches (or
- * re-fetches, overwriting without asking, like 🔍) for the start point's <em>current</em> field
- * values, not necessarily what's saved; 🔗 opens the Open-Meteo historical archive's raw JSON
- * for the same point and date, to check the source behind the recorded min/max/code (unlike the
- * live forecast fetch, the archive stays valid for any past date, not just ~92 days); 🗑 clears
- * the recorded weather. All three are disabled without a start point or recorded weather, or
- * offline, same gating as the place lookups. Before a first fetch, the empty-state message
- * previews the current Start row so it's clear what 🔄 would fetch for.
+ * <p>A weather row (todo 65) holds min/max temperature, a condition dropdown (the 8
+ * {@link WeatherCode} buckets, not the raw WMO code) and a free-text place, laid out in the same
+ * grid columns as the Start/End rows — editable by hand so a day's weather still works offline or
+ * when fetching fails, not just as a read-only fetch result. All three of min/max/condition must
+ * be set together (or all blank); place is optional either way. 🔄 fetches (or re-fetches,
+ * overwriting without asking, like 🔍) for the start point's <em>current</em> field values, not
+ * necessarily what's saved — forecast or archive, picked automatically by {@link OpenMeteoClient#fetch}
+ * depending on how old the day is, so any past date works, not just the last ~92 days; 🔗 opens
+ * the Open-Meteo historical archive's raw JSON for the same point and date, to check the source
+ * behind a recorded or about-to-be-typed value (only needs a start point and date, not recorded
+ * weather); 🗑 clears all four fields. A manually
+ * picked condition loses the raw WMO code's finer granularity (e.g. "light drizzle" vs "moderate
+ * drizzle") down to the bucket's representative code — harmless, since every display/export path
+ * already only ever shows the bucket, never the raw code, regardless of source.
  */
 public final class CoordinatesDialog {
 
@@ -156,6 +165,137 @@ public final class CoordinatesDialog {
         }
     }
 
+    /**
+     * The weather row: min/max temp, a condition dropdown and a free-text place, plus
+     * fetch/open-source/clear buttons — same shape as {@link Row} so it lines up in the same
+     * grid columns. All-or-nothing: min, max and condition must all be set (or all blank) to
+     * save; place is optional either way.
+     */
+    private static final class WeatherRow {
+        private static final String IDLE = "🔄";
+        private static final String BUSY = "⏳";
+        // Half the old 4-column width: the "min"/"max" label next to each field now carries the
+        // meaning the wider field + "Min/Max °C" prompt text used to.
+        private static final int TEMP_COLUMNS = 2;
+
+        final TextField min = new TextField();
+        final TextField max = new TextField();
+        final Label minLabel = new Label("min");
+        final Label maxLabel = new Label("max");
+        final HBox minBox = new HBox(4, min, minLabel);
+        final HBox maxBox = new HBox(4, max, maxLabel);
+        final ComboBox<WeatherCode> condition = new ComboBox<>(FXCollections.observableArrayList(WeatherCode.values()));
+        final TextField place = new TextField();
+        final Button update = new Button(IDLE);
+        final Button open = new Button("🔗");
+        final Button clearButton = new Button("🗑");
+        boolean busy;
+
+        WeatherRow(Weather initial, ExportTexts texts) {
+            min.setPrefColumnCount(TEMP_COLUMNS);
+            max.setPrefColumnCount(TEMP_COLUMNS);
+            min.setPromptText("°C");
+            max.setPromptText("°C");
+            minLabel.getStyleClass().add("weather-unit-label");
+            maxLabel.getStyleClass().add("weather-unit-label");
+            minBox.setAlignment(Pos.CENTER_LEFT);
+            maxBox.setAlignment(Pos.CENTER_LEFT);
+            normalizeOnFocusLost(min);
+            normalizeOnFocusLost(max);
+            place.setPrefColumnCount(PLACE_COLUMNS);
+            place.setPromptText("Place, CC");
+            condition.setPromptText("Condition");
+            Callback<ListView<WeatherCode>, ListCell<WeatherCode>> cellFactory = lv -> new ListCell<>() {
+                @Override
+                protected void updateItem(WeatherCode item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : item.emoji() + " " + texts.weatherLabel(item.wmoCode()));
+                }
+            };
+            condition.setCellFactory(cellFactory);
+            condition.setButtonCell(cellFactory.call(null));
+            condition.setStyle("-fx-pref-width: 11em;");
+            for (Button b : new Button[] {update, open, clearButton}) b.setMinWidth(Region.USE_PREF_SIZE);
+            set(initial);
+        }
+
+        /** Populates all four fields from a {@link Weather}, or blanks them for {@code null}. */
+        void set(Weather w) {
+            min.setText(w == null ? "" : formatTemp(w.tempMin()));
+            max.setText(w == null ? "" : formatTemp(w.tempMax()));
+            condition.setValue(w == null ? null : WeatherCode.fromWmo(w.code()));
+            place.setText(w == null || w.place() == null ? "" : w.place());
+        }
+
+        void clear() { set(null); }
+
+        boolean isBlank() {
+            return min.getText().isBlank() && max.getText().isBlank()
+                    && condition.getValue() == null && place.getText().isBlank();
+        }
+
+        /** Any field touched at all — including a lone place, which alone isn't a valid weather entry. */
+        boolean anySet() {
+            return !min.getText().isBlank() || !max.getText().isBlank()
+                    || condition.getValue() != null || !place.getText().isBlank();
+        }
+
+        boolean complete() {
+            return minValue() != null && maxValue() != null && condition.getValue() != null;
+        }
+
+        Integer minValue() { return parseTemp(min.getText()); }
+        Integer maxValue() { return parseTemp(max.getText()); }
+
+        private static Integer parseTemp(String text) {
+            if (text.isBlank()) return null;
+            String stripped = text.strip();
+            if (stripped.endsWith("°")) stripped = stripped.substring(0, stripped.length() - 1).strip();
+            Double d = UiText.parseDecimal(stripped);
+            return d == null ? null : (int) Math.round(d);
+        }
+
+        /** {@code "8°"}, or {@code ""} for {@code null} — matches the "value unit" style of the distance/altitude fields. */
+        private static String formatTemp(Integer value) {
+            return value == null ? "" : value + "°";
+        }
+
+        /** Rewrites valid input as "value°" when the field loses focus, like distance/altitude; invalid text is left for save-time validation. */
+        private static void normalizeOnFocusLost(TextField field) {
+            field.focusedProperty().addListener((o, was, focused) -> {
+                if (focused) return;
+                Integer value = parseTemp(field.getText());
+                if (value == null) return;
+                String formatted = formatTemp(value);
+                if (!formatted.equals(field.getText())) field.setText(formatted);
+            });
+        }
+
+        /** {@code null} if blank or complete; otherwise what's wrong, for the shared hint label. */
+        String problem() {
+            if (!anySet()) return null;
+            if (min.getText().isBlank() || max.getText().isBlank() || condition.getValue() == null) {
+                return "Weather needs a min, max and condition — or clear all three.";
+            }
+            if (minValue() == null || maxValue() == null) {
+                return "Weather min/max must be a number.";
+            }
+            return null;
+        }
+
+        /**
+         * The recorded weather, or {@code null} while blank/incomplete. A manually picked
+         * condition loses the raw WMO code's finer granularity down to the bucket's
+         * representative code — harmless, since every display/export path already only ever
+         * shows the bucket, never the raw code, regardless of source.
+         */
+        Weather value() {
+            if (!complete()) return null;
+            String p = place.getText().isBlank() ? null : place.getText().trim();
+            return new Weather(minValue(), maxValue(), condition.getValue().wmoCode(), p);
+        }
+    }
+
     private final BrowserLauncher browser;
     private final PlaceLookup placeLookup;
     private final OpenMeteoClient weatherClient;
@@ -192,57 +332,23 @@ public final class CoordinatesDialog {
         Label hintLabel = new Label();
         hintLabel.getStyleClass().add("hint-label");
 
-        // Weather row (todo 65): named by date so it reads as history, not today's forecast.
+        // Weather row (todo 65): editable (not just a fetch result), so it still works offline
+        // or when the API fails; see WeatherRow for the all-or-nothing validation.
         ExportTexts weatherTexts = ExportTexts.of(TripLanguage.EN);
-        Label weatherLabel = new Label();
-        weatherLabel.setWrapText(true);
-        Button weatherUpdate = new Button("🔄");
-        Button weatherOpen = new Button("🔗");
-        Button weatherClear = new Button("🗑");
-        for (Button b : new Button[] {weatherUpdate, weatherOpen, weatherClear}) b.setMinWidth(Region.USE_PREF_SIZE);
-        Weather[] currentWeather = {weather};
-        boolean[] weatherBusy = {false};
-        Runnable renderWeather = () -> {
-            Weather w = currentWeather[0];
-            String livePlace = wherePreview(start);
-            if (date == null) {
-                weatherLabel.setText("No date selected.");
-            } else if (weatherBusy[0]) {
-                weatherLabel.setText("Fetching weather for " + weatherTexts.longDate(date)
-                        + (livePlace == null ? "" : " (" + livePlace + ")") + "…");
-            } else if (w == null) {
-                weatherLabel.setText("Not recorded for " + weatherTexts.longDate(date) + " yet"
-                        + (livePlace == null ? "" : " — fetch for " + livePlace) + ".");
-            } else {
-                String value = w.tempMin() == w.tempMax() ? w.tempMin() + "°" : w.tempMin() + "–" + w.tempMax() + "°";
-                weatherLabel.setText(WeatherCode.fromWmo(w.code()).emoji() + " " + value + " "
-                        + weatherTexts.weatherLabel(w.code()) + " on " + weatherTexts.longDate(date)
-                        + (w.place() == null ? "" : " @ " + w.place()));
-            }
-            weatherClear.setDisable(w == null || weatherBusy[0]);
-            boolean canFetch = online && date != null && start.value() != null && !weatherBusy[0];
-            weatherUpdate.setDisable(!canFetch);
-            weatherUpdate.setTooltip(new Tooltip(!online ? "Offline — re-check connectivity (top right) and reopen"
-                    : date == null ? "No date selected"
-                    : start.value() == null ? "Set a start point first"
-                    : "Fetch weather for the start point (Open-Meteo); overwrites without asking, like 🔍"));
-            boolean canOpen = w != null && date != null && start.value() != null;
-            weatherOpen.setDisable(!canOpen);
-            weatherOpen.setTooltip(new Tooltip(!canOpen
-                    ? "Fetch weather first to look up the source data"
-                    : "Check the source data for the start point and date (Open-Meteo historical archive)"));
-        };
-        weatherUpdate.setOnAction(e -> {
+        WeatherRow weatherRow = new WeatherRow(weather, weatherTexts);
+        // 🔄's action needs to re-validate/re-enable everything (built further below, once the
+        // Start/End rows exist too) — forward reference, like currentWeather used to be.
+        Runnable[] refreshRef = new Runnable[1];
+        weatherRow.update.setOnAction(e -> {
             Coordinates.LatLon point = start.value();
-            if (point == null || date == null || weatherBusy[0]) return;
+            if (point == null || date == null || weatherRow.busy) return;
             String place = start.placeValue();
-            weatherBusy[0] = true;
-            renderWeather.run();
+            weatherRow.busy = true;
             Thread.ofVirtual().name("weather-fetch").start(() -> {
                 Weather fetched = null;
                 String error = null;
                 try {
-                    Weather result = weatherClient.forecast(point.lat(), point.lon(), date);
+                    Weather result = weatherClient.fetch(point.lat(), point.lon(), date);
                     fetched = place == null ? result : new Weather(result.tempMin(), result.tempMax(), result.code(), place);
                 } catch (RuntimeException ex) {
                     error = ex instanceof OpenMeteoClient.WeatherException ? ex.getMessage() : UiText.describe(ex);
@@ -250,24 +356,25 @@ public final class CoordinatesDialog {
                 Weather result = fetched;
                 String message = error;
                 Platform.runLater(() -> {
-                    weatherBusy[0] = false;
+                    weatherRow.busy = false;
                     if (result != null) {
-                        currentWeather[0] = result;
+                        weatherRow.set(result);
                     } else {
                         hintLabel.setText(message);
                     }
-                    renderWeather.run();
+                    refreshRef[0].run();
                 });
             });
+            refreshRef[0].run();
         });
-        weatherOpen.setOnAction(e -> {
+        weatherRow.open.setOnAction(e -> {
             Coordinates.LatLon point = start.value();
-            if (currentWeather[0] == null || point == null || date == null) return;
+            if (point == null || date == null) return;
             browser.open(OpenMeteoClient.archiveUrl(point.lat(), point.lon(), date));
         });
-        weatherClear.setOnAction(e -> {
-            currentWeather[0] = null;
-            renderWeather.run();
+        weatherRow.clearButton.setOnAction(e -> {
+            weatherRow.clear();
+            refreshRef[0].run();
         });
 
         GridPane grid = Dialogs.formGrid();
@@ -278,12 +385,8 @@ public final class CoordinatesDialog {
         // Same icons as the main window's coordinates button ("📍 ✓  🏁 –").
         addRow(grid, 1, "📍", "Start", start);
         addRow(grid, 2, "🏁", "End", stop);
-        grid.add(new Label("🌦️ Weather:"), 0, 3);
-        Region weatherSpacer = new Region();
-        HBox.setHgrow(weatherSpacer, Priority.ALWAYS);
-        HBox weatherRow = new HBox(8, weatherLabel, weatherSpacer, weatherUpdate, weatherOpen, weatherClear);
-        weatherRow.setAlignment(Pos.CENTER_LEFT);
-        grid.add(weatherRow, 1, 3, 7, 1);
+        grid.addRow(3, new Label("🌦️ Weather:"), weatherRow.minBox, weatherRow.maxBox, weatherRow.condition,
+                weatherRow.place, weatherRow.update, weatherRow.open, weatherRow.clearButton);
         grid.add(new Label("Parse from:"), 0, 4);
         grid.add(parseArea, 1, 4, 7, 1);
         Button parseStart = new Button("Parse → Start");
@@ -329,9 +432,27 @@ public final class CoordinatesDialog {
             route.setDisable(!haveBoth);
             distanceField.setText(haveBoth
                     ? formatKm(Coordinates.distanceMeters(start.value(), stop.value()) / 1000.0) : "");
+
+            boolean canFetchWeather = online && date != null && start.value() != null && !weatherRow.busy;
+            weatherRow.update.setDisable(!canFetchWeather);
+            weatherRow.update.setText(weatherRow.busy ? WeatherRow.BUSY : WeatherRow.IDLE);
+            weatherRow.update.setTooltip(new Tooltip(!online ? "Offline — re-check connectivity (top right) and reopen"
+                    : date == null ? "No date selected"
+                    : start.value() == null ? "Set a start point first"
+                    : "Fetch weather for the start point (Open-Meteo); overwrites without asking, like 🔍"));
+            boolean canOpenWeather = date != null && start.value() != null;
+            weatherRow.open.setDisable(!canOpenWeather);
+            weatherRow.open.setTooltip(new Tooltip(!canOpenWeather
+                    ? "Set a start point first"
+                    : "Check the source data for the start point and date (Open-Meteo historical archive)"));
+            weatherRow.clearButton.setDisable(weatherRow.isBlank() || weatherRow.busy);
+            for (Node n : new Node[] {weatherRow.min, weatherRow.max, weatherRow.condition, weatherRow.place}) {
+                n.setDisable(weatherRow.busy);
+            }
+            if (problem == null) problem = weatherRow.problem();
+
             hintLabel.setText(problem == null ? "" : problem);
             saveButtonNode.setDisable(problem != null);
-            renderWeather.run();
         };
         for (Row row : new Row[] {start, stop}) {
             // Any edit makes the last lookup's outcome stale.
@@ -344,6 +465,11 @@ public final class CoordinatesDialog {
             row.place.textProperty().addListener((o, a, b) -> changed.run());
             row.lookup.setOnAction(e -> lookUp(row));
         }
+        weatherRow.min.textProperty().addListener((o, a, b) -> refresh.run());
+        weatherRow.max.textProperty().addListener((o, a, b) -> refresh.run());
+        weatherRow.place.textProperty().addListener((o, a, b) -> refresh.run());
+        weatherRow.condition.valueProperty().addListener((o, a, b) -> refresh.run());
+        refreshRef[0] = refresh;
         refresh.run();
 
         wireParse(parseStart, parseArea, hintLabel, refresh, start, Coordinates::tryParse);
@@ -352,19 +478,12 @@ public final class CoordinatesDialog {
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty() || result.get() != saveType) return Optional.empty();
         return Optional.of(new Result(start.value(), stop.value(), start.placeValue(), stop.placeValue(),
-                currentWeather[0]));
+                weatherRow.value()));
     }
 
     /** Whole km with unit, e.g. {@code "12 km"} — pastes straight into the Distance field; no decimals, since a straight-line distance is only ever approximate. */
     private static String formatKm(double km) {
         return BigDecimal.valueOf(km).setScale(0, RoundingMode.HALF_UP).toPlainString() + " km";
-    }
-
-    /** The Start row's current place, else its coordinates, else null — what 🔄 would fetch weather for right now. */
-    private static String wherePreview(Row start) {
-        if (start.placeValue() != null) return start.placeValue();
-        Coordinates.LatLon point = start.value();
-        return point == null ? null : Coordinates.toDdm(point.lat(), point.lon());
     }
 
     private void addRow(GridPane grid, int rowIndex, String icon, String name, Row row) {

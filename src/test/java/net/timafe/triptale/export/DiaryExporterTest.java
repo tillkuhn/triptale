@@ -368,7 +368,7 @@ class DiaryExporterTest {
                 .weather(new Weather(20, 20, 0, null)).tales("Steady.").build());
 
         String out = exporter.exportTrip(trip);
-        assertTrue(out.contains("☀️ 20° clear"), out);
+        assertTrue(out.contains("🌞 20° clear"), out);
     }
 
     @Test

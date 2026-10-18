@@ -7,39 +7,48 @@ package net.timafe.triptale.domain;
  * back to {@link #CLOUDY} rather than erroring.
  */
 public enum WeatherCode {
-    CLEAR("clear", "☀️"),
-    // These are Supplementary Multilingual Plane pictographs that already default to emoji
-    // presentation — the \uFE0F variation selector is redundant (no visual difference anywhere
-    // that follows the Unicode spec, browsers included), but JavaFX's text renderer seems to
-    // choke on the invisible trailing selector and draws a "tofu" box for it. Dropped here only
-    // for the glyphs this was confirmed on; CLEAR/SNOW below genuinely need \uFE0F to force
-    // color (their default presentation is plain text), so they're left alone.
-    //
-    // CLOUDY and THUNDERSTORM used to be the legacy pre-SMP symbols ☁️/⛈️ (with \uFE0F), which
-    // render as a tiny monochrome glyph in JavaFX instead of full color: those codepoints also
-    // exist as a plain symbol in the UI font (Segoe UI/Helvetica Neue/Arial), and JavaFX's font
-    // fallback picks that over the color emoji font regardless of the selector. Swapped for SMP
-    // pictographs below, which — like the other 4 — are guaranteed absent from the UI font, so
-    // fallback to the color emoji font is forced rather than a matter of selector support.
-    PARTLY_CLOUDY("partly_cloudy", "🌤"),
-    CLOUDY("cloudy", "🌥"),
-    FOG("fog", "🌫"),
-    DRIZZLE("drizzle", "🌦"),
-    RAIN("rain", "🌧"),
-    SNOW("snow", "❄️"),
-    THUNDERSTORM("thunderstorm", "🌩");
+    // All glyphs below except SNOW are Supplementary Multilingual Plane pictographs, deliberately
+    // — BMP symbols like plain ☀/❄/☁️/⛈️ also exist as a plain monochrome glyph in the UI font
+    // (Segoe UI/Helvetica Neue/Arial), and JavaFX's font fallback picks that over the color
+    // emoji font regardless of a trailing \uFE0F variation selector (which, per the Unicode
+    // spec, shouldn't even be needed for glyphs that already default to emoji presentation —
+    // JavaFX's text renderer chokes on it anyway, drawing a "tofu" box). SMP codepoints are
+    // guaranteed absent from the UI font, so fallback to the color emoji font is forced rather
+    // than a matter of selector support. CLEAR uses "sun with face" (1F31E) rather than the
+    // plain sun (BMP 2600) for exactly this reason. SNOW tried the same move to "cloud with
+    // snow" (1F328) but that reads as just another cloud glyph next to CLOUDY/RAIN/etc. — the
+    // plain monochrome snowflake (BMP 2744, no \uFE0F) is actually the more legible choice here,
+    // so it's a deliberate exception rather than an oversight.
+    CLEAR("clear", "🌞", 0),
+    PARTLY_CLOUDY("partly_cloudy", "🌤", 2),
+    CLOUDY("cloudy", "🌥", 3),
+    FOG("fog", "🌫", 45),
+    DRIZZLE("drizzle", "🌦", 53),
+    RAIN("rain", "🌧", 61),
+    SNOW("snow", "❄", 71),
+    THUNDERSTORM("thunderstorm", "🌩", 95);
 
     private final String key;
     private final String emoji;
+    private final int wmoCode;
 
-    WeatherCode(String key, String emoji) {
+    WeatherCode(String key, String emoji, int wmoCode) {
         this.key = key;
         this.emoji = emoji;
+        this.wmoCode = wmoCode;
     }
 
     /** Lowercase key used for the {@code weather.<key>} i18n label, e.g. {@code "partly_cloudy"}. */
     public String key()   { return key; }
     public String emoji() { return emoji; }
+
+    /**
+     * A raw WMO code that maps back to this bucket via {@link #fromWmo}, for when a condition is
+     * picked by hand (e.g. the Coordinator dialog's weather dropdown) rather than fetched — the
+     * bucket is all a manual pick can express, so any representative member of it round-trips
+     * losslessly through every display/export path, which only ever buckets the raw code anyway.
+     */
+    public int wmoCode() { return wmoCode; }
 
     /** Maps a raw WMO weather code to its bucket; an unrecognized code is treated as {@link #CLOUDY}. */
     public static WeatherCode fromWmo(int code) {

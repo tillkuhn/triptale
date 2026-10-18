@@ -35,4 +35,12 @@ class WeatherCodeTest {
         assertEquals("partly_cloudy", WeatherCode.PARTLY_CLOUDY.key());
         assertEquals("🌤", WeatherCode.PARTLY_CLOUDY.emoji());
     }
+
+    @Test
+    void wmoCodeRoundTripsThroughFromWmoForEveryBucket() {
+        for (WeatherCode bucket : WeatherCode.values()) {
+            assertEquals(bucket, WeatherCode.fromWmo(bucket.wmoCode()),
+                    bucket + "'s representative WMO code " + bucket.wmoCode() + " must map back to itself");
+        }
+    }
 }

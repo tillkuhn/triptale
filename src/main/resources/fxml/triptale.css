@@ -67,6 +67,10 @@
     -fx-font-size: 13px;
     -fx-padding: 4 0 2 0;
 }
+.weather-unit-label {
+    -fx-text-fill: #7a9a96;
+    -fx-font-size: 11px;
+}
 
 /* ── Text inputs ──────────────────────────────────────── */
 .text-field, .text-area, .date-picker .text-field {
