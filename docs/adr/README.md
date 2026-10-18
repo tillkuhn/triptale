@@ -11,6 +11,7 @@ status `Superseded by ADR-00xx` rather than editing its original reasoning away)
 | [0002](0002-attachment-sync.md) | Sync attachments as a three-way merge against a per-device sync base | Accepted |
 | [0003](0003-reverse-geocoding-service.md) | Reverse geocoding via the public Nominatim API | Accepted |
 | [0004](0004-emoji-in-ui-labels.md) | Keep emoji as text in UI labels, and accept monochrome rendering on Windows | Accepted |
+| [0005](0005-private-images.md) | Mark individual images private with a per-day sidecar file, not EXIF | Proposed |
 
 ## Format
 

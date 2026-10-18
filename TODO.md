@@ -1,6 +1,22 @@
 # ToDos for this app
 
-## Next Todo: 67
+## Next Todo: 68
+
+## 67 Private images
+
+Mark individual backpack images as private so they're kept but never exported — a per-day
+`private.txt` sidecar lists excluded filenames (not EXIF; the only EXIF library in use,
+metadata-extractor, is read-only). See ADR-0005 for why a sidecar, and why it must not be
+dot-prefixed (CLOUD-mode sync drops dotfiles silently, see `sync.BucketSyncer.isHidden`).
+
+- New `attachments.PrivateImages` helper: load/mark/unmark against `private.txt` in a day's
+  attachments folder.
+- Filter private images out in `DiaryExporter.injectImpressions`, `WordPressExporter.gallery`,
+  and `map.PhotoLocations`. Private wins over the fave marker.
+- `ImageViewerDialog` gets a per-image toggle, writing through immediately (not part of
+  "Save the Day" — it's filesystem state, not frontmatter).
+
+[Details](docs/adr/0005-private-images.md)
 
 ## 66 Per-field GPX import matrix
 
