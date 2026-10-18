@@ -31,6 +31,9 @@ public class OpenMeteoClient {
     static final URI FORECAST = URI.create("https://api.open-meteo.com");
     static final Duration TIMEOUT = Duration.ofSeconds(5);
 
+    /** Base of the historical archive API (unlike {@link #FORECAST}, kept forever, not just ~92 days). */
+    private static final String ARCHIVE_BASE = "https://archive-api.open-meteo.com";
+
     /** A failed fetch; the message is short and human, meant for a debug log, not an alert. */
     public static class WeatherException extends RuntimeException {
         public WeatherException(String message) { super(message); }
@@ -66,6 +69,19 @@ public class OpenMeteoClient {
         Weather weather = parse(body, date);
         log.debug("Weather forecast for {}: {}", date, weather.toRaw());
         return weather;
+    }
+
+    /**
+     * A browser-openable URL showing the raw daily data for a point and date, so a recorded
+     * {@link Weather} can be checked against the source later — unlike {@link #FORECAST}, the
+     * archive API keeps data indefinitely rather than just ~92 days, so this stays valid for any
+     * past date. Opens as JSON, not a page, but that's the full detail behind the min/max/code.
+     */
+    public static String archiveUrl(double lat, double lon, LocalDate date) {
+        return String.format(Locale.ROOT,
+                ARCHIVE_BASE + "/v1/archive?latitude=%.6f&longitude=%.6f&start_date=%s&end_date=%s"
+                        + "&daily=weather_code,temperature_2m_min,temperature_2m_max&timezone=auto",
+                lat, lon, date, date);
     }
 
     /** GETs a path below the base URL and returns the body of a 200 answer. */

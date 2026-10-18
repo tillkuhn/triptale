@@ -45,6 +45,7 @@ import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.domain.Weather;
+import net.timafe.triptale.domain.WeatherCode;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
 import net.timafe.triptale.export.WordPressExporter;
@@ -928,20 +929,32 @@ public class MainController implements StatusSink {
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
     }
 
-    /** "🌐 Coordinator: 📍 ✓  🏁 –" once either point is set; places and coordinates go in the tooltip. */
+    /** "🌐 Coordinator: 📍 ✓  🏁 –  ☀️ 22°" once either point is set; places and coordinates go in the tooltip. */
     private void updateCoordinatesButton() {
         boolean startSet = startLat != null && startLon != null;
         boolean stopSet = stopLat != null && stopLon != null;
         if (coordinatesButton != null) {
-            coordinatesButton.setText(startSet || stopSet
+            String weatherBadge = weather == null ? "" : "  " + weatherBadge(weather);
+            coordinatesButton.setText((startSet || stopSet
                     ? "🌐 Coordinator: 📍 " + (startSet ? "✓" : "–") + "  🏁 " + (stopSet ? "✓" : "–")
-                    : "🌐 Coordinator: Uncharted");
+                    : "🌐 Coordinator: Uncharted") + weatherBadge);
             boolean anything = startSet || stopSet || startPlace != null || stopPlace != null;
-            coordinatesButton.setTooltip(new Tooltip(anything
+            coordinatesButton.setTooltip(new Tooltip((anything
                     ? "Start " + pointSummary(startPlace, startSet ? Coordinates.toDdm(startLat, startLon) : null)
                             + " · End " + pointSummary(stopPlace, stopSet ? Coordinates.toDdm(stopLat, stopLon) : null)
-                    : "Set start and end point"));
+                    : "Set start and end point") + (weather == null ? "" : " · " + weatherTooltip(weather))));
         }
+    }
+
+    /** "☀️ 22°" (just the max, the button is a fixed width) for the Coordinator button text. */
+    private static String weatherBadge(Weather w) {
+        return WeatherCode.fromWmo(w.code()).emoji() + " " + w.tempMax() + "°";
+    }
+
+    /** "☀️ 15–22°C" (full range, min–max collapsed to one value when equal) for the tooltip. */
+    private static String weatherTooltip(Weather w) {
+        String range = w.tempMin() == w.tempMax() ? w.tempMin() + "°C" : w.tempMin() + "–" + w.tempMax() + "°C";
+        return WeatherCode.fromWmo(w.code()).emoji() + " " + range;
     }
 
     /** "Soest, DE (51°29′N 8°20′E)", "Soest, DE (no coordinates)", "51°29′N 8°20′E" or "not set". */
@@ -1355,6 +1368,7 @@ public class MainController implements StatusSink {
             // report an unsaved change for a field the user never touched.
             weather = withPlace;
             baselineWeather = withPlace;
+            updateCoordinatesButton();
             status("Weather fetched for " + date);
         }
         updateDirty();

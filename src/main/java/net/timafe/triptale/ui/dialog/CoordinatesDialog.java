@@ -53,9 +53,12 @@ import java.util.function.Supplier;
  * it was fetched for, so it reads as history for a specific point, not today's forecast
  * somewhere vague, e.g. "15–22° partly cloudy on October 23rd 2026 @ Rome, IT". 🔄 fetches (or
  * re-fetches, overwriting without asking, like 🔍) for the start point's <em>current</em> field
- * values, not necessarily what's saved; 🗑 clears it. Disabled without a start point or offline,
- * same gating as the place lookups. Before a first fetch, the empty-state message previews the
- * current Start row so it's clear what 🔄 would fetch for.
+ * values, not necessarily what's saved; 🔗 opens the Open-Meteo historical archive's raw JSON
+ * for the same point and date, to check the source behind the recorded min/max/code (unlike the
+ * live forecast fetch, the archive stays valid for any past date, not just ~92 days); 🗑 clears
+ * the recorded weather. All three are disabled without a start point or recorded weather, or
+ * offline, same gating as the place lookups. Before a first fetch, the empty-state message
+ * previews the current Start row so it's clear what 🔄 would fetch for.
  */
 public final class CoordinatesDialog {
 
@@ -193,9 +196,10 @@ public final class CoordinatesDialog {
         ExportTexts weatherTexts = ExportTexts.of(TripLanguage.EN);
         Label weatherLabel = new Label();
         weatherLabel.setWrapText(true);
-        Button weatherUpdate = new Button("🔄 Update");
+        Button weatherUpdate = new Button("🔄");
+        Button weatherOpen = new Button("🔗");
         Button weatherClear = new Button("🗑");
-        for (Button b : new Button[] {weatherUpdate, weatherClear}) b.setMinWidth(Region.USE_PREF_SIZE);
+        for (Button b : new Button[] {weatherUpdate, weatherOpen, weatherClear}) b.setMinWidth(Region.USE_PREF_SIZE);
         Weather[] currentWeather = {weather};
         boolean[] weatherBusy = {false};
         Runnable renderWeather = () -> {
@@ -222,6 +226,11 @@ public final class CoordinatesDialog {
                     : date == null ? "No date selected"
                     : start.value() == null ? "Set a start point first"
                     : "Fetch weather for the start point (Open-Meteo); overwrites without asking, like 🔍"));
+            boolean canOpen = w != null && date != null && start.value() != null;
+            weatherOpen.setDisable(!canOpen);
+            weatherOpen.setTooltip(new Tooltip(!canOpen
+                    ? "Fetch weather first to look up the source data"
+                    : "Check the source data for the start point and date (Open-Meteo historical archive)"));
         };
         weatherUpdate.setOnAction(e -> {
             Coordinates.LatLon point = start.value();
@@ -251,6 +260,11 @@ public final class CoordinatesDialog {
                 });
             });
         });
+        weatherOpen.setOnAction(e -> {
+            Coordinates.LatLon point = start.value();
+            if (currentWeather[0] == null || point == null || date == null) return;
+            browser.open(OpenMeteoClient.archiveUrl(point.lat(), point.lon(), date));
+        });
         weatherClear.setOnAction(e -> {
             currentWeather[0] = null;
             renderWeather.run();
@@ -267,7 +281,7 @@ public final class CoordinatesDialog {
         grid.add(new Label("🌦️ Weather:"), 0, 3);
         Region weatherSpacer = new Region();
         HBox.setHgrow(weatherSpacer, Priority.ALWAYS);
-        HBox weatherRow = new HBox(8, weatherLabel, weatherSpacer, weatherUpdate, weatherClear);
+        HBox weatherRow = new HBox(8, weatherLabel, weatherSpacer, weatherUpdate, weatherOpen, weatherClear);
         weatherRow.setAlignment(Pos.CENTER_LEFT);
         grid.add(weatherRow, 1, 3, 7, 1);
         grid.add(new Label("Parse from:"), 0, 4);
