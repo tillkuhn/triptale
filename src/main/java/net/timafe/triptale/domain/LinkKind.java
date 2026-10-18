@@ -18,6 +18,7 @@ public enum LinkKind {
     LISTEN("listen", "🎵", "Listen to"),
     SLEEP("sleep", "🛏", "Sleep at"),
     TRACK("track", "🗺", "Track tour"),
+    TRAVEL("travel", "🚌", "Travel with"),
     VISIT("visit", "🏛", "Visit"),
     WATCH("watch", "🎬", "Watch");
 
