@@ -36,7 +36,9 @@ import java.util.stream.Collectors;
  * headings, no entry facts (date, activity, distance, weather, coordinates), no links, no
  * markdown syntax, no images. Paragraph breaks within a day are kept (one blank line) so the
  * day's own structure stays readable; entries are separated by a wider gap (two blank lines) so
- * the day boundary itself stays visible too.
+ * the day boundary itself stays visible too. A "To be continued ..." (trip language) teaser
+ * closes the text, regardless of whether the selected range actually reaches the trip's last
+ * entry — a reader scrolling a social media post has no use for that distinction anyway.
  */
 @Component
 public class SocialMediaExporter {
@@ -54,8 +56,9 @@ public class SocialMediaExporter {
 
     /**
      * Plain-text paragraphs for the entries dated {@code from}..{@code to} (inclusive; null =
-     * unbounded), one day after another. Days with no tale (or only a private one) are skipped
-     * entirely rather than leaving a stray gap.
+     * unbounded), one day after another, closed with a "To be continued ..." teaser. Days with no
+     * tale (or only a private one) are skipped entirely rather than leaving a stray gap; with no
+     * text at all there is nothing to continue either, so the result is empty.
      */
     public String export(Trip trip, LocalDate from, LocalDate to) {
         Objects.requireNonNull(trip, "trip");
@@ -67,7 +70,9 @@ public class SocialMediaExporter {
             String text = plainText(store.loadEntry(trip.ref(), date));
             if (!text.isBlank()) days.add(text);
         }
-        return days.isEmpty() ? "" : String.join("\n\n\n", days).strip() + "\n";
+        if (days.isEmpty()) return "";
+        String teaser = DiaryExporter.texts(settingsStore).word("toBeContinued");
+        return String.join("\n\n\n", days).strip() + "\n\n\n" + teaser + "\n";
     }
 
     /**

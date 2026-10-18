@@ -80,7 +80,7 @@ class SocialMediaExporterTest {
 
         String out = exporter.export(trip, null, null);
 
-        assertEquals("First paragraph.\n\nSecond paragraph.\n\n\nOnly paragraph.\n", out);
+        assertEquals("First paragraph.\n\nSecond paragraph.\n\n\nOnly paragraph.\n\n\nTo be continued ...\n", out);
     }
 
     @Test
@@ -105,7 +105,7 @@ class SocialMediaExporterTest {
 
         String out = exporter.export(trip, null, null);
 
-        assertEquals("Some text.\n", out);
+        assertEquals("Some text.\n\n\nTo be continued ...\n", out);
     }
 
     @Test
@@ -113,6 +113,21 @@ class SocialMediaExporterTest {
         Trip trip = aTrip();
 
         assertEquals("", exporter.export(trip, null, null));
+    }
+
+    @Test
+    void appendsToBeContinuedTeaserInTripLanguage() {
+        Trip trip = aTrip();
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .title("Day one").tales("Some text.").build());
+
+        assertTrue(exporter.export(trip, null, null).endsWith("Some text.\n\n\nTo be continued ...\n"));
+
+        AppSettings settings = settingsStore.load();
+        settings.setDefaultTripLanguage("de");
+        settingsStore.save(settings);
+
+        assertTrue(exporter.export(trip, null, null).endsWith("Some text.\n\n\nFortsetzung folgt ...\n"));
     }
 
     @Test
