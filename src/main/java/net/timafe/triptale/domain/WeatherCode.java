@@ -8,19 +8,26 @@ package net.timafe.triptale.domain;
  */
 public enum WeatherCode {
     CLEAR("clear", "☀️"),
-    // These 4 are Supplementary Multilingual Plane pictographs that already default to emoji
+    // These are Supplementary Multilingual Plane pictographs that already default to emoji
     // presentation — the \uFE0F variation selector is redundant (no visual difference anywhere
     // that follows the Unicode spec, browsers included), but JavaFX's text renderer seems to
     // choke on the invisible trailing selector and draws a "tofu" box for it. Dropped here only
-    // for the glyphs this was confirmed on; CLEAR/CLOUDY/SNOW/THUNDERSTORM below genuinely need
-    // \uFE0F to force color (their default presentation is plain text), so they're left alone.
+    // for the glyphs this was confirmed on; CLEAR/SNOW below genuinely need \uFE0F to force
+    // color (their default presentation is plain text), so they're left alone.
+    //
+    // CLOUDY and THUNDERSTORM used to be the legacy pre-SMP symbols ☁️/⛈️ (with \uFE0F), which
+    // render as a tiny monochrome glyph in JavaFX instead of full color: those codepoints also
+    // exist as a plain symbol in the UI font (Segoe UI/Helvetica Neue/Arial), and JavaFX's font
+    // fallback picks that over the color emoji font regardless of the selector. Swapped for SMP
+    // pictographs below, which — like the other 4 — are guaranteed absent from the UI font, so
+    // fallback to the color emoji font is forced rather than a matter of selector support.
     PARTLY_CLOUDY("partly_cloudy", "🌤"),
-    CLOUDY("cloudy", "☁️"),
+    CLOUDY("cloudy", "🌥"),
     FOG("fog", "🌫"),
     DRIZZLE("drizzle", "🌦"),
     RAIN("rain", "🌧"),
     SNOW("snow", "❄️"),
-    THUNDERSTORM("thunderstorm", "⛈️");
+    THUNDERSTORM("thunderstorm", "🌩");
 
     private final String key;
     private final String emoji;
