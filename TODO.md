@@ -1,6 +1,25 @@
 # ToDos for this app
 
-## Next Todo: 68
+## Next Todo: 69
+
+## 68 Mobile inbox: capture on the phone, organize later in TripTale
+
+Push a quick text thought from Android into an inbox, picked up by TripTale next launch and
+attached to the day it belongs to (or a different entry). Must not require the family to
+install any new app — whatever they already have (Telegram, Signal, WhatsApp, Google stuff)
+is the only acceptable capture surface.
+
+- **Try Telegram first**: official Bot API, plain long-polling (`getUpdates`) over
+  `java.net.http`, no public endpoint, no native dependency — cheapest to spike by far.
+  WhatsApp (official Cloud API, webhook-only, dev-mode 5-tester cap) and Signal (`signal-cli`,
+  unofficial but mature, needs a native libsignal daemon) remain open fallbacks if the spike
+  doesn't pan out.
+- v1 is **text only** — coordinates and photos are fast-follows once the basic
+  inbox-folder + pending-items dialog loop is proven out.
+- New `inbox` package (no JavaFX, same boundary rule as `sync`/`storage`); pending items surface
+  in a new `ui/dialog/InboxDialog` following the `SmartSyncDialog`/`SyncRow` pattern.
+
+[Details](docs/68_mobile_inbox.md)
 
 ## 67 Private images
 
