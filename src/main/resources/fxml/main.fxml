@@ -52,6 +52,7 @@
                         <Menu text="Tale Entries">
                             <items>
                                 <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
+                                <MenuItem text="😀 Emoji Picker…" onAction="#onEmojiPicker" accelerator="Shortcut+E"/>
                                 <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>

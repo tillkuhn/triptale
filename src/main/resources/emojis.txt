@@ -1,0 +1,91 @@
+# Curated travel emoji for the emoji picker (todo 69, see Emojis / docs/69_emoji_picker.md).
+# One per line: "emoji | comma, separated, english keywords". Keywords are matched
+# case-insensitively as substrings, so keep them short and plural-free where it reads fine.
+# Blank lines and lines starting with # are ignored.
+#
+# Per ADR-0004 (docs/adr/0004-emoji-in-ui-labels.md): no trailing variation selector (U+FE0F),
+# and prefer glyphs that still read fine as a plain monochrome glyph on Windows. Needs a visual
+# check once the picker runs (see AGENTS.md) — flag anything that renders as a tofu box or looks
+# wrong and it'll be swapped out.
+
+# Transport
+🚗 | car, drive, road trip, roadtrip
+🚕 | taxi, cab
+🚌 | bus, coach, travel
+🚆 | train, rail, railway
+🚅 | bullet train, high speed train
+🚇 | metro, subway, underground
+🚲 | bike, bicycle, cycling
+🛵 | scooter, moped
+🏍 | motorcycle, motorbike
+⛴ | ferry, boat crossing
+🚢 | ship, cruise, boat
+✈ | plane, flight, airport, fly
+🚁 | helicopter
+🚐 | van, campervan, rv
+🧳 | luggage, suitcase, packing
+
+# Hiking & nature
+🚶 | walk, walking, hike, hiking
+🧗 | climbing, rock climbing, scramble
+🏔 | mountain, peak, summit
+🏕 | camping, tent, campsite
+🌲 | tree, forest, pine, woods
+🌳 | tree, forest
+🌴 | palm tree, tropical, beach
+🏖 | beach, relax, seaside
+🏞 | national park, nature, scenery, landscape
+🌅 | sunrise
+🌄 | sunrise over mountains
+🌇 | sunset, dusk
+🏝 | island, desert island
+🦌 | deer, wildlife
+🐚 | shell, seashell, beach
+
+# Food
+🍕 | pizza
+🍔 | burger
+🍜 | noodles, ramen, soup
+🍣 | sushi
+🥐 | croissant, breakfast, bakery
+🍳 | breakfast, egg, cooking
+🍇 | grapes, fruit
+🍦 | ice cream, gelato, dessert
+🧁 | cupcake, dessert, bakery
+🥙 | wrap, kebab, street food
+🍲 | stew, hotpot, soup, eat, food, meal, restaurant, dinner
+
+# Drink
+☕ | coffee
+🍵 | tea
+🍺 | beer
+🍷 | wine
+🍹 | cocktail, drink
+🥤 | soda, drink, beverage
+🧃 | juice
+🥛 | milk
+
+# Weather
+🌞 | sun, sunny, clear
+⛅ | partly cloudy
+🌥 | cloudy, overcast
+🌧 | rain, rainy
+⛈ | thunderstorm, storm, lightning
+🌨 | snow, snowy, cold
+🌬 | wind, windy
+🌈 | rainbow
+
+# Misc travel
+📸 | photo, camera, picture
+🗺 | map
+🧭 | compass, navigation, direction
+📍 | pin, location, place
+🔑 | key, checkin, check-in
+🏨 | hotel, accommodation
+⛺ | tent, camping
+🎫 | ticket
+📅 | date, calendar
+🌍 | world, globe, earth
+🌊 | wave, sea, ocean
+🏛 | sightseeing, museum, monument
+🛍 | shopping

@@ -57,6 +57,7 @@ import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.dialog.AboutDialog;
 import net.timafe.triptale.ui.dialog.CoordinatesDialog;
 import net.timafe.triptale.ui.dialog.EditSettingsDialog;
+import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
@@ -70,6 +71,7 @@ import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.CommitMessage;
 import net.timafe.triptale.util.Coordinates;
+import net.timafe.triptale.util.Emojis;
 import net.timafe.triptale.util.GpxImport;
 import net.timafe.triptale.util.Greetings;
 import net.timafe.triptale.util.Greetings.Greeting;
@@ -262,6 +264,7 @@ public class MainController implements StatusSink {
     // Window title: greeting + travel quote, re-rolled on trip switch (todo 45).
     private final Greetings greetings = Greetings.load();
     private final TravelWisdoms wisdoms = TravelWisdoms.load();
+    private final Emojis emojis = Emojis.load();
     private final ReadOnlyStringWrapper windowTitle = new ReadOnlyStringWrapper();
     private Greeting greeting;
     private String wisdom;
@@ -677,6 +680,27 @@ public class MainController implements StatusSink {
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) { error("No entry selected"); return; }
         new ViewSourceDialog(store, this).show(trip.ref(), date);
+    }
+
+    @FXML
+    public void onEmojiPicker() {
+        // Captured before showAndWait() steals focus, see docs/69_emoji_picker.md.
+        boolean taleFocused = talesArea.isFocused() && !talesArea.isDisabled();
+        int selStart = taleFocused ? talesArea.getSelection().getStart() : -1;
+        int selEnd = taleFocused ? talesArea.getSelection().getEnd() : -1;
+
+        Optional<String> picked = EmojiPickerDialog.showAndWait(emojis);
+        if (picked.isEmpty()) return;
+        String glyph = picked.get();
+
+        if (taleFocused) {
+            talesArea.requestFocus();
+            talesArea.replaceText(selStart, selEnd, glyph);
+            talesArea.positionCaret(selStart + glyph.length());
+        } else {
+            Clipboards.putString(glyph);
+            status(glyph + " copied to clipboard");
+        }
     }
 
     @FXML

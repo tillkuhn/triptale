@@ -2,17 +2,6 @@
 
 ## Next Todo: 70
 
-## 69 Emoji Picker
-
-App should support an emoji picker popup. Shortcut "fn E", not sure where to place in menu.
-Content would be useful emojis for travel, like related to transport, hiking, food, drink, nature, weather.
-should be possible to search-filter by english name, e.g. "hike".
-action .. we could either click and put directly to the current cursor position in tale if invoked from there. or just copy to cliboard.
-dialogue should be lightweight, so not sure if it is expensive to wire each emoji with an action, or just use a checkbox to select one
-and then invoke some action. Or maybe an emoji "shopping card" .. one can select 1-n emojis and copy to cliboard as checkout action.
-to be discussed
-
-
 ## 68 Mobile inbox: capture on the phone, organize later in TripTale
 
 Push a quick text thought from Android into an inbox, picked up by TripTale next launch and
@@ -295,6 +284,13 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 69 Emoji Picker
+
+A searchable popup (menu + Shortcut+E) over a curated travel emoji list: inserts at the tale
+editor's caret when it has focus (replacing any selection), otherwise copies to the clipboard.
+
+[Details](docs/69_emoji_picker.md)
 
 ## DONE 64 Cosmetic findings and small features during DUS->ATH Flight
 
