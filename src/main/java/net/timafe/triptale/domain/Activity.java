@@ -12,6 +12,7 @@ public enum Activity {
     BACKPACKING("backpacking", "🎒"),
     BIKEPACKING("bikepacking", "🚵"),
     CYCLING("cycling", "🚴"),
+    DIVING("diving", "🤿"),
     FERRYHOPPING("ferryhopping", "⛴"),
     HIKING("hiking", "🚶"),
     MOTORCYCLING("motorcycling", "🏍"),

@@ -29,6 +29,7 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.map.MapPoints;
 import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.ui.ConnectivityService;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.MapboxService;
 import net.timafe.triptale.ui.StatusSink;
@@ -64,17 +65,22 @@ public final class MapAssistantDialog {
     private static final String CHOOSE_RANGE = "Choose a range, then put it on screen.";
     private static final String ON_SCREEN = "🖥 On Screen";
     private static final double STALE_OPACITY = 0.35;
+    /** Host checked by {@link ConnectivityService} before a Mapbox request — reusing the git-remote
+     *  check's resolver, which just parses the host out of any well-formed URL. */
+    private static final String MAPBOX_HOST = "https://api.mapbox.com";
 
     private final MarkdownStore store;
     private final MapboxService mapboxService;
     private final PhotoLocations photoLocations;
+    private final ConnectivityService connectivityService;
     private final StatusSink statusSink;
 
     public MapAssistantDialog(MarkdownStore store, MapboxService mapboxService, PhotoLocations photoLocations,
-                              StatusSink statusSink) {
+                              ConnectivityService connectivityService, StatusSink statusSink) {
         this.store = store;
         this.mapboxService = mapboxService;
         this.photoLocations = photoLocations;
+        this.connectivityService = connectivityService;
         this.statusSink = statusSink;
     }
 
@@ -226,8 +232,30 @@ public final class MapAssistantDialog {
         }
 
         private void onScreen() {
+            onScreenButton.setDisable(true);
+            setMessage("Checking connectivity…");
+            Task<Boolean> connCheck = connectivityService.checkTask(MAPBOX_HOST);
+            connCheck.setOnSucceeded(e -> {
+                if (Boolean.TRUE.equals(connCheck.getValue())) {
+                    fetchAndDisplay();
+                } else {
+                    onScreenButton.setDisable(false);
+                    setMessage("Viewscreen offline", "No network connection — Sgt. Mapper needs internet access to reach Mapbox.");
+                }
+            });
+            connCheck.setOnFailed(e -> {
+                onScreenButton.setDisable(false);
+                setMessage("Viewscreen offline", "No network connection — Sgt. Mapper needs internet access to reach Mapbox.");
+            });
+            Thread checker = new Thread(connCheck, "map-assistant-connectivity");
+            checker.setDaemon(true);
+            checker.start();
+        }
+
+        private void fetchAndDisplay() {
             MapPoints days = dayPoints();
             if (!photosCheck.isSelected()) {
+                onScreenButton.setDisable(false);
                 display(days, false);
                 return;
             }
@@ -249,7 +277,6 @@ public final class MapAssistantDialog {
                 Throwable ex = task.getException();
                 setMessage("Could not read photo locations" + (ex != null ? ": " + ex.getMessage() : "."));
             });
-            onScreenButton.setDisable(true);
             setMessage("Reading photo locations…");
             Thread worker = new Thread(task, "map-assistant-photos");
             worker.setDaemon(true);
