@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 70
+## Next Todo: 71
+
+## 70 Derive activity from a GPX track's Komoot `<type>`
+
+Komoot-exported GPX files carry an optional `<type>` under `<trk>` (`hike`,
+`touring_bicycle`, `mtb`/`mtb_easy`/`mtb_advanced`, `mountaineering`, `snowboard`, ...).
+`GpxImportDialog` should offer to set `activity` from it, same pattern as the other
+derived fields (row omitted when there's no mapping).
+
+[Details](docs/70_gpx_import_activity_from_type.md)
 
 ## 68 Mobile inbox: capture on the phone, organize later in TripTale
 

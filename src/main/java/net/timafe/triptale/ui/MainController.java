@@ -751,6 +751,9 @@ public class MainController implements StatusSink {
         if (sel.altitude() && p.altitudeGainM() != null) {
             altField.setText(Lengths.formatAltitude(p.altitudeGainM()));
         }
+        if (sel.activity() && p.activity() != null) {
+            activityCombo.setValue(p.activity());
+        }
         updateCoordinatesButton();
         updateDirty();
         status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus);

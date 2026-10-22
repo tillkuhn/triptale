@@ -1,5 +1,6 @@
 package net.timafe.triptale.util;
 
+import net.timafe.triptale.domain.Activity;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -12,6 +13,8 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -26,9 +29,24 @@ public final class GpxImport {
     private static final double ELEVATION_NOISE_THRESHOLD_M = 1.0;
     private static final double EARTH_RADIUS_M = 6_371_000.0;
 
+    /**
+     * Komoot's optional {@code <type>} (sibling of {@code <name>} under {@code <trk>}) mapped to
+     * our curated {@link Activity}, evidence-based from a real export sample (todo 70) — only
+     * types with an obvious fit are listed; anything else (e.g. {@code snowboard}) stays
+     * unmapped rather than guessing.
+     */
+    private static final Map<String, Activity> KOMOOT_TYPE_TO_ACTIVITY = Map.of(
+            "hike", Activity.HIKING,
+            "mountaineering", Activity.HIKING,
+            "touring_bicycle", Activity.CYCLING,
+            "mtb", Activity.CYCLING,
+            "mtb_easy", Activity.CYCLING,
+            "mtb_advanced", Activity.CYCLING
+    );
+
     public record Parsed(String name, LocalDate date, double lat, double lon,
                           double stopLat, double stopLon,
-                          double distanceKm, Double altitudeGainM) {}
+                          double distanceKm, Double altitudeGainM, String activity) {}
 
     private record TrkPt(double lat, double lon, Double ele) {}
 
@@ -63,8 +81,11 @@ public final class GpxImport {
             Double altitudeGainM = totalAltitudeGainM(points);
             if (altitudeGainM != null) altitudeGainM = (double) Math.round(altitudeGainM);
 
+            Element typeEl = firstChildElement(trk, "type");
+            String activity = typeEl == null ? null : activityFromKomootType(typeEl.getTextContent());
+
             return Optional.of(new Parsed(name.getTextContent().trim(), date,
-                    first.lat(), first.lon(), last.lat(), last.lon(), distanceKm, altitudeGainM));
+                    first.lat(), first.lon(), last.lat(), last.lon(), distanceKm, altitudeGainM, activity));
         } catch (Exception e) {
             return Optional.empty();
         }
@@ -130,6 +151,13 @@ public final class GpxImport {
             }
         }
         return gain;
+    }
+
+    /** Null when blank or not in {@link #KOMOOT_TYPE_TO_ACTIVITY}. */
+    private static String activityFromKomootType(String rawType) {
+        if (rawType == null || rawType.isBlank()) return null;
+        Activity activity = KOMOOT_TYPE_TO_ACTIVITY.get(rawType.strip().toLowerCase(Locale.ROOT));
+        return activity == null ? null : activity.key();
     }
 
     private static double round2(double value) {

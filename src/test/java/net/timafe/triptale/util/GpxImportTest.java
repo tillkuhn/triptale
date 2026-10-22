@@ -142,6 +142,107 @@ class GpxImportTest {
     }
 
     @Test
+    void mapsKomootHikeTypeToHikingActivity() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Wanderung</name>
+                    <type>hike</type>
+                    <trkseg>
+                      <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals("hiking", result.get().activity());
+    }
+
+    @Test
+    void mapsKomootBicycleTypesToCyclingActivity() throws IOException {
+        for (String type : new String[]{"touring_bicycle", "mtb", "mtb_easy", "mtb_advanced"}) {
+            Path file = writeGpx("""
+                    <gpx>
+                      <trk>
+                        <name>Tour</name>
+                        <type>%s</type>
+                        <trkseg>
+                          <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                        </trkseg>
+                      </trk>
+                    </gpx>
+                    """.formatted(type));
+
+            Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+            assertTrue(result.isPresent());
+            assertEquals("cycling", result.get().activity(), "type=" + type);
+        }
+    }
+
+    @Test
+    void mapsKomootMountaineeringTypeToHikingActivity() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Gipfeltour</name>
+                    <type>mountaineering</type>
+                    <trkseg>
+                      <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals("hiking", result.get().activity());
+    }
+
+    @Test
+    void activityIsNullForUnrecognizedKomootType() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Snow day</name>
+                    <type>snowboard</type>
+                    <trkseg>
+                      <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals(null, result.get().activity());
+    }
+
+    @Test
+    void activityIsNullWhenTypeElementMissing() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>No type here</name>
+                    <trkseg>
+                      <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals(null, result.get().activity());
+    }
+
+    @Test
     void emptyWhenTrackNameMissing() throws IOException {
         Path file = writeGpx("""
                 <gpx>

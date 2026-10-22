@@ -8,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.Coordinates;
@@ -27,7 +28,7 @@ public final class GpxImportDialog {
 
     /** One checkbox's answer per field; {@code altitude} is irrelevant when the GPX had none. */
     public record Selection(boolean title, boolean startCoords, boolean stopCoords,
-                             boolean distance, boolean altitude, boolean copyAttachment) {}
+                             boolean distance, boolean altitude, boolean activity, boolean copyAttachment) {}
 
     private GpxImportDialog() {}
 
@@ -57,6 +58,14 @@ public final class GpxImportDialog {
                 || existing.title().equals(DiaryEntry.DEFAULT_TITLE);
         CheckBox titleCheck = addRow(grid, row++, "Title",
                 titleEmpty ? "(none)" : existing.title(), parsed.name(), titleEmpty);
+
+        CheckBox activityCheck = null;
+        if (parsed.activity() != null) {
+            boolean activityEmpty = existing.activity() == null;
+            activityCheck = addRow(grid, row++, "Activity",
+                    activityEmpty ? "(none)" : activityLabel(existing.activity()),
+                    activityLabel(parsed.activity()), activityEmpty);
+        }
 
         boolean startEmpty = existing.startLat() == null || existing.startLon() == null;
         CheckBox startCheck = addRow(grid, row++, "Start coords",
@@ -94,13 +103,19 @@ public final class GpxImportDialog {
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
         CheckBox finalAltitudeCheck = altitudeCheck;
+        CheckBox finalActivityCheck = activityCheck;
         return Optional.of(new Selection(
                 titleCheck.isSelected(),
                 startCheck.isSelected(),
                 stopCheck.isSelected(),
                 distanceCheck.isSelected(),
                 finalAltitudeCheck != null && finalAltitudeCheck.isSelected(),
+                finalActivityCheck != null && finalActivityCheck.isSelected(),
                 copyCheck.isSelected()));
+    }
+
+    private static String activityLabel(String activity) {
+        return Activity.emojiFor(activity) + " " + Activity.labelFor(activity);
     }
 
     private static CheckBox addRow(GridPane grid, int row, String name, String oldValue, String newValue,
