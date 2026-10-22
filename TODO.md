@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 71
+## Next Todo: 72
+
+## 71 Remember last GPX import folder across restarts
+
+`onImportGpx` (`MainController`) and `NewTripDialog`'s "Import GPX…" button always opened
+the system default folder. Persist the last-used folder in `.state.yml` (same machine-local,
+gitignored pattern as `lastTripPath`/`lastEntryDate`) via
+`MarkdownStore.saveLastGpxFolder`/`loadLastGpxFolder`, set as the chooser's
+`initialDirectory` next time, remembered right after a file is picked (even if the import
+dialog is later cancelled) — the GPX export folder is normally stable per device.
 
 ## 70 Derive activity from a GPX track's Komoot `<type>`
 

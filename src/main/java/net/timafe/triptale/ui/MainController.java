@@ -608,7 +608,7 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onNewTrip() {
-        Optional<NewTripDialog.Spec> spec = new NewTripDialog().showAndWait();
+        Optional<NewTripDialog.Spec> spec = new NewTripDialog(store).showAndWait();
         if (spec.isEmpty()) return;
         String name = spec.get().name();
         LocalDate start = spec.get().startDate();
@@ -709,8 +709,10 @@ public class MainController implements StatusSink {
         if (trip == null) { error("No trip selected"); return; }
         FileChooser chooser = new FileChooser();
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("GPX files", "*.gpx"));
+        store.loadLastGpxFolder().ifPresent(folder -> chooser.setInitialDirectory(folder.toFile()));
         File file = chooser.showOpenDialog(null);
         if (file == null) return;
+        store.saveLastGpxFolder(file.getParentFile().toPath());
         Optional<GpxImport.Parsed> parsed = GpxImport.parse(file);
         if (parsed.isEmpty()) {
             error("Couldn't parse a track name/point from this file.");

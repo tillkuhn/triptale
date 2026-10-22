@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -572,6 +573,32 @@ class MarkdownStoreTest {
     void loadLastEntryDateReturnsEmptyForMalformedValue() {
         store.saveState("lastEntryDate", "not-a-date");
         assertTrue(store.loadLastEntryDate().isEmpty());
+    }
+
+    @Test
+    void saveAndLoadLastGpxFolderRoundTrip() {
+        store.saveLastGpxFolder(tempDir);
+        assertEquals(tempDir, store.loadLastGpxFolder().orElseThrow());
+    }
+
+    @Test
+    void loadLastGpxFolderReturnsEmptyWhenStateFileMissing() {
+        assertTrue(store.loadLastGpxFolder().isEmpty());
+    }
+
+    @Test
+    void loadLastGpxFolderReturnsEmptyWhenFolderNoLongerExists() throws IOException {
+        Path gone = tempDir.resolve("deleted-folder");
+        Files.createDirectory(gone);
+        store.saveLastGpxFolder(gone);
+        Files.delete(gone);
+        assertTrue(store.loadLastGpxFolder().isEmpty());
+    }
+
+    @Test
+    void loadLastGpxFolderReturnsEmptyForMalformedValue() {
+        store.saveState("lastGpxFolder", "\u0000not-a-path");
+        assertTrue(store.loadLastGpxFolder().isEmpty());
     }
 
     // -------------------------------------------------------------------------

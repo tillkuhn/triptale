@@ -13,6 +13,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Dialog;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
+import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.ui.ActivityChoices;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.GpxImport;
@@ -26,6 +27,12 @@ import java.util.Optional;
  * already-exists check and persistence stay with the caller.
  */
 public final class NewTripDialog {
+
+    private final MarkdownStore store;
+
+    public NewTripDialog(MarkdownStore store) {
+        this.store = store;
+    }
 
     /** {@code activity} is the trip's default for new entries, null for none. */
     public record Spec(String name, LocalDate startDate, String activity, String description, Optional<FirstEntry> firstEntry) {}
@@ -93,8 +100,10 @@ public final class NewTripDialog {
             chooser.setTitle("Import GPX");
             chooser.getExtensionFilters().add(
                     new FileChooser.ExtensionFilter("GPX files", "*.gpx"));
+            store.loadLastGpxFolder().ifPresent(folder -> chooser.setInitialDirectory(folder.toFile()));
             var file = chooser.showOpenDialog(dlg.getDialogPane().getScene().getWindow());
             if (file != null) {
+                store.saveLastGpxFolder(file.getParentFile().toPath());
                 Optional<GpxImport.Parsed> parsed = GpxImport.parse(file);
                 if (parsed.isEmpty()) {
                     importHintLabel.setText("Couldn't parse a track name/point from this file.");
