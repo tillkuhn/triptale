@@ -32,8 +32,7 @@ public final class GpxImport {
     /**
      * Komoot's optional {@code <type>} (sibling of {@code <name>} under {@code <trk>}) mapped to
      * our curated {@link Activity}, evidence-based from a real export sample (todo 70) — only
-     * types with an obvious fit are listed; anything else (e.g. {@code snowboard}) stays
-     * unmapped rather than guessing.
+     * types with an obvious fit are listed; anything else stays unmapped rather than guessing.
      */
     private static final Map<String, Activity> KOMOOT_TYPE_TO_ACTIVITY = Map.of(
             "hike", Activity.HIKING,
@@ -41,7 +40,8 @@ public final class GpxImport {
             "touring_bicycle", Activity.CYCLING,
             "mtb", Activity.CYCLING,
             "mtb_easy", Activity.CYCLING,
-            "mtb_advanced", Activity.CYCLING
+            "mtb_advanced", Activity.CYCLING,
+            "snowboard", Activity.SNOWRIDING
     );
 
     public record Parsed(String name, LocalDate date, double lat, double lon,

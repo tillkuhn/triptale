@@ -20,7 +20,8 @@ public enum Activity {
     RELAXING("relaxing", "🏖"),
     ROADTRIPPING("roadtripping", "🚗"),
     SIGHTSEEING("sightseeing", "🏰"),
-    SKYHOPPING("skyhopping", "✈");
+    SKYHOPPING("skyhopping", "✈"),
+    SNOWRIDING("snowriding", "⛷");
 
     /** Emoji for values that are not in this enum (hand-edited or from a newer app version). */
     public static final String UNKNOWN_EMOJI = "❓";

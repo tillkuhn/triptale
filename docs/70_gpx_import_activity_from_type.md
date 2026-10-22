@@ -34,9 +34,8 @@ source data usually tells us hiking vs. cycling outright.
 
 ## Decision: mapping table
 
-Only the two curated `Activity` values the app actually has a close fit for are derived;
-anything without a good fit is left unmapped (`Parsed.activity() == null`, existing/typed-in
-value untouched):
+The curated `Activity` values the app has a close fit for are derived; anything without a
+good fit is left unmapped (`Parsed.activity() == null`, existing/typed-in value untouched):
 
 | Komoot `<type>` | `Activity` |
 |---|---|
@@ -44,12 +43,27 @@ value untouched):
 | `mountaineering` | `HIKING` (closest fit — on-foot, no dedicated "climbing"/"alpine" activity exists) |
 | `touring_bicycle` | `CYCLING` |
 | `mtb`, `mtb_easy`, `mtb_advanced` | `CYCLING` |
-| `snowboard` | *(unmapped — no winter-sport `Activity` value exists)* |
+| `snowboard` | `SNOWRIDING` (new `Activity` added for this todo — see below) |
 | anything else/missing | *(unmapped)* |
 
 The map lives as a `Map<String, Activity>` in `GpxImport` (lowercase, trimmed lookup key) —
 add new Komoot type strings there if a future export surfaces one (e.g. `road_bicycle`,
-`e_mtb`, `jogging`) rather than guessing ahead of real data.
+`e_mtb`, `jogging`, or an actual skiing type like `ski`/`downhillski`/`touringski` — none of
+those appeared in the sample, only `snowboard` did) rather than guessing ahead of real data.
+
+## New `Activity.SNOWRIDING`
+
+The curated enum had no winter-sport value at all (`snowboard` was initially left unmapped
+for that reason). Added `SNOWRIDING("snowriding", "⛷")`, declared last (alphabetically after
+`SKYHOPPING`) — intended to cover **both** skiing and snowboarding under one umbrella key,
+since the app's curated activity list favors one broad value per category of trip rather than
+a value per specific sport (same reasoning as `CYCLING` covering road/mtb/bikepacking-adjacent
+riding). "Snowriding" was chosen over more literal options (`snowsliding`,
+`wintersporting`) or punchier slang (`snowshredding`) to match the existing "verb+ing"
+portmanteau style (`roadtripping`, `railtripping`, `skyhopping`) without reading as slang.
+Only `snowboard` is mapped to it for now since that's the only winter-sport Komoot type with
+real evidence; a `ski`-ish type can be added to `KOMOOT_TYPE_TO_ACTIVITY` the same way once one
+shows up in a real export.
 
 ## Design
 

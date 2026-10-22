@@ -204,12 +204,32 @@ class GpxImportTest {
     }
 
     @Test
-    void activityIsNullForUnrecognizedKomootType() throws IOException {
+    void mapsKomootSnowboardTypeToSnowridingActivity() throws IOException {
         Path file = writeGpx("""
                 <gpx>
                   <trk>
                     <name>Snow day</name>
                     <type>snowboard</type>
+                    <trkseg>
+                      <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
+                    </trkseg>
+                  </trk>
+                </gpx>
+                """);
+
+        Optional<GpxImport.Parsed> result = GpxImport.parse(file.toFile());
+
+        assertTrue(result.isPresent());
+        assertEquals("snowriding", result.get().activity());
+    }
+
+    @Test
+    void activityIsNullForUnrecognizedKomootType() throws IOException {
+        Path file = writeGpx("""
+                <gpx>
+                  <trk>
+                    <name>Just a walk</name>
+                    <type>jogging</type>
                     <trkseg>
                       <trkpt lat="50.0" lon="7.0"><time>2025-04-18T09:00:00Z</time></trkpt>
                     </trkseg>
