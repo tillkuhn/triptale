@@ -350,14 +350,15 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .weather(new Weather(15, 22, 1, "Soest, DE")).tales("Nice weather.").build());
+                .weather(new Weather(15, 22, 1, 320, "Soest, DE")).tales("Nice weather.").build());
 
         String out = exporter.exportTrip(trip);
-        assertTrue(out.contains("🌤 15–22° partly cloudy"), out);
+        assertTrue(out.contains("🌤 15–22° partly cloudy · 320 m a.s.l."), out);
 
         String html = exporter.exportTripAsHtml(trip);
         assertTrue(html.contains("<span class=\"fact-emoji\">🌤</span>"
-                + "<span class=\"fact-value\">15–22°</span><span class=\"fact-note\">partly cloudy</span>"), html);
+                + "<span class=\"fact-value\">15–22°</span><span class=\"fact-note\">partly cloudy</span>"
+                + "<span class=\"fact-detail\">320 m a.s.l.</span>"), html);
     }
 
     @Test
@@ -365,10 +366,25 @@ class DiaryExporterTest {
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
         store.saveTrip(trip);
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
-                .weather(new Weather(20, 20, 0, null)).tales("Steady.").build());
+                .weather(new Weather(20, 20, 0, null, null)).tales("Steady.").build());
 
         String out = exporter.exportTrip(trip);
         assertTrue(out.contains("🌞 20° clear"), out);
+    }
+
+    @Test
+    void weatherWithoutElevationHasNoDetailLine() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .weather(new Weather(15, 22, 1, null, "Soest, DE")).tales("Nice weather.").build());
+
+        String out = exporter.exportTrip(trip);
+        assertTrue(out.contains("🌤 15–22° partly cloudy"), out);
+        assertFalse(out.contains("a.s.l."), out);
+
+        String html = exporter.exportTripAsHtml(trip);
+        assertFalse(html.contains("<span class=\"fact-detail\">"), html);
     }
 
     @Test

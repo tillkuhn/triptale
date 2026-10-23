@@ -177,7 +177,10 @@ public class OpenMeteoClient {
         Double max = number(daily.path("temperature_2m_max"), index);
         Double code = number(daily.path("weather_code"), index);
         if (min == null || max == null || code == null) throw new WeatherException("Unreadable answer from Open-Meteo");
-        return new Weather((int) Math.round(min), (int) Math.round(max), (int) Math.round(code), null);
+        // Both the forecast and archive responses carry this at the root, free alongside the daily arrays (todo 72)
+        JsonNode elevationNode = root.path("elevation");
+        Integer elevation = elevationNode.isNumber() ? (int) Math.round(elevationNode.asDouble()) : null;
+        return new Weather((int) Math.round(min), (int) Math.round(max), (int) Math.round(code), elevation, null);
     }
 
     private JsonNode readTree(String body) {

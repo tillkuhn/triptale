@@ -283,14 +283,14 @@ class MarkdownStoreTest {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, ""));
         store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 4))
                 .startLat(51.478536).startLon(8.336688)
-                .weather(new Weather(15, 22, 1, "Soest, DE"))
+                .weather(new Weather(15, 22, 1, 320, "Soest, DE"))
                 .tales("Sunny day.")
                 .build());
 
         String raw = Files.readString(store.entryFile(ALPS_2025, LocalDate.of(2025, 7, 4)));
-        assertTrue(raw.contains("weather: \"15;22;1;Soest, DE\""), raw);
+        assertTrue(raw.contains("weather: \"15;22;1;320;Soest, DE\""), raw);
         DiaryEntry loaded = store.loadEntry(ALPS_2025, LocalDate.of(2025, 7, 4));
-        assertEquals(new Weather(15, 22, 1, "Soest, DE"), loaded.weather());
+        assertEquals(new Weather(15, 22, 1, 320, "Soest, DE"), loaded.weather());
     }
 
     @Test

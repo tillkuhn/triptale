@@ -71,6 +71,11 @@ public final class ExportTexts {
         return bundle.containsKey(key) ? bundle.getString(key) : bucket.key().replace('_', ' ');
     }
 
+    /** Whole meters with the {@code weather.elevation} unit, e.g. {@code "124 m a.s.l."} / {@code "124 m üNN"} (todo 72). */
+    public String elevation(int meters) {
+        return meters + " m " + word("weather.elevation");
+    }
+
     /** Full weekday name, e.g. "Donnerstag". */
     public String weekday(LocalDate date) {
         return date.format(DateTimeFormatter.ofPattern("EEEE", language.locale()));

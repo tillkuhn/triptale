@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 72
+## Next Todo: 73
 
 ## 71 Remember last GPX import folder across restarts
 
@@ -302,6 +302,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 72 Elevation alongside weather
+
+Open-Meteo's forecast/archive response already returns the point's elevation at the JSON
+root — free, no extra request. Captured on `domain.Weather`, shown as a muted line below
+the weather fact in exports (`"124 m a.s.l."` / German `"üNN"`), in the Coordinator's weather
+row tooltip, and in the toolbar weather tooltip. Breaking change to the packed
+`weather` frontmatter value (new `elevation` field inserted after `code`, before `place`);
+`scripts/migrate_weather_elevation.py` reformatted the real data dir's 32 legacy entries.
+
+[Details](docs/72_weather_elevation.md)
 
 ## DONE 69 Emoji Picker
 

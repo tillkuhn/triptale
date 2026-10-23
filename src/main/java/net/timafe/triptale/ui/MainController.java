@@ -1061,10 +1061,11 @@ public class MainController implements StatusSink {
         return WeatherCode.fromWmo(w.code()).emoji() + " " + w.tempMax() + "°";
     }
 
-    /** "🌞 15–22°C" (full range, min–max collapsed to one value when equal) for the tooltip. */
+    /** "🌞 15–22°C" (full range, min–max collapsed to one value when equal), with elevation appended when recorded (todo 72), for the tooltip. */
     private static String weatherTooltip(Weather w) {
         String range = w.tempMin() == w.tempMax() ? w.tempMin() + "°C" : w.tempMin() + "–" + w.tempMax() + "°C";
-        return WeatherCode.fromWmo(w.code()).emoji() + " " + range;
+        String base = WeatherCode.fromWmo(w.code()).emoji() + " " + range;
+        return w.elevation() == null ? base : base + " · " + w.elevation() + " m a.s.l.";
     }
 
     /** "Soest, DE (51°29′N 8°20′E)", "Soest, DE (no coordinates)", "51°29′N 8°20′E" or "not set". */
@@ -1452,7 +1453,7 @@ public class MainController implements StatusSink {
         DiaryEntry current = store.loadEntry(trip, date);
         if (current.weather() != null) return;
         Weather withPlace = place == null ? fetched
-                : new Weather(fetched.tempMin(), fetched.tempMax(), fetched.code(), place);
+                : new Weather(fetched.tempMin(), fetched.tempMax(), fetched.code(), fetched.elevation(), place);
         DiaryEntry updated = DiaryEntry.builder(date)
                 .activity(current.activity())
                 .distance(current.distance())

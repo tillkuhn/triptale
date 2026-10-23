@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OpenMeteoClientTest {
@@ -31,11 +32,29 @@ class OpenMeteoClientTest {
     @Test
     void parse_picksTheMatchingDateFromTheDailyArrays() {
         Weather w = parser.parse("""
-                {"daily":{"time":["2026-07-02","2026-07-03"],
+                {"elevation":123.0,"daily":{"time":["2026-07-02","2026-07-03"],
                            "temperature_2m_min":[10.4,15.1],
                            "temperature_2m_max":[18.6,22.9],
                            "weather_code":[3,61]}}""", LocalDate.of(2026, 7, 3));
-        assertEquals(new Weather(15, 23, 61, null), w);
+        assertEquals(new Weather(15, 23, 61, 123, null), w);
+    }
+
+    @Test
+    void parse_roundsElevationToWholeMeters() {
+        Weather w = parser.parse("""
+                {"elevation":123.6,"daily":{"time":["2026-07-03"],
+                           "temperature_2m_min":[10.0],"temperature_2m_max":[20.0],"weather_code":[0]}}""",
+                LocalDate.of(2026, 7, 3));
+        assertEquals(124, w.elevation());
+    }
+
+    @Test
+    void parse_missingElevationIsNull() {
+        Weather w = parser.parse("""
+                {"daily":{"time":["2026-07-03"],
+                           "temperature_2m_min":[10.0],"temperature_2m_max":[20.0],"weather_code":[0]}}""",
+                LocalDate.of(2026, 7, 3));
+        assertNull(w.elevation());
     }
 
     @Test
@@ -56,12 +75,12 @@ class OpenMeteoClientTest {
         List<String> agents = new CopyOnWriteArrayList<>();
         List<String> paths = new CopyOnWriteArrayList<>();
         URI base = serve(200, """
-                {"daily":{"time":["2026-07-03"],"temperature_2m_min":[15.4],
+                {"elevation":87.0,"daily":{"time":["2026-07-03"],"temperature_2m_min":[15.4],
                            "temperature_2m_max":[22.1],"weather_code":[1]}}""", agents, paths);
 
         Weather w = new OpenMeteoClient(base, "v1.2.3").forecast(51.478536, 8.336688, LocalDate.of(2026, 7, 3));
 
-        assertEquals(new Weather(15, 22, 1, null), w);
+        assertEquals(new Weather(15, 22, 1, 87, null), w);
         assertEquals("TripTale/v1.2.3 (+https://github.com/tillkuhn/triptale)", agents.getFirst());
         assertEquals("/v1/forecast?latitude=51.478536&longitude=8.336688&start_date=2026-07-03"
                 + "&end_date=2026-07-03&daily=weather_code,temperature_2m_min,temperature_2m_max&timezone=auto",
@@ -88,7 +107,7 @@ class OpenMeteoClientTest {
         Weather w = new OpenMeteoClient(forecastBase, archiveBase, "v1.2.3")
                 .archive(51.478536, 8.336688, LocalDate.of(2020, 1, 15));
 
-        assertEquals(new Weather(-2, 3, 71, null), w);
+        assertEquals(new Weather(-2, 3, 71, null, null), w);
         assertEquals("/v1/archive?latitude=51.478536&longitude=8.336688&start_date=2020-01-15"
                 + "&end_date=2020-01-15&daily=weather_code,temperature_2m_min,temperature_2m_max&timezone=auto",
                 paths.getFirst());
@@ -106,7 +125,7 @@ class OpenMeteoClientTest {
         Weather w = new OpenMeteoClient(forecastBase, archiveBase, "v1.2.3")
                 .fetch(1, 2, LocalDate.of(2026, 7, 3));
 
-        assertEquals(new Weather(10, 20, 0, null), w);
+        assertEquals(new Weather(10, 20, 0, null, null), w);
         assertEquals(1, forecastPaths.size());
     }
 
@@ -127,7 +146,7 @@ class OpenMeteoClientTest {
         Weather w = new OpenMeteoClient(forecastBase, archiveBase, "v1.2.3")
                 .fetch(1, 2, LocalDate.of(2020, 1, 15));
 
-        assertEquals(new Weather(-5, 2, 73, null), w);
+        assertEquals(new Weather(-5, 2, 73, null, null), w);
         assertEquals(1, archivePaths.size());
     }
 

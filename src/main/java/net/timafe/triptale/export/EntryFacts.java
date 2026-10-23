@@ -120,15 +120,19 @@ record EntryFacts(List<Item> items) {
         return Optional.of(new Item(emoji, null, value, note, null, inline));
     }
 
-    /** Min–max temperature (just one value when they're equal) and the WMO code's bucket label. */
+    /**
+     * Min–max temperature (just one value when they're equal), the WMO code's bucket label, and
+     * the elevation as a smaller {@code detail} line below, when recorded (todo 72).
+     */
     private static Optional<Item> weather(DiaryEntry e, ExportTexts texts) {
         Weather w = e.weather();
         if (w == null) return Optional.empty();
         String emoji = WeatherCode.fromWmo(w.code()).emoji();
         String value = w.tempMin() == w.tempMax() ? w.tempMin() + "°" : w.tempMin() + "–" + w.tempMax() + "°";
         String note = texts.weatherLabel(w.code());
-        String inline = emoji + " " + value + " " + note;
-        return Optional.of(new Item(emoji, null, value, note, null, inline));
+        String detail = w.elevation() == null ? null : texts.elevation(w.elevation());
+        String inline = emoji + " " + value + " " + note + (detail == null ? "" : " · " + detail);
+        return Optional.of(new Item(emoji, null, value, note, detail, inline));
     }
 
     /**

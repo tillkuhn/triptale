@@ -68,6 +68,11 @@ import java.util.function.Supplier;
  * picked condition loses the raw WMO code's finer granularity (e.g. "light drizzle" vs "moderate
  * drizzle") down to the bucket's representative code — harmless, since every display/export path
  * already only ever shows the bucket, never the raw code, regardless of source.
+ *
+ * <p>Elevation (todo 72) rides along on {@code Weather} but has no grid column of its own — the
+ * row is already tight on space — so it isn't directly user-editable: it's whatever the last
+ * fetch returned (carried through 🔄, preserved across edits to the other fields, cleared by
+ * 🗑), surfaced as a tooltip on the "🌦️ Weather:" label when present.
  */
 public final class CoordinatesDialog {
 
@@ -190,6 +195,12 @@ public final class CoordinatesDialog {
         final Button open = new Button("🔗");
         final Button clearButton = new Button("🗑");
         boolean busy;
+        /**
+         * Meters above sea level (todo 72), carried through from the last fetch — not directly
+         * user-editable (no spare grid column for it; see the class doc), preserved across manual
+         * edits to the other fields, surfaced as a tooltip (see {@link #showAndWait}).
+         */
+        Integer elevation;
 
         WeatherRow(Weather initial, ExportTexts texts) {
             min.setPrefColumnCount(TEMP_COLUMNS);
@@ -225,6 +236,7 @@ public final class CoordinatesDialog {
             max.setText(w == null ? "" : formatTemp(w.tempMax()));
             condition.setValue(w == null ? null : WeatherCode.fromWmo(w.code()));
             place.setText(w == null || w.place() == null ? "" : w.place());
+            elevation = w == null ? null : w.elevation();
         }
 
         void clear() { set(null); }
@@ -292,7 +304,7 @@ public final class CoordinatesDialog {
         Weather value() {
             if (!complete()) return null;
             String p = place.getText().isBlank() ? null : place.getText().trim();
-            return new Weather(minValue(), maxValue(), condition.getValue().wmoCode(), p);
+            return new Weather(minValue(), maxValue(), condition.getValue().wmoCode(), elevation, p);
         }
     }
 
@@ -349,7 +361,8 @@ public final class CoordinatesDialog {
                 String error = null;
                 try {
                     Weather result = weatherClient.fetch(point.lat(), point.lon(), date);
-                    fetched = place == null ? result : new Weather(result.tempMin(), result.tempMax(), result.code(), place);
+                    fetched = place == null ? result
+                            : new Weather(result.tempMin(), result.tempMax(), result.code(), result.elevation(), place);
                 } catch (RuntimeException ex) {
                     error = ex instanceof OpenMeteoClient.WeatherException ? ex.getMessage() : UiText.describe(ex);
                 }
@@ -385,7 +398,8 @@ public final class CoordinatesDialog {
         // Same icons as the main window's coordinates button ("📍 ✓  🏁 –").
         addRow(grid, 1, "📍", "Start", start);
         addRow(grid, 2, "🏁", "End", stop);
-        grid.addRow(3, new Label("🌦️ Weather:"), weatherRow.minBox, weatherRow.maxBox, weatherRow.condition,
+        Label weatherRowLabel = new Label("🌦️ Weather:");
+        grid.addRow(3, weatherRowLabel, weatherRow.minBox, weatherRow.maxBox, weatherRow.condition,
                 weatherRow.place, weatherRow.update, weatherRow.open, weatherRow.clearButton);
         grid.add(new Label("Parse from:"), 0, 4);
         grid.add(parseArea, 1, 4, 7, 1);
@@ -449,6 +463,8 @@ public final class CoordinatesDialog {
             for (Node n : new Node[] {weatherRow.min, weatherRow.max, weatherRow.condition, weatherRow.place}) {
                 n.setDisable(weatherRow.busy);
             }
+            weatherRowLabel.setTooltip(weatherRow.elevation == null ? null
+                    : new Tooltip(weatherTexts.elevation(weatherRow.elevation)));
             if (problem == null) problem = weatherRow.problem();
 
             hintLabel.setText(problem == null ? "" : problem);

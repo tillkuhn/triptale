@@ -86,6 +86,13 @@ class ExportTextsTest {
     }
 
     @Test
+    void elevation() {
+        assertEquals("124 m a.s.l.", en.elevation(124));
+        assertEquals("124 m üNN", de.elevation(124));
+        assertEquals("-430 m a.s.l.", en.elevation(-430));
+    }
+
+    @Test
     void longDates() {
         assertEquals("July 23rd 2026", en.longDate(JULY_23));
         assertEquals("23. Juli 2026", de.longDate(JULY_23));
