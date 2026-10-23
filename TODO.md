@@ -2,43 +2,6 @@
 
 ## Next Todo: 73
 
-## 71 Remember last GPX import folder across restarts
-
-`onImportGpx` (`MainController`) and `NewTripDialog`'s "Import GPX…" button always opened
-the system default folder. Persist the last-used folder in `.state.yml` (same machine-local,
-gitignored pattern as `lastTripPath`/`lastEntryDate`) via
-`MarkdownStore.saveLastGpxFolder`/`loadLastGpxFolder`, set as the chooser's
-`initialDirectory` next time, remembered right after a file is picked (even if the import
-dialog is later cancelled) — the GPX export folder is normally stable per device.
-
-## 70 Derive activity from a GPX track's Komoot `<type>`
-
-Komoot-exported GPX files carry an optional `<type>` under `<trk>` (`hike`,
-`touring_bicycle`, `mtb`/`mtb_easy`/`mtb_advanced`, `mountaineering`, `snowboard`, ...).
-`GpxImportDialog` should offer to set `activity` from it, same pattern as the other
-derived fields (row omitted when there's no mapping).
-
-[Details](docs/70_gpx_import_activity_from_type.md)
-
-## 68 Mobile inbox: capture on the phone, organize later in TripTale
-
-Push a quick text thought from Android into an inbox, picked up by TripTale next launch and
-attached to the day it belongs to (or a different entry). Must not require the family to
-install any new app — whatever they already have (Telegram, Signal, WhatsApp, Google stuff)
-is the only acceptable capture surface.
-
-- **Try Telegram first**: official Bot API, plain long-polling (`getUpdates`) over
-  `java.net.http`, no public endpoint, no native dependency — cheapest to spike by far.
-  WhatsApp (official Cloud API, webhook-only, dev-mode 5-tester cap) and Signal (`signal-cli`,
-  unofficial but mature, needs a native libsignal daemon) remain open fallbacks if the spike
-  doesn't pan out.
-- v1 is **text only** — coordinates and photos are fast-follows once the basic
-  inbox-folder + pending-items dialog loop is proven out.
-- New `inbox` package (no JavaFX, same boundary rule as `sync`/`storage`); pending items surface
-  in a new `ui/dialog/InboxDialog` following the `SmartSyncDialog`/`SyncRow` pattern.
-
-[Details](docs/68_mobile_inbox.md)
-
 ## 67 Private images
 
 Mark individual backpack images as private so they're kept but never exported — a per-day
@@ -54,25 +17,6 @@ dot-prefixed (CLOUD-mode sync drops dotfiles silently, see `sync.BucketSyncer.is
   "Save the Day" — it's filesystem state, not frontmatter).
 
 [Details](docs/adr/0005-private-images.md)
-
-## 66 Per-field GPX import matrix
-
-Todo 24's `onImportGpx` confirmation is all-or-nothing: overwriting an existing entry means
-every derived field (title, start/stop coords, distance, altitude) gets clobbered at once, with
-no way to keep just the frontmatter the user already edited by hand. Replace the single
-YES/NO `Alert` with a matrix dialog — one row per field, each showing old value → new value with
-its own "overwrite" checkbox, defaulting checked only when the old value is empty/unset.
-
-- New `ui/dialog/GpxImportDialog.java`: rows for title, start coords, stop coords, distance,
-  altitude (omitted if the GPX has no altitude data), plus a "copy GPX to attachments" row
-  (always defaults checked).
-- Shown on every import, not just when an entry already exists — old values come from
-  `store.loadEntry(trip.ref(), parsed.date())` (disk state, not the live form).
-- Cancel aborts completely (no navigation, no field changes, no attachment copy — same as
-  today's "No"). OK navigates via `datePicker.setValue(...)` (unconditional, same as today) then
-  overlays only the checked fields on top of whatever `loadEntry()` populated.
-
-[Details](docs/66_gpx_import_field_matrix.md)
 
 ## 63 WordPress Post leftovers: delete Posts in-app, slug style
 
@@ -143,17 +87,6 @@ both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay 
 - New "🔒 Add Private Section" menu item appends `## Internal` + placeholder at the end.
 
 [Details](docs/48_private_sections.md)
-
-## 47 Impressions / exporter refactor: images as attachments
-
-Impressions come from a selectable source (Local Photo Lib / Trip Attachments / Pick Folder),
-reduced by `impressionsBaseFilter` and optionally `impressionsFaveFilter` (filename globs).
-The viewer imports selected images into the day's attachments; the Faves button is gone. Export
-gets a From/To entry range, an image source + "Faves only", and a per-entry "⇧ Export Tale".
-Status: implemented on `feature/47-impressions-refactor`, pending visual review. Deferred:
-resize on import, public URLs (todo 44), bulk import of a whole trip (todo 49).
-
-[Details](docs/47_impressions_attachments_refactor.md)
 
 ## 46 Radio: play favorite tracks from a radio/ pool
 
@@ -313,6 +246,48 @@ row tooltip, and in the toolbar weather tooltip. Breaking change to the packed
 `scripts/migrate_weather_elevation.py` reformatted the real data dir's 32 legacy entries.
 
 [Details](docs/72_weather_elevation.md)
+
+## DONE 68 Mobile inbox: capture on the phone, organize later in TripTale
+
+v1, text only: Telegram Bot API long-polling (`inbox.TelegramInboxClient`) picks up messages
+into a local inbox folder (`inbox.InboxDir`/`InboxItem`/`InboxNotes`), reviewed via
+`ui/dialog/InboxDialog` (attach to an entry or discard) from a new "Check Inbox" action.
+Coordinates/photos remain a fast-follow, not part of this cut.
+
+[Details](docs/68_mobile_inbox.md)
+
+## DONE 71 Remember last GPX import folder across restarts
+
+`MarkdownStore.saveLastGpxFolder`/`loadLastGpxFolder` persist the last-used folder in
+`.state.yml`; both `MainController.onImportGpx` and `NewTripDialog`'s "Import GPX…" set it as
+the chooser's `initialDirectory` and save it right after a file is picked.
+
+## DONE 70 Derive activity from a GPX track's Komoot `<type>`
+
+`GpxImport.activityFromKomootType` maps Komoot's `<trk><type>` to a `domain.Activity`
+(including a new `SNOWRIDING` for `snowboard`), surfaced as an Activity row in
+`GpxImportDialog` (omitted when there's no mapping).
+
+[Details](docs/70_gpx_import_activity_from_type.md)
+
+## DONE 66 Per-field GPX import matrix
+
+`ui/dialog/GpxImportDialog` replaced the all-or-nothing confirmation: one row per field
+(title, start/stop coords, distance, altitude, activity), each with its own overwrite
+checkbox, old values always read from disk via `store.loadEntry`.
+
+[Details](docs/66_gpx_import_field_matrix.md)
+
+## DONE 47 Impressions / exporter refactor: images as attachments
+
+Impressions come from a selectable source (Local Photo Lib / Trip Attachments / Pick Folder),
+reduced by `impressionsBaseFilter` and optionally `impressionsFaveFilter` (filename globs).
+The viewer imports selected images into the day's attachments; the Faves button is gone. Export
+gets a From/To entry range, an image source + "Faves only", and a per-entry "⇧ Export Tale".
+`feature/47-impressions-refactor` is merged into `main`. Deferred: resize on import, public
+URLs (`DONE 44`), bulk import of a whole trip (todo 49).
+
+[Details](docs/47_impressions_attachments_refactor.md)
 
 ## DONE 69 Emoji Picker
 
