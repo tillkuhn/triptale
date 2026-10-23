@@ -70,20 +70,43 @@ else is a fast-follow once the basic loop is proven out.
    JSON (Jackson, already a dependency), and prints incoming text messages with their timestamp
    and chat ID.
 3. If that round-trip feels as trivial as it looks on paper, promote it into a real `inbox`
-   package (no JavaFX imports, same boundary rule as `sync`/`storage`):
-   - `inbox.TelegramInboxClient` — polls `getUpdates`, tracks the last-seen `update_id` (persist
-     it somewhere small, e.g. alongside `.state.yml`, so a restart doesn't re-fetch history),
-     writes each new text message as a file into a new `<dataDir>/inbox/` folder (gitignored,
-     like `attachments/`), named by timestamp.
-   - A pending-items dialog (`ui/dialog/InboxDialog`, following the `SmartSyncDialog`/`SyncRow`
-     pattern) lists files in `inbox/`, each defaulting to "attach to the day matching its
-     timestamp" with an override to pick a different date/entry, and a per-item
-     accept/dismiss action. Confirms via the existing `Dialogs.addSaveDayButtons` idiom and
-     calls `saveTheDayIfPossible()` on accept, consistent with every other frontmatter-editing
-     dialog.
-   - Where an accepted note lands in the entry (its own frontmatter key vs. appended to the
-     body) is an open question for the real implementation — resolve it when this is promoted,
-     not in the spike.
+   package per the MVP decisions below.
+
+## MVP decisions (first real build)
+
+Trimmed further than the spike plan above so there's something to actually test on-trip, not
+just a design that's complete on paper. Deliberately skips the `SmartSyncDialog`/`SyncRow`
+polish and the frontmatter-key question below — both are fast-follows once the basic loop has
+proven itself over a few real days of use.
+
+- **Settings** — `telegramBotToken` / `telegramChatId` on `AppSettings` (blank = feature off,
+  same "optional until filled in" pattern as the WordPress fields), surfaced in Edit Settings.
+  Single chat ID only; messages from any other chat are ignored (logged, not surfaced as an
+  error) — no multi-sender allowlist in v1.
+- **Offset persistence** — one new field (`lastTelegramUpdateId` or similar) next to
+  `lastTripPath`/`lastEntryDate` in `.state.yml`, loaded/saved via `MarkdownStore`, so a restart
+  doesn't re-fetch history.
+- **`inbox.TelegramInboxClient`** (no JavaFX, same boundary rule as `sync`/`storage`) — a single
+  `poll()` call hits `getUpdates?offset=...` once via `java.net.http` + Jackson (no background
+  thread, no timer), filters to the configured chat ID, and writes each new text message as a
+  timestamped file into `<dataDir>/inbox/` (gitignored, like `attachments/`).
+- **Trigger: manual only.** A "📥 Check Inbox" menu/toolbar action runs `poll()` on a daemon
+  thread (`Task`, same shape as `ConnectivityService.checkTask`) when the user asks for it — no
+  auto-check on launch, no `init()`/`start()` sequencing to get right. The inbox is simply stale
+  until the user clicks, same tolerance as git fetch/pull today.
+- **`ui/dialog/InboxDialog`** — a plain `ListView` over files in `inbox/`, one shared date picker
+  defaulted from the selected item's timestamp, and two per-item actions: **Attach** (appends
+  the text under a `## Inbox` heading at the end of that day's body, then
+  `saveTheDayIfPossible()`) or **Discard**. This already *is* the "separate inbox to pick and
+  distribute from" — no extra staging layer needed on top.
+- **Processed files are moved, not deleted**, for both actions (`inbox/processed/`,
+  `inbox/discarded/` or similar) until the loop has proven itself in practice — cheap insurance
+  against a wrong attach or a dialog bug losing a message during initial real-world testing.
+  Revisit (actually delete) once the feature is trusted.
+- **Landing spot is appended body text, not a frontmatter key** for v1 — simplest to implement,
+  visible and editable like any other tale content, survives exports unless wrapped in a
+  private section (todo 48). A structured frontmatter field remains a real option for a later
+  iteration once it's clear what shape repeated use actually wants.
 
 ## Non-goals (v1)
 

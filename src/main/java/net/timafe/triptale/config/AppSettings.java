@@ -38,6 +38,8 @@ public class AppSettings {
     private boolean radioEnabled = false;
     private String defaultTripLanguage = "en";
     private WordPress wordPress = new WordPress();
+    private String telegramBotToken = "";
+    private String telegramChatId = "";
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -82,6 +84,12 @@ public class AppSettings {
     public void setDefaultTripLanguage(String defaultTripLanguage) { this.defaultTripLanguage = defaultTripLanguage == null ? "" : defaultTripLanguage; }
     public WordPress getWordPress() { return wordPress; }
     public void setWordPress(WordPress wordPress) { this.wordPress = wordPress == null ? new WordPress() : wordPress; }
+    /** Bot token from @BotFather for the mobile inbox (todo 68); blank = feature off. */
+    public String getTelegramBotToken() { return telegramBotToken; }
+    public void setTelegramBotToken(String telegramBotToken) { this.telegramBotToken = telegramBotToken == null ? "" : telegramBotToken; }
+    /** The single chat ID the inbox accepts messages from (todo 68); blank = feature off. */
+    public String getTelegramChatId() { return telegramChatId; }
+    public void setTelegramChatId(String telegramChatId) { this.telegramChatId = telegramChatId == null ? "" : telegramChatId; }
 
     public static class Git {
         private String authorName = "";

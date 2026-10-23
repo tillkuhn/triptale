@@ -361,6 +361,7 @@ public class MarkdownStore {
     private static final String STATE_LAST_TRIP_KEY = "lastTripPath";
     private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_LAST_GPX_FOLDER_KEY = "lastGpxFolder";
+    private static final String STATE_TELEGRAM_OFFSET_KEY = "telegramOffset";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
             "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
@@ -445,6 +446,22 @@ public class MarkdownStore {
             return Files.isDirectory(folder) ? Optional.of(folder) : Optional.empty();
         } catch (RuntimeException e) {
             log.warn("Ignoring malformed {}: '{}'", STATE_LAST_GPX_FOLDER_KEY, raw);
+            return Optional.empty();
+        }
+    }
+
+    /** The next Telegram {@code getUpdates} offset to request (todo 68), so a restart doesn't re-fetch history. */
+    public void saveTelegramOffset(long offset) {
+        saveState(STATE_TELEGRAM_OFFSET_KEY, offset);
+    }
+
+    public Optional<Long> loadTelegramOffset() {
+        String raw = asString(loadState().get(STATE_TELEGRAM_OFFSET_KEY));
+        if (raw == null) return Optional.empty();
+        try {
+            return Optional.of(Long.parseLong(raw));
+        } catch (NumberFormatException e) {
+            log.warn("Ignoring malformed {}: '{}'", STATE_TELEGRAM_OFFSET_KEY, raw);
             return Optional.empty();
         }
     }

@@ -34,6 +34,10 @@ import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
+import net.timafe.triptale.inbox.InboxDir;
+import net.timafe.triptale.inbox.InboxItem;
+import net.timafe.triptale.inbox.InboxNotes;
+import net.timafe.triptale.inbox.TelegramInboxClient;
 import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.PlaceLookup;
 import net.timafe.triptale.config.AppSettings;
@@ -61,6 +65,7 @@ import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
+import net.timafe.triptale.ui.dialog.InboxDialog;
 import net.timafe.triptale.ui.dialog.LinksDialog;
 import net.timafe.triptale.ui.dialog.MapAssistantDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
@@ -163,6 +168,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
     @FXML private MenuItem importGpxMenuItem;
+    @FXML private MenuItem inboxMenuItem;
     @FXML private MenuItem firstDayMenuItem;
     @FXML private MenuItem prevDayMenuItem;
     @FXML private MenuItem nextDayMenuItem;
@@ -252,6 +258,8 @@ public class MainController implements StatusSink {
     private final String appName;
     private final AttachmentsDir attachmentsDir;
     private boolean transferringAttachments;
+    private final InboxDir inboxDir;
+    private final TelegramInboxClient telegramInboxClient;
     private final RadioLibrary radioLibrary;
     /** Read once at startup from settings; toggling the setting needs a restart (todo 46). */
     private boolean radioEnabled;
@@ -288,6 +296,7 @@ public class MainController implements StatusSink {
                           ConnectivityService connectivityService,
                           ExportTempFiles exportTempFiles,
                           AttachmentsDir attachmentsDir,
+                          InboxDir inboxDir,
                           RadioLibrary radioLibrary,
                           TripTaleProperties tripTaleProperties,
                           ObjectProvider<BuildProperties> buildPropertiesProvider,
@@ -299,6 +308,8 @@ public class MainController implements StatusSink {
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
         this.attachmentsDir = attachmentsDir;
+        this.inboxDir = inboxDir;
+        this.telegramInboxClient = new TelegramInboxClient(settingsStore, inboxDir);
         this.radioLibrary = radioLibrary;
         this.appName = tripTaleProperties.getAppName();
         this.browser = new BrowserLauncher(hostServicesProvider.getIfAvailable());
@@ -761,6 +772,73 @@ public class MainController implements StatusSink {
         status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus);
     }
 
+    @FXML
+    public void onCheckInbox() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+        if (!telegramInboxClient.configured()) {
+            error("Configure a Telegram bot token and chat ID in Edit Settings first");
+            return;
+        }
+        long offset = store.loadTelegramOffset().orElse(0L);
+        status("Checking inbox…");
+        Task<TelegramInboxClient.PollResult> task = new Task<>() {
+            @Override protected TelegramInboxClient.PollResult call() {
+                return telegramInboxClient.poll(offset);
+            }
+        };
+        task.setOnSucceeded(e -> {
+            TelegramInboxClient.PollResult result = task.getValue();
+            store.saveTelegramOffset(result.newOffset());
+            status(result.newItems() == 0 ? "No new inbox items" : result.newItems() + " new inbox item(s)");
+            openInboxDialog();
+        });
+        task.setOnFailed(e -> {
+            error("Inbox check failed: " + UiText.describe(task.getException()));
+            openInboxDialog();
+        });
+        Thread thread = new Thread(task, "inbox-check");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void openInboxDialog() {
+        List<InboxItem> items = inboxDir.listPending();
+        new InboxDialog().show(items, this::handleInboxItem);
+    }
+
+    /**
+     * Attaches or discards one captured inbox item (todo 68). Attach navigates the main window
+     * to the chosen date (the existing {@code datePicker} listener guards unsaved edits and
+     * loads the entry, same as a manual date change), appends the note under the entry's shared
+     * "## Inbox" heading, and saves immediately so the file can be safely moved out of the way.
+     */
+    private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date) {
+        if (action == InboxDialog.Action.DISCARD) {
+            inboxDir.markDiscarded(item.file());
+            return true;
+        }
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return false; }
+        if (date == null) { error("Pick a date first"); return false; }
+        if ((trip.startDate() != null && date.isBefore(trip.startDate()))
+                || (trip.endDate() != null && date.isAfter(trip.endDate()))) {
+            error(date + " is outside " + trip.ref().path() + "'s date range — switch trips first");
+            return false;
+        }
+        if (!date.equals(datePicker.getValue())) {
+            datePicker.setValue(date);
+            if (!date.equals(datePicker.getValue())) return false; // user cancelled the navigation prompt
+        }
+        talesArea.setText(InboxNotes.append(talesArea.getText(), item.text()));
+        updateDirty();
+        if (!saveTheDayIfPossible()) {
+            error("Attached to the form but couldn't save automatically (needs a title) — save manually, then run Check Inbox again");
+            return false;
+        }
+        inboxDir.markProcessed(item.file());
+        return true;
+    }
 
     @FXML
     public void onFirstDay() {
@@ -867,6 +945,7 @@ public class MainController implements StatusSink {
         LocalDate date = datePicker.getValue();
         updateTourDay(trip, date);
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
+        if (inboxMenuItem != null) inboxMenuItem.setDisable(trip == null);
         if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
         if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
