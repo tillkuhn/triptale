@@ -104,6 +104,13 @@ public final class EditSettingsDialog {
         publicBaseUrlField.setPrefColumnCount(36);
         CheckBox radioEnabledCheck = new CheckBox("Enable " + Station.NAME + " radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
+        PasswordField telegramBotTokenField = new PasswordField();
+        telegramBotTokenField.setText(settings.getTelegramBotToken());
+        telegramBotTokenField.setPromptText("from @BotFather, e.g. 123456789:ABCdef…");
+        telegramBotTokenField.setPrefColumnCount(36);
+        TextField telegramChatIdField = new TextField(settings.getTelegramChatId());
+        telegramChatIdField.setPromptText("from a getUpdates call, e.g. 123456789");
+        telegramChatIdField.setPrefColumnCount(20);
         AppSettings.WordPress wordPress = settings.getWordPress();
         TextField wpSiteField = new TextField(wordPress.getSite());
         wpSiteField.setPromptText("e.g. timafe.wordpress.com");
@@ -186,7 +193,18 @@ public final class EditSettingsDialog {
         wordpress.add(new HBox(8, wpConnectButton, wpTokenStatus), 1, row);
         Tab wordpressTab = tab("WordPress", wordpress);
 
-        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab, wordpressTab);
+        GridPane inbox = Dialogs.formGrid();
+        row = 0;
+        inbox.add(new Label("Bot token:"), 0, row);
+        inbox.add(telegramBotTokenField, 1, row++);
+        inbox.add(new Label("Chat ID:"), 0, row);
+        inbox.add(telegramChatIdField, 1, row++);
+        Label inboxHint = new Label("From @BotFather + a getUpdates call (see docs/68_mobile_inbox.md) — blank disables the feature");
+        inboxHint.getStyleClass().add("hint-label");
+        inbox.add(inboxHint, 1, row);
+        Tab inboxTab = tab("Mobile Inbox", inbox);
+
+        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab, wordpressTab, inboxTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
 
@@ -275,6 +293,8 @@ public final class EditSettingsDialog {
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
         settings.setWordPress(readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0]));
+        settings.setTelegramBotToken(telegramBotTokenField.getText().trim());
+        settings.setTelegramChatId(telegramChatIdField.getText().trim());
         return Optional.of(settings);
     }
 
