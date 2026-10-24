@@ -1,5 +1,6 @@
 package net.timafe.triptale.inbox;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.timafe.triptale.config.AppSettings;
@@ -22,10 +23,14 @@ import java.time.ZoneId;
  * Polls the Telegram Bot API's {@code getUpdates} once per call (todo 68, MVP) — no persistent
  * background thread or webhook, matching "TripTale is not meant to run as an app" (the inbox is
  * simply stale until the user checks). Text messages from the single configured chat are written
- * as files into {@code <dataDir>/inbox/} via {@link InboxDir}; every other update (photos, other
- * chats, non-text messages, {@code timeout=0} so the call never blocks waiting for new traffic)
- * is just skipped, but still advances the offset so it's never re-fetched. No JavaFX imports
- * (package boundary rule).
+ * as files into {@code <dataDir>/inbox/} via {@link InboxDir}, each with a same-stem {@code .json}
+ * sidecar holding the raw Telegram {@code update} (todo 73 — debugging and designing future data
+ * extraction, never parsed back by TripTale itself). Non-text updates from the configured chat
+ * (photos, locations, …) don't become pending items yet, but their raw payload is still captured
+ * into {@code inbox/raw/} for the same reason. Every other update (edited_message, channel_post,
+ * other chats, {@code timeout=0} so the call never blocks waiting for new traffic) is just
+ * skipped, but still advances the offset so it's never re-fetched. No JavaFX imports (package
+ * boundary rule).
  *
  * <p>Bot token and chat ID are re-read from settings on every call (not cached at construction),
  * same pattern as {@code ui.MapboxService}/the impressions settings — an Edit Settings change
@@ -111,8 +116,6 @@ public class TelegramInboxClient {
 
             JsonNode message = update.path("message");
             if (message.isMissingNode()) continue; // edited_message, channel_post, ... — ignored in v1
-            String text = message.path("text").asText(null);
-            if (text == null || text.isBlank()) continue; // photos/locations — fast-follow, not v1
             String msgChatId = message.path("chat").path("id").asText(null);
             if (msgChatId == null || !msgChatId.equals(chatId.trim())) {
                 log.debug("Ignoring inbox message from unconfigured chat {}", msgChatId);
@@ -120,10 +123,27 @@ public class TelegramInboxClient {
             }
             LocalDateTime timestamp = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(message.path("date").asLong()), ZoneId.systemDefault());
-            inboxDir.writeItem(timestamp, text);
+            String text = message.path("text").asText(null);
+            if (text == null || text.isBlank()) {
+                // photos/locations/… — not a pending item yet (fast-follow, not v1), but the raw
+                // payload is still captured (todo 73) to design that fast-follow from real samples.
+                inboxDir.writeRawCapture(timestamp, updateId, prettyJson(update));
+                continue;
+            }
+            inboxDir.writeItem(timestamp, text, prettyJson(update));
             newItems++;
         }
         log.info("Telegram inbox poll: {} new item(s), offset {} -> {}", newItems, offset, newOffset);
         return new PollResult(newOffset, newItems);
+    }
+
+    /** Pretty-prints a raw update for the {@code .json} sidecar/raw capture (todo 73); best-effort — a failure here must not break the poll. */
+    private String prettyJson(JsonNode node) {
+        try {
+            return json.writerWithDefaultPrettyPrinter().writeValueAsString(node);
+        } catch (JsonProcessingException e) {
+            log.debug("Could not pretty-print raw inbox payload", e);
+            return null;
+        }
     }
 }

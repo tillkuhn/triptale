@@ -15,10 +15,15 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * The data dir's {@code inbox/} folder (todo 68): one flat folder of timestamped {@code .txt}
- * files, each one captured message waiting to be attached to an entry or discarded. Always
- * local — unlike {@code attachments/}, there is no sync mode choice; the folder is gitignored
- * unconditionally, same spirit as {@code .state.yml}. No JavaFX imports (package boundary rule).
+ * The data dir's {@code inbox/} folder (todo 68, raw payload capture todo 73): one flat folder of
+ * timestamped {@code .txt} files, each one captured message waiting to be attached to an entry or
+ * discarded, plus an optional same-stem {@code .json} sidecar with the raw Telegram payload the
+ * message came from (debugging/future data-extraction, never read by {@link InboxItem}/the Inbox
+ * dialog). {@code raw/} holds payloads for updates that never became a pending item at all
+ * (photos, locations, …) — same purpose, just for content v1 doesn't parse yet. Always local —
+ * unlike {@code attachments/}, there is no sync mode choice; the whole folder (including both
+ * subfolders) is gitignored unconditionally, same spirit as {@code .state.yml}. No JavaFX imports
+ * (package boundary rule).
  */
 @Component
 public class InboxDir {
@@ -26,6 +31,7 @@ public class InboxDir {
     public static final String DIR_NAME = "inbox";
     private static final String PROCESSED_DIR = "processed";
     private static final String DISCARDED_DIR = "discarded";
+    private static final String RAW_DIR = "raw";
     private static final String GITIGNORE = """
             # Managed by TripTale: mobile inbox capture is always local, never synced
             *
@@ -42,8 +48,13 @@ public class InboxDir {
         return store.dataDir().resolve(DIR_NAME);
     }
 
-    /** Writes one message as a timestamped file (created on demand); a same-second collision gets a numeric suffix. */
-    public Path writeItem(LocalDateTime timestamp, String text) {
+    /**
+     * Writes one message as a timestamped file (created on demand); a same-second collision gets
+     * a numeric suffix. If {@code rawJson} is non-blank, it's written alongside as a same-stem
+     * {@code .json} sidecar (todo 73) — the raw Telegram payload the message came from, kept
+     * purely for debugging/future data-extraction and never read back by {@link InboxItem}.
+     */
+    public Path writeItem(LocalDateTime timestamp, String text, String rawJson) {
         ensureGitignore();
         Path dir = root();
         String stem = InboxItem.FILE_STAMP.format(timestamp);
@@ -54,9 +65,31 @@ public class InboxDir {
         }
         try {
             Files.writeString(file, text);
+            if (rawJson != null && !rawJson.isBlank()) {
+                Files.writeString(sidecar(file), rawJson);
+            }
             return file;
         } catch (IOException e) {
             throw new StorageException("Could not write inbox item to " + file, e);
+        }
+    }
+
+    /**
+     * Raw payload for an update that never became a pending item (todo 73) — non-text content
+     * (photos, locations, …) from the configured chat that v1 doesn't parse yet. Written into
+     * {@code inbox/raw/}, named by timestamp + Telegram's {@code update_id} (several such updates
+     * can share a second), never surfaced in {@link #listPending()} or the Inbox dialog. Kept
+     * only so those fast-follows can be designed against real samples instead of guesswork.
+     */
+    public void writeRawCapture(LocalDateTime timestamp, long updateId, String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) return;
+        Path dir = root().resolve(RAW_DIR);
+        Path file = dir.resolve(InboxItem.FILE_STAMP.format(timestamp) + "-" + updateId + ".json");
+        try {
+            Files.createDirectories(dir);
+            Files.writeString(file, rawJson);
+        } catch (IOException e) {
+            throw new StorageException("Could not write raw inbox capture to " + file, e);
         }
     }
 
@@ -91,9 +124,19 @@ public class InboxDir {
         try {
             Files.createDirectories(targetDir);
             Files.move(file, targetDir.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            Path sidecar = sidecar(file);
+            if (Files.exists(sidecar)) {
+                Files.move(sidecar, targetDir.resolve(sidecar.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new StorageException("Could not move " + file + " to " + targetDir, e);
         }
+    }
+
+    /** The same-stem {@code .json} raw-payload sidecar for a {@code .txt} inbox item, if any (todo 73). */
+    private Path sidecar(Path txtFile) {
+        String name = txtFile.getFileName().toString().replaceFirst("\\.txt$", ".json");
+        return txtFile.resolveSibling(name);
     }
 
     private void ensureGitignore() {

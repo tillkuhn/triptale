@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 73
+## Next Todo: 74
 
 ## 67 Private images
 
@@ -235,6 +235,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 73 Mobile inbox: capture the raw Telegram payload too
+
+`TelegramInboxClient` only ever extracted `text` from a Telegram update, discarding everything
+else — no way to debug a failed capture, and no real samples to design the photo/location
+fast-follows from (todo 68). Each pending item now gets a same-stem `.json` sidecar with the raw
+Telegram `update` (`InboxDir.writeItem`); non-text updates from the configured chat (photos,
+locations, …) don't become pending items yet but are captured into `inbox/raw/` for the same
+reason (`InboxDir.writeRawCapture`). Sidecars travel with their `.txt` on Attach/Discard.
+
+[Details](docs/68_mobile_inbox.md)
 
 ## DONE 72 Elevation alongside weather
 

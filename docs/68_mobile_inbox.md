@@ -116,3 +116,33 @@ proven itself over a few real days of use.
   fails.
 - Webhooks/always-on server — polling only, matching "TripTale is not meant to run as an app";
   the inbox is simply stale between launches, same tolerance as git fetch/pull today.
+
+## Todo 73 — raw payload capture
+
+v1 kept only `text` from a Telegram update; nothing else (sender, message id, and — crucially —
+the full shape of non-text updates like photos/locations) survived `poll()`. That made it
+impossible to debug a failed capture after the fact, and impossible to design the photo/location
+fast-follows above against real data instead of guessing Telegram's JSON shape from docs.
+
+Options considered: (A) a same-stem `.json` sidecar next to the `.txt` for items that already
+become pending; (B) replacing `.txt` with `.json` as the primary format; (C) also capturing raw
+JSON for updates that don't become pending items at all (non-text content from the configured
+chat, currently silently dropped before anything is written).
+
+**Decision: A + C**, least invasive to the working Attach/Discard flow (`InboxItem`/`InboxDialog`
+untouched; `listPending()` already globs `*.txt` only, so sidecars are naturally invisible) while
+still covering both the debugging and the "explore future data" goals:
+
+- `InboxDir.writeItem(timestamp, text, rawJson)` writes the raw Telegram `update` node as a
+  same-stem `.json` sidecar next to the `.txt`, pretty-printed, best-effort (never fails the
+  poll if serialization breaks).
+- `InboxDir.writeRawCapture(timestamp, updateId, rawJson)` captures non-text updates from the
+  *configured chat only* (photos, locations, …) into `inbox/raw/`, named by timestamp +
+  Telegram's `update_id` (several can share a second). Updates from other chats, or non-`message`
+  updates (`edited_message`/`channel_post`), are still just skipped — not relevant, and
+  potentially other people's unrelated chat content.
+- `InboxDir.markProcessed`/`markDiscarded` move the sidecar along with its `.txt` so the raw
+  payload a message was attached/discarded from stays correlated with its outcome.
+- `inbox/raw/` is covered by the same unconditional `inbox/*` gitignore as everything else —
+  no separate retention policy yet; revisit once it's clear how much accumulates in practice.
+
