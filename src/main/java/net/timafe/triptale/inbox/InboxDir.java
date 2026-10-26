@@ -15,15 +15,16 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * The data dir's {@code inbox/} folder (todo 68, raw payload capture todo 73): one flat folder of
- * timestamped {@code .txt} files, each one captured message waiting to be attached to an entry or
- * discarded, plus an optional same-stem {@code .json} sidecar with the raw Telegram payload the
- * message came from (debugging/future data-extraction, never read by {@link InboxItem}/the Inbox
- * dialog). {@code raw/} holds payloads for updates that never became a pending item at all
- * (photos, locations, …) — same purpose, just for content v1 doesn't parse yet. Always local —
- * unlike {@code attachments/}, there is no sync mode choice; the whole folder (including both
- * subfolders) is gitignored unconditionally, same spirit as {@code .state.yml}. No JavaFX imports
- * (package boundary rule).
+ * The data dir's {@code inbox/} folder (todo 68, raw payload capture todo 73, photo capture
+ * todo 74): one flat folder of timestamped {@code .txt} files, each one captured message waiting
+ * to be attached to an entry or discarded, plus two optional same-stem sidecars — a {@code .json}
+ * raw Telegram payload (debugging/future data-extraction, never read by {@link InboxItem}/the
+ * Inbox dialog) and, for a photo message, a {@code .jpg} with the downloaded image ({@code .txt}
+ * then holds the caption, possibly empty). {@code raw/} holds payloads for updates that never
+ * became a pending item at all (locations, undownloadable photos, …) — same purpose, just for
+ * content v1 doesn't parse yet. Always local — unlike {@code attachments/}, there is no sync mode
+ * choice; the whole folder (including all subfolders) is gitignored unconditionally, same spirit
+ * as {@code .state.yml}. No JavaFX imports (package boundary rule).
  */
 @Component
 public class InboxDir {
@@ -49,13 +50,40 @@ public class InboxDir {
     }
 
     /**
-     * Writes one message as a timestamped file (created on demand); a same-second collision gets
-     * a numeric suffix. If {@code rawJson} is non-blank, it's written alongside as a same-stem
-     * {@code .json} sidecar (todo 73) — the raw Telegram payload the message came from, kept
-     * purely for debugging/future data-extraction and never read back by {@link InboxItem}.
+     * Writes one text message as a timestamped file (created on demand); a same-second collision
+     * gets a numeric suffix. If {@code rawJson} is non-blank, it's written alongside as a
+     * same-stem {@code .json} sidecar (todo 73) — the raw Telegram payload the message came from,
+     * kept purely for debugging/future data-extraction and never read back by {@link InboxItem}.
      */
     public Path writeItem(LocalDateTime timestamp, String text, String rawJson) {
+        return writeItem(timestamp, text, null, rawJson);
+    }
+
+    /**
+     * Writes one photo message (todo 74): {@code text} is the caption (possibly empty — not every
+     * photo has one) in the timestamped {@code .txt}, {@code photo} is the downloaded image bytes
+     * in a same-stem {@code .jpg} sidecar, and {@code rawJson} is the same-stem {@code .json} raw
+     * payload as for a text item (todo 73). A {@code null}/empty {@code photo} behaves exactly
+     * like the text-only overload.
+     */
+    public Path writeItem(LocalDateTime timestamp, String text, byte[] photo, String rawJson) {
         ensureGitignore();
+        Path file = uniqueFile(timestamp);
+        try {
+            Files.writeString(file, text == null ? "" : text);
+            if (rawJson != null && !rawJson.isBlank()) {
+                Files.writeString(sidecar(file, ".json"), rawJson);
+            }
+            if (photo != null && photo.length > 0) {
+                Files.write(sidecar(file, ".jpg"), photo);
+            }
+            return file;
+        } catch (IOException e) {
+            throw new StorageException("Could not write inbox item to " + file, e);
+        }
+    }
+
+    private Path uniqueFile(LocalDateTime timestamp) {
         Path dir = root();
         String stem = InboxItem.FILE_STAMP.format(timestamp);
         Path file = dir.resolve(stem + ".txt");
@@ -63,15 +91,7 @@ public class InboxDir {
         while (Files.exists(file)) {
             file = dir.resolve(stem + "-" + (suffix++) + ".txt");
         }
-        try {
-            Files.writeString(file, text);
-            if (rawJson != null && !rawJson.isBlank()) {
-                Files.writeString(sidecar(file), rawJson);
-            }
-            return file;
-        } catch (IOException e) {
-            throw new StorageException("Could not write inbox item to " + file, e);
-        }
+        return file;
     }
 
     /**
@@ -124,18 +144,23 @@ public class InboxDir {
         try {
             Files.createDirectories(targetDir);
             Files.move(file, targetDir.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-            Path sidecar = sidecar(file);
-            if (Files.exists(sidecar)) {
-                Files.move(sidecar, targetDir.resolve(sidecar.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+            for (String ext : new String[] {".json", ".jpg"}) {
+                Path sidecar = sidecar(file, ext);
+                if (Files.exists(sidecar)) {
+                    Files.move(sidecar, targetDir.resolve(sidecar.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                }
             }
         } catch (IOException e) {
             throw new StorageException("Could not move " + file + " to " + targetDir, e);
         }
     }
 
-    /** The same-stem {@code .json} raw-payload sidecar for a {@code .txt} inbox item, if any (todo 73). */
-    private Path sidecar(Path txtFile) {
-        String name = txtFile.getFileName().toString().replaceFirst("\\.txt$", ".json");
+    /**
+     * The same-stem sidecar for a {@code .txt} inbox item, if any — {@code .json} for the raw
+     * payload (todo 73) or {@code .jpg} for a downloaded photo (todo 74).
+     */
+    private Path sidecar(Path txtFile, String extension) {
+        String name = txtFile.getFileName().toString().replaceFirst("\\.txt$", extension);
         return txtFile.resolveSibling(name);
     }
 

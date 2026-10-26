@@ -111,7 +111,8 @@ proven itself over a few real days of use.
 ## Non-goals (v1)
 
 - Coordinates/location messages — fast-follow once text works end-to-end.
-- Photos — fast-follow; will need to reuse `attachments.AttachmentsDir` once it lands.
+- Photos — fast-follow; will need to reuse `attachments.AttachmentsDir` once it lands. Done in
+  todo 74, see `docs/74_telegram_inbox_photos.md`.
 - Any transport other than Telegram — explicitly deferred until the spike either succeeds or
   fails.
 - Webhooks/always-on server — polling only, matching "TripTale is not meant to run as an app";

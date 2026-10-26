@@ -10,16 +10,19 @@ import java.util.Optional;
 
 /**
  * One pending mobile-inbox capture (todo 68): the file it lives in, when the message was sent,
- * and its text. No JavaFX imports (package boundary rule).
+ * its text (a caption, possibly empty, for a photo item — see {@link #photo()}), and the
+ * downloaded photo if this came from a Telegram photo message (todo 74) rather than a text
+ * message. No JavaFX imports (package boundary rule).
  */
-public record InboxItem(Path file, LocalDateTime timestamp, String text) {
+public record InboxItem(Path file, LocalDateTime timestamp, String text, Optional<Path> photo) {
 
     static final DateTimeFormatter FILE_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     /**
      * Parses the filename's leading {@code yyyyMMdd-HHmmss} (an optional {@code -N} collision
-     * suffix before {@code .txt} is ignored) and reads the file's content as the note text;
-     * empty if either the name doesn't parse or the file can't be read.
+     * suffix before {@code .txt} is ignored), reads the file's content as the note/caption text,
+     * and checks for a same-stem {@code .jpg} sidecar (todo 74); empty if the name doesn't parse
+     * or the {@code .txt} can't be read.
      */
     public static Optional<InboxItem> parse(Path file) {
         String stem = file.getFileName().toString().replaceFirst("\\.txt$", "");
@@ -31,7 +34,10 @@ public record InboxItem(Path file, LocalDateTime timestamp, String text) {
             return Optional.empty();
         }
         try {
-            return Optional.of(new InboxItem(file, timestamp, Files.readString(file)));
+            String text = Files.readString(file);
+            Path photoFile = file.resolveSibling(stem + ".jpg");
+            Optional<Path> photo = Files.isRegularFile(photoFile) ? Optional.of(photoFile) : Optional.empty();
+            return Optional.of(new InboxItem(file, timestamp, text, photo));
         } catch (IOException e) {
             return Optional.empty();
         }

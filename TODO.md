@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 74
+## Next Todo: 75
 
 ## 67 Private images
 
@@ -235,6 +235,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 74 Telegram inbox: receive photos, not just text
+
+Fast-follow from todo 68, whose v1 was explicitly text-only. A photo sent to the configured bot
+is downloaded eagerly during `poll()` (largest `PhotoSize`, Telegram already compresses) into a
+same-stem `.jpg` sidecar next to the caption's `.txt`. On Attach, the photo goes into the day's
+`attachments/` folder via `ImpressionsService.importToAttachments` (never git-pended, matches
+every other attachment import); a non-blank caption is also appended under `## Inbox` and saved,
+same as a text item. No media-group/album support, no location messages.
+
+[Details](docs/74_telegram_inbox_photos.md)
 
 ## DONE 73 Mobile inbox: capture the raw Telegram payload too
 

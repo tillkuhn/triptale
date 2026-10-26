@@ -47,4 +47,28 @@ class InboxItemTest {
 
         assertFalse(InboxItem.parse(file).isPresent());
     }
+
+    @Test
+    void picksUpASameStemJpgSidecarAsThePhoto() throws IOException {
+        Path file = dir.resolve("20261023-143207.txt");
+        Files.writeString(file, "On the summit");
+        Files.write(dir.resolve("20261023-143207.jpg"), new byte[] {1, 2, 3});
+
+        var item = InboxItem.parse(file);
+
+        assertTrue(item.isPresent());
+        assertTrue(item.get().photo().isPresent());
+        assertEquals(dir.resolve("20261023-143207.jpg"), item.get().photo().get());
+    }
+
+    @Test
+    void hasNoPhotoWhenNoSidecarExists() throws IOException {
+        Path file = dir.resolve("20261023-143207.txt");
+        Files.writeString(file, "Just a note");
+
+        var item = InboxItem.parse(file);
+
+        assertTrue(item.isPresent());
+        assertFalse(item.get().photo().isPresent());
+    }
 }

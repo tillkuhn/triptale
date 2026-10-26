@@ -810,8 +810,11 @@ public class MainController implements StatusSink {
     /**
      * Attaches or discards one captured inbox item (todo 68). Attach navigates the main window
      * to the chosen date (the existing {@code datePicker} listener guards unsaved edits and
-     * loads the entry, same as a manual date change), appends the note under the entry's shared
-     * "## Inbox" heading, and saves immediately so the file can be safely moved out of the way.
+     * loads the entry, same as a manual date change). A photo item (todo 74) is copied into the
+     * day's attachment folder (never part of the git pending-commit system, same as any other
+     * attachment); if present, the caption is appended under the entry's shared "## Inbox"
+     * heading and the day is saved, same as a text item. A caption-less photo needs no save —
+     * there's nothing to persist in the entry itself.
      */
     private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date) {
         if (action == InboxDialog.Action.DISCARD) {
@@ -830,11 +833,22 @@ public class MainController implements StatusSink {
             datePicker.setValue(date);
             if (!date.equals(datePicker.getValue())) return false; // user cancelled the navigation prompt
         }
-        talesArea.setText(InboxNotes.append(talesArea.getText(), item.text()));
-        updateDirty();
-        if (!saveTheDayIfPossible()) {
-            error("Attached to the form but couldn't save automatically (needs a title) — save manually, then run Check Inbox again");
-            return false;
+        if (item.photo().isPresent()) {
+            try {
+                impressions.importToAttachments(trip, date, List.of(item.photo().get()));
+                updateImpressionsButton(trip, date);
+            } catch (RuntimeException e) {
+                error("Couldn't import the photo: " + UiText.describe(e));
+                return false;
+            }
+        }
+        if (!item.text().isBlank()) {
+            talesArea.setText(InboxNotes.append(talesArea.getText(), item.text()));
+            updateDirty();
+            if (!saveTheDayIfPossible()) {
+                error("Attached to the form but couldn't save automatically (needs a title) — save manually, then run Check Inbox again");
+                return false;
+            }
         }
         inboxDir.markProcessed(item.file());
         return true;

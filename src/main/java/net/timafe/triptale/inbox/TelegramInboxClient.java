@@ -10,10 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -25,12 +27,17 @@ import java.time.ZoneId;
  * simply stale until the user checks). Text messages from the single configured chat are written
  * as files into {@code <dataDir>/inbox/} via {@link InboxDir}, each with a same-stem {@code .json}
  * sidecar holding the raw Telegram {@code update} (todo 73 — debugging and designing future data
- * extraction, never parsed back by TripTale itself). Non-text updates from the configured chat
- * (photos, locations, …) don't become pending items yet, but their raw payload is still captured
- * into {@code inbox/raw/} for the same reason. Every other update (edited_message, channel_post,
- * other chats, {@code timeout=0} so the call never blocks waiting for new traffic) is just
- * skipped, but still advances the offset so it's never re-fetched. No JavaFX imports (package
- * boundary rule).
+ * extraction, never parsed back by TripTale itself). Photo messages (todo 74) go through a second
+ * pair of Bot API calls — {@code getFile} to resolve a {@code file_path}, then a plain download —
+ * to fetch the largest available {@code PhotoSize} (Telegram already compresses photos server-side,
+ * so there's no quality lost by always taking the biggest one and no realistic risk of the 20 MB
+ * {@code getFile} limit); the bytes land in a same-stem {@code .jpg} sidecar next to the caption's
+ * {@code .txt} (empty if the photo had no caption). Any other non-text update (locations, a photo
+ * whose download failed, …) doesn't become a pending item, but its raw payload is still captured
+ * into {@code inbox/raw/} for the same debugging/design reason as todo 73. Every other update
+ * (edited_message, channel_post, other chats, {@code timeout=0} so the call never blocks waiting
+ * for new traffic) is just skipped, but still advances the offset so it's never re-fetched. No
+ * JavaFX imports (package boundary rule).
  *
  * <p>Bot token and chat ID are re-read from settings on every call (not cached at construction),
  * same pattern as {@code ui.MapboxService}/the impressions settings — an Edit Settings change
@@ -49,17 +56,24 @@ public class TelegramInboxClient {
 
     /**
      * {@code newOffset} is the next {@code getUpdates} offset to persist as-is (unchanged from
-     * the one passed in if nothing new came back); {@code newItems} is how many text messages
-     * from the configured chat were written to {@code inbox/}.
+     * the one passed in if nothing new came back); {@code newItems} is how many text/photo
+     * messages from the configured chat were written to {@code inbox/}.
      */
     public record PollResult(long newOffset, int newItems) {}
 
+    private final URI api;
     private final SettingsStore settingsStore;
     private final InboxDir inboxDir;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
     private final ObjectMapper json = new ObjectMapper();
 
     public TelegramInboxClient(SettingsStore settingsStore, InboxDir inboxDir) {
+        this(API, settingsStore, inboxDir);
+    }
+
+    /** Package-private: lets tests point the Bot API at a local server. */
+    TelegramInboxClient(URI api, SettingsStore settingsStore, InboxDir inboxDir) {
+        this.api = api;
         this.settingsStore = settingsStore;
         this.inboxDir = inboxDir;
     }
@@ -78,23 +92,13 @@ public class TelegramInboxClient {
             throw new TelegramException("No Telegram bot token / chat ID configured (Edit Settings…)");
         }
         String path = "/bot" + token + "/getUpdates?timeout=0" + (offset > 0 ? "&offset=" + offset : "");
-        HttpRequest request = HttpRequest.newBuilder(API.resolve(path))
+        HttpRequest request = HttpRequest.newBuilder(api.resolve(path))
                 .header("Accept", "application/json")
                 .timeout(TIMEOUT)
                 .GET()
                 .build();
-        HttpResponse<String> response;
-        try {
-            log.debug("Telegram GET getUpdates (offset={})", offset);
-            response = http.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (HttpTimeoutException e) {
-            throw new TelegramException("Timed out after " + TIMEOUT.toSeconds() + " s");
-        } catch (IOException e) {
-            throw new TelegramException("Network error: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new TelegramException("Interrupted");
-        }
+        log.debug("Telegram GET getUpdates (offset={})", offset);
+        HttpResponse<String> response = send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
             throw new TelegramException("Telegram answered HTTP " + response.statusCode() + " — check the bot token");
         }
@@ -124,17 +128,110 @@ public class TelegramInboxClient {
             LocalDateTime timestamp = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(message.path("date").asLong()), ZoneId.systemDefault());
             String text = message.path("text").asText(null);
-            if (text == null || text.isBlank()) {
-                // photos/locations/… — not a pending item yet (fast-follow, not v1), but the raw
-                // payload is still captured (todo 73) to design that fast-follow from real samples.
-                inboxDir.writeRawCapture(timestamp, updateId, prettyJson(update));
+            if (text != null && !text.isBlank()) {
+                inboxDir.writeItem(timestamp, text, prettyJson(update));
+                newItems++;
                 continue;
             }
-            inboxDir.writeItem(timestamp, text, prettyJson(update));
-            newItems++;
+            JsonNode photoSizes = message.path("photo");
+            if (photoSizes.isArray() && !photoSizes.isEmpty()) {
+                byte[] photo = downloadLargestPhoto(token, photoSizes, updateId);
+                if (photo != null) {
+                    String caption = message.path("caption").asText("");
+                    inboxDir.writeItem(timestamp, caption, photo, prettyJson(update));
+                    newItems++;
+                    continue;
+                }
+                // download failed — fall through to raw capture, same as any other non-text update
+            }
+            // locations/other non-text content, or a photo that couldn't be downloaded — not a
+            // pending item (fast-follow for anything but photos), but the raw payload is still
+            // captured (todo 73) to design future fast-follows from real samples.
+            inboxDir.writeRawCapture(timestamp, updateId, prettyJson(update));
         }
         log.info("Telegram inbox poll: {} new item(s), offset {} -> {}", newItems, offset, newOffset);
         return new PollResult(newOffset, newItems);
+    }
+
+    /**
+     * Downloads the largest {@code PhotoSize} in a {@code message.photo} array (todo 74) — two
+     * chained Bot API calls, {@code getFile} to resolve a {@code file_path} then a plain GET to
+     * fetch the bytes. Telegram already compresses photos server-side, so the largest entry is
+     * strictly the best quality available and comfortably under the 20 MB {@code getFile} limit.
+     * Never throws — a failure here must not break the rest of the poll; returns {@code null} and
+     * logs a warning instead, so the caller can fall back to a raw capture.
+     */
+    private byte[] downloadLargestPhoto(String token, JsonNode photoSizes, long updateId) {
+        JsonNode largest = null;
+        long bestArea = -1;
+        for (JsonNode size : photoSizes) {
+            long area = (long) size.path("width").asInt(0) * size.path("height").asInt(0);
+            if (area >= bestArea) {
+                bestArea = area;
+                largest = size;
+            }
+        }
+        String fileId = largest == null ? null : largest.path("file_id").asText(null);
+        if (fileId == null) return null;
+        try {
+            String filePath = resolveFilePath(token, fileId);
+            if (filePath == null) return null;
+            return downloadFile(token, filePath);
+        } catch (RuntimeException e) {
+            log.warn("Could not download Telegram photo for update {}: {}", updateId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** {@code getFile}: resolves a {@code file_id} into the {@code file_path} the binary download needs. */
+    private String resolveFilePath(String token, String fileId) {
+        String path = "/bot" + token + "/getFile?file_id="
+                + URLEncoder.encode(fileId, StandardCharsets.UTF_8);
+        HttpRequest request = HttpRequest.newBuilder(api.resolve(path))
+                .header("Accept", "application/json")
+                .timeout(TIMEOUT)
+                .GET()
+                .build();
+        HttpResponse<String> response = send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new TelegramException("getFile answered HTTP " + response.statusCode());
+        }
+        JsonNode root;
+        try {
+            root = json.readTree(response.body());
+        } catch (IOException e) {
+            throw new TelegramException("Unreadable getFile answer from Telegram");
+        }
+        if (!root.path("ok").asBoolean(false)) {
+            throw new TelegramException("Telegram getFile: " + root.path("description").asText("unknown error"));
+        }
+        return root.path("result").path("file_path").asText(null);
+    }
+
+    /** Downloads the raw bytes of a resolved {@code file_path} from Telegram's file API. */
+    private byte[] downloadFile(String token, String filePath) {
+        HttpRequest request = HttpRequest.newBuilder(api.resolve("/file/bot" + token + "/" + filePath))
+                .timeout(TIMEOUT)
+                .GET()
+                .build();
+        HttpResponse<byte[]> response = send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            throw new TelegramException("File download answered HTTP " + response.statusCode());
+        }
+        return response.body();
+    }
+
+    private <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+        try {
+            return http.send(request, handler);
+        } catch (HttpTimeoutException e) {
+            throw new TelegramException("Timed out after " + TIMEOUT.toSeconds() + " s");
+        } catch (IOException e) {
+            throw new TelegramException("Network error: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new TelegramException("Interrupted");
+        }
     }
 
     /** Pretty-prints a raw update for the {@code .json} sidecar/raw capture (todo 73); best-effort — a failure here must not break the poll. */
