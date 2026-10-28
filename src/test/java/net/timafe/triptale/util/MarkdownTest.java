@@ -169,4 +169,34 @@ class MarkdownTest {
         assertEquals(-1, Markdown.privateHeadingOffset("Intro\n## Internals"));
         assertEquals(-1, Markdown.privateHeadingOffset(null));
     }
+
+    @Test
+    void privateBlockEndRunsToEndOfTaleWhenNoTerminatingHeading() {
+        String body = "Intro\n\n## Internal\n\nsecret";
+        assertEquals(body.length(), Markdown.privateBlockEnd(body));
+    }
+
+    @Test
+    void privateBlockEndStopsAtNextSameOrHigherHeading() {
+        String body = "Intro\n\n## Internal\nsecret\n\n## Evening\npublic\n\n### Private\nx\n# Next day\ny";
+        assertEquals(body.indexOf("## Evening"), Markdown.privateBlockEnd(body));
+    }
+
+    @Test
+    void privateBlockEndKeepsSubheadingsInsideBlock() {
+        String body = "Intro\n\n## Internal\nsecret\n### Distances\n87 km\n#### Detail\nmore";
+        assertEquals(body.length(), Markdown.privateBlockEnd(body));
+    }
+
+    @Test
+    void privateBlockEndHandlesNullEmptyAndNoPrivateSection() {
+        assertEquals(-1, Markdown.privateBlockEnd(null));
+        assertEquals(-1, Markdown.privateBlockEnd(""));
+        assertEquals(-1, Markdown.privateBlockEnd("Intro\n## Internals"));
+    }
+
+    @Test
+    void privateDefaultHeadingIsRecognizedAsPrivate() {
+        assertEquals("Public.", Markdown.stripPrivate("Public.\n\n" + Markdown.PRIVATE_DEFAULT_HEADING + "\nsecret"));
+    }
 }

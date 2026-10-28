@@ -64,29 +64,60 @@ tale and would have been the one remaining leak path. It is removed instead of p
 - clean copy: ⇧ Export Tale → Copy (full entry: heading, stats, tale, links; private stripped)
 - raw copy: Cmd + A, Cmd + C in the editor (includes private sections)
 
-## 🔒 Add Private Section
+## 🔒 Add Private Notes
 
 New Tale Entries menu item, in the slot Copy Tale leaves free (after 📅 Save the Day, before
 ⇧ Export Tale). No accelerator. Makes the feature discoverable without reading the docs.
+Renamed from "Add Private Section" in todo 76, when the default heading also changed to
+`## Private Notes 🔒` (`util.Markdown.PRIVATE_DEFAULT_HEADING`) and the section became a bullet
+list — see todo 76 below and `docs/76_private_notes_octobot_inbox.md`.
 
-- Appends `## Internal` and the placeholder `Private notes, not exported.` at the end of the
-  tale, separated by one blank line (no leading blank line if the tale is empty).
-- Focuses the editor and selects the placeholder, so typing replaces it.
+- Appends `## Private Notes 🔒` and a placeholder bullet `* …` at the end of the tale, separated
+  by one blank line (no leading blank line if the tale is empty).
+- Focuses the editor and selects the placeholder ellipsis, so typing replaces it.
 - If the tale already has a private section, nothing is added: the caret moves to the existing
-  marker heading and the status line says "Tale already has a private section".
+  marker heading and the status line says "Tale already has a private section". The old
+  `## Internal` heading (and any other text matching the keyword rule above) still counts as an
+  existing private section — only the text inserted for a *new* section changed.
 - A plain text edit: the entry gets dirty and is saved/committed through the normal
   Save → `addPending(...)` → Smart Sync flow.
 - Enabled whenever the editor is editable (same condition as 📅 Save the Day).
+
+## Todo 76 — bullet list + shared home for Octobot inbox captures
+
+The mobile/Telegram inbox (todo 68) used to land captured notes under its own public `## Inbox`
+heading. Since Octobot captures are personal/raw by nature, they now land as bullets inside the
+tale's private section instead — `inbox.InboxNotes.append` reuses an existing private section
+(`Markdown.privateHeadingOffset`/`privateBlockEnd`) or creates a new `PRIVATE_DEFAULT_HEADING`
+one if there is none, exactly like 🔒 Add Private Notes. There is no longer a separate `## Inbox`
+heading or `InboxNotes.HEADING` constant; existing entries that already have one are not migrated.
+
+- Each Octobot item becomes one bullet, its own newlines collapsed to a single line, suffixed
+  `— added by Octobot 🐙` so its origin stays visible in the raw text, e.g.:
+  ```
+  * Nice Cooking School https://asia.cooking.school/ Has good ratings — added by Octobot 🐙
+  ```
+- Consecutive Octobot bullets stack tight (no blank line between list items); a bullet appended
+  after existing freeform (non-bullet) private content gets one blank line first.
+- Applies to both text-only captures and a photo item's caption (todo 74) — one code path.
+- `Markdown.privateBlockEnd(body)` (new) finds the private block's end (next same/higher heading,
+  or end of tale) so a bullet lands inside the block even when the private section isn't the
+  last thing in the tale.
 
 ## Tests
 
 `MarkdownTest` (pure unit tests):
 
 - marker matching: every row of the table above, case-insensitivity, all heading levels
-- block end: next heading of same/higher level ends it, deeper subheadings stay inside
+- block end (`stripPrivate` and `privateBlockEnd`): next heading of same/higher level ends it,
+  deeper subheadings stay inside
 - private section at the end of the tale; private section followed by a public heading
 - `#` lines in fenced code blocks (inside and outside a private block)
 - a tale that is entirely private → blank
+
+`InboxNotesTest`: creates a new private section on first capture, reuses an existing one (bullet
+tight-stacking vs. blank-line-before-bullet after freeform content), inserts inside the block
+when a private section isn't last, collapses multi-line notes into one bullet.
 
 Exporter tests: a private section is absent from `DiaryExporter` and `WordPressExporter` output;
 an all-private tale produces no tales block.

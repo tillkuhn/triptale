@@ -76,6 +76,15 @@ public final class Markdown {
     private static final List<String> PRIVATE_KEYWORDS = List.of("internal", "private", "intern", "privat");
 
     /**
+     * Canonical heading inserted for a new private section, by both "🔒 Add Private Notes"
+     * ({@code MainController.onAddPrivateSection}) and a fresh Octobot inbox capture
+     * ({@code inbox.InboxNotes}) when the tale has no private section yet (todo 76). Matches
+     * {@link #PRIVATE_KEYWORDS} ("private" at the start, followed by whitespace), so it is
+     * recognized by {@link #stripPrivate}/{@link #privateHeadingOffset} like any other marker.
+     */
+    public static final String PRIVATE_DEFAULT_HEADING = "## Private Notes \ud83d\udd12";
+
+    /**
      * Removes private sections from a tale: a heading whose text starts with one of
      * {@link #PRIVATE_KEYWORDS} (case-insensitive) followed by the end of the heading, whitespace
      * or {@code :}, plus everything up to the next heading of the same or higher level, or the
@@ -129,6 +138,34 @@ public final class Markdown {
             offset += line.length() + 1;
         }
         return -1;
+    }
+
+    /**
+     * Char offset where the first private section's block ends (todo 76): the start of the next
+     * heading at the same or higher level (see {@link #stripPrivate}), or {@code body.length()}
+     * if the block runs to the end of the tale. Returns {@code -1} if {@code body} has no private
+     * section at all (same "not found" convention as {@link #privateHeadingOffset}). Used to
+     * append new content *inside* an existing private block even when it isn't the last thing in
+     * the tale.
+     */
+    public static int privateBlockEnd(String body) {
+        if (body == null || body.isEmpty()) return -1;
+        int offset = 0;
+        int privateLevel = 0;
+        String fence = null;
+        for (String line : body.split("\n", -1)) {
+            int level = 0;
+            if (fence == null) {
+                fence = fenceOpening(line);
+                if (fence == null) level = headingLevel(line);
+            } else if (line.strip().startsWith(fence)) {
+                fence = null;
+            }
+            if (privateLevel > 0 && level > 0 && level <= privateLevel) return offset;
+            if (privateLevel == 0 && level > 0 && isPrivateHeading(line, level)) privateLevel = level;
+            offset += line.length() + 1;
+        }
+        return privateLevel > 0 ? body.length() : -1;
     }
 
     private static boolean isPrivateHeading(String line, int level) {

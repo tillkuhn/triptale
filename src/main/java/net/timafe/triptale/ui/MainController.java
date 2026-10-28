@@ -189,8 +189,8 @@ public class MainController implements StatusSink {
     private static final String DELETE = "Delete";
     private static final int COMMIT_MSG_INLINE_LIMIT = 5;
 
-    /** Placeholder body of a section added by 🔒 Add Private Section (todo 48). */
-    private static final String PRIVATE_PLACEHOLDER = "Private notes, not exported.";
+    /** Placeholder bullet of a section added by 🔒 Add Private Notes (todo 48, bulleted since todo 76). */
+    private static final String PRIVATE_PLACEHOLDER = "\u2026";
     private static final String TALE_FONT_SIZE_STATE_KEY = "taleFontSizePx";
     private static final int TALE_FONT_SIZE_DEFAULT_PX = 13;
     private static final int TALE_FONT_SIZE_MIN_PX = 10;
@@ -823,9 +823,9 @@ public class MainController implements StatusSink {
      * to the chosen date (the existing {@code datePicker} listener guards unsaved edits and
      * loads the entry, same as a manual date change). A photo item (todo 74) is copied into the
      * day's attachment folder (never part of the git pending-commit system, same as any other
-     * attachment); if present, the caption is appended under the entry's shared "## Inbox"
-     * heading and the day is saved, same as a text item. A caption-less photo needs no save —
-     * there's nothing to persist in the entry itself.
+     * attachment); if present, the caption is appended as a bullet inside the entry's private
+     * section (todo 76, {@link InboxNotes}) and the day is saved, same as a text item. A
+     * caption-less photo needs no save — there's nothing to persist in the entry itself.
      */
     private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date) {
         if (action == InboxDialog.Action.DISCARD) {
@@ -1561,7 +1561,7 @@ public class MainController implements StatusSink {
         }
         // replaceText (not setText) keeps the insert undoable
         int end = text.stripTrailing().length();
-        String insert = (end == 0 ? "" : "\n\n") + "## Internal\n\n" + PRIVATE_PLACEHOLDER;
+        String insert = (end == 0 ? "" : "\n\n") + Markdown.PRIVATE_DEFAULT_HEADING + "\n\n* " + PRIVATE_PLACEHOLDER;
         talesArea.replaceText(end, text.length(), insert);
         int start = end + insert.length() - PRIVATE_PLACEHOLDER.length();
         talesArea.selectRange(start, start + PRIVATE_PLACEHOLDER.length());

@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 76
+## Next Todo: 77
 
 ## 67 Private images
 
@@ -236,7 +236,16 @@ sites for a consistent fix rather than patching one.
 
 ---
 
----
+## DONE 76 "Add Private Notes" + bullet-style Octobot inbox landing
+
+Renamed "🔒 Add Private Section" to "🔒 Add Private Notes"; default heading is now
+`## Private Notes 🔒` (old `internal`/`private`/`intern`/`privat` keyword rule still applies,
+still only one private section per tale). Merged the mobile/Telegram inbox (todo 68, previously
+its own `## Inbox` heading) into the private section — Octobot captures are private by default,
+landing in the existing or a newly created private block, one bullet per item, newlines
+collapsed to a single line, suffixed `— added by Octobot 🐙`.
+
+[Details](docs/76_private_notes_octobot_inbox.md)
 
 ## DONE 75 Inbox: show sender and Telegram message id, tighter card layout
 

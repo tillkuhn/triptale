@@ -104,9 +104,12 @@ proven itself over a few real days of use.
   against a wrong attach or a dialog bug losing a message during initial real-world testing.
   Revisit (actually delete) once the feature is trusted.
 - **Landing spot is appended body text, not a frontmatter key** for v1 — simplest to implement,
-  visible and editable like any other tale content, survives exports unless wrapped in a
-  private section (todo 48). A structured frontmatter field remains a real option for a later
-  iteration once it's clear what shape repeated use actually wants.
+  visible and editable like any other tale content. Originally a separate public `## Inbox`
+  heading, merged into the tale's private section in todo 76 (`inbox.InboxNotes`, one bullet per
+  item) — Octobot captures are private by default, see
+  `docs/76_private_notes_octobot_inbox.md` and `docs/48_private_sections.md`. A structured
+  frontmatter field remains a real option for a later iteration once it's clear what shape
+  repeated use actually wants.
 
 ## Non-goals (v1)
 
