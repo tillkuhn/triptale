@@ -36,6 +36,7 @@ import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.inbox.InboxDir;
 import net.timafe.triptale.inbox.InboxItem;
+import net.timafe.triptale.inbox.InboxLinks;
 import net.timafe.triptale.inbox.InboxNotes;
 import net.timafe.triptale.inbox.TelegramInboxClient;
 import net.timafe.triptale.map.PhotoLocations;
@@ -69,6 +70,7 @@ import net.timafe.triptale.ui.dialog.InboxDialog;
 import net.timafe.triptale.ui.dialog.LinksDialog;
 import net.timafe.triptale.ui.dialog.MapAssistantDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
+import net.timafe.triptale.ui.dialog.QuickWeblinkDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
@@ -104,6 +106,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -826,8 +829,11 @@ public class MainController implements StatusSink {
      * attachment); if present, the caption is appended as a bullet inside the entry's private
      * section (todo 76, {@link InboxNotes}) and the day is saved, same as a text item. A
      * caption-less photo needs no save — there's nothing to persist in the entry itself.
+     * {@code createWeblink} (todo 77) additionally offers, after a successful attach, to turn
+     * the item's first detected URL into a {@code url_<verb>} weblink via
+     * {@link QuickWeblinkDialog} — purely additive, never blocks the attach itself.
      */
-    private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date) {
+    private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date, boolean createWeblink) {
         if (action == InboxDialog.Action.DISCARD) {
             inboxDir.markDiscarded(item.file());
             return true;
@@ -862,8 +868,35 @@ public class MainController implements StatusSink {
             }
         }
         inboxDir.markProcessed(item.file());
+        if (createWeblink) offerWeblink(item, date);
         return true;
     }
+
+    /** Follow-up to a successful Add when "Create Weblink" was ticked (todo 77). Never fails the Add itself. */
+    private void offerWeblink(InboxItem item, LocalDate date) {
+        Optional<String> url = InboxLinks.firstUrl(item.text());
+        if (url.isEmpty()) return;
+        List<LinkKind> untaken = Arrays.stream(LinkKind.values())
+                .filter(k -> !links.containsKey(k.key()))
+                .toList();
+        if (untaken.isEmpty()) {
+            status("All weblink kinds already used for " + date + " — add manually in 🕸 Weblinks");
+            return;
+        }
+        String name = InboxLinks.nameWithoutUrl(item.text(), url.get());
+        LinkKind guessed = InboxLinks.guessVerb(name, untaken.stream().map(LinkKind::key).toList())
+                .flatMap(LinkKind::of).orElse(null);
+        Optional<QuickWeblinkDialog.Result> result =
+                QuickWeblinkDialog.showAndWait(untaken, guessed, url.get(), name);
+        if (result.isEmpty()) return;
+        SequencedMap<String, Link> updated = new LinkedHashMap<>(links);
+        updated.put(result.get().verb(), result.get().link());
+        links = updated;
+        updateLinksButton();
+        updateDirty();
+        saveTheDayIfPossible();
+    }
+
 
     @FXML
     public void onFirstDay() {

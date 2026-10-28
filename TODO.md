@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 77
+## Next Todo: 78
+
+## 77 Octobot inbox: convert a detected link into a Weblink
+
+Add an optional "Create Weblink" checkbox to each `InboxDialog` row (after Add/Dump), disabled
+when the message has no URL. On Add, if ticked, opens a small follow-up dialog (verb combo
+limited to that day's untaken verbs, editable url/name) and adds the result to the day's links.
+Also fixes the barely-visible `➕` plus glyph on the Add button (swap for plain `+`).
+
+[Details](docs/77_inbox_create_weblink.md)
 
 ## 67 Private images
 

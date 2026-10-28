@@ -3,6 +3,7 @@ package net.timafe.triptale.ui.dialog;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Hyperlink;
@@ -18,6 +19,7 @@ import javafx.scene.text.TextFlow;
 import javafx.util.StringConverter;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.inbox.InboxItem;
+import net.timafe.triptale.inbox.InboxLinks;
 import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.UiText;
@@ -54,8 +56,13 @@ public final class InboxDialog {
     public enum Action { ATTACH, DISCARD }
 
     public interface ItemHandler {
-        /** Performs the action for one item; returns true if it succeeded (the row is then removed). */
-        boolean handle(InboxItem item, Action action, LocalDate date);
+        /**
+         * Performs the action for one item; returns true if it succeeded (the row is then
+         * removed). {@code createWeblink} (todo 77) is only meaningful for {@link Action#ATTACH}
+         * — the user ticked "Create Weblink" on this row, so the handler should, after a
+         * successful Add, offer to turn the item's first detected URL into a weblink.
+         */
+        boolean handle(InboxItem item, Action action, LocalDate date, boolean createWeblink);
     }
 
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.ROOT);
@@ -123,12 +130,16 @@ public final class InboxDialog {
         dayCombo.setDisable(noDays);
         if (!noDays) dayCombo.setValue(dates.contains(itemDate) ? itemDate : MapAssistantDialog.nearest(dates, itemDate));
 
-        Button attach = new Button("➕ Add");
+        Button attach = new Button("+ Add");
         Button discard = new Button("🗑 Dump");
         if (noDays) {
             attach.setDisable(true);
             attach.setTooltip(new Tooltip("Save at least one day in this trip first"));
         }
+        boolean hasUrl = InboxLinks.firstUrl(item.text()).isPresent();
+        CheckBox createWeblink = new CheckBox("Create Weblink");
+        createWeblink.setDisable(!hasUrl);
+        if (!hasUrl) createWeblink.setTooltip(new Tooltip("No link found in this message"));
         Label error = new Label();
         error.getStyleClass().add("form-error");
         error.setManaged(false);
@@ -150,17 +161,17 @@ public final class InboxDialog {
             box.getChildren().add(placeholder);
         }
 
-        HBox actions = new HBox(8, attach, discard);
+        HBox actions = new HBox(8, attach, discard, createWeblink);
         box.getChildren().addAll(dayCombo, actions, error);
 
         attach.setOnAction(e -> {
             LocalDate date = dayCombo.getValue();
             if (date == null) { error.setText("Pick a day first."); showError(error); return; }
-            if (handler.handle(item, Action.ATTACH, date)) remove(box, list, dialog);
+            if (handler.handle(item, Action.ATTACH, date, createWeblink.isSelected())) remove(box, list, dialog);
             else { error.setText("Couldn't attach automatically — check the main window."); showError(error); }
         });
         discard.setOnAction(e -> {
-            if (handler.handle(item, Action.DISCARD, dayCombo.getValue())) remove(box, list, dialog);
+            if (handler.handle(item, Action.DISCARD, dayCombo.getValue(), false)) remove(box, list, dialog);
         });
         return box;
     }
