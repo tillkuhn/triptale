@@ -157,6 +157,7 @@ public class MainController implements StatusSink {
     @FXML private Button lastDayButton;
     @FXML private Button connectivityButton;
     @FXML private Button radioButton;
+    @FXML private Button inboxButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem pushAttachmentsMenuItem;
@@ -777,7 +778,8 @@ public class MainController implements StatusSink {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
         if (!telegramInboxClient.configured()) {
-            error("Configure a Telegram bot token and chat ID in Edit Settings first");
+            status("Octobot not configured — showing already-captured items");
+            openInboxDialog(trip, "offline — Octobot not configured");
             return;
         }
         long offset = store.loadTelegramOffset().orElse(0L);
@@ -790,21 +792,30 @@ public class MainController implements StatusSink {
         task.setOnSucceeded(e -> {
             TelegramInboxClient.PollResult result = task.getValue();
             store.saveTelegramOffset(result.newOffset());
-            status(result.newItems() == 0 ? "No new inbox items" : result.newItems() + " new inbox item(s)");
-            openInboxDialog();
+            String summary = result.newItems() == 0 ? "no new items" : result.newItems() + " new item(s)";
+            status("Octobot: " + summary);
+            openInboxDialog(trip, summary);
         });
         task.setOnFailed(e -> {
-            error("Inbox check failed: " + UiText.describe(task.getException()));
-            openInboxDialog();
+            status("Octobot: offline — couldn't reach Telegram (" + UiText.describe(task.getException()) + ")");
+            openInboxDialog(trip, "offline — couldn't reach Telegram");
         });
         Thread thread = new Thread(task, "inbox-check");
         thread.setDaemon(true);
         thread.start();
     }
 
-    private void openInboxDialog() {
+    /** Entries loaded the same way {@code MapAssistantDialog.show} does, for the per-row day combo. */
+    private void openInboxDialog(Trip trip, String statusLine) {
         List<InboxItem> items = inboxDir.listPending();
-        new InboxDialog().show(items, this::handleInboxItem);
+        List<DiaryEntry> entries;
+        try {
+            entries = store.listEntryDates(trip.ref()).stream().map(d -> store.loadEntry(trip.ref(), d)).toList();
+        } catch (RuntimeException e) {
+            error("Could not load entries for the inbox: " + UiText.describe(e));
+            entries = List.of();
+        }
+        new InboxDialog(browser).show(items, entries, statusLine, this::handleInboxItem);
     }
 
     /**
@@ -960,6 +971,7 @@ public class MainController implements StatusSink {
         updateTourDay(trip, date);
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (inboxMenuItem != null) inboxMenuItem.setDisable(trip == null);
+        if (inboxButton != null) inboxButton.setDisable(trip == null);
         if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
         if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
         if (trip == null || date == null) {
@@ -1312,9 +1324,9 @@ public class MainController implements StatusSink {
                         || (trip.endDate() != null && today.isAfter(trip.endDate())));
             boolean todayDisabled = date == null || date.equals(today) || outsideTrip;
             if (todayButton != null) {
-                // Hidden rather than greyed out, so it doesn't clutter the nav block
+                // Hidden rather than greyed out, so it doesn't clutter the nav block — but always
+                // managed (reserves its slot) so toggling it doesn't shift the buttons after it.
                 todayButton.setVisible(!todayDisabled);
-                todayButton.setManaged(!todayDisabled);
             }
             if (todayMenuItem != null) todayMenuItem.setDisable(todayDisabled);
         }

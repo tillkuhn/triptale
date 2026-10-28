@@ -54,7 +54,7 @@
                                 <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
                                 <MenuItem text="😀 Emoji Picker…" onAction="#onEmojiPicker" accelerator="Shortcut+E"/>
                                 <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
-                                <MenuItem fx:id="inboxMenuItem" text="📬 Check Inbox…" onAction="#onCheckInbox" disable="true"/>
+                                <MenuItem fx:id="inboxMenuItem" text="🐙 Check Octobot's Inbox…" onAction="#onCheckInbox" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
                                 <MenuItem fx:id="prevDayMenuItem" text="◀ Previous Day" onAction="#onPrevDay" accelerator="Shortcut+Alt+Left"/>
@@ -132,12 +132,16 @@
                         <tooltip><Tooltip text="Go to last day"/></tooltip>
                     </Button>
                 </HBox>
-                <!-- Only shown while it would do something (see MainController.updatePrevButtonState) -->
+                <!-- Always reserves its slot (todo: keep nav buttons from shifting) — only
+                     visibility toggles in MainController.updatePrevButtonState, not layout. -->
                 <Button fx:id="todayButton" minWidth="-Infinity" text="◉" onAction="#onToday"
-                        visible="false" managed="false">
+                        visible="false">
                     <tooltip><Tooltip text="Go to today"/></tooltip>
                 </Button>
                 <Region HBox.hgrow="ALWAYS" minWidth="24"/>
+                <Button fx:id="inboxButton" minWidth="-Infinity" text="🐙" onAction="#onCheckInbox" styleClass="inbox-button" disable="true">
+                    <tooltip><Tooltip text="Check Octobot's Inbox"/></tooltip>
+                </Button>
                 <Button fx:id="radioButton" minWidth="-Infinity" onAction="#onRadioToggle" styleClass="radio-button">
                     <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>
                 </Button>

@@ -545,6 +545,23 @@
     -fx-padding: 4 10 4 10;
 }
 
+/* ── Inbox button (todo 68) ────────────────────────────── */
+.inbox-button {
+    -fx-text-fill: #4ec9b0;
+    -fx-border-color: #3a5050;
+    -fx-font-size: 14px;
+    -fx-padding: 4 0 4 0;
+    -fx-alignment: center;
+    -fx-min-width: 40px;
+    -fx-pref-width: 40px;
+    -fx-max-width: 40px;
+}
+
+/* Plain (non-URL) caption words in InboxDialog's TextFlow — Text nodes don't inherit .label. */
+.inbox-caption-text {
+    -fx-fill: #c8deda;
+}
+
 /* ── Radio button (todo 46) ───────────────────────────── */
 .radio-button {
     -fx-text-fill: #4ec9b0;
