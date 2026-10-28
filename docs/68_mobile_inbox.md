@@ -147,3 +147,73 @@ still covering both the debugging and the "explore future data" goals:
 - `inbox/raw/` is covered by the same unconditional `inbox/*` gitignore as everything else —
   no separate retention policy yet; revisit once it's clear how much accumulates in practice.
 
+## Todo 75 — sender metadata + possibilities for more than one family member
+
+Up to here, `telegramChatId` is a single chat and every captured item is implicitly "from the
+family." Todo 75 made the sender visible — `InboxItem` now reads `message_id` and
+`from.first_name [last_name]` back out of the `.json` sidecar (todo 73 captured it but nothing
+read it back), shown in the Inbox dialog as e.g. `2026-10-26 17:45 · #23 · Tima Fe` — but it
+doesn't yet change *who is allowed to send*. That's still exactly one chat id, same as v1. Two
+ways to actually get more than one person capturing, not decided between yet:
+
+### A. A shared Telegram group (works today, no code change)
+
+1. Create (or reuse) a Telegram group and add the bot to it alongside the family members who
+   should be able to capture.
+2. **Disable the bot's Privacy Mode** in @BotFather first (`/mybots` → bot → *Bot Settings* →
+   *Group Privacy* → *Turn off*) — by default a bot in a group only receives `/commands` and
+   `@mentions`, not plain text, which would silently break captures.
+3. Set `telegramChatId` to the **group's** chat id instead of a personal one — groups/supergroups
+   have a negative id (e.g. `-1001234567890`). `TelegramInboxClient.poll()` compares chat ids as
+   plain strings (`msgChatId.equals(chatId.trim())`), so a negative group id works exactly like a
+   positive personal one; no code change needed.
+4. From then on, anyone in that group just sends text/photos in their own Telegram app as usual.
+   The sender metadata from todo 75 is what tells them apart afterwards.
+
+Trade-off: it's one shared inbox for the whole family, no per-person settings, no allowlist to
+maintain — but anyone in the group can see everyone else's captures as normal group chat history
+(acceptable for "it's family," possibly not for a looser group of travelers).
+
+**Privacy mode, what it actually changes:** turning it off only changes what *your own bot*
+receives from Telegram — every group member already sees every message regardless, so nothing is
+exposed to a new party. The real privacy boundary in this design is **Attach vs. Discard**, not
+the Telegram toggle:
+
+- Every captured message (and any non-text update, via `inbox/raw/`) lands in `<dataDir>/inbox/`
+  on the laptop running TripTale only — `InboxDir`'s `.gitignore` covers the whole folder
+  unconditionally, so pending/processed/discarded/raw content is never committed or pushed,
+  privacy mode on or off.
+- Only **➕ Add** moves a specific item's text into that day's tracked markdown body (and a photo
+  into `attachments/`, which *is* subject to sync/export) — that's the only path from "captured"
+  to "part of the shared/exported diary." **🗑 Dump** just moves the files to
+  `inbox/discarded/`, still local, still gitignored, not instant deletion but never synced either.
+
+What *does* change with privacy mode off, worth being deliberate about:
+
+- **Noise/scope creep on disk** — every message in the group, trip-related or not, becomes a
+  plaintext file under `inbox/` (even if immediately Dumped). Mitigation: use a **dedicated
+  capture-only group**, not an existing general family chat, so only trip-related chatter ever
+  reaches the bot.
+- **Sender identity travels with every capture** (todo 75) — first/last name and Telegram user id
+  are written to disk for discarded items too, with no retention/cleanup policy yet for
+  `inbox/raw/` (see todo 73 above).
+- **The bot token is a bearer credential** — whoever has it can read everything sent to that bot.
+  It lives in `settings.yml` under the settings dir (outside the git-tracked data dir, so never
+  pushed), but it's still plaintext on disk — treat it like a password.
+- **No per-member filtering** — the Bot API can't let only some group members post; to exclude
+  someone, remove them from the group rather than relying on bot config.
+
+### B. Per-person 1:1 chats with the bot (needs a code change, not built)
+
+Each family member messaging the bot privately gets their own distinct `chat.id` with the bot.
+`TelegramInboxClient.poll()` only accepts one configured `telegramChatId` today — a message from
+any other chat is logged and dropped, matching "no multi-sender allowlist in v1" from the MVP
+decisions above. Supporting this would mean turning `telegramChatId` into a small allowlist
+(comma-separated ids, most likely) and keeping the per-message `from` name (todo 75 already
+captures it) as the only way to tell captures apart, since there'd be no shared chat history to
+fall back on. More private than option A, more to build and maintain.
+
+**Not decided yet** — option A needs no further work and is the natural next thing to try with
+the family; option B stays here as the documented fallback if group visibility turns out to be
+unwanted.
+

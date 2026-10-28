@@ -27,7 +27,8 @@ import java.time.ZoneId;
  * simply stale until the user checks). Text messages from the single configured chat are written
  * as files into {@code <dataDir>/inbox/} via {@link InboxDir}, each with a same-stem {@code .json}
  * sidecar holding the raw Telegram {@code update} (todo 73 — debugging and designing future data
- * extraction, never parsed back by TripTale itself). Photo messages (todo 74) go through a second
+ * extraction, plus {@code message_id}/{@code from} read back by {@link InboxItem}, todo 75).
+ * Photo messages (todo 74) go through a second
  * pair of Bot API calls — {@code getFile} to resolve a {@code file_path}, then a plain download —
  * to fetch the largest available {@code PhotoSize} (Telegram already compresses photos server-side,
  * so there's no quality lost by always taking the biggest one and no realistic risk of the 20 MB

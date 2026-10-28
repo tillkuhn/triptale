@@ -1,6 +1,6 @@
 # ToDos for this app
 
-## Next Todo: 75
+## Next Todo: 76
 
 ## 67 Private images
 
@@ -235,6 +235,21 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+---
+
+## DONE 75 Inbox: show sender and Telegram message id, tighter card layout
+
+Prep work for more than one family member capturing into the same inbox. `InboxItem` now reads
+`message_id`/`from.first_name [last_name]` back out of the same-stem `.json` sidecar (todo 73)
+that was already being written but never read; the Inbox dialog shows them on the date line
+("2026-10-26 17:45 · #23 · Tima Fe", date stays first for the visual day/time mapping). Also
+tightened the card layout (less padding/spacing, the error label no longer reserves space when
+empty) so more pending items fit on screen at once. See `docs/68_mobile_inbox.md` for how a
+shared Telegram group lets several family members capture today without further code changes,
+and what a true multi-sender allowlist would need.
+
+[Details](docs/68_mobile_inbox.md)
 
 ## DONE 74 Telegram inbox: receive photos, not just text
 

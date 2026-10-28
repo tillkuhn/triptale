@@ -18,8 +18,9 @@ import java.util.List;
  * The data dir's {@code inbox/} folder (todo 68, raw payload capture todo 73, photo capture
  * todo 74): one flat folder of timestamped {@code .txt} files, each one captured message waiting
  * to be attached to an entry or discarded, plus two optional same-stem sidecars — a {@code .json}
- * raw Telegram payload (debugging/future data-extraction, never read by {@link InboxItem}/the
- * Inbox dialog) and, for a photo message, a {@code .jpg} with the downloaded image ({@code .txt}
+  * raw Telegram payload (read back only for its {@code message_id}/{@code from} by
+ * {@link InboxItem}, todo 75 — everything else in it stays debugging/future data-extraction) and,
+ for a photo message, a {@code .jpg} with the downloaded image ({@code .txt}
  * then holds the caption, possibly empty). {@code raw/} holds payloads for updates that never
  * became a pending item at all (locations, undownloadable photos, …) — same purpose, just for
  * content v1 doesn't parse yet. Always local — unlike {@code attachments/}, there is no sync mode
@@ -53,7 +54,8 @@ public class InboxDir {
      * Writes one text message as a timestamped file (created on demand); a same-second collision
      * gets a numeric suffix. If {@code rawJson} is non-blank, it's written alongside as a
      * same-stem {@code .json} sidecar (todo 73) — the raw Telegram payload the message came from,
-     * kept purely for debugging/future data-extraction and never read back by {@link InboxItem}.
+     * kept for debugging/future data-extraction; {@link InboxItem} reads back only
+     * {@code message_id}/{@code from} from it (todo 75).
      */
     public Path writeItem(LocalDateTime timestamp, String text, String rawJson) {
         return writeItem(timestamp, text, null, rawJson);

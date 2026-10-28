@@ -83,7 +83,7 @@ public final class InboxDialog {
         // recent day — the one most likely to be the right destination — should come first.
         List<LocalDate> dates = entries.stream().map(DiaryEntry::date).sorted(Comparator.reverseOrder()).toList();
 
-        VBox list = new VBox(10);
+        VBox list = new VBox(6);
         list.setPadding(new Insets(4));
         if (items.isEmpty()) {
             list.getChildren().add(new Label("Nothing captured yet."));
@@ -104,7 +104,7 @@ public final class InboxDialog {
 
     private VBox row(InboxItem item, List<LocalDate> dates, Map<LocalDate, DiaryEntry> byDate,
                       ItemHandler handler, VBox list, Dialog<Void> dialog) {
-        Label meta = new Label(TIMESTAMP.format(item.timestamp()));
+        Label meta = new Label(metaLine(item));
         meta.getStyleClass().add("hint-label");
         LocalDate itemDate = item.timestamp().toLocalDate();
 
@@ -131,9 +131,11 @@ public final class InboxDialog {
         }
         Label error = new Label();
         error.getStyleClass().add("form-error");
+        error.setManaged(false);
+        error.setVisible(false);
 
-        VBox box = new VBox(6, meta);
-        box.setPadding(new Insets(8));
+        VBox box = new VBox(4, meta);
+        box.setPadding(new Insets(6, 8, 6, 8));
         box.getStyleClass().add("card");
 
         item.photo().ifPresent(photo -> {
@@ -153,14 +155,29 @@ public final class InboxDialog {
 
         attach.setOnAction(e -> {
             LocalDate date = dayCombo.getValue();
-            if (date == null) { error.setText("Pick a day first."); return; }
+            if (date == null) { error.setText("Pick a day first."); showError(error); return; }
             if (handler.handle(item, Action.ATTACH, date)) remove(box, list, dialog);
-            else error.setText("Couldn't attach automatically — check the main window.");
+            else { error.setText("Couldn't attach automatically — check the main window."); showError(error); }
         });
         discard.setOnAction(e -> {
             if (handler.handle(item, Action.DISCARD, dayCombo.getValue())) remove(box, list, dialog);
         });
         return box;
+    }
+
+    private void showError(Label error) {
+        error.setManaged(true);
+        error.setVisible(true);
+    }
+
+    /** "2026-10-26 17:45 · #23 · Tima Fe" — timestamp first (visual day/time mapping), then the
+     * Telegram message id and sender name when the {@code .json} sidecar has them (todo 75), in
+     * preparation for more than one family member capturing into the same inbox. */
+    private static String metaLine(InboxItem item) {
+        StringBuilder sb = new StringBuilder(TIMESTAMP.format(item.timestamp()));
+        item.messageId().ifPresent(id -> sb.append("  ·  #").append(id));
+        item.fromName().ifPresent(name -> sb.append("  ·  ").append(name));
+        return sb.toString();
     }
 
     /** Wraps the caption text, turning any URL word into a clickable {@link Hyperlink}. */
