@@ -45,6 +45,19 @@ class AttachmentsDirTest {
     }
 
     @Test
+    void tripDir_isOneLevelAboveTheDayDirs() {
+        Path dir = attachmentsDir.tripDir(new TripRef(2026, "altenbeken-ruhr"));
+        assertEquals(dataDir.resolve("attachments/2026/altenbeken-ruhr"), dir);
+    }
+
+    @Test
+    void mapFile_namesByRangeUnderTheTripDir() {
+        TripRef ref = new TripRef(2026, "altenbeken-ruhr");
+        Path file = attachmentsDir.mapFile(ref, LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 26));
+        assertEquals(attachmentsDir.tripDir(ref).resolve("map-2026-09-20-2026-09-26.png"), file);
+    }
+
+    @Test
     void ensureDayDir_createsOnDemand() {
         Path dir = attachmentsDir.ensureDayDir(new TripRef(2026, "trip"), LocalDate.of(2026, 9, 26));
         assertTrue(Files.isDirectory(dir));

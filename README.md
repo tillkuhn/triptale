@@ -25,7 +25,7 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 
 - **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, links (track, explore, visit, dive, eat, drink, sleep, …) and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
 - **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …).
-- **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a Mapbox static map (needs a Mapbox token in Settings).
+- **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a self-rendered OpenStreetMap (OpenTopoMap tiles) map, saved to the trip's attachments so exports can reuse it.
 - **Impressions & Faves** — show that day's photos straight from your picture folders, see [below](#impressions--faves-).
 - **Export** — render a whole trip as one Markdown document (copy to clipboard) or as an HTML page with a photo gallery.
 - **Smart Sync** (`⌘K`) — commit, rebase onto the remote, push, and sync the backpack in one dialog, see [below](#git--smart-sync-).
@@ -270,7 +270,6 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 | `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data`. Changing it needs a restart. |
 | `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
 | `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
-| `mapboxToken` | Public Mapbox token for the trip map. |
 | `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. The same bucket also syncs Tailwind FM's tracks. |
 | `radioEnabled` | Shows the Tailwind FM menu and 🔊 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
 

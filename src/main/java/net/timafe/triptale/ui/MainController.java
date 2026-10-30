@@ -326,7 +326,7 @@ public class MainController implements StatusSink {
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);
         this.placeLookup = new PlaceLookup(version);
         this.weatherClient = new OpenMeteoClient(version);
-        this.mapAssistantDialog = new MapAssistantDialog(store, new MapboxService(settingsStore),
+        this.mapAssistantDialog = new MapAssistantDialog(store, version, attachmentsDir,
                 new PhotoLocations(impressions, exifReader), connectivityService, this);
     }
 

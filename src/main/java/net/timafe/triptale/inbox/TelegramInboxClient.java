@@ -41,8 +41,8 @@ import java.time.ZoneId;
  * JavaFX imports (package boundary rule).
  *
  * <p>Bot token and chat ID are re-read from settings on every call (not cached at construction),
- * same pattern as {@code ui.MapboxService}/the impressions settings — an Edit Settings change
- * takes effect without a restart.
+ * same pattern as the impressions settings — an Edit Settings change takes effect without a
+ * restart.
  */
 public class TelegramInboxClient {
 

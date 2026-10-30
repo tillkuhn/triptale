@@ -43,7 +43,7 @@ public class GitService {
         this.store = store;
     }
 
-    private static final String GITIGNORE_ENTRY = ".state.yml";
+    private static final String[] GITIGNORE_ENTRIES = {".state.yml", ".tile-cache"};
 
     // Tolaria (https://github.com/refactoringhq/tolaria) type definitions, created at the data-dir root
     // so entries tagged `type: Tale` and trips resolve to a note type in a Tolaria vault.
@@ -179,14 +179,18 @@ public class GitService {
     private void ensureGitignore(Path root) {
         Path gitignore = root.resolve(".gitignore");
         try {
-            String existing = Files.exists(gitignore) ? Files.readString(gitignore) : "";
-            if (!existing.lines().map(String::trim).anyMatch(GITIGNORE_ENTRY::equals)) {
-                String updated = existing.isEmpty()
-                        ? GITIGNORE_ENTRY + "\n"
-                        : (existing.endsWith("\n") ? existing : existing + "\n") + GITIGNORE_ENTRY + "\n";
-                Files.writeString(gitignore, updated);
-                log.info("Added '{}' to {}", GITIGNORE_ENTRY, gitignore);
+            String content = Files.exists(gitignore) ? Files.readString(gitignore) : "";
+            boolean changed = false;
+            for (String entry : GITIGNORE_ENTRIES) {
+                if (content.lines().map(String::trim).noneMatch(entry::equals)) {
+                    content = content.isEmpty()
+                            ? entry + "\n"
+                            : (content.endsWith("\n") ? content : content + "\n") + entry + "\n";
+                    log.info("Adding '{}' to {}", entry, gitignore);
+                    changed = true;
+                }
             }
+            if (changed) Files.writeString(gitignore, content);
         } catch (IOException e) {
             log.warn("Could not update {}: {}", gitignore, e.getMessage());
         }

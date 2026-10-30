@@ -61,11 +61,24 @@ public class AttachmentsDir {
         return store.dataDir().resolve(DIR_NAME);
     }
 
+    /** The trip's own folder (above the per-day folders), whether or not it exists yet. */
+    public Path tripDir(TripRef ref) {
+        return root().resolve(Integer.toString(ref.year())).resolve(ref.slug());
+    }
+
     /** The day's folder, whether or not it exists yet. */
     public Path dayDir(TripRef ref, LocalDate date) {
         String entryName = store.entryFile(ref, date).getFileName().toString();
-        return root().resolve(Integer.toString(ref.year())).resolve(ref.slug())
-                .resolve(entryName.substring(0, entryName.length() - ".md".length()));
+        return tripDir(ref).resolve(entryName.substring(0, entryName.length() - ".md".length()));
+    }
+
+    /**
+     * Where a rendered trip map (todo 61, {@code map.OsmMapRenderer}) for the range {@code from}
+     * ..{@code to} is saved — directly under the trip's folder, not a day folder, since a map
+     * usually spans more than one day. Re-rendering the same range overwrites the previous file.
+     */
+    public Path mapFile(TripRef ref, LocalDate from, LocalDate to) {
+        return tripDir(ref).resolve("map-" + from + "-" + to + ".png");
     }
 
     /** Creates the day's folder on demand and returns it. */

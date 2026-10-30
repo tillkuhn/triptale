@@ -70,9 +70,6 @@ public final class EditSettingsDialog {
         TextField faveFilterField = new TextField(settings.getImpressionsFaveFilter());
         faveFilterField.setPromptText("e.g. *+.* (space-separated, case-insensitive)");
         faveFilterField.setPrefColumnCount(36);
-        TextField mapboxTokenField = new TextField(settings.getMapboxToken());
-        mapboxTokenField.setPromptText("pk.… (unrestricted public token)");
-        mapboxTokenField.setPrefColumnCount(36);
         ComboBox<TripLanguage> languageCombo = new ComboBox<>();
         languageCombo.getItems().setAll(TripLanguage.values());
         languageCombo.setValue(TripLanguage.fromCode(settings.getDefaultTripLanguage()));
@@ -158,11 +155,7 @@ public final class EditSettingsDialog {
         photos.add(new Label("Impressions base filter:"), 0, row);
         photos.add(baseFilterField, 1, row++);
         photos.add(new Label("Impressions fave filter:"), 0, row);
-        photos.add(faveFilterField, 1, row++);
-        photos.add(new Separator(), 0, row, 2, 1);
-        row++;
-        photos.add(new Label("Mapbox token:"), 0, row);
-        photos.add(mapboxTokenField, 1, row);
+        photos.add(faveFilterField, 1, row);
 
         GridPane backpack = Dialogs.formGrid();
         row = 0;
@@ -204,7 +197,7 @@ public final class EditSettingsDialog {
         inbox.add(inboxHint, 1, row);
         Tab inboxTab = tab("Mobile Inbox", inbox);
 
-        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab, wordpressTab, inboxTab);
+        TabPane tabs = new TabPane(tab("General", general), tab("Photos", photos), backpackTab, wordpressTab, inboxTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
 
@@ -288,7 +281,6 @@ public final class EditSettingsDialog {
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
         settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
-        settings.setMapboxToken(mapboxTokenField.getText().trim());
         settings.setDefaultTripLanguage(languageCombo.getValue().code());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());

@@ -39,8 +39,10 @@ package boundary rule holds):
    reliably), attribution of the tile source bottom right.
 4. `ImageIO.write(img, "png", file)`.
 
-Map Assistant then shows the same image, so Mapbox can be removed entirely (`MapboxService`,
-the `mapboxToken` setting, the token hint in the dialog).
+Map Assistant then shows the same image. Mapbox is removed entirely as part of this todo:
+`MapboxService`, the `mapboxToken` setting/field, and its Edit Settings UI go away; "On Screen"
+switches straight to the OSM renderer. There's a feature branch for this, so reverting is cheap
+if that turns out to be premature — no fallback/dual-renderer path is kept around for it.
 
 ## Tile sources
 
@@ -57,6 +59,31 @@ before adding it.
 
 OpenTopoMap is the preferred default for a nature look.
 
+## Decisions
+
+- **Save destination**: auto-saved to `attachments/map-<from>-<to>.png` in the trip's
+  attachments folder on every "On Screen" click (overwriting the same file per range) —
+  synced by `BucketSyncer`, directly reusable by exports/WordPress without a separate "Save
+  as…" step.
+- **Tile source scope**: a per-session dropdown in Map Assistant only, not persisted to
+  `settings.yml` or per-trip frontmatter. v1 wires up **OpenTopoMap only**; CyclOSM/OSM
+  standard/others are separate future todos once the stitching/caching core is proven.
+- **Attribution**: drawn into the PNG itself (bottom-right), not duplicated as export text —
+  exports already end with an OSM place credit (todo 58), this is the map's own credit line.
+- **Pins**: plain vector shapes via `Graphics2D` (antialiased), same colors as today's Mapbox
+  pins (red start, teal stop, yellow camera) — no bundled icon assets.
+- **Resolution**: native 256px tiles at the existing 960×640 default size (3:2, same shrink-to-
+  screen logic as today). Labels will look smaller than Mapbox's `@2x` — an accepted trade-off,
+  not solved with supersampling.
+- **Mapbox removal**: happens in this same todo (see above), not staged as a follow-up.
+- **Tile disk cache**: `<data-dir>/.tile-cache/<source>/<z>/<x>/<y>.png`, gitignored alongside
+  `.state.yml`.
+- **Zoom picker**: Map Assistant keeps the existing Close/Normal/Wide/Very wide combo; each
+  level maps to a margin-around-bbox fraction for the fit-to-bounds math, replacing Mapbox's
+  padding/zoom request params.
+- **User-Agent**: outgoing tile requests send `TripTale/<version> (+https://github.com/<org>/
+  triptale)`, version from `BuildProperties`, per OSM's tile usage policy.
+
 ## Alternatives considered
 
 - Gluon Maps (JavaFX map view): interactive, but saving needs a node snapshot.
@@ -68,13 +95,5 @@ OpenTopoMap is the preferred default for a nature look.
 ## Trade-offs
 
 - Standard raster tiles are 256 px and not retina-optimized: at 1920×1280 labels look smaller
-  than Mapbox's `@2x`.
+  than Mapbox's `@2x` (accepted, see Decisions above).
 - Pins won't be emoji.
-
-## Open questions
-
-- Where saved maps go: "Save as…" vs. `attachments/map-<from>-<to>.png` in the trip folder
-  (synced by `BucketSyncer`, picked up by the exports / WordPress post).
-- Tile source as a setting in `settings.yml`, or per trip?
-- Credit line in the exports: drawn into the image only, or also in the text (exports already
-  end with an OSM credit since todo 58)?
