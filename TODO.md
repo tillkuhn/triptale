@@ -2,15 +2,6 @@
 
 ## Next Todo: 78
 
-## 77 Octobot inbox: convert a detected link into a Weblink
-
-Add an optional "Create Weblink" checkbox to each `InboxDialog` row (after Add/Dump), disabled
-when the message has no URL. On Add, if ticked, opens a small follow-up dialog (verb combo
-limited to that day's untaken verbs, editable url/name) and adds the result to the day's links.
-Also fixes the barely-visible `➕` plus glyph on the Add button (swap for plain `+`).
-
-[Details](docs/77_inbox_create_weblink.md)
-
 ## 67 Private images
 
 Mark individual backpack images as private so they're kept but never exported — a per-day
@@ -244,6 +235,16 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 77 Octobot inbox: convert a detected link into a Weblink
+
+Added an optional "Create Weblink" checkbox to each `InboxDialog` row (after Add/Dump),
+pre-checked whenever a URL is detected, disabled otherwise. On Add, if ticked, opens a small
+follow-up dialog (verb combo limited to that day's untaken verbs, editable url/name) and adds
+the result to the day's links. The private-notes bullet now names the verb too, e.g. "added and
+eat-linked by Octobot 🐙". Also fixed the barely-visible `➕` plus glyph on the Add button.
+
+[Details](docs/77_inbox_create_weblink.md)
 
 ## DONE 76 "Add Private Notes" + bullet-style Octobot inbox landing
 

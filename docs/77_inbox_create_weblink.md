@@ -62,7 +62,7 @@ Octobot 🐙"` (e.g. `"added and eat-linked by Octobot 🐙"`), via a new
 delegates with `null` for every other caller. This is why the dialog must run before the bullet
 text is assembled rather than after the save, as first sketched above.
 
-**New dialog**: `ui/dialog/QuickWeblinkDialog.java` (name tentative), following the existing
+**New dialog**: `ui/dialog/QuickWeblinkDialog.java`, following the existing
 dialog contract (plain object, `Optional<Result> showAndWait(...)`, no controller-state
 mutation). Single row: `ComboBox<LinkKind>` (items = the untaken-verbs list computed above),
 `TextField` url (pre-filled, editable), `TextField` name (pre-filled, editable), Add/Cancel
@@ -97,21 +97,22 @@ a plain typographic character (e.g. `+`) so it's rendered as ordinary text and i
 plumbing needed. **Scoped to this one button only** — `LinksDialog`'s `＋` (different,
 full-width character, not reported as broken) and any other emoji-plus buttons are left alone.
 
-## Open implementation notes (not yet decided, left to implementation time)
+## Implementation notes
 
-- Exact class/method names for the "strip first URL from text, collapse to one line" helper —
-  likely a small static method in `InboxDialog` or a new tiny helper, reusing the `TOKENS`
-  pattern already there.
-- Whether `QuickWeblinkDialog` lives next to `LinksDialog` and shares any code with it (e.g. the
-  `field(...)` helper, URL validation) — small enough it may just duplicate the ~10 lines rather
-  than extracting a shared base.
+- "Strip first URL from text, collapse to one line" ended up as `InboxLinks.nameWithoutUrl`
+  (`inbox/InboxLinks.java`), alongside `InboxLinks.firstUrl` and `InboxLinks.guessVerb` — a
+  small pure-function sibling to `InboxNotes`, not a method on `InboxDialog`.
+- `QuickWeblinkDialog` duplicates the small `field`/URL-validation pattern from `LinksDialog`
+  rather than extracting a shared base — small enough that sharing wasn't worth the coupling.
 
 ## Relevant files
 
 - `ui/dialog/InboxDialog.java` — row UI, checkbox, URL/verb-keyword detection
-- `ui/MainController.java` — `handleInboxItem` (~L830), `onLinks` (~L2024) as the apply-pattern
+- `ui/MainController.java` — `handleInboxItem`, `applyWeblink`, `onLinks` as the apply-pattern
   reference
-- `ui/dialog/LinksDialog.java` — untaken-verb filter pattern to reuse, validation pattern
+- `ui/dialog/QuickWeblinkDialog.java` — the follow-up verb/url/name dialog
+- `inbox/InboxLinks.java` — pure helpers: first-URL detection, name-without-url, verb guessing
+- `ui/dialog/LinksDialog.java` — untaken-verb filter pattern reused, validation pattern
 - `domain/LinkKind.java`, `domain/Link.java` — verb enum, link value type
 - `inbox/InboxNotes.java` — private-notes bullet append (unchanged, URL stays in it)
 - `src/main/resources/fxml/triptale.css` — no new CSS needed if the icon fix is a plain `+`
