@@ -1,5 +1,6 @@
 package net.timafe.triptale.inbox;
 
+import net.timafe.triptale.domain.LinkKind;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,5 +54,17 @@ class InboxNotesTest {
     void ignoresTrailingWhitespaceInExistingBody() {
         assertEquals("Some tale\n\n## Private Notes \uD83D\uDD12\n\n* Note" + SUFFIX,
                 InboxNotes.append("Some tale\n\n  \n", "Note"));
+    }
+
+    @Test
+    void namesTheVerbWhenAWeblinkWasAlsoCreated() {
+        assertEquals("## Private Notes \uD83D\uDD12\n\n* Beldibi Turkish Bath — added and eat-linked by Octobot \uD83D\uDC19",
+                InboxNotes.append("", "Beldibi Turkish Bath", LinkKind.EAT));
+    }
+
+    @Test
+    void fallsBackToPlainSuffixWhenNoVerbIsGiven() {
+        assertEquals("## Private Notes \uD83D\uDD12\n\n* Saw a waterfall" + SUFFIX,
+                InboxNotes.append("", "Saw a waterfall", null));
     }
 }

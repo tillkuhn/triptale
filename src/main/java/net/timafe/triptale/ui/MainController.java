@@ -829,9 +829,11 @@ public class MainController implements StatusSink {
      * attachment); if present, the caption is appended as a bullet inside the entry's private
      * section (todo 76, {@link InboxNotes}) and the day is saved, same as a text item. A
      * caption-less photo needs no save — there's nothing to persist in the entry itself.
-     * {@code createWeblink} (todo 77) additionally offers, after a successful attach, to turn
+     * {@code createWeblink} (todo 77) additionally offers, before the note is saved, to turn
      * the item's first detected URL into a {@code url_<verb>} weblink via
-     * {@link QuickWeblinkDialog} — purely additive, never blocks the attach itself.
+     * {@link QuickWeblinkDialog} — purely additive, never blocks the attach itself. Run before
+     * the note bullet is built so {@link InboxNotes#append(String, String, LinkKind)} can name
+     * the verb in the bullet's origin text (e.g. "added and eat-linked by Octobot 🐙").
      */
     private boolean handleInboxItem(InboxItem item, InboxDialog.Action action, LocalDate date, boolean createWeblink) {
         if (action == InboxDialog.Action.DISCARD) {
@@ -859,42 +861,49 @@ public class MainController implements StatusSink {
                 return false;
             }
         }
+        LinkKind addedVerb = createWeblink ? applyWeblink(item, date) : null;
+        boolean linksChanged = addedVerb != null;
+        if (linksChanged) updateDirty();
         if (!item.text().isBlank()) {
-            talesArea.setText(InboxNotes.append(talesArea.getText(), item.text()));
+            talesArea.setText(InboxNotes.append(talesArea.getText(), item.text(), addedVerb));
             updateDirty();
-            if (!saveTheDayIfPossible()) {
-                error("Attached to the form but couldn't save automatically (needs a title) — save manually, then run Check Inbox again");
-                return false;
-            }
+        }
+        if ((!item.text().isBlank() || linksChanged) && !saveTheDayIfPossible()) {
+            error("Attached to the form but couldn't save automatically (needs a title) — save manually, then run Check Inbox again");
+            return false;
         }
         inboxDir.markProcessed(item.file());
-        if (createWeblink) offerWeblink(item, date);
         return true;
     }
 
-    /** Follow-up to a successful Add when "Create Weblink" was ticked (todo 77). Never fails the Add itself. */
-    private void offerWeblink(InboxItem item, LocalDate date) {
+    /**
+     * Follow-up to Add when "Create Weblink" was ticked (todo 77), applying the chosen link to
+     * {@code links} immediately rather than saving on its own — the caller folds it into the
+     * same save as the note bullet. Returns the verb that was added, or null if there was no
+     * detected URL, no untaken verb left, or the dialog was cancelled. Never fails the Add itself.
+     */
+    private LinkKind applyWeblink(InboxItem item, LocalDate date) {
         Optional<String> url = InboxLinks.firstUrl(item.text());
-        if (url.isEmpty()) return;
+        if (url.isEmpty()) return null;
         List<LinkKind> untaken = Arrays.stream(LinkKind.values())
                 .filter(k -> !links.containsKey(k.key()))
                 .toList();
         if (untaken.isEmpty()) {
             status("All weblink kinds already used for " + date + " — add manually in 🕸 Weblinks");
-            return;
+            return null;
         }
         String name = InboxLinks.nameWithoutUrl(item.text(), url.get());
         LinkKind guessed = InboxLinks.guessVerb(name, untaken.stream().map(LinkKind::key).toList())
                 .flatMap(LinkKind::of).orElse(null);
         Optional<QuickWeblinkDialog.Result> result =
                 QuickWeblinkDialog.showAndWait(untaken, guessed, url.get(), name);
-        if (result.isEmpty()) return;
+        if (result.isEmpty()) return null;
+        LinkKind verb = LinkKind.of(result.get().verb()).orElse(null);
         SequencedMap<String, Link> updated = new LinkedHashMap<>(links);
         updated.put(result.get().verb(), result.get().link());
         links = updated;
         updateLinksButton();
-        updateDirty();
-        saveTheDayIfPossible();
+        return verb;
     }
 
 

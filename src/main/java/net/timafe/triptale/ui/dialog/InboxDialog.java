@@ -139,6 +139,7 @@ public final class InboxDialog {
         boolean hasUrl = InboxLinks.firstUrl(item.text()).isPresent();
         CheckBox createWeblink = new CheckBox("Create Weblink");
         createWeblink.setDisable(!hasUrl);
+        createWeblink.setSelected(hasUrl);
         if (!hasUrl) createWeblink.setTooltip(new Tooltip("No link found in this message"));
         Label error = new Label();
         error.getStyleClass().add("form-error");
