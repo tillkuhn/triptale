@@ -54,7 +54,6 @@ below. It only applies the result to the in-memory `links` field; it does not sa
 5. The URL stays in the private-notes bullet text as-is (no stripping) — `InboxNotes.append`'s
    collapsing of the raw note is untouched; the weblink is an additional structured extraction,
    not a replacement.
-
 **Bullet names the verb**: when the Add also created a weblink, the private-notes bullet's
 origin suffix becomes `"added and <verb>-linked by Octobot 🐙"` instead of the plain `"added by
 Octobot 🐙"` (e.g. `"added and eat-linked by Octobot 🐙"`), via a new
