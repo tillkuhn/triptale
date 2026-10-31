@@ -62,11 +62,13 @@ has nothing to put on screen.
   flatter nature look); overlay-only or API-key sources (Waymarked Trails, Thunderforest) are
   future todos.
 - **Zoom:** `Zoom: [Close|Normal|Wide|Very wide]` combo, defaulting to Normal
-  (`OsmMapRenderer.DEFAULT_ZOOM`). Each level is a margin fraction of the image's smallest side
-  (2% / 12% / 28% / 45%, see `OsmMapRenderer.ZoomLevel`) used by the fit-to-bounds math
-  (`WebMercator.fitZoom`) for multiple points, or an explicit zoom (16 / 12 / 9 / 5) for the
-  single-point case, where fitting a zero-size bounding box would otherwise zoom all the way to
-  the tile source's max zoom.
+  (`OsmMapRenderer.DEFAULT_ZOOM`). For multiple points, a shared 12% margin first finds the
+  tightest fit-to-bounds zoom (`WebMercator.fitZoom`), then each level steps that zoom by a fixed
+  number of levels (+2 / 0 / -1 / -3, see `OsmMapRenderer.ZoomLevel.zoomBias`) — a margin-only
+  difference between levels was too small to ever flip the integer zoom pick for most real trips,
+  so Close and Normal used to render identically. For a single point, an explicit zoom
+  (16 / 12 / 9 / 5) is used instead, since fitting a zero-size bounding box would otherwise zoom
+  all the way to the tile source's max zoom regardless of level.
 
 ## What's plotted
 

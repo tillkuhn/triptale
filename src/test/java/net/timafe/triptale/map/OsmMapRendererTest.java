@@ -44,10 +44,22 @@ class OsmMapRendererTest {
     }
 
     @Test
-    void fitZoom_multiplePointsDelegatesToWebMercatorFitZoom() {
+    void fitZoom_multiplePointsAppliesTheZoomLevelsBiasOverTheBaseFit() {
         List<LatLon> points = List.of(new LatLon(50.0, 7.0), new LatLon(52.0, 9.0));
-        int expected = WebMercator.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.NORMAL.marginFraction, 17);
-        assertEquals(expected, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.NORMAL, 17));
+        int base = WebMercator.fitZoom(points, 960, 640, 0.12, 17);
+        assertEquals(base, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.NORMAL, 17));
+        assertEquals(base + 2, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.CLOSE, 17));
+        assertEquals(base - 1, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.WIDE, 17));
+        assertEquals(base - 3, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.VERY_WIDE, 17));
+    }
+
+    @Test
+    void fitZoom_multiplePointsClampsTheBiasedZoomToMaxZoomAndZero() {
+        // A close pair of points fits at maxZoom already with lots of room to spare — CLOSE's
+        // +2 bias must not push it past maxZoom, nor VERY_WIDE's -3 bias below zero.
+        List<LatLon> tight = List.of(new LatLon(51.5, 8.0), new LatLon(51.5001, 8.0001));
+        assertEquals(17, OsmMapRenderer.fitZoom(tight, 960, 640, OsmMapRenderer.ZoomLevel.CLOSE, 17));
+        assertEquals(0, OsmMapRenderer.fitZoom(tight, 1, 1, OsmMapRenderer.ZoomLevel.VERY_WIDE, 1));
     }
 
     @Test

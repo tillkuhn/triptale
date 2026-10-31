@@ -29,24 +29,29 @@ public class OsmMapRenderer {
 
     /**
      * How far the map zooms out around the plotted pins — same four named levels Map Assistant
-     * showed for Mapbox, reinterpreted as a margin-around-bbox fraction for the fit-to-bounds
-     * math (for multiple points) or a fixed zoom (for a single point, where fitting a
-     * zero-size bbox would otherwise zoom all the way to {@link TileSource#maxZoom()}).
+     * showed for Mapbox. For multiple points, a shared margin fraction first finds the tightest
+     * zoom that fits all of them ({@link #BASE_MARGIN_FRACTION}), then {@code zoomBias} steps
+     * that zoom in or out by a fixed number of levels — a margin-only difference between levels
+     * is too small to ever flip the (exponential, integer) zoom pick for most real trips, so
+     * Close and Normal used to render identically (todo 61 follow-up). For a single point, a
+     * fixed zoom is used instead, since fitting a zero-size bbox would otherwise zoom all the
+     * way to {@link TileSource#maxZoom()} regardless of level.
      */
     public enum ZoomLevel {
-        CLOSE("Close", 0.02, 16),
-        NORMAL("Normal", 0.12, 12),
-        WIDE("Wide", 0.28, 9),
-        VERY_WIDE("Very wide", 0.45, 5);
+        CLOSE("Close", 2, 16),
+        NORMAL("Normal", 0, 12),
+        WIDE("Wide", -1, 9),
+        VERY_WIDE("Very wide", -3, 5);
 
         private final String label;
-        /** Package-private: read by {@link OsmMapRenderer#fitZoom} and tests. */
-        final double marginFraction;
+        /** Package-private: read by {@link OsmMapRenderer#fitZoom} and tests. Zoom levels to add
+         *  on top of the {@link #BASE_MARGIN_FRACTION}-fitted zoom for multiple points. */
+        final int zoomBias;
         final int singlePointZoom;
 
-        ZoomLevel(String label, double marginFraction, int singlePointZoom) {
+        ZoomLevel(String label, int zoomBias, int singlePointZoom) {
             this.label = label;
-            this.marginFraction = marginFraction;
+            this.zoomBias = zoomBias;
             this.singlePointZoom = singlePointZoom;
         }
 
@@ -56,6 +61,10 @@ public class OsmMapRenderer {
     }
 
     public static final ZoomLevel DEFAULT_ZOOM = ZoomLevel.NORMAL;
+
+    /** Shared padding around the bbox when computing the tightest fit for multiple points —
+     *  {@link ZoomLevel#zoomBias} does the actual Close/Normal/Wide/Very wide differentiation. */
+    private static final double BASE_MARGIN_FRACTION = 0.12;
 
     /** Pins drawn beyond this many photo locations would clutter the image and slow rendering. */
     public static final int MAX_PINS = 150;
@@ -122,8 +131,9 @@ public class OsmMapRenderer {
     /** package-private for tests. */
     static int fitZoom(List<LatLon> all, int width, int height, ZoomLevel zoom, int maxZoom) {
         boolean singlePoint = new HashSet<>(all).size() == 1;
-        return singlePoint ? Math.min(zoom.singlePointZoom, maxZoom)
-                : WebMercator.fitZoom(all, width, height, zoom.marginFraction, maxZoom);
+        if (singlePoint) return Math.min(zoom.singlePointZoom, maxZoom);
+        int base = WebMercator.fitZoom(all, width, height, BASE_MARGIN_FRACTION, maxZoom);
+        return Math.max(0, Math.min(maxZoom, base + zoom.zoomBias));
     }
 
     /** The world-pixel center of {@code all}'s bounding box at zoom {@code z}. */
