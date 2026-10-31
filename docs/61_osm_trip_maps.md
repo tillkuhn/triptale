@@ -65,8 +65,11 @@ OpenTopoMap is the preferred default for a nature look.
   attachments folder on every "On Screen" click (overwriting the same file per range) —
   synced by `BucketSyncer`, directly reusable by exports/WordPress without a separate "Save
   as…" step.
-- **Tile source scope**: a per-session dropdown in Map Assistant only, not persisted to
-  `settings.yml` or per-trip frontmatter. Wires up **OpenTopoMap, OSM Standard and CyclOSM**
+- **Tile source scope**: a dropdown in Map Assistant, remembered across sessions (not per-trip)
+  via `.state.yml`'s `lastMapStyle` (`MarkdownStore.saveLastMapStyle`/`loadLastMapStyle`, a plain
+  string id — `storage` must not depend on `map`'s `TileSource`), not `settings.yml` or per-trip
+  frontmatter. Falls back to OpenTopoMap if nothing saved yet or the saved id no longer matches
+  a known source. Wires up **OpenTopoMap, OSM Standard and CyclOSM**
   (all no-key, single-layer raster sources); Waymarked Trails (overlay-only) and Thunderforest/
   OpenCycleMap (API key, ToS check needed) are separate future todos once that extra plumbing
   is worth it.

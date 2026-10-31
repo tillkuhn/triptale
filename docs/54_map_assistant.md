@@ -56,10 +56,11 @@ has nothing to put on screen.
   `attachments/<year>/<slug>/map-<from>-<to>.png` (`AttachmentsDir.mapFile`), overwriting any
   earlier render of the same range, so exports/WordPress can reuse the file without a separate
   "Save as…" step.
-- **Tile style:** `Style: [OpenTopoMap ▾]` combo (`map.TileSource`) — a per-session choice, not
-  persisted. Ships OpenTopoMap (nature look: contours, hillshading, forests, paths), OSM
-  Standard (plain street map) and CyclOSM (cycling-oriented, flatter nature look); overlay-only
-  or API-key sources (Waymarked Trails, Thunderforest) are future todos.
+- **Tile style:** `Style: [OpenTopoMap ▾]` combo (`map.TileSource`) — remembered across sessions
+  in `.state.yml` (`lastMapStyle`), not per-trip. Ships OpenTopoMap (nature look: contours,
+  hillshading, forests, paths), OSM Standard (plain street map) and CyclOSM (cycling-oriented,
+  flatter nature look); overlay-only or API-key sources (Waymarked Trails, Thunderforest) are
+  future todos.
 - **Zoom:** `Zoom: [Close|Normal|Wide|Very wide]` combo, defaulting to Normal
   (`OsmMapRenderer.DEFAULT_ZOOM`). Each level is a margin fraction of the image's smallest side
   (2% / 12% / 28% / 45%, see `OsmMapRenderer.ZoomLevel`) used by the fit-to-bounds math

@@ -43,6 +43,7 @@ import javafx.util.Duration;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -158,7 +159,7 @@ public final class MapAssistantDialog {
             photosCheck.setSelected(true);
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
             sourceCombo.getItems().setAll(TileSource.values());
-            sourceCombo.setValue(TileSource.OPEN_TOPO_MAP);
+            sourceCombo.setValue(lastOrDefaultTileSource());
             sourceCombo.setTooltip(new Tooltip("Tile style the map is rendered from"));
             zoomCombo.getItems().setAll(OsmMapRenderer.ZoomLevel.values());
             zoomCombo.setValue(OsmMapRenderer.DEFAULT_ZOOM);
@@ -235,6 +236,15 @@ public final class MapAssistantDialog {
             Dialogs.applyStylesheet(dlg.getDialogPane());
             dlg.showAndWait();
             pulse.stop();
+            store.saveLastMapStyle(sourceCombo.getValue().id());
+        }
+
+        /** The style picked last time Map Assistant was closed (any trip), or {@link TileSource#OPEN_TOPO_MAP}
+         *  if none was saved yet or the saved id no longer matches a known source (e.g. after one was removed). */
+        private TileSource lastOrDefaultTileSource() {
+            return store.loadLastMapStyle()
+                    .flatMap(id -> Arrays.stream(TileSource.values()).filter(s -> s.id().equals(id)).findFirst())
+                    .orElse(TileSource.OPEN_TOPO_MAP);
         }
 
         /** Range or option changed: the shown map, if any, no longer matches. */

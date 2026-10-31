@@ -601,6 +601,17 @@ class MarkdownStoreTest {
         assertTrue(store.loadLastGpxFolder().isEmpty());
     }
 
+    @Test
+    void saveAndLoadLastMapStyleRoundTrip() {
+        store.saveLastMapStyle("cyclosm");
+        assertEquals("cyclosm", store.loadLastMapStyle().orElseThrow());
+    }
+
+    @Test
+    void loadLastMapStyleReturnsEmptyWhenStateFileMissing() {
+        assertTrue(store.loadLastMapStyle().isEmpty());
+    }
+
     // -------------------------------------------------------------------------
     // Posts (todo 60)
     // -------------------------------------------------------------------------
