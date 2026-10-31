@@ -1,6 +1,22 @@
 # ToDos for this app
 
-## Next Todo: 78
+## Next Todo: 79
+
+## 78 Dotted route line on Map Assistant
+
+Draw an optional dotted line through the Map Assistant's pins, in chronological order: each
+day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start —
+one continuous path across the whole exported range. Off by default via a new checkbox next to
+"📷 Photo Locations from Backpack".
+
+- `PhotoLocations` must pair each photo's `LatLon` with `ExifReader.captureTime()` and sort by
+  it; photos with no/unparseable timestamp are skipped for the line (still shown as pins).
+- Line uses the full, untrimmed point set (not the 150-pin `sampleEvenly` budget used for pins).
+- New `OsmMapRenderer.drawLine`/`drawPath` using `WebMercator.pixelX/pixelY`, dashed `BasicStroke`,
+  neutral grey, drawn under the pins.
+- If the checkbox is on but "include photos" is off, still draw start→stop per day.
+
+[Details](docs/78_route_line_map_assistant.md)
 
 ## 67 Private images
 
