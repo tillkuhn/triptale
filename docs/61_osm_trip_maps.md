@@ -66,8 +66,10 @@ OpenTopoMap is the preferred default for a nature look.
   synced by `BucketSyncer`, directly reusable by exports/WordPress without a separate "Save
   as…" step.
 - **Tile source scope**: a per-session dropdown in Map Assistant only, not persisted to
-  `settings.yml` or per-trip frontmatter. v1 wires up **OpenTopoMap only**; CyclOSM/OSM
-  standard/others are separate future todos once the stitching/caching core is proven.
+  `settings.yml` or per-trip frontmatter. Wires up **OpenTopoMap, OSM Standard and CyclOSM**
+  (all no-key, single-layer raster sources); Waymarked Trails (overlay-only) and Thunderforest/
+  OpenCycleMap (API key, ToS check needed) are separate future todos once that extra plumbing
+  is worth it.
 - **Attribution**: drawn into the PNG itself (bottom-right), not duplicated as export text —
   exports already end with an OSM place credit (todo 58), this is the map's own credit line.
 - **Pins**: plain vector shapes via `Graphics2D` (antialiased), same colors as today's Mapbox
