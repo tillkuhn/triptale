@@ -55,7 +55,7 @@ before adding it.
 | CyclOSM | cycling: bike infrastructure, surfaces, hillshading | no | © OpenStreetMap contributors · CyclOSM |
 | Waymarked Trails | transparent hiking/cycling route overlay on a base layer | no | CC BY-SA |
 | OSM standard | general street map | no | © OpenStreetMap contributors |
-| Thunderforest Outdoors / OpenCycleMap | polished outdoor styles | free hobby key | check terms on stored images |
+| Thunderforest Outdoors / OpenCycleMap | polished outdoor styles | free hobby key | CC-BY-SA 4.0, storing/publishing OK — see Decisions |
 
 OpenTopoMap is the preferred default for a nature look.
 
@@ -70,9 +70,34 @@ OpenTopoMap is the preferred default for a nature look.
   string id — `storage` must not depend on `map`'s `TileSource`), not `settings.yml` or per-trip
   frontmatter. Falls back to OpenTopoMap if nothing saved yet or the saved id no longer matches
   a known source. Wires up **OpenTopoMap, OSM Standard and CyclOSM**
-  (all no-key, single-layer raster sources); Waymarked Trails (overlay-only) and Thunderforest/
-  OpenCycleMap (API key, ToS check needed) are separate future todos once that extra plumbing
-  is worth it.
+  (all no-key, single-layer raster sources); Waymarked Trails (overlay-only) is a separate future
+  todo once that extra plumbing is worth it.
+- **Thunderforest (key-gated sources, not yet implemented)**: Thunderforest's terms (checked
+  2026-11, thunderforest.com/terms) license individual map images under **CC-BY-SA 4.0** — unlike
+  Mapbox, storing and publishing tiles is explicitly fine. Required attribution text:
+  `Maps © Thunderforest, Data © OpenStreetMap contributors` with working links to
+  thunderforest.com and openstreetmap.org/copyright (a plain-text variant exists for printed
+  media). Their "no caching proxies" clause is aimed at redistribution services, not a single
+  user's local disk cache — our existing `.tile-cache/<source>/<z>/<x>/<y>.png` pattern should be
+  fine, same as the on-device caching they explicitly allow. Free plan is "at our discretion" and
+  can be throttled/withdrawn — an accepted risk, not a blocker.
+  - **Scope**: wire up both **Outdoors** and **OpenCycleMap** as two more `TileSource` entries
+    sharing one API key.
+  - **Key storage**: a new `thunderforestApiKey` field in `AppSettings`/`settings.yml`, same flat
+    string/default-`""` pattern as `telegramBotToken`; edited via a masked `PasswordField` in
+    `EditSettingsDialog`, same pattern as the Telegram token field.
+  - **No-key behavior**: hide the Thunderforest-based options from the Map Assistant dropdown
+    entirely when `thunderforestApiKey` is blank, rather than showing them disabled.
+  - **Plumbing needed**: `TileSource.tileUrl()` has no access to runtime settings today — the key
+    needs to be threaded through `OsmTileClient`'s constructor/call site (built in
+    `MapAssistantDialog`, which currently has no `AppSettings`/`SettingsStore` dependency) rather
+    than baked into the enum. Appending `?apikey=...` to the URL is otherwise a one-line change
+    per new `TileSource` constant; `OsmTileClient` treats the URL as opaque so needs no changes.
+  - **Free tier quota (150,000 tiles/month)**: plenty for personal use *because of* the existing
+    disk cache (`OsmTileClient.tile()`, never evicted) — a tile is only fetched once per
+    `source/z/x/y` ever, so re-rendering the same trip/zoom costs 0 fresh requests. A single
+    960×640 render is ~12–20 tiles worst-case (first view of a new region/zoom); heavy real-world
+    use lands in the hundreds to low thousands per month, nowhere near the quota.
 - **Attribution**: drawn into the PNG itself (bottom-right), not duplicated as export text —
   exports already end with an OSM place credit (todo 58), this is the map's own credit line.
 - **Pins**: plain vector shapes via `Graphics2D` (antialiased), same colors as today's Mapbox

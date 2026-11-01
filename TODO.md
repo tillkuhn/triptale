@@ -54,11 +54,10 @@ pick one style.
 
 ## 61 Self-rendered trip maps from OSM tiles
 
-Replace the Mapbox static map in Map Assistant with our own: stitch OSM tiles and draw the pins
-with plain JDK (`java.net.http`, AWT `Graphics2D`, `ImageIO`), saved as PNG so maps can go into
-the blog. Mapbox terms forbid storing/publishing its images, so Mapbox (token setting included)
-goes away. Tile source is configurable; OpenTopoMap preferred for a nature look, CyclOSM etc.
-as alternatives, each with its own attribution.
+Mapbox static maps replaced with self-rendered OSM tiles (OpenTopoMap/OSM Standard/CyclOSM,
+all no-key). Remaining: wire up Thunderforest Outdoors + OpenCycleMap (key-gated styles) —
+terms checked and OK (CC-BY-SA 4.0, storing/publishing permitted), needs a new
+`thunderforestApiKey` setting (Telegram-token pattern) and a `TileSource` key-plumbing change.
 
 [Details](docs/61_osm_trip_maps.md)
 
