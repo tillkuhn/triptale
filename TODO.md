@@ -1,6 +1,15 @@
 # ToDos for this app
 
-## Next Todo: 79
+## Next Todo: 80
+
+## Minor Queue
+
+* Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
+* New Activities: Swim, Shave
+* New Emojis: Music
+* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Auscheck Liste"
+* Replace dark "Notes" emoji in Weblinks label, not enough contrast
+* Coordinator: Where is the elevation for weather?
 
 ## 78 Dotted route line on Map Assistant
 
@@ -251,6 +260,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 79 Post diary entries to Polarsteps via API — won't do
+
+Investigated posting parts of diary entries to Polarsteps. No official API exists; the only
+notable unofficial wrapper (`remuzel/polarsteps-api`, actively maintained, cookie-auth via
+`remember_token`) exposes **read-only** endpoints (`get_user_by_username`, `get_trip`) — no
+step/entry creation. Writing would require reverse-engineering the mobile app's own create-step
+calls from scratch, with no stable contract and ToS/account-suspension risk. Not pursuing;
+revisit only if a write endpoint becomes documented somewhere.
+
+[Details](docs/79_polarsteps_export.md)
 
 ## DONE 77 Octobot inbox: convert a detected link into a Weblink
 
