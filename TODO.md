@@ -1,15 +1,31 @@
 # ToDos for this app
 
-## Next Todo: 78
+## Next Todo: 80
 
-## 77 Octobot inbox: convert a detected link into a Weblink
+## Minor Queue
 
-Add an optional "Create Weblink" checkbox to each `InboxDialog` row (after Add/Dump), disabled
-when the message has no URL. On Add, if ticked, opens a small follow-up dialog (verb combo
-limited to that day's untaken verbs, editable url/name) and adds the result to the day's links.
-Also fixes the barely-visible `➕` plus glyph on the Add button (swap for plain `+`).
+* Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
+* New Activities: Swim, Shave
+* New Emojis: Music
+* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Auscheck Liste"
+* Replace dark "Notes" emoji in Weblinks label, not enough contrast
+* Coordinator: Where is the elevation for weather?
 
-[Details](docs/77_inbox_create_weblink.md)
+## 78 Dotted route line on Map Assistant
+
+Draw an optional dotted line through the Map Assistant's pins, in chronological order: each
+day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start —
+one continuous path across the whole exported range. Off by default via a new checkbox next to
+"📷 Photo Locations from Backpack".
+
+- `PhotoLocations` must pair each photo's `LatLon` with `ExifReader.captureTime()` and sort by
+  it; photos with no/unparseable timestamp are skipped for the line (still shown as pins).
+- Line uses the full, untrimmed point set (not the 150-pin `sampleEvenly` budget used for pins).
+- New `OsmMapRenderer.drawLine`/`drawPath` using `WebMercator.pixelX/pixelY`, dashed `BasicStroke`,
+  neutral grey, drawn under the pins.
+- If the checkbox is on but "include photos" is off, still draw start→stop per day.
+
+[Details](docs/78_route_line_map_assistant.md)
 
 ## 67 Private images
 
@@ -35,16 +51,6 @@ gives camelCase (`WeekendTrip`) while the one hand-made example from todo 60 is 
 pick one style.
 
 [Background](docs/62_wordpress_publish_dialog.md)
-
-## 61 Self-rendered trip maps from OSM tiles
-
-Replace the Mapbox static map in Map Assistant with our own: stitch OSM tiles and draw the pins
-with plain JDK (`java.net.http`, AWT `Graphics2D`, `ImageIO`), saved as PNG so maps can go into
-the blog. Mapbox terms forbid storing/publishing its images, so Mapbox (token setting included)
-goes away. Tile source is configurable; OpenTopoMap preferred for a nature look, CyclOSM etc.
-as alternatives, each with its own attribution.
-
-[Details](docs/61_osm_trip_maps.md)
 
 ## 56 Open the backpack from the main window
 
@@ -244,6 +250,36 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 61 Self-rendered trip maps from OSM tiles
+
+Mapbox static maps replaced with self-rendered OSM tiles (OpenTopoMap, OSM Standard, CyclOSM,
+Thunderforest Outdoors/OpenCycleMap behind a `thunderforestApiKey` setting, hidden from the
+Style dropdown when blank). Added two more zoom levels (`SNUG`, `WIDER`) for finer-grained
+steps between Close/Normal/Wide/Very wide.
+
+[Details](docs/61_osm_trip_maps.md)
+
+## DONE 79 Post diary entries to Polarsteps via API — won't do
+
+Investigated posting parts of diary entries to Polarsteps. No official API exists; the only
+notable unofficial wrapper (`remuzel/polarsteps-api`, actively maintained, cookie-auth via
+`remember_token`) exposes **read-only** endpoints (`get_user_by_username`, `get_trip`) — no
+step/entry creation. Writing would require reverse-engineering the mobile app's own create-step
+calls from scratch, with no stable contract and ToS/account-suspension risk. Not pursuing;
+revisit only if a write endpoint becomes documented somewhere.
+
+[Details](docs/79_polarsteps_export.md)
+
+## DONE 77 Octobot inbox: convert a detected link into a Weblink
+
+Added an optional "Create Weblink" checkbox to each `InboxDialog` row (after Add/Dump),
+pre-checked whenever a URL is detected, disabled otherwise. On Add, if ticked, opens a small
+follow-up dialog (verb combo limited to that day's untaken verbs, editable url/name) and adds
+the result to the day's links. The private-notes bullet now names the verb too, e.g. "added and
+eat-linked by Octobot 🐙". Also fixed the barely-visible `➕` plus glyph on the Add button.
+
+[Details](docs/77_inbox_create_weblink.md)
 
 ## DONE 76 "Add Private Notes" + bullet-style Octobot inbox landing
 

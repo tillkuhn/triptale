@@ -33,13 +33,13 @@ public class AppSettings {
     private int impressionsGridColumns = 2;
     private String impressionsBaseFilter = DEFAULT_IMPRESSIONS_BASE_FILTER;
     private String impressionsFaveFilter = "";
-    private String mapboxToken = "";
     private Attachments attachments = new Attachments();
     private boolean radioEnabled = false;
     private String defaultTripLanguage = "en";
     private WordPress wordPress = new WordPress();
     private String telegramBotToken = "";
     private String telegramChatId = "";
+    private String thunderforestApiKey = "";
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -72,8 +72,6 @@ public class AppSettings {
     /** Space-separated filename globs marking faves, e.g. {@code *+.*}; blank = none defined (todo 47). */
     public String getImpressionsFaveFilter() { return impressionsFaveFilter; }
     public void setImpressionsFaveFilter(String impressionsFaveFilter) { this.impressionsFaveFilter = impressionsFaveFilter == null ? "" : impressionsFaveFilter; }
-    public String getMapboxToken() { return mapboxToken; }
-    public void setMapboxToken(String mapboxToken) { this.mapboxToken = mapboxToken; }
     public Attachments getAttachments() { return attachments; }
     public void setAttachments(Attachments attachments) { this.attachments = attachments; }
     /** Gates the Radio feature (todo 46): off by default, UI and folder stay untouched until a restart with this on. */
@@ -90,6 +88,10 @@ public class AppSettings {
     /** The single chat ID the inbox accepts messages from (todo 68); blank = feature off. */
     public String getTelegramChatId() { return telegramChatId; }
     public void setTelegramChatId(String telegramChatId) { this.telegramChatId = telegramChatId == null ? "" : telegramChatId; }
+    /** Free hobby-plan key for Thunderforest's Outdoors/OpenCycleMap tile styles (todo 61);
+     *  blank = those two styles are hidden from Map Assistant's Style dropdown. */
+    public String getThunderforestApiKey() { return thunderforestApiKey; }
+    public void setThunderforestApiKey(String thunderforestApiKey) { this.thunderforestApiKey = thunderforestApiKey == null ? "" : thunderforestApiKey; }
 
     public static class Git {
         private String authorName = "";

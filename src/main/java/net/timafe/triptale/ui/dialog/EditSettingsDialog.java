@@ -70,9 +70,6 @@ public final class EditSettingsDialog {
         TextField faveFilterField = new TextField(settings.getImpressionsFaveFilter());
         faveFilterField.setPromptText("e.g. *+.* (space-separated, case-insensitive)");
         faveFilterField.setPrefColumnCount(36);
-        TextField mapboxTokenField = new TextField(settings.getMapboxToken());
-        mapboxTokenField.setPromptText("pk.… (unrestricted public token)");
-        mapboxTokenField.setPrefColumnCount(36);
         ComboBox<TripLanguage> languageCombo = new ComboBox<>();
         languageCombo.getItems().setAll(TripLanguage.values());
         languageCombo.setValue(TripLanguage.fromCode(settings.getDefaultTripLanguage()));
@@ -104,6 +101,10 @@ public final class EditSettingsDialog {
         publicBaseUrlField.setPrefColumnCount(36);
         CheckBox radioEnabledCheck = new CheckBox("Enable " + Station.NAME + " radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
+        PasswordField thunderforestApiKeyField = new PasswordField();
+        thunderforestApiKeyField.setText(settings.getThunderforestApiKey());
+        thunderforestApiKeyField.setPromptText("free hobby key, e.g. 1234567890abcdef");
+        thunderforestApiKeyField.setPrefColumnCount(36);
         PasswordField telegramBotTokenField = new PasswordField();
         telegramBotTokenField.setText(settings.getTelegramBotToken());
         telegramBotTokenField.setPromptText("from @BotFather, e.g. 123456789:ABCdef…");
@@ -147,7 +148,14 @@ public final class EditSettingsDialog {
         general.add(languageHint, 1, row++);
         general.add(new Separator(), 0, row, 2, 1);
         row++;
-        general.add(radioEnabledCheck, 1, row);
+        general.add(radioEnabledCheck, 1, row++);
+        general.add(new Separator(), 0, row, 2, 1);
+        row++;
+        general.add(new Label("Thunderforest API key:"), 0, row);
+        general.add(thunderforestApiKeyField, 1, row++);
+        Label thunderforestHint = new Label("For the Outdoors/OpenCycleMap map styles in Map Assistant — blank hides them (see docs/61)");
+        thunderforestHint.getStyleClass().add("hint-label");
+        general.add(thunderforestHint, 1, row);
 
         GridPane photos = Dialogs.formGrid();
         row = 0;
@@ -158,11 +166,7 @@ public final class EditSettingsDialog {
         photos.add(new Label("Impressions base filter:"), 0, row);
         photos.add(baseFilterField, 1, row++);
         photos.add(new Label("Impressions fave filter:"), 0, row);
-        photos.add(faveFilterField, 1, row++);
-        photos.add(new Separator(), 0, row, 2, 1);
-        row++;
-        photos.add(new Label("Mapbox token:"), 0, row);
-        photos.add(mapboxTokenField, 1, row);
+        photos.add(faveFilterField, 1, row);
 
         GridPane backpack = Dialogs.formGrid();
         row = 0;
@@ -204,7 +208,7 @@ public final class EditSettingsDialog {
         inbox.add(inboxHint, 1, row);
         Tab inboxTab = tab("Mobile Inbox", inbox);
 
-        TabPane tabs = new TabPane(tab("General", general), tab("Photos & Map", photos), backpackTab, wordpressTab, inboxTab);
+        TabPane tabs = new TabPane(tab("General", general), tab("Photos", photos), backpackTab, wordpressTab, inboxTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
 
@@ -288,13 +292,13 @@ public final class EditSettingsDialog {
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
         settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
-        settings.setMapboxToken(mapboxTokenField.getText().trim());
         settings.setDefaultTripLanguage(languageCombo.getValue().code());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());
         settings.setWordPress(readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0]));
         settings.setTelegramBotToken(telegramBotTokenField.getText().trim());
         settings.setTelegramChatId(telegramChatIdField.getText().trim());
+        settings.setThunderforestApiKey(thunderforestApiKeyField.getText().trim());
         return Optional.of(settings);
     }
 

@@ -90,8 +90,16 @@ public final class ExportTexts {
         return date.format(DateTimeFormatter.ofPattern(pattern, language.locale()));
     }
 
-    /** One decimal in the trip locale, e.g. "12,5" in German. */
+    /**
+     * One decimal in the trip locale, e.g. "12,5" in German. A whole-km value (no decimal part,
+     * e.g. a round-trip total or a hand-typed "20") is assumed to be a rough estimate rather than
+     * a real measurement: it's shown without the decimal and prefixed with "~", e.g. "~20".
+     */
     public String distance(double km) {
+        String rootFormatted = String.format(Locale.ROOT, "%.1f", km);
+        if (rootFormatted.endsWith(".0")) {
+            return "~" + rootFormatted.substring(0, rootFormatted.length() - 2);
+        }
         return String.format(language.locale(), "%.1f", km);
     }
 

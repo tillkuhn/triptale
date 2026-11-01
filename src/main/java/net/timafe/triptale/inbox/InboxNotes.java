@@ -1,5 +1,6 @@
 package net.timafe.triptale.inbox;
 
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.util.Markdown;
 
 import java.util.regex.Pattern;
@@ -13,23 +14,31 @@ import java.util.regex.Pattern;
  * a new {@link Markdown#PRIVATE_DEFAULT_HEADING} section at the end — the same default heading
  * "🔒 Add Private Notes" uses, one shared concept instead of two. The note's own newlines are
  * collapsed into a single line (a multi-line Telegram message becomes one bullet) and suffixed
- * with {@link #SUFFIX} so its origin stays visible in the raw text. A pure string function so it
- * works the same whether the target entry is the one currently open in the main form (operating
- * on its text area) or loaded fresh from disk for a different day — see
- * {@code docs/68_mobile_inbox.md} and {@code docs/76_private_notes_octobot_inbox.md} for
+ * with an origin marker so it stays visible in the raw text — plain {@code "added by Octobot 🐙"},
+ * or {@code "added and eat-linked by Octobot 🐙"} when the Add also created a {@code url_<verb>}
+ * weblink (todo 77, {@code MainController.applyWeblink}), naming the verb so the bullet and the
+ * resulting Weblink entry are visibly connected. A pure string function so it works the same
+ * whether the target entry is the one currently open in the main form (operating on its text
+ * area) or loaded fresh from disk for a different day — see {@code docs/68_mobile_inbox.md},
+ * {@code docs/76_private_notes_octobot_inbox.md} and {@code docs/77_inbox_create_weblink.md} for
  * background.
  */
 public final class InboxNotes {
 
-    /** Marks an Octobot-added bullet's origin, e.g. {@code "* Saw a waterfall — added by Octobot 🐙"}. */
-    private static final String SUFFIX = " — added by Octobot \uD83D\uDC19";
+    private static final String ORIGIN = "added by Octobot \uD83D\uDC19";
     private static final Pattern BULLET_LINE = Pattern.compile("^[*+-]\\s");
 
     private InboxNotes() {
     }
 
     public static String append(String body, String note) {
-        String bullet = "* " + collapse(note) + SUFFIX;
+        return append(body, note, null);
+    }
+
+    /** Overload used when the Add also created a weblink (todo 77) — {@code verb} is the link's kind, or null if none. */
+    public static String append(String body, String note, LinkKind verb) {
+        String origin = verb == null ? ORIGIN : "added and " + verb.key() + "-linked by Octobot \uD83D\uDC19";
+        String bullet = "* " + collapse(note) + " — " + origin;
         int headingOffset = Markdown.privateHeadingOffset(body);
         if (headingOffset < 0) {
             String trimmed = body == null ? "" : body.stripTrailing();

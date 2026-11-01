@@ -113,6 +113,17 @@ class ExportTextsTest {
     }
 
     @Test
+    void wholeKmDistanceIsMarkedApproximate() {
+        // A whole number of km (no decimal) is assumed to be a rough figure, not a measurement
+        assertEquals("~5", en.distance(5.0));
+        assertEquals("~82", en.distance(82.0));
+        assertEquals("~5", de.distance(5.0));
+        // A real decimal value is shown as-is, locale decimal separator included
+        assertEquals("5.7", en.distance(5.66));
+        assertEquals("5,7", de.distance(5.66));
+    }
+
+    @Test
     void germanKeysExistInEnglishBase() throws IOException {
         Properties base = load("/i18n/export.properties");
         Properties german = load("/i18n/export_de.properties");

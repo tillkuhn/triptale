@@ -23,14 +23,20 @@ rendering). Additional URLs in the same message are ignored for v1.
 **Row UI** (`InboxDialog.row`): one new `CheckBox` "Create Weblink", appended *after* the
 existing Add/Dump buttons in the same `HBox actions` row (`actions.getChildren().addAll(attach,
 discard, createWeblink)`). Disabled whenever the item's text contains no detected URL (tooltip:
-"No link found in this message"). **Unchecked by default** even when a URL is present — this is
-opt-in, not automatic. No verb/name/url fields on the row itself — those only appear in the
-follow-up dialog (below), since picking a verb needs to know the target day's already-used
-verbs, which can only be resolved once Add actually runs.
+"No link found in this message"). **Checked by default whenever a URL is present** (unticking is
+the opt-out) — changed from the original "unchecked by default" after testing showed most
+captures with a link do want one, so pre-checking saves a click on the common case. No
+verb/name/url fields on the row itself — those only appear in the follow-up dialog (below),
+since picking a verb needs to know the target day's already-used verbs, which can only be
+resolved once Add actually runs.
 
 **Add flow** (`MainController.handleInboxItem`): unchanged up through `inboxDir.markProcessed`.
 After a successful Add — note appended, photo imported (if any), entry saved — if the checkbox
 was ticked **and** a URL was detected:
+
+`MainController.applyWeblink` runs **before** the note bullet is built (not after the save, as
+originally planned) so the bullet's origin text can name the verb — see "Bullet names the verb"
+below. It only applies the result to the in-memory `links` field; it does not save on its own.
 
 1. Compute untaken verbs for that day: same filter `LinksDialog` already uses
    (`Arrays.stream(LinkKind.values()).filter(k -> !links.containsKey(k.key()))`), against the
@@ -39,15 +45,24 @@ was ticked **and** a URL was detected:
 2. If the untaken list is **empty** (all 12 verbs already used for that day): skip the dialog
    entirely, just `status("All weblink kinds already used for " + date + " — add manually in 🕸
    Weblinks")`. Add/removal from the inbox still completes normally either way.
-3. Otherwise open a new minimal dialog (see below), pre-filled, and on confirm add the result to
-   `links`, call `updateLinksButton()`, `updateDirty()`, `saveTheDayIfPossible()` — the exact
-   same apply pattern `onLinks()` already uses.
-4. Cancelling that dialog does **not** undo the Add — the item has already left the inbox
-   (`markProcessed` already ran); only the weblink step is skipped.
-5. The URL stays in the private-notes bullet text as-is (no stripping) — `InboxNotes.append`
-   is untouched; the weblink is an additional structured extraction, not a replacement.
+3. Otherwise open a new minimal dialog (see below); on confirm add the result to `links` and
+   call `updateLinksButton()` — the controller then appends the note bullet (if any) and does
+   **one** combined `saveTheDayIfPossible()` for both the bullet and the link.
+4. Cancelling that dialog does **not** undo the Add — the photo (if any) is already imported and
+   `markProcessed` runs regardless; only the weblink step is skipped, and the note bullet (if
+   any) falls back to the plain "added by Octobot 🐙" suffix.
+5. The URL stays in the private-notes bullet text as-is (no stripping) — `InboxNotes.append`'s
+   collapsing of the raw note is untouched; the weblink is an additional structured extraction,
+   not a replacement.
 
-**New dialog**: `ui/dialog/QuickWeblinkDialog.java` (name tentative), following the existing
+**Bullet names the verb**: when the Add also created a weblink, the private-notes bullet's
+origin suffix becomes `"added and <verb>-linked by Octobot 🐙"` instead of the plain `"added by
+Octobot 🐙"` (e.g. `"added and eat-linked by Octobot 🐙"`), via a new
+`InboxNotes.append(String, String, LinkKind)` overload — the two-arg overload still exists and
+delegates with `null` for every other caller. This is why the dialog must run before the bullet
+text is assembled rather than after the save, as first sketched above.
+
+**New dialog**: `ui/dialog/QuickWeblinkDialog.java`, following the existing
 dialog contract (plain object, `Optional<Result> showAndWait(...)`, no controller-state
 mutation). Single row: `ComboBox<LinkKind>` (items = the untaken-verbs list computed above),
 `TextField` url (pre-filled, editable), `TextField` name (pre-filled, editable), Add/Cancel
@@ -82,21 +97,22 @@ a plain typographic character (e.g. `+`) so it's rendered as ordinary text and i
 plumbing needed. **Scoped to this one button only** — `LinksDialog`'s `＋` (different,
 full-width character, not reported as broken) and any other emoji-plus buttons are left alone.
 
-## Open implementation notes (not yet decided, left to implementation time)
+## Implementation notes
 
-- Exact class/method names for the "strip first URL from text, collapse to one line" helper —
-  likely a small static method in `InboxDialog` or a new tiny helper, reusing the `TOKENS`
-  pattern already there.
-- Whether `QuickWeblinkDialog` lives next to `LinksDialog` and shares any code with it (e.g. the
-  `field(...)` helper, URL validation) — small enough it may just duplicate the ~10 lines rather
-  than extracting a shared base.
+- "Strip first URL from text, collapse to one line" ended up as `InboxLinks.nameWithoutUrl`
+  (`inbox/InboxLinks.java`), alongside `InboxLinks.firstUrl` and `InboxLinks.guessVerb` — a
+  small pure-function sibling to `InboxNotes`, not a method on `InboxDialog`.
+- `QuickWeblinkDialog` duplicates the small `field`/URL-validation pattern from `LinksDialog`
+  rather than extracting a shared base — small enough that sharing wasn't worth the coupling.
 
 ## Relevant files
 
 - `ui/dialog/InboxDialog.java` — row UI, checkbox, URL/verb-keyword detection
-- `ui/MainController.java` — `handleInboxItem` (~L830), `onLinks` (~L2024) as the apply-pattern
+- `ui/MainController.java` — `handleInboxItem`, `applyWeblink`, `onLinks` as the apply-pattern
   reference
-- `ui/dialog/LinksDialog.java` — untaken-verb filter pattern to reuse, validation pattern
+- `ui/dialog/QuickWeblinkDialog.java` — the follow-up verb/url/name dialog
+- `inbox/InboxLinks.java` — pure helpers: first-URL detection, name-without-url, verb guessing
+- `ui/dialog/LinksDialog.java` — untaken-verb filter pattern reused, validation pattern
 - `domain/LinkKind.java`, `domain/Link.java` — verb enum, link value type
 - `inbox/InboxNotes.java` — private-notes bullet append (unchanged, URL stays in it)
 - `src/main/resources/fxml/triptale.css` — no new CSS needed if the icon fix is a plain `+`

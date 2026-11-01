@@ -362,6 +362,7 @@ public class MarkdownStore {
     private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_LAST_GPX_FOLDER_KEY = "lastGpxFolder";
     private static final String STATE_TELEGRAM_OFFSET_KEY = "telegramOffset";
+    private static final String STATE_LAST_MAP_STYLE_KEY = "lastMapStyle";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
             "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
@@ -464,6 +465,19 @@ public class MarkdownStore {
             log.warn("Ignoring malformed {}: '{}'", STATE_TELEGRAM_OFFSET_KEY, raw);
             return Optional.empty();
         }
+    }
+
+    /** The {@code map.TileSource} id (todo 61) last picked in Map Assistant's Style dropdown, so the
+     *  next time it opens it starts where you left off. Stored as a plain string — {@code storage}
+     *  must not depend on {@code map} (package boundary / dependency direction), so the caller is
+     *  responsible for resolving the id back to a {@code TileSource}, falling back to a default if
+     *  the id is unknown (e.g. an old id from a removed source). */
+    public void saveLastMapStyle(String tileSourceId) {
+        saveState(STATE_LAST_MAP_STYLE_KEY, tileSourceId);
+    }
+
+    public Optional<String> loadLastMapStyle() {
+        return Optional.ofNullable(asString(loadState().get(STATE_LAST_MAP_STYLE_KEY)));
     }
 
     public List<LocalDate> listEntryDates(TripRef ref) {
