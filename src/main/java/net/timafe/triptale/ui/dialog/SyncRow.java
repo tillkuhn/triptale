@@ -29,6 +29,7 @@ final class SyncRow {
     final ProgressIndicator spinner = new ProgressIndicator();
     final Label icon = new Label();
     private final boolean selectable;
+    private final Runnable onCheckChanged;
     private final Runnable onLayoutChanged;
 
     /**
@@ -37,6 +38,7 @@ final class SyncRow {
      */
     SyncRow(String title, boolean selectable, Runnable onCheckChanged, Runnable onLayoutChanged) {
         this.selectable = selectable;
+        this.onCheckChanged = onCheckChanged;
         this.onLayoutChanged = onLayoutChanged;
         name = new Label(title);
         name.setStyle("-fx-font-weight: bold;");
@@ -107,5 +109,15 @@ final class SyncRow {
     static void showNode(Node node, boolean visible) {
         node.setVisible(visible);
         node.setManaged(visible);
+    }
+
+    /** Lets a caller that changed {@link #extra}'s children directly (not through this class) ask for a resize. */
+    void layoutChanged() {
+        onLayoutChanged.run();
+    }
+
+    /** Lets an extra control added to {@link #extra} (e.g. a delete confirmation) re-run the check-changed callback. */
+    void notifyCheckChanged() {
+        onCheckChanged.run();
     }
 }

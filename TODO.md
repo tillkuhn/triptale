@@ -99,19 +99,6 @@ images (base filter applied, optionally faves only) into the matching attachment
 with a confirmation showing counts per day and total size. Best after todo 33c, so a mistaken
 bulk import can be deleted everywhere.
 
-## 33c Attachment delete propagation (sync base)
-
-Cloud attachment sync never deletes: a locally deleted attachment comes back with the next
-pull, and a stale copy can overwrite a newer remote edit. Since todo 47's bulk import, mistaken
-imports need a real delete. Sync as a three-way merge against a per-device sync base (no base,
-no deletes), see [ADR-0002](docs/adr/0002-attachment-sync.md).
-
-- `ObjectStore.delete`, `SyncBase` file, three-way `plan()`, local deletes to the OS trash.
-- Smart Sync shows deletes and stops on mass deletes; viewer gets "🗑 Delete Selected".
-- Bucket versioning + 30-day noncurrent expiry in `terraform/`. Prerequisite for todo 42's remote side.
-
-[Details](docs/33c_attachment_delete_propagation.md)
-
 ## 48 Private sections: hide internal notes from exports
 
 A heading starting with `internal`, `private`, `intern` or `privat` (any level,
@@ -272,7 +259,17 @@ sites for a consistent fix rather than patching one.
 
 ---
 
+## DONE 33c Attachment delete propagation (sync base)
+
+Cloud attachment sync was never deletes: a locally deleted attachment came back with the next
+pull, and a stale copy could overwrite a newer remote edit. Implemented as a three-way merge
+against a per-folder sync base (no base, no deletes), shared by `attachments/` and `radio/`
+(Sync Tracks). See [ADR-0002](docs/adr/0002-attachment-sync.md).
+
+[Details](docs/33c_attachment_delete_propagation.md)
+
 ## DONE 61 Self-rendered trip maps from OSM tiles
+
 
 Mapbox static maps replaced with self-rendered OSM tiles (OpenTopoMap, OSM Standard, CyclOSM,
 Thunderforest Outdoors/OpenCycleMap behind a `thunderforestApiKey` setting, hidden from the

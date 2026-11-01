@@ -23,6 +23,7 @@ class BucketSyncerTest {
     Path root;
 
     private final FakeStore store = new FakeStore();
+    private final FakeTrash trash = new FakeTrash();
     private final BucketSyncer syncer = new BucketSyncer(store);
 
     @Test
@@ -33,133 +34,254 @@ class BucketSyncerTest {
         assertEquals("triptale/radio/", BucketSyncer.keyPrefix(BucketUrl.parse("s3://bucket/triptale"), "radio"));
     }
 
+    // ---------------------------------------------------------------------
+    // No base: copy both ways, never delete (todo 33a/33b behavior)
+    // ---------------------------------------------------------------------
+
     @Test
-    void push_uploadsMissingFilesWithForwardSlashKeys() throws Exception {
-        write("2026/trip/2026-09-26-Saturday/track.gpx", "<gpx/>");
-        write("2026/trip/notes.txt", "hi");
+    void plan_withoutBase_newLocalFileIsUploaded() throws Exception {
+        write("2026/trip/day/track.gpx", "<gpx/>");
 
-        BucketSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, SyncBase.empty());
 
-        assertEquals(new BucketSyncer.Result(2, 0), result);
-        assertEquals(List.of("attachments/2026/trip/2026-09-26-Saturday/track.gpx", "attachments/2026/trip/notes.txt"),
-                store.putKeys);
+        assertEquals(1, plan.toUpload());
+        assertEquals(0, plan.toDownload());
+        assertEquals(0, plan.totalDeletes());
     }
 
     @Test
-    void push_skipsUnchangedAndUploadsChanged() throws Exception {
-        Path same = write("2026/trip/day/same.jpg", "same");
-        write("2026/trip/day/edited.jpg", "new!");
-        store.remote.put("attachments/2026/trip/day/same.jpg", info(same));
-        store.remote.put("attachments/2026/trip/day/edited.jpg", new ObjectStore.ObjectInfo(4, "00".repeat(16)));
-        write("2026/trip/day/resized.jpg", "bigger");
-        store.remote.put("attachments/2026/trip/day/resized.jpg", new ObjectStore.ObjectInfo(3, "x"));
+    void plan_withoutBase_remoteOnlyFileIsDownloaded() {
+        store.addRemote("attachments/2026/trip/day/track.gpx", "<gpx/>");
 
-        BucketSyncer.Result result = syncer.push(root, PREFIX, (d, t, f) -> {});
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, SyncBase.empty());
 
-        assertEquals(new BucketSyncer.Result(2, 1), result);
-        assertEquals(List.of("attachments/2026/trip/day/edited.jpg", "attachments/2026/trip/day/resized.jpg"),
-                store.putKeys);
+        assertEquals(1, plan.toDownload());
+        assertEquals(0, plan.toUpload());
     }
 
     @Test
-    void push_skipsHiddenFilesAndFolders() throws Exception {
+    void plan_withoutBase_identicalFileNeedsNoTransfer() throws Exception {
+        Path same = write("same.jpg", "same");
+        store.remote.put("attachments/same.jpg", info(same));
+
+        assertTrue(syncer.plan(root, PREFIX, SyncBase.empty()).upToDate());
+    }
+
+    @Test
+    void plan_withoutBase_differingOnBothSidesUploadsLocal() throws Exception {
+        write("edited.jpg", "new!");
+        store.remote.put("attachments/edited.jpg", new ObjectStore.ObjectInfo(4, "00".repeat(16)));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, SyncBase.empty());
+
+        assertEquals(1, plan.toUpload());
+        assertEquals(0, plan.deleteLocal() + plan.deleteRemote());
+    }
+
+    @Test
+    void plan_neverDeletesWithoutABase() throws Exception {
+        // Nothing local, something remote that isn't "new" conceptually but there's no base to
+        // compare against, so it's just a download, never interpreted as "deleted here".
+        store.addRemote("attachments/gone.jpg", "x");
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, SyncBase.empty());
+        assertEquals(0, plan.totalDeletes());
+    }
+
+    @Test
+    void plan_skipsHiddenFilesAndFolders() throws Exception {
         write(".gitignore", "*");
         write("2026/.DS_Store", "x");
         write("2026/trip/.cache/thumb.jpg", "x");
         write("2026/trip/day/photo.jpg", "x");
 
-        syncer.push(root, PREFIX, (d, t, f) -> {});
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, SyncBase.empty());
 
-        assertEquals(List.of("attachments/2026/trip/day/photo.jpg"), store.putKeys);
+        assertEquals(List.of("2026/trip/day/photo.jpg"),
+                plan.of(BucketSyncer.Action.UPLOAD).stream().map(BucketSyncer.FileAction::relativePath).toList());
+    }
+
+    // ---------------------------------------------------------------------
+    // With a base: three-way merge (todo 33c, ADR-0002)
+    // ---------------------------------------------------------------------
+
+    private SyncBase baseWith(Map<String, String> files) {
+        return new SyncBase("s3://bucket", PREFIX, files);
     }
 
     @Test
-    void push_reportsProgressPerFile() throws Exception {
-        write("a.txt", "a");
-        write("b.txt", "b");
-        List<String> calls = new ArrayList<>();
+    void plan_deletedLocallyAndUnchangedRemotely_deletesRemote() throws Exception {
+        // was in base, local file removed since, remote still has the original content
+        store.addRemote("attachments/gone.jpg", "original");
+        SyncBase base = baseWith(Map.of("gone.jpg", md5Hex("original")));
 
-        syncer.push(root, PREFIX, (done, total, file) -> calls.add(done + "/" + total + " " + file));
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
 
-        assertEquals(List.of("0/2 a.txt", "1/2 b.txt"), calls);
+        assertEquals(List.of("gone.jpg"),
+                plan.of(BucketSyncer.Action.DELETE_REMOTE).stream().map(BucketSyncer.FileAction::relativePath).toList());
     }
 
     @Test
-    void push_missingRootUploadsNothing() {
-        BucketSyncer.Result result = syncer.push(root.resolve("nope"), PREFIX, (d, t, f) -> {});
-        assertEquals(new BucketSyncer.Result(0, 0), result);
+    void plan_deletedRemotelyAndUnchangedLocally_deletesLocal() throws Exception {
+        write("gone.jpg", "original");
+        SyncBase base = baseWith(Map.of("gone.jpg", md5Hex("original")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(List.of("gone.jpg"),
+                plan.of(BucketSyncer.Action.DELETE_LOCAL).stream().map(BucketSyncer.FileAction::relativePath).toList());
     }
 
     @Test
-    void plan_countsDownloadsAndUploadsWithoutTransferring() throws Exception {
-        Path same = write("2026/trip/day/same.jpg", "same");
-        write("2026/trip/day/new.jpg", "12345");
-        write("2026/trip/day/edited.jpg", "new!");
-        store.remote.put("attachments/2026/trip/day/same.jpg", info(same));
-        store.remote.put("attachments/2026/trip/day/edited.jpg", new ObjectStore.ObjectInfo(4, "00".repeat(16)));
-        store.addRemote("attachments/2026/trip/day/cloud-only.jpg", "cloud-only");
-        store.remote.put("attachments/2026/.DS_Store", new ObjectStore.ObjectInfo(3, "x"));
+    void plan_deletedLocallyButEditedRemotely_downloadsTheEdit() throws Exception {
+        store.addRemote("attachments/edited.jpg", "new content");
+        SyncBase base = baseWith(Map.of("edited.jpg", md5Hex("original")));
 
-        BucketSyncer.Plan plan = syncer.plan(root, PREFIX);
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
 
-        assertEquals(new BucketSyncer.Plan(1, 10, 2, 9), plan);
-        assertEquals(List.of(), store.putKeys);
-        assertEquals(List.of(), store.getKeys);
+        assertEquals(List.of("edited.jpg"),
+                plan.of(BucketSyncer.Action.DOWNLOAD).stream().map(BucketSyncer.FileAction::relativePath).toList());
     }
 
     @Test
-    void plan_upToDateWhenNothingToTransfer() throws Exception {
-        Path same = write("a.txt", "a");
-        store.remote.put("attachments/a.txt", info(same));
-        assertTrue(syncer.plan(root, PREFIX).upToDate());
+    void plan_deletedRemotelyButEditedLocally_uploadsTheEdit() throws Exception {
+        write("edited.jpg", "new content");
+        SyncBase base = baseWith(Map.of("edited.jpg", md5Hex("original")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(List.of("edited.jpg"),
+                plan.of(BucketSyncer.Action.UPLOAD).stream().map(BucketSyncer.FileAction::relativePath).toList());
     }
 
     @Test
-    void pull_downloadsOnlyMissingFilesAndCreatesFolders() throws Exception {
-        Path local = write("2026/trip/day/local.jpg", "mine");
-        store.addRemote("attachments/2026/trip/day/local.jpg", "theirs, different");
-        store.addRemote("attachments/2026/trip/other-day/track.gpx", "<gpx/>");
-        List<String> calls = new ArrayList<>();
+    void plan_editedRemotelyOnly_downloads() throws Exception {
+        write("a.jpg", "original");
+        store.addRemote("attachments/a.jpg", "edited remotely");
+        SyncBase base = baseWith(Map.of("a.jpg", md5Hex("original")));
 
-        int downloaded = syncer.pull(root, PREFIX, (done, total, file) -> calls.add(done + "/" + total + " " + file));
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
 
-        assertEquals(1, downloaded);
-        assertEquals("<gpx/>", Files.readString(root.resolve("2026/trip/other-day/track.gpx")));
-        assertEquals("mine", Files.readString(local), "an existing local file is never overwritten");
-        assertEquals(List.of("attachments/2026/trip/other-day/track.gpx"), store.getKeys);
-        assertEquals(List.of("0/1 2026/trip/other-day/track.gpx"), calls);
+        assertEquals(1, plan.toDownload());
+        assertEquals(0, plan.toUpload());
     }
 
     @Test
-    void pull_skipsHiddenFolderMarkersAndEscapingKeys() {
-        store.addRemote("attachments/.gitignore", "*");
-        store.addRemote("attachments/2026/.cache/thumb.jpg", "x");
-        store.addRemote("attachments/2026/trip/", "");
-        store.addRemote("attachments/../evil.txt", "x");
-        store.addRemote("attachments/2026/../../evil.txt", "x");
-        store.addRemote("other/attachments/x.txt", "x");
+    void plan_editedLocallyOnly_uploads() throws Exception {
+        write("a.jpg", "edited locally");
+        store.addRemote("attachments/a.jpg", "original");
+        SyncBase base = baseWith(Map.of("a.jpg", md5Hex("original")));
 
-        assertEquals(0, syncer.pull(root, PREFIX, (d, t, f) -> {}));
-        assertEquals(List.of(), store.getKeys);
-        assertFalse(Files.exists(root.getParent().resolve("evil.txt")));
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(0, plan.toDownload());
+        assertEquals(1, plan.toUpload());
     }
 
     @Test
-    void pull_removesCorruptDownloadAndFails() {
-        store.remote.put("attachments/bad.jpg", new ObjectStore.ObjectInfo(5, "00".repeat(16)));
-        store.contents.put("attachments/bad.jpg", "hello");
+    void plan_editedOnBothSides_localWins() throws Exception {
+        write("a.jpg", "edited locally");
+        store.addRemote("attachments/a.jpg", "edited remotely");
+        SyncBase base = baseWith(Map.of("a.jpg", md5Hex("original")));
 
-        assertThrows(SyncException.class, () -> syncer.pull(root, PREFIX, (d, t, f) -> {}));
-        assertFalse(Files.exists(root.resolve("bad.jpg")));
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(1, plan.toUpload());
+        assertEquals(0, plan.toDownload());
     }
 
     @Test
-    void pull_acceptsMultipartEtagWithoutMd5Check() throws Exception {
-        store.remote.put("attachments/big.mov", new ObjectStore.ObjectInfo(3, "abc123-4"));
-        store.contents.put("attachments/big.mov", "mov");
+    void plan_deletedOnBothSides_dropsFromBase() throws Exception {
+        SyncBase base = baseWith(Map.of("gone.jpg", md5Hex("original")));
 
-        assertEquals(1, syncer.pull(root, PREFIX, (d, t, f) -> {}));
-        assertEquals("mov", Files.readString(root.resolve("big.mov")));
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(1, plan.of(BucketSyncer.Action.DROP_BASE).size());
+        assertTrue(plan.upToDate());
+    }
+
+    @Test
+    void plan_unchangedOnBothSides_isNoop() throws Exception {
+        write("a.jpg", "same");
+        store.remote.put("attachments/a.jpg", info(root.resolve("a.jpg")));
+        SyncBase base = baseWith(Map.of("a.jpg", md5Hex("same")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertEquals(1, plan.of(BucketSyncer.Action.NOOP).size());
+        assertTrue(plan.upToDate());
+    }
+
+    @Test
+    void plan_exceedsDeleteThreshold_byCount() {
+        Map<String, String> files = new HashMap<>();
+        for (int i = 0; i < 21; i++) {
+            String key = "file" + i + ".jpg";
+            store.addRemote("attachments/" + key, "content" + i);
+            files.put(key, md5Hex("content" + i));
+        }
+        SyncBase base = baseWith(files);
+        // every file deleted locally, none changed remotely -> 21 remote deletes
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+        assertTrue(plan.exceedsDeleteThreshold());
+    }
+
+    @Test
+    void plan_belowDeleteThreshold_doesNotFlag() throws Exception {
+        write("a.jpg", "same");
+        write("b.jpg", "same2");
+        store.remote.put("attachments/a.jpg", info(root.resolve("a.jpg")));
+        store.remote.put("attachments/b.jpg", info(root.resolve("b.jpg")));
+        SyncBase base = baseWith(Map.of("a.jpg", md5Hex("same"), "b.jpg", md5Hex("same2")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+
+        assertFalse(plan.exceedsDeleteThreshold());
+    }
+
+    // ---------------------------------------------------------------------
+    // sync(): executes a plan and updates the base
+    // ---------------------------------------------------------------------
+
+    @Test
+    void sync_uploadsDownloadsAndDeletesPerPlan() throws Exception {
+        write("new-local.jpg", "local content");
+        write("deleted-remotely.jpg", "unchanged");
+        store.addRemote("attachments/new-remote.jpg", "remote content");
+        store.addRemote("attachments/deleted-locally.jpg", "unchanged");
+        SyncBase base = baseWith(Map.of(
+                "deleted-remotely.jpg", md5Hex("unchanged"),
+                "deleted-locally.jpg", md5Hex("unchanged")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+        List<SyncBase> checkpoints = new ArrayList<>();
+        BucketSyncer.Result result = syncer.sync(root, PREFIX, base, plan, trash, (d, t, f) -> {}, checkpoints::add);
+
+        assertEquals(new BucketSyncer.Result(1, 1, 1, 1), result);
+        assertEquals("remote content", Files.readString(root.resolve("new-remote.jpg")));
+        assertEquals(List.of("attachments/new-local.jpg"), store.putKeys);
+        assertEquals(List.of("attachments/deleted-locally.jpg"), store.deletedKeys);
+        assertEquals(List.of(root.resolve("deleted-remotely.jpg")), trash.trashed);
+        assertFalse(checkpoints.isEmpty(), "base should be checkpointed as files finish");
+
+        SyncBase finalBase = checkpoints.get(checkpoints.size() - 1);
+        assertTrue(finalBase.files().containsKey("new-local.jpg"));
+        assertTrue(finalBase.files().containsKey("new-remote.jpg"));
+        assertFalse(finalBase.files().containsKey("deleted-remotely.jpg"));
+        assertFalse(finalBase.files().containsKey("deleted-locally.jpg"));
+    }
+
+    @Test
+    void sync_recordsNoopAndDropsBaseEntries() throws Exception {
+        write("unchanged.jpg", "same");
+        store.remote.put("attachments/unchanged.jpg", info(root.resolve("unchanged.jpg")));
+        SyncBase base = baseWith(Map.of("unchanged.jpg", md5Hex("same"), "gone.jpg", md5Hex("x")));
+
+        BucketSyncer.Plan plan = syncer.plan(root, PREFIX, base);
+        SyncBase[] last = new SyncBase[1];
+        syncer.sync(root, PREFIX, base, plan, trash, (d, t, f) -> {}, b -> last[0] = b);
+
+        assertTrue(last[0].files().containsKey("unchanged.jpg"));
+        assertFalse(last[0].files().containsKey("gone.jpg"));
     }
 
     @Test
@@ -181,17 +303,42 @@ class BucketSyncerTest {
         return new ObjectStore.ObjectInfo(Files.size(file), HexFormat.of().formatHex(BucketSyncer.md5(file)));
     }
 
+    private static String md5Hex(String content) {
+        return HexFormat.of().formatHex(md5Of(content));
+    }
+
+    private static byte[] md5Of(String content) {
+        try {
+            return java.security.MessageDigest.getInstance("MD5").digest(content.getBytes(StandardCharsets.UTF_8));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static final class FakeTrash implements Trash {
+        final List<Path> trashed = new ArrayList<>();
+
+        @Override public void moveToTrash(Path file) {
+            trashed.add(file);
+            try {
+                Files.deleteIfExists(file);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
+    }
+
     private static final class FakeStore implements ObjectStore {
         final Map<String, ObjectInfo> remote = new HashMap<>();
         final List<String> putKeys = new ArrayList<>();
+        final List<String> deletedKeys = new ArrayList<>();
+        final Map<String, String> contents = new HashMap<>();
+        final List<String> getKeys = new ArrayList<>();
 
         @Override public Map<String, ObjectInfo> list(String keyPrefix) {
             assertEquals(PREFIX, keyPrefix);
             return remote;
         }
-
-        final Map<String, String> contents = new HashMap<>();
-        final List<String> getKeys = new ArrayList<>();
 
         /** A remote object with real content, so its ETag is the content's MD5. */
         void addRemote(String key, String content) {
@@ -214,12 +361,9 @@ class BucketSyncerTest {
             }
         }
 
-        private static byte[] md5Of(String content) {
-            try {
-                return java.security.MessageDigest.getInstance("MD5").digest(content.getBytes(StandardCharsets.UTF_8));
-            } catch (java.security.NoSuchAlgorithmException e) {
-                throw new IllegalStateException(e);
-            }
+        @Override public void delete(String key) {
+            deletedKeys.add(key);
+            remote.remove(key);
         }
     }
 }

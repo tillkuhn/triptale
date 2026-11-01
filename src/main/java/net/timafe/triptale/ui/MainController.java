@@ -27,11 +27,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
-import net.timafe.triptale.sync.BucketSyncer;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.radio.RadioLibrary;
 import net.timafe.triptale.radio.Station;
-import net.timafe.triptale.sync.S3Client;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.inbox.InboxDir;
@@ -42,7 +40,6 @@ import net.timafe.triptale.inbox.TelegramInboxClient;
 import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.PlaceLookup;
 import net.timafe.triptale.config.AppSettings;
-import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
@@ -73,6 +70,7 @@ import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.QuickWeblinkDialog;
 import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
+import net.timafe.triptale.ui.dialog.SyncAttachmentsDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
@@ -163,8 +161,7 @@ public class MainController implements StatusSink {
     @FXML private Button inboxButton;
     @FXML private MenuItem pushMenuItem;
     @FXML private MenuItem pullMenuItem;
-    @FXML private MenuItem pushAttachmentsMenuItem;
-    @FXML private MenuItem pullAttachmentsMenuItem;
+    @FXML private MenuItem syncAttachmentsMenuItem;
     @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
     @FXML private Button backpackButton;
@@ -261,7 +258,6 @@ public class MainController implements StatusSink {
     private final BrowserLauncher browser;
     private final String appName;
     private final AttachmentsDir attachmentsDir;
-    private boolean transferringAttachments;
     private final InboxDir inboxDir;
     private final TelegramInboxClient telegramInboxClient;
     private final RadioLibrary radioLibrary;
@@ -1685,10 +1681,8 @@ public class MainController implements StatusSink {
         if (pullMenuItem != null) pullMenuItem.setDisable(!remoteEnabled);
         // Smart Sync stays enabled offline: it still commits locally (todo 32, D8).
         boolean cloud = settingsStore.load().getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
-        boolean attachmentsDisabled = !Boolean.TRUE.equals(connected) || !cloud || transferringAttachments;
-        if (pushAttachmentsMenuItem != null) pushAttachmentsMenuItem.setDisable(attachmentsDisabled);
-        if (pullAttachmentsMenuItem != null) pullAttachmentsMenuItem.setDisable(attachmentsDisabled);
-        // Sync Tracks checks the bucket itself, so only the mode matters (todo 52).
+        // Sync Attachments/Tracks check the bucket themselves, so only the mode matters (todo 52, 33c).
+        if (syncAttachmentsMenuItem != null) syncAttachmentsMenuItem.setDisable(!cloud);
         if (syncTracksMenuItem != null) syncTracksMenuItem.setDisable(!cloud);
     }
 
@@ -1735,65 +1729,8 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onPushAttachments() {
-        transferAttachments("Push", "push-attachments", (syncer, root, prefix) -> {
-            BucketSyncer.Result r = syncer.push(root, prefix, (done, total, file) ->
-                    Platform.runLater(() -> status("Pushing backpack " + (done + 1) + "/" + total + ": " + file)));
-            return "Backpack pushed: " + r.uploaded() + " uploaded, " + r.unchanged() + " unchanged";
-        });
-    }
-
-    @FXML
-    public void onPullAttachments() {
-        transferAttachments("Pull", "pull-attachments", (syncer, root, prefix) -> {
-            int n = syncer.pull(root, prefix, (done, total, file) ->
-                    Platform.runLater(() -> status("Pulling backpack " + (done + 1) + "/" + total + ": " + file)));
-            return "Backpack pulled: " + n + " downloaded";
-        });
-    }
-
-    /** One attachment transfer on a worker thread; returns the status message on success. */
-    @FunctionalInterface
-    private interface AttachmentTransfer {
-        String run(BucketSyncer syncer, Path root, String keyPrefix);
-    }
-
-    private void transferAttachments(String verb, String threadName, AttachmentTransfer transfer) {
-        AppSettings.Attachments settings = settingsStore.load().getAttachments();
-        Path root;
-        BucketSyncer syncer;
-        String keyPrefix;
-        try {
-            root = attachmentsDir.root();
-            syncer = new BucketSyncer(S3Client.from(settings));
-            keyPrefix = BucketSyncer.keyPrefix(BucketUrl.parse(settings.getBucketUrl()), AttachmentsDir.DIR_NAME);
-        } catch (RuntimeException e) {
-            error(UiText.describe(e));
-            return;
-        }
-        Task<String> task = new Task<>() {
-            @Override protected String call() {
-                return transfer.run(syncer, root, keyPrefix);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            setTransferringAttachments(false);
-            status(task.getValue());
-        });
-        task.setOnFailed(e -> {
-            setTransferringAttachments(false);
-            error(verb + " Backpack failed: " + UiText.describe(task.getException()));
-        });
-        setTransferringAttachments(true);
-        status(verb + "ing backpack…");
-        Thread thread = new Thread(task, threadName);
-        thread.setDaemon(true);
-        thread.start();
-    }
-
-    private void setTransferringAttachments(boolean running) {
-        transferringAttachments = running;
-        applyConnectivityState();
+    public void onSyncAttachments() {
+        new SyncAttachmentsDialog(settingsStore, attachmentsDir).show();
     }
 
     @FXML

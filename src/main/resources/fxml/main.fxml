@@ -95,8 +95,7 @@
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="pushMenuItem" text="↑ Push Git" onAction="#onPush"/>
                                 <MenuItem fx:id="pullMenuItem" text="↓ Pull Git" onAction="#onPull"/>
-                                <MenuItem fx:id="pushAttachmentsMenuItem" text="⛅ Push Backpack" onAction="#onPushAttachments" disable="true"/>
-                                <MenuItem fx:id="pullAttachmentsMenuItem" text="⛅ Pull Backpack" onAction="#onPullAttachments" disable="true"/>
+                                <MenuItem fx:id="syncAttachmentsMenuItem" text="⛅ Sync Backpack…" onAction="#onSyncAttachments" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                                 <SeparatorMenuItem/>

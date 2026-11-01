@@ -17,4 +17,7 @@ public interface ObjectStore {
 
     /** Downloads {@code key} into {@code target} (overwritten); the parent directory must exist. */
     void get(String key, Path target);
+
+    /** Deletes {@code key}; succeeds (no-op) if it doesn't exist (todo 33c). */
+    void delete(String key);
 }

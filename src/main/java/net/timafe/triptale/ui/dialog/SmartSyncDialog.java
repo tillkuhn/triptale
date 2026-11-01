@@ -383,7 +383,8 @@ public final class SmartSyncDialog {
 
     private void updateSyncButton() {
         boolean anyChecked = rows().stream().anyMatch(row -> row.check.isSelected());
-        syncButton.setDisable(running || preparing > 0 || !anyChecked);
+        boolean attachmentsReady = attachments == null || !attachments.row.check.isSelected() || attachments.readyToRun();
+        syncButton.setDisable(running || preparing > 0 || !anyChecked || !attachmentsReady);
     }
 
     private List<SyncRow> rows() {

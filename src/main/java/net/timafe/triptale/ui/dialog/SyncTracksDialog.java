@@ -52,7 +52,7 @@ public final class SyncTracksDialog {
         AppSettings.Attachments settings = settingsStore.load().getAttachments();
 
         GridPane grid = SyncRow.grid();
-        tracks = new BucketSyncStep(new SyncRow("Tracks", false, () -> {}, this::resize),
+        tracks = new BucketSyncStep(new SyncRow("Tracks", false, this::updateSyncButton, this::resize),
                 radioLibrary.root(), RadioLibrary.DIR_NAME);
         tracks.row.addTo(grid, 0);
 
@@ -124,7 +124,7 @@ public final class SyncTracksDialog {
 
     /** Enabled once the plan found something to transfer; a finished run doesn't re-enable it. */
     private void updateSyncButton() {
-        syncButton.setDisable(running || preparing || !tracks.row.check.isSelected());
+        syncButton.setDisable(running || preparing || !tracks.row.check.isSelected() || !tracks.readyToRun());
     }
 
     /** Grows (or shrinks) the window to fit after the row changes its text. */

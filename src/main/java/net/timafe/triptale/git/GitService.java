@@ -1,5 +1,7 @@
 package net.timafe.triptale.git;
 
+import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.radio.RadioLibrary;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import org.eclipse.jgit.api.Git;
@@ -43,7 +45,11 @@ public class GitService {
         this.store = store;
     }
 
-    private static final String[] GITIGNORE_ENTRIES = {".state.yml", ".tile-cache", ".exif-cache"};
+    private static final String[] GITIGNORE_ENTRIES = {
+            ".state.yml", ".tile-cache", ".exif-cache",
+            // Per-folder sync bases (todo 33c) — per device, never shared
+            "." + AttachmentsDir.DIR_NAME + "-sync.yml", "." + RadioLibrary.DIR_NAME + "-sync.yml",
+    };
 
     // Tolaria (https://github.com/refactoringhq/tolaria) type definitions, created at the data-dir root
     // so entries tagged `type: Tale` and trips resolve to a note type in a Tolaria vault.

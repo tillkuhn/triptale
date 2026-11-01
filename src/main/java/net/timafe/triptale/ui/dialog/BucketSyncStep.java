@@ -2,10 +2,15 @@ package net.timafe.triptale.ui.dialog;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.scene.control.CheckBox;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.sync.BucketSyncer;
+import net.timafe.triptale.sync.DesktopTrash;
 import net.timafe.triptale.sync.S3Client;
+import net.timafe.triptale.sync.SyncBase;
+import net.timafe.triptale.sync.SyncBaseStore;
+import net.timafe.triptale.sync.Trash;
 import net.timafe.triptale.ui.UiText;
 
 import java.nio.file.Path;
@@ -15,22 +20,35 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * A sync dialog step that mirrors one data dir folder with the bucket via {@link BucketSyncer}:
- * the Backpack row in Smart Sync ({@code attachments/}) and the Tracks row in Sync Tracks
- * ({@code radio/}). Owns the row's texts; the dialog decides when to {@link #prepare} and
- * {@link #run}.
+ * A sync dialog step that mirrors one data dir folder with the bucket via {@link BucketSyncer}'s
+ * three-way merge (todo 33c): the Backpack row in Smart Sync ({@code attachments/}) and the
+ * Tracks row in Sync Tracks ({@code radio/}). Owns the row's texts and its sync base
+ * ({@code .<dirName>-sync.yml} next to the folder, in the data dir root); the dialog decides
+ * when to {@link #prepare} and {@link #run}.
+ * <p>
+ * A plan with deletes above {@link BucketSyncer.Plan#exceedsDeleteThreshold()} adds an explicit
+ * "Yes, delete N files" checkbox to the row — {@link #readyToRun()} only turns true once it's
+ * ticked, so a wiped or mis-mounted folder can't silently delete everything on the other side.
  */
 final class BucketSyncStep {
 
     final SyncRow row;
     private final Path root;
+    private final Path dataDir;
     private final String dirName;
+    private final SyncBaseStore baseStore = new SyncBaseStore();
+    private final Trash trash = new DesktopTrash();
     private BucketSyncer syncer;
     private String keyPrefix;
+    private String bucketUrl;
+    private SyncBase base;
+    private BucketSyncer.Plan plan;
+    private CheckBox confirmDeletes;
 
     BucketSyncStep(SyncRow row, Path root, String dirName) {
         this.row = row;
         this.root = root;
+        this.dataDir = root.getParent();
         this.dirName = dirName;
     }
 
@@ -40,7 +58,8 @@ final class BucketSyncStep {
         if (invalid.isPresent()) return invalid;
         try {
             syncer = new BucketSyncer(S3Client.from(settings));
-            keyPrefix = BucketSyncer.keyPrefix(BucketUrl.parse(settings.getBucketUrl()), dirName);
+            bucketUrl = settings.getBucketUrl();
+            keyPrefix = BucketSyncer.keyPrefix(BucketUrl.parse(bucketUrl), dirName);
             return Optional.empty();
         } catch (RuntimeException e) {
             return Optional.of(UiText.describe(e));
@@ -54,55 +73,77 @@ final class BucketSyncStep {
      */
     void prepare(String threadName, Runnable onDone) {
         row.running("Comparing with bucket…");
-        Task<BucketSyncer.Plan> plan = new Task<>() {
+        base = baseStore.load(syncBaseFile(), bucketUrl, keyPrefix);
+        Task<BucketSyncer.Plan> task = new Task<>() {
             @Override protected BucketSyncer.Plan call() {
-                return syncer.plan(root, keyPrefix);
+                return syncer.plan(root, keyPrefix, base);
             }
         };
-        plan.setOnSucceeded(e -> {
-            BucketSyncer.Plan p = plan.getValue();
-            if (p.upToDate()) {
+        task.setOnSucceeded(e -> {
+            plan = task.getValue();
+            if (plan.upToDate()) {
                 row.idle("Up to date");
                 row.setEnabled(true, false);
             } else {
                 List<String> parts = new ArrayList<>();
-                if (p.toDownload() > 0) parts.add("↓ " + p.toDownload() + " to download (" + megabytes(p.downloadBytes()) + ")");
-                if (p.toUpload() > 0) parts.add("↑ " + p.toUpload() + " to upload (" + megabytes(p.uploadBytes()) + ")");
+                if (plan.toDownload() > 0) {
+                    parts.add("↓ " + plan.toDownload() + " to download (" + megabytes(plan.downloadBytes()) + ")");
+                }
+                if (plan.toUpload() > 0) {
+                    parts.add("↑ " + plan.toUpload() + " to upload (" + megabytes(plan.uploadBytes()) + ")");
+                }
+                if (plan.deleteLocal() > 0) parts.add("✕ " + plan.deleteLocal() + " local");
+                if (plan.deleteRemote() > 0) parts.add("✕ " + plan.deleteRemote() + " remote");
                 row.idle(String.join(" · ", parts));
+                if (plan.exceedsDeleteThreshold()) addDeleteConfirmation();
                 row.setEnabled(true, true);
             }
             onDone.run();
         });
-        plan.setOnFailed(e -> {
-            row.fail("Cannot list bucket: " + UiText.describe(plan.getException()));
+        task.setOnFailed(e -> {
+            row.fail("Cannot list bucket: " + UiText.describe(task.getException()));
             row.setEnabled(true, false);
             onDone.run();
         });
-        Thread thread = new Thread(plan, threadName);
+        Thread thread = new Thread(task, threadName);
         thread.setDaemon(true);
         thread.start();
     }
 
-    /** Pull first, then push, mirroring git (todo 33b). Call on a worker thread. */
+    private void addDeleteConfirmation() {
+        confirmDeletes = new CheckBox("Yes, delete " + plan.totalDeletes() + " file"
+                + (plan.totalDeletes() == 1 ? "" : "s") + " — this is a lot, double-check the folder is right");
+        confirmDeletes.getStyleClass().add("sync-status-error");
+        confirmDeletes.selectedProperty().addListener((obs, was, is) -> row.notifyCheckChanged());
+        row.extra.getChildren().add(confirmDeletes);
+        row.layoutChanged();
+    }
+
+    /** False while a mass-delete plan is waiting for its extra confirmation checkbox. */
+    boolean readyToRun() {
+        return confirmDeletes == null || confirmDeletes.isSelected();
+    }
+
+    /** Runs the plan prepared by {@link #prepare}; call on a worker thread. */
     void run() {
-        fx(() -> row.running("Downloading…"));
-        int downloaded;
+        fx(() -> row.running("Syncing…"));
         try {
-            downloaded = syncer.pull(root, keyPrefix, (done, total, file) ->
-                    fx(() -> row.running("Downloading " + (done + 1) + "/" + total + ": " + file)));
+            BucketSyncer.Result result = syncer.sync(root, keyPrefix, base, plan, trash,
+                    (done, total, file) -> fx(() -> row.running("Syncing " + (done + 1) + "/" + total + ": " + file)),
+                    updated -> baseStore.save(syncBaseFile(), updated));
+            List<String> parts = new ArrayList<>();
+            if (result.downloaded() > 0) parts.add(result.downloaded() + " downloaded");
+            if (result.uploaded() > 0) parts.add(result.uploaded() + " uploaded");
+            if (result.deletedLocal() > 0) parts.add(result.deletedLocal() + " deleted locally");
+            if (result.deletedRemote() > 0) parts.add(result.deletedRemote() + " deleted remotely");
+            fx(() -> row.ok(parts.isEmpty() ? "Up to date" : String.join(", ", parts)));
         } catch (RuntimeException e) {
-            fx(() -> row.fail("Download failed: " + UiText.describe(e)));
-            return;
+            fx(() -> row.fail("Sync failed: " + UiText.describe(e)));
         }
-        fx(() -> row.running("Uploading…"));
-        try {
-            BucketSyncer.Result result = syncer.push(root, keyPrefix, (done, total, file) ->
-                    fx(() -> row.running("Uploading " + (done + 1) + "/" + total + ": " + file)));
-            fx(() -> row.ok(downloaded + " downloaded, " + result.uploaded() + " uploaded, "
-                    + result.unchanged() + " unchanged"));
-        } catch (RuntimeException e) {
-            fx(() -> row.fail("Upload failed (" + downloaded + " downloaded): " + UiText.describe(e)));
-        }
+    }
+
+    private Path syncBaseFile() {
+        return dataDir.resolve("." + dirName + "-sync.yml");
     }
 
     private static void fx(Runnable r) {

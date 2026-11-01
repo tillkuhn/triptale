@@ -39,6 +39,7 @@ public final class S3Client implements ObjectStore {
     private static final Duration LIST_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration PUT_TIMEOUT = Duration.ofMinutes(10);
     private static final Duration GET_TIMEOUT = Duration.ofMinutes(10);
+    private static final Duration DELETE_TIMEOUT = Duration.ofSeconds(30);
 
     private final String bucket;
     private final String region;
@@ -137,6 +138,15 @@ public final class S3Client implements ObjectStore {
                 // best effort; push skips hidden files anyway
             }
         }
+    }
+
+    /** Deletes {@code key}; S3 returns 204/2xx whether or not it existed (todo 33c). */
+    @Override
+    public void delete(String key) {
+        String path = "/" + SigV4.uriEncode(key, false);
+        HttpResponse<byte[]> resp = send("DELETE", path, "", Map.of(), SigV4.EMPTY_SHA256,
+                HttpRequest.BodyPublishers.noBody(), DELETE_TIMEOUT, HttpResponse.BodyHandlers.ofByteArray());
+        checkStatus("DELETE", path, resp.statusCode(), resp.body());
     }
 
     private <T> HttpResponse<T> send(String method, String path, String query, Map<String, String> extraHeaders,
