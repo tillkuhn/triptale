@@ -2,21 +2,45 @@ package net.timafe.triptale.storage;
 
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
+import net.timafe.triptale.config.AppSettings;
+import net.timafe.triptale.config.TripTaleProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExifReaderTest {
 
-    private final ExifReader reader = new ExifReader();
+    @TempDir
+    Path tempDir;
+
+    private MarkdownStore store;
+    private ExifReader reader;
+
+    @BeforeEach
+    void setUp() {
+        TripTaleProperties props = new TripTaleProperties();
+        props.setSettingsDir(tempDir.resolve("settings").toString());
+        SettingsStore settingsStore = new SettingsStore(props);
+        AppSettings settings = new AppSettings();
+        settings.setDataDir(tempDir.resolve("data").toString());
+        settingsStore.save(settings);
+        store = new MarkdownStore(settingsStore);
+        reader = new ExifReader(store);
+    }
 
     private static Path fixture(String name) {
         try {
@@ -24,6 +48,13 @@ class ExifReaderTest {
         } catch (URISyntaxException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /** Copies a classpath fixture into the data dir, so it's eligible for the on-disk cache (todo 80). */
+    private Path copyIntoDataDir(String fixtureName, String fileName) throws IOException {
+        Path target = store.dataDir().resolve(fileName);
+        Files.copy(fixture(fixtureName), target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
     }
 
     @Test
@@ -137,5 +168,76 @@ class ExifReaderTest {
         Metadata metadata = new Metadata();
         metadata.addDirectory(dir);
         return metadata;
+    }
+
+    // --- todo 80: on-disk cache under <data-dir>/.exif-cache/ ---
+
+    @Test
+    void writesCacheEntryMirroringRelativePathUnderDataDir() throws IOException {
+        Path image = copyIntoDataDir("with_exif.jpg", "with_exif.jpg");
+
+        reader.read(image);
+
+        Path cacheFile = store.dataDir().resolve(".exif-cache").resolve("with_exif.jpg.properties");
+        assertTrue(Files.isRegularFile(cacheFile), "expected a cache entry at " + cacheFile);
+    }
+
+    @Test
+    void cacheHitReturnsCachedDataEvenIfFileContentChangesWithSameSize() throws IOException {
+        Path image = copyIntoDataDir("with_exif.jpg", "with_exif.jpg");
+
+        ExifInfo first = reader.read(image);
+        assertTrue(first.hasLocation());
+
+        // Overwrite the file in place with garbage of the exact same size — a live re-read would
+        // fail to parse any EXIF/GPS data, so if the second read still returns the original GPS
+        // coordinates, that proves it came from the cache rather than a fresh parse.
+        long size = Files.size(image);
+        Files.write(image, new byte[(int) size]);
+
+        ExifInfo second = reader.read(image);
+        assertEquals(first, second);
+        assertTrue(second.hasLocation());
+    }
+
+    @Test
+    void cacheMissWhenFileSizeChanges() throws IOException {
+        Path image = copyIntoDataDir("with_exif.jpg", "photo.jpg");
+
+        ExifInfo first = reader.read(image);
+        assertTrue(first.hasLocation());
+
+        // Replace with a different fixture (different EXIF, near-certainly a different byte size).
+        Path replacement = fixture("with_iso.jpg");
+        assertNotEquals(Files.size(image), Files.size(replacement));
+        Files.copy(replacement, image, StandardCopyOption.REPLACE_EXISTING);
+
+        ExifInfo second = reader.read(image);
+        assertEquals("ISO 200", second.iso());
+        assertFalse(first.equals(second));
+    }
+
+    @Test
+    void skipsCacheForFilesOutsideTheDataDir() {
+        // Classpath fixtures live outside the configured data dir.
+        Path image = fixture("with_exif.jpg");
+
+        ExifInfo info = reader.read(image);
+
+        assertTrue(info.hasLocation());
+        Path wouldBeCacheFile = store.dataDir().resolve(".exif-cache")
+                .resolve(image.toAbsolutePath().toString().replaceFirst("^/", "") + ".properties");
+        assertFalse(Files.exists(wouldBeCacheFile));
+    }
+
+    @Test
+    void skipsCacheGracefullyWhenDataDirIsNotConfigured() {
+        TripTaleProperties props = new TripTaleProperties();
+        props.setSettingsDir(tempDir.resolve("unconfigured-settings").toString());
+        ExifReader unconfigured = new ExifReader(new MarkdownStore(new SettingsStore(props)));
+
+        ExifInfo info = unconfigured.read(fixture("with_exif.jpg"));
+
+        assertTrue(info.hasLocation());
     }
 }

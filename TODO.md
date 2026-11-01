@@ -1,6 +1,27 @@
 # ToDos for this app
 
-## Next Todo: 80
+## Next Todo: 82
+
+## 81 General repo housekeeping task
+
+One mechanism (invokable on demand or periodically) that sweep/cleanup-style tasks register
+with, instead of each feature bolting on its own one-off sweep: orphaned `.exif-cache`/
+`.tile-cache` entries, local `git gc`, and whatever else turns up over time. Design (scheduling,
+persistence of last-run time, trigger UI) still open.
+
+[Details](docs/81_housekeeping.md)
+
+## 80 Cache EXIF reads (disk cache)
+
+`ExifReader.read()` has no caching — `PhotoLocations.locations()` re-reads EXIF for every backpack
+image on every "🖥 On Screen" click in Map Assistant (200+ images on a real trip), and
+`ImageViewerDialog`'s own ad-hoc per-dialog cache has no invalidation check at all. Add a
+persistent disk cache in `ExifReader` itself: one `.properties` file per image under
+`<data-dir>/.exif-cache/`, mirroring the attachment's path relative to the data dir, keyed by
+file size (like `OsmTileClient`'s `.tile-cache`, gitignored via `GitService.GITIGNORE_ENTRIES`).
+Removes `ImageViewerDialog`'s local cache in favor of the shared one.
+
+[Details](docs/80_exif_cache.md)
 
 ## Minor Queue
 

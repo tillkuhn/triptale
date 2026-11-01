@@ -49,7 +49,7 @@ class PhotoLocationsTest {
         attachmentsDir = new AttachmentsDir(new MarkdownStore(settingsStore));
         ImpressionsService impressions = new ImpressionsService(
                 new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
-        photoLocations = new PhotoLocations(impressions, new ExifReader());
+        photoLocations = new PhotoLocations(impressions, new ExifReader(new MarkdownStore(settingsStore)));
     }
 
     private void update(Consumer<AppSettings> change) {

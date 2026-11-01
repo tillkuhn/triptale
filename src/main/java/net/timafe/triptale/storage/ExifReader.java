@@ -15,10 +15,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Properties;
 
 /**
  * Reads camera model, aperture, exposure time, ISO, GPS coordinates and capture time from an image file's EXIF
@@ -28,6 +30,13 @@ import java.time.format.DateTimeParseException;
  * {@link ExifInfo#empty()} or an {@code ExifInfo} with the unavailable fields left {@code null}.
  * No JavaFX dependency — kept in the {@code storage} package per the project's package boundary
  * rule.
+ *
+ * <p>Reads are cached on disk under {@code <data-dir>/.exif-cache/}, mirroring the image's path
+ * relative to the data dir (so the cache survives the data dir moving to a different absolute
+ * path), one small {@link Properties} file per image, keyed by file size (todo 80): as long as
+ * the source file's size hasn't changed, the cached fields are returned without touching
+ * metadata-extractor again. Entries for deleted/moved images are never swept — see todo 81. The
+ * cache is skipped entirely (always a live read) when no data dir is configured yet.
  */
 @Component
 public class ExifReader {
@@ -36,9 +45,36 @@ public class ExifReader {
 
     /** EXIF's own timestamp format, e.g. {@code 2026:08:19 10:37:10}. */
     private static final DateTimeFormatter EXIF_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
+    private static final String CACHE_DIR = ".exif-cache";
+    private static final String KEY_SIZE = "size";
+    private static final String KEY_CAMERA_MODEL = "cameraModel";
+    private static final String KEY_APERTURE = "aperture";
+    private static final String KEY_EXPOSURE_TIME = "exposureTime";
+    private static final String KEY_ISO = "iso";
+    private static final String KEY_LATITUDE = "latitude";
+    private static final String KEY_LONGITUDE = "longitude";
+    private static final String KEY_DIMENSIONS = "dimensions";
+    private static final String KEY_CAPTURE_TIME = "captureTime";
+
+    private final MarkdownStore store;
+
+    public ExifReader(MarkdownStore store) {
+        this.store = store;
+    }
 
     public ExifInfo read(Path path) {
         if (path == null) return ExifInfo.empty();
+        Path cacheFile = cacheFile(path);
+        if (cacheFile != null) {
+            ExifInfo cached = readCache(cacheFile, path);
+            if (cached != null) return cached;
+        }
+        ExifInfo info = readLive(path);
+        if (cacheFile != null) writeCache(cacheFile, path, info);
+        return info;
+    }
+
+    private ExifInfo readLive(Path path) {
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(new File(path.toUri()));
             return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata), iso(metadata),
@@ -47,6 +83,78 @@ public class ExifReader {
             log.debug("Could not read EXIF metadata from {}: {}", path, e.getMessage());
             return ExifInfo.empty();
         }
+    }
+
+    /** The mirrored {@code .exif-cache} entry file for {@code path}, or {@code null} if no data dir is configured. */
+    private Path cacheFile(Path path) {
+        try {
+            Path dataDir = store.dataDir();
+            Path absolute = path.toAbsolutePath().normalize();
+            if (!absolute.startsWith(dataDir)) return null;
+            Path relative = dataDir.relativize(absolute);
+            return dataDir.resolve(CACHE_DIR).resolve(relative.toString() + ".properties");
+        } catch (StorageException e) {
+            return null;
+        }
+    }
+
+    private ExifInfo readCache(Path cacheFile, Path imagePath) {
+        if (!Files.isRegularFile(cacheFile)) return null;
+        try {
+            long currentSize = Files.size(imagePath);
+            Properties props = new Properties();
+            try (var in = Files.newInputStream(cacheFile)) {
+                props.load(in);
+            }
+            long cachedSize = Long.parseLong(props.getProperty(KEY_SIZE, "-1"));
+            if (cachedSize != currentSize) return null;
+            return new ExifInfo(
+                    props.getProperty(KEY_CAMERA_MODEL),
+                    props.getProperty(KEY_APERTURE),
+                    props.getProperty(KEY_EXPOSURE_TIME),
+                    props.getProperty(KEY_ISO),
+                    parseDouble(props.getProperty(KEY_LATITUDE)),
+                    parseDouble(props.getProperty(KEY_LONGITUDE)),
+                    props.getProperty(KEY_DIMENSIONS),
+                    parseCaptureTime(props.getProperty(KEY_CAPTURE_TIME)));
+        } catch (IOException | NumberFormatException e) {
+            log.debug("Could not read EXIF cache entry {}: {}", cacheFile, e.getMessage());
+            return null;
+        }
+    }
+
+    private void writeCache(Path cacheFile, Path imagePath, ExifInfo info) {
+        try {
+            long size = Files.size(imagePath);
+            Properties props = new Properties();
+            props.setProperty(KEY_SIZE, Long.toString(size));
+            putIfPresent(props, KEY_CAMERA_MODEL, info.cameraModel());
+            putIfPresent(props, KEY_APERTURE, info.aperture());
+            putIfPresent(props, KEY_EXPOSURE_TIME, info.exposureTime());
+            putIfPresent(props, KEY_ISO, info.iso());
+            if (info.latitude() != null) props.setProperty(KEY_LATITUDE, Double.toString(info.latitude()));
+            if (info.longitude() != null) props.setProperty(KEY_LONGITUDE, Double.toString(info.longitude()));
+            putIfPresent(props, KEY_DIMENSIONS, info.dimensions());
+            if (info.captureTime() != null) props.setProperty(KEY_CAPTURE_TIME, info.captureTime().toString());
+            Files.createDirectories(cacheFile.getParent());
+            try (var out = Files.newOutputStream(cacheFile)) {
+                props.store(out, null);
+            }
+        } catch (IOException e) {
+            log.debug("Could not write EXIF cache entry {}: {}", cacheFile, e.getMessage());
+        }
+    }
+
+    private static void putIfPresent(Properties props, String key, String value) {
+        if (value != null) props.setProperty(key, value);
+    }
+
+    private static Double parseDouble(String s) {
+        return s == null ? null : Double.valueOf(s);
+    }
+
+    private static LocalDateTime parseCaptureTime(String s) {
+        return s == null ? null : LocalDateTime.parse(s);
     }
 
     private static String cameraModel(Metadata metadata) {

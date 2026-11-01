@@ -50,11 +50,9 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -141,7 +139,6 @@ public final class ImageViewerDialog {
         private final Runnable onImported;
         private final RoutePoints route;
         private final ImageFilter faveFilter = impressions.faveFilter();
-        private final Map<Path, ExifInfo> exifCache = new HashMap<>();
         private final Set<Path> selected = new LinkedHashSet<>();
         /** Images of the source already in the day's backpack (same name and size). */
         private Set<Path> packed = Set.of();
@@ -476,7 +473,7 @@ public final class ImageViewerDialog {
         }
 
         private Optional<ExifInfo> currentExif() {
-            return visible.isEmpty() ? Optional.empty() : Optional.ofNullable(exifCache.get(visible.get(index)));
+            return visible.isEmpty() ? Optional.empty() : Optional.of(exifReader.read(visible.get(index)));
         }
 
         /**
@@ -571,7 +568,7 @@ public final class ImageViewerDialog {
                 Path p = visible.get(index);
                 imageView.setImage(new Image(p.toUri().toString(), IMAGE_W, IMAGE_H, true, true, true));
                 pathLabel.setText(UiText.homeRelative(p));
-                ExifInfo exif = exifCache.computeIfAbsent(p, exifReader::read);
+                ExifInfo exif = exifReader.read(p);
                 metaLabel.setText(describeExif(exif, sizeOf(p)));
                 selectCheck.setSelected(selected.contains(p));
                 packedBadge.setVisible(packed.contains(p));
