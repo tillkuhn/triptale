@@ -83,9 +83,8 @@ class DiaryExporterTest {
         assertTrue(out.startsWith("# Alps 2025"), "should start with trip name heading");
         assertTrue(out.contains("Summer ride"));
         assertTrue(out.contains("July 1st 2025 → July 2nd 2025 (2 days, 2 entries)"), out);
-        assertTrue(out.contains("Distance: 82.5 km"));
-        assertTrue(out.contains("Altitude: 1200 m"));
-        assertTrue(out.contains("## A → B\n\n*Tuesday, July 1st 2025 · Day 1 · 📏 50.0 km, 800 m climbed*"), out);
+        assertTrue(out.contains("Distance: 82.5 km, 1200 m climbed"), out);
+        assertTrue(out.contains("## A → B\n\n*Tuesday, July 1st 2025 · Day 1 · 📏 ~50 km, 800 m climbed*"), out);
         assertTrue(out.contains("## B → C\n\n*Wednesday, July 2nd 2025 · Day 2 · 📏 32.5 km, 400 m climbed*"), out);
         assertTrue(out.contains("Day one"));
         assertTrue(out.contains("Day two"));
@@ -137,6 +136,9 @@ class DiaryExporterTest {
         assertTrue(out.contains("Rest day."));
         // Only the date is left
         assertTrue(out.contains("\n*Tuesday, July 1st 2025 · Day 1*\n"), out);
+        // No stats bullet at all when there's neither distance nor altitude to report
+        assertFalse(out.contains("Distance"), out);
+        assertFalse(out.contains("Altitude"), out);
     }
 
     @Test
@@ -338,7 +340,7 @@ class DiaryExporterTest {
         assertTrue(html.contains("""
                 <div class="facts">
                 <div class="fact"><span class="fact-stamp"><small>Day</small>3</span><span class="fact-value">Thursday</span><span class="fact-note">July 3rd 2025</span></div>
-                <div class="fact"><span class="fact-emoji">🚴</span><span class="fact-value">Cycling</span><span class="fact-note">123.0 km, 100 m climbed</span></div>
+                <div class="fact"><span class="fact-emoji">🚴</span><span class="fact-value">Cycling</span><span class="fact-note">~123 km, 100 m climbed</span></div>
                 <div class="fact"><span class="fact-emoji">🧭</span><span class="fact-value">50°06′N 8°40′E</span><span class="fact-note">Starting point</span></div>
                 </div>"""), html);
         assertFalse(html.contains("· Day 3"), "the byline is for plain Markdown only");
@@ -472,12 +474,51 @@ class DiaryExporterTest {
 
         String out = exporter.exportTrip(trip, LocalDate.of(2025, 7, 2), LocalDate.of(2025, 7, 2));
 
+        assertTrue(out.startsWith("# Alps 2025 · Day 2"), "partial exports note the day range in the heading");
         assertTrue(out.contains("## Two"), out);
         assertTrue(out.contains("· Day 2 ·"), out);
         assertFalse(out.contains("One"), out);
         assertFalse(out.contains("Three"), out);
-        assertTrue(out.contains("20.0"), out);
+        assertTrue(out.contains("~20"), out);
         assertFalse(out.contains("70.0"), out);
+    }
+
+    @Test
+    void multiDayRangeHeadingShowsDayNumberSpan() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("One").tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2)).title("Two").tales("b").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 3)).title("Three").tales("c").build());
+
+        String out = exporter.exportTrip(trip, LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2));
+
+        assertTrue(out.startsWith("# Alps 2025 · Day 1 - 2"), out);
+    }
+
+    @Test
+    void fullTripExportHeadingHasNoDayRangeSuffix() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("One").tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2)).title("Two").tales("b").build());
+
+        // Both the unbounded call and an explicit range that happens to cover every entry count as "full"
+        assertTrue(exporter.exportTrip(trip).startsWith("# Alps 2025\n"));
+        assertTrue(exporter.exportTrip(trip, LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2)).startsWith("# Alps 2025\n"));
+    }
+
+    @Test
+    void htmlTitleTagAlsoGetsTheDayRangeSuffix() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("One").tales("a").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2)).title("Two").tales("b").build());
+
+        String html = exporter.exportTripAsHtml(trip, LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1), null, false);
+
+        assertTrue(html.contains("<title>Alps 2025 · Day 1</title>"), html);
+        assertTrue(html.contains("<h1>Alps 2025 · Day 1</h1>"), html);
     }
 
     @Test
@@ -569,8 +610,7 @@ class DiaryExporterTest {
         String out = exporter.exportTrip(trip);
 
         assertTrue(out.contains("- Zeitraum: 1. Juli 2025 → 1. Juli 2025 (1 Tag, 1 Eintrag)"), out);
-        assertTrue(out.contains("- Distanz: 50,5 km"), out);
-        assertTrue(out.contains("- Höhenmeter: 800 m"), out);
+        assertTrue(out.contains("- Distanz: 50,5 km, 800 m bergauf"), out);
         assertTrue(out.contains("## A → B\n\n*Dienstag, 1. Juli 2025 · Tag 1 · 📏 50,5 km, 800 m bergauf · 🧭 51°29′N 0°01′W*"), out);
         assertTrue(out.contains("* 🛏 Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
         // No German label for a custom verb: falls back to the capitalized verb

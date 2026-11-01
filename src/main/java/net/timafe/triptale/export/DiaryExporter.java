@@ -78,7 +78,8 @@ public class DiaryExporter {
         LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        return buildMarkdown(trip, dates, trip.name(), trip.description(), startDate, endDate, false, false);
+        String heading = headingWithDayRange(trip, allDates, dates, trip.name());
+        return buildMarkdown(trip, dates, heading, trip.description(), startDate, endDate, false, false);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
@@ -102,7 +103,8 @@ public class DiaryExporter {
         LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        return renderHtml(trip, dates, trip.name(), trip.description(), startDate, endDate, images, favesOnly);
+        String heading = headingWithDayRange(trip, allDates, dates, trip.name());
+        return renderHtml(trip, dates, heading, trip.description(), startDate, endDate, images, favesOnly);
     }
 
     private String renderHtml(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
@@ -125,6 +127,27 @@ public class DiaryExporter {
 
     static ExportTexts texts(SettingsStore settingsStore) {
         return ExportTexts.of(TripLanguage.fromCode(settingsStore.load().getDefaultTripLanguage()));
+    }
+
+    /**
+     * The trip name, plus a " · Day N" / " · Day N - M" suffix when {@code dates} is a genuine
+     * sub-range of the trip (not the full set of entries) — so an export covering only part of a
+     * trip says so in its own heading rather than looking like a complete diary.
+     */
+    private String headingWithDayRange(Trip trip, List<LocalDate> allDates, List<LocalDate> dates, String name) {
+        String suffix = dayRangeSuffix(trip, allDates, dates, texts());
+        return suffix == null || name == null ? name : name + " · " + suffix;
+    }
+
+    /** Null when {@code dates} covers the trip's entries end to end (or either is empty/unknown). */
+    private static String dayRangeSuffix(Trip trip, List<LocalDate> allDates, List<LocalDate> dates, ExportTexts texts) {
+        if (dates.isEmpty() || allDates.isEmpty() || trip.startDate() == null) return null;
+        boolean fullRange = dates.getFirst().equals(allDates.getFirst()) && dates.getLast().equals(allDates.getLast());
+        if (fullRange) return null;
+        long startDay = ChronoUnit.DAYS.between(trip.startDate(), dates.getFirst()) + 1;
+        long endDay = ChronoUnit.DAYS.between(trip.startDate(), dates.getLast()) + 1;
+        String dayWord = texts.word("day");
+        return startDay == endDay ? dayWord + " " + startDay : dayWord + " " + startDay + " - " + endDay;
     }
 
     /** With {@code htmlFacts}, each entry gets the facts strip as an HTML block instead of the Markdown byline. */
@@ -161,8 +184,7 @@ public class DiaryExporter {
         vars.put("daysLabel", texts.plural("days", totalDays));
         vars.put("entryCount", Integer.toString(dates.size()));
         vars.put("entriesLabel", texts.plural("entries", dates.size()));
-        vars.put("totalDistance", texts.distance(totalDistance));
-        vars.put("totalAltitude", texts.altitude(totalAltitude));
+        vars.put("statsLine", statsLine(totalDistance, totalAltitude, texts));
         // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
         String attribution = "";
         if (entries.stream().anyMatch(EntryFacts::hasPlace)) {
@@ -272,6 +294,24 @@ public class DiaryExporter {
     private static long totalDays(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null) return -1;
         return ChronoUnit.DAYS.between(startDate, endDate) + 1;
+    }
+
+    /**
+     * The trip summary's one stats bullet, e.g. {@code "- Distance: 82.5 km, 1200 m climbed"};
+     * altitude never shows on its own line, and either figure drops out entirely at 0 (no
+     * measurement at all is not the same as "0 km"). Null — no bullet at all — when both are 0.
+     */
+    private static String statsLine(double totalDistance, double totalAltitude, ExportTexts texts) {
+        String distance = totalDistance > 0 ? texts.distance(totalDistance) + " km" : null;
+        String climb = totalAltitude > 0 ? texts.altitude(totalAltitude) + " m " + texts.word("facts.climbed") : null;
+        if (distance != null) {
+            String value = climb == null ? distance : distance + ", " + climb;
+            return "- " + texts.word("stats.distance") + ": " + value;
+        }
+        if (climb != null) {
+            return "- " + texts.word("stats.altitude") + ": " + texts.altitude(totalAltitude) + " m";
+        }
+        return "";
     }
 
     /** Replaces {@code {{t.key}}} placeholders with words in the trip language. */
