@@ -39,6 +39,7 @@ public class AppSettings {
     private WordPress wordPress = new WordPress();
     private String telegramBotToken = "";
     private String telegramChatId = "";
+    private String thunderforestApiKey = "";
 
     /**
      * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
@@ -87,6 +88,10 @@ public class AppSettings {
     /** The single chat ID the inbox accepts messages from (todo 68); blank = feature off. */
     public String getTelegramChatId() { return telegramChatId; }
     public void setTelegramChatId(String telegramChatId) { this.telegramChatId = telegramChatId == null ? "" : telegramChatId; }
+    /** Free hobby-plan key for Thunderforest's Outdoors/OpenCycleMap tile styles (todo 61);
+     *  blank = those two styles are hidden from Map Assistant's Style dropdown. */
+    public String getThunderforestApiKey() { return thunderforestApiKey; }
+    public void setThunderforestApiKey(String thunderforestApiKey) { this.thunderforestApiKey = thunderforestApiKey == null ? "" : thunderforestApiKey; }
 
     public static class Git {
         private String authorName = "";

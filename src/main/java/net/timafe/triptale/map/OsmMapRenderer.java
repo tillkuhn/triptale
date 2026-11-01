@@ -28,19 +28,24 @@ import javax.imageio.ImageIO;
 public class OsmMapRenderer {
 
     /**
-     * How far the map zooms out around the plotted pins — same four named levels Map Assistant
-     * showed for Mapbox. For multiple points, a shared margin fraction first finds the tightest
-     * zoom that fits all of them ({@link #BASE_MARGIN_FRACTION}), then {@code zoomBias} steps
-     * that zoom in or out by a fixed number of levels — a margin-only difference between levels
-     * is too small to ever flip the (exponential, integer) zoom pick for most real trips, so
-     * Close and Normal used to render identically (todo 61 follow-up). For a single point, a
-     * fixed zoom is used instead, since fitting a zero-size bbox would otherwise zoom all the
-     * way to {@link TileSource#maxZoom()} regardless of level.
+     * How far the map zooms out around the plotted pins — six named levels (todo 61 follow-up
+     * added {@link #SNUG} and {@link #WIDER} between the original four Mapbox-era levels: the
+     * jump from Close to Normal, and from Wide to Very wide, was a 2-level {@code zoomBias} step
+     * and a 4-level {@link #singlePointZoom} step — too coarse to pick a comfortable in-between
+     * view). For multiple points, a shared margin fraction first finds the tightest zoom that
+     * fits all of them ({@link #BASE_MARGIN_FRACTION}), then {@code zoomBias} steps that zoom in
+     * or out by a fixed number of levels — a margin-only difference between levels is too small
+     * to ever flip the (exponential, integer) zoom pick for most real trips, so Close and Normal
+     * used to render identically. For a single point, a fixed zoom is used instead, since
+     * fitting a zero-size bbox would otherwise zoom all the way to {@link TileSource#maxZoom()}
+     * regardless of level.
      */
     public enum ZoomLevel {
         CLOSE("Close", 2, 16),
+        SNUG("Snug", 1, 14),
         NORMAL("Normal", 0, 12),
         WIDE("Wide", -1, 9),
+        WIDER("Wider", -2, 7),
         VERY_WIDE("Very wide", -3, 5);
 
         private final String label;

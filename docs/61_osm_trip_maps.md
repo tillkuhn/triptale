@@ -72,27 +72,39 @@ OpenTopoMap is the preferred default for a nature look.
   a known source. Wires up **OpenTopoMap, OSM Standard and CyclOSM**
   (all no-key, single-layer raster sources); Waymarked Trails (overlay-only) is a separate future
   todo once that extra plumbing is worth it.
-- **Thunderforest (key-gated sources, not yet implemented)**: Thunderforest's terms (checked
-  2026-11, thunderforest.com/terms) license individual map images under **CC-BY-SA 4.0** — unlike
-  Mapbox, storing and publishing tiles is explicitly fine. Required attribution text:
+- **Thunderforest (key-gated sources, implemented)**: Thunderforest's terms (checked 2026-11,
+  thunderforest.com/terms) license individual map images under **CC-BY-SA 4.0** — unlike Mapbox,
+  storing and publishing tiles is explicitly fine. Required attribution text:
   `Maps © Thunderforest, Data © OpenStreetMap contributors` with working links to
   thunderforest.com and openstreetmap.org/copyright (a plain-text variant exists for printed
   media). Their "no caching proxies" clause is aimed at redistribution services, not a single
-  user's local disk cache — our existing `.tile-cache/<source>/<z>/<x>/<y>.png` pattern should be
-  fine, same as the on-device caching they explicitly allow. Free plan is "at our discretion" and
-  can be throttled/withdrawn — an accepted risk, not a blocker.
-  - **Scope**: wire up both **Outdoors** and **OpenCycleMap** as two more `TileSource` entries
-    sharing one API key.
-  - **Key storage**: a new `thunderforestApiKey` field in `AppSettings`/`settings.yml`, same flat
-    string/default-`""` pattern as `telegramBotToken`; edited via a masked `PasswordField` in
-    `EditSettingsDialog`, same pattern as the Telegram token field.
-  - **No-key behavior**: hide the Thunderforest-based options from the Map Assistant dropdown
-    entirely when `thunderforestApiKey` is blank, rather than showing them disabled.
-  - **Plumbing needed**: `TileSource.tileUrl()` has no access to runtime settings today — the key
-    needs to be threaded through `OsmTileClient`'s constructor/call site (built in
-    `MapAssistantDialog`, which currently has no `AppSettings`/`SettingsStore` dependency) rather
-    than baked into the enum. Appending `?apikey=...` to the URL is otherwise a one-line change
-    per new `TileSource` constant; `OsmTileClient` treats the URL as opaque so needs no changes.
+  user's local disk cache — our existing `.tile-cache/<source>/<z>/<x>/<y>.png` pattern is fine,
+  same as the on-device caching they explicitly allow. Free plan is "at our discretion" and can
+  be throttled/withdrawn — an accepted risk, not a blocker.
+  - **Scope**: wired up both **Outdoors** (`/outdoors/`) and **OpenCycleMap** (`/cycle/`) as two
+    more `TileSource` constants (`THUNDERFOREST_OUTDOORS`, `THUNDERFOREST_OPENCYCLEMAP`), sharing
+    one API key, `a`/`b`/`c` subdomains, max zoom 22 (vector-rendered at the server, unlike the
+    other three no-key raster sources which top out lower).
+  - **Key storage**: `thunderforestApiKey` field in `AppSettings`/`settings.yml`, same flat
+    string/default-`""`/null-safe-setter pattern as `telegramBotToken`; edited via a masked
+    `PasswordField` in `EditSettingsDialog`'s General tab (a new separator-delimited section,
+    not a whole new tab for one field), same pattern as the Telegram token field.
+  - **No-key behavior**: `MapAssistantDialog.Session.availableTileSources()` filters
+    `TileSource.values()` down to `!requiresApiKey() || hasKey` before populating the Style
+    dropdown — Thunderforest's two styles are hidden entirely when `thunderforestApiKey` is
+    blank, not shown disabled. `lastOrDefaultTileSource()` falls back to OpenTopoMap the same way
+    it already did for an unknown saved id, so a Thunderforest style saved while a key was
+    configured just silently reverts once the key is removed.
+  - **Plumbing**: `TileSource` gained `requiresApiKey()` and an overloaded
+    `tileUrl(z, x, y, requestIndex, apiKey)` — the existing 4-arg overload delegates to it with a
+    null key and still returns an unmodified URL for the three no-key sources (all existing
+    `tileUrl` tests and call sites unaffected). The key itself is **not** stored on the enum
+    (enums are static constants) — it flows from `AppSettings` through
+    `MapAssistantDialog`'s new `SettingsStore` constructor dependency into a new
+    `OsmTileClient(Path, String appVersion, String thunderforestApiKey)` constructor, which
+    passes it to `source.tileUrl(...)` in `fetch()`. `OsmTileClient.tile()` throws a
+    `TileException` up front (before any network call) if a key-requiring source is used with a
+    blank key — a defensive guard, since the dropdown filter should already prevent this.
   - **Free tier quota (150,000 tiles/month)**: plenty for personal use *because of* the existing
     disk cache (`OsmTileClient.tile()`, never evicted) — a tile is only fetched once per
     `source/z/x/y` ever, so re-rendering the same trip/zoom costs 0 fresh requests. A single
@@ -110,7 +122,12 @@ OpenTopoMap is the preferred default for a nature look.
   `.state.yml`.
 - **Zoom picker**: Map Assistant keeps the existing Close/Normal/Wide/Very wide combo; each
   level maps to a margin-around-bbox fraction for the fit-to-bounds math, replacing Mapbox's
-  padding/zoom request params.
+  padding/zoom request params. Two more levels were added between the original four (`SNUG`
+  between Close/Normal, `WIDER` between Wide/Very wide): the original steps were a 2-level
+  `zoomBias` jump and a 4-level `singlePointZoom` jump, too coarse to land on a comfortable
+  in-between view for a lot of real trips. `zoomBias` now steps evenly by 1 across all six
+  levels (`2, 1, 0, -1, -2, -3`); `singlePointZoom` keeps the original four values unchanged
+  (`16, 12, 9, 5`) and fills in `14`/`7` for the two new ones.
 - **User-Agent**: outgoing tile requests send `TripTale/<version> (+https://github.com/<org>/
   triptale)`, version from `BuildProperties`, per OSM's tile usage policy.
 

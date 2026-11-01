@@ -41,24 +41,39 @@ public class OsmTileClient {
     private final HttpClient http;
     /** Null in production; tests point this at a local server, keeping the generated path/query. */
     private final URI baseOverride;
+    /** Thunderforest's API key (todo 61 follow-up), blank/null if not configured. Ignored by
+     *  sources where {@link TileSource#requiresApiKey()} is false. */
+    private final String thunderforestApiKey;
     private int requestCount;
 
     public OsmTileClient(Path cacheRoot, String appVersion) {
-        this(cacheRoot, appVersion, HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), null);
+        this(cacheRoot, appVersion, (String) null);
+    }
+
+    /** Same as {@link #OsmTileClient(Path, String)}, with a Thunderforest API key for its
+     *  key-gated sources ({@link TileSource#requiresApiKey()}). */
+    public OsmTileClient(Path cacheRoot, String appVersion, String thunderforestApiKey) {
+        this(cacheRoot, appVersion, HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), null, thunderforestApiKey);
     }
 
     /** Package-private: lets tests inject an {@link HttpClient} pointed at a local server. */
     OsmTileClient(Path cacheRoot, String appVersion, HttpClient http) {
-        this(cacheRoot, appVersion, http, null);
+        this(cacheRoot, appVersion, http, null, null);
     }
 
     /** Package-private: {@code baseOverride} (if not null) replaces the scheme/host of every tile URL. */
     OsmTileClient(Path cacheRoot, String appVersion, HttpClient http, URI baseOverride) {
+        this(cacheRoot, appVersion, http, baseOverride, null);
+    }
+
+    /** Package-private: full constructor, also letting tests set a Thunderforest API key. */
+    OsmTileClient(Path cacheRoot, String appVersion, HttpClient http, URI baseOverride, String thunderforestApiKey) {
         this.cacheRoot = cacheRoot;
         this.userAgent = "TripTale/" + (appVersion == null || appVersion.isBlank() ? "dev" : appVersion)
                 + " (+https://github.com/tillkuhn/triptale)";
         this.http = http;
         this.baseOverride = baseOverride;
+        this.thunderforestApiKey = thunderforestApiKey;
     }
 
     /**
@@ -67,6 +82,9 @@ public class OsmTileClient {
      * bad tile doesn't have to take the renderer with it — a caller may choose to skip it.
      */
     public BufferedImage tile(TileSource source, int z, int x, int y) {
+        if (source.requiresApiKey() && (thunderforestApiKey == null || thunderforestApiKey.isBlank())) {
+            throw new TileException(source + " needs a Thunderforest API key (see Edit Settings)");
+        }
         Path file = cacheFile(source, z, x, y);
         if (Files.exists(file)) {
             try {
@@ -105,7 +123,7 @@ public class OsmTileClient {
     }
 
     private byte[] fetch(TileSource source, int z, int x, int y) {
-        URI uri = URI.create(source.tileUrl(z, x, y, requestCount++));
+        URI uri = URI.create(source.tileUrl(z, x, y, requestCount++, thunderforestApiKey));
         if (baseOverride != null) {
             String pathAndQuery = uri.getRawPath() + (uri.getRawQuery() != null ? "?" + uri.getRawQuery() : "");
             uri = baseOverride.resolve(pathAndQuery);

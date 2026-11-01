@@ -5,8 +5,15 @@ import java.util.Locale;
 /**
  * A raster tile server for {@link OsmMapRenderer} (todo 61): URL template, attribution and the
  * zoom it tops out at. Each source needs its own usage-policy check before being added here;
- * key-requiring sources (Thunderforest, OpenCycleMap) and overlay-only sources (Waymarked
- * Trails) are out of scope for this simple enum and are separate future todos.
+ * overlay-only sources (Waymarked Trails) are out of scope for this simple enum and a separate
+ * future todo.
+ *
+ * <p>Thunderforest's two styles ({@link #THUNDERFOREST_OUTDOORS}, {@link #THUNDERFOREST_OPENCYCLEMAP})
+ * need an API key (free hobby plan) appended as a query parameter — see {@link #requiresApiKey()}
+ * and the {@code apiKey} parameter of {@link #tileUrl(int, int, int, int, String)}. Their terms
+ * (checked 2026-11) license tiles under CC-BY-SA 4.0, explicitly allowing storage/publishing,
+ * unlike Mapbox. {@code ui.dialog.MapAssistantDialog} hides them from the Style dropdown
+ * entirely when no key is configured, rather than showing them disabled.
  *
  * <p>No JavaFX imports (package boundary rule).
  */
@@ -22,7 +29,17 @@ public enum TileSource {
 
     /** © OpenStreetMap contributors \u00b7 CyclOSM. Max zoom 20. */
     CYCLOSM("CyclOSM", "tile-cyclosm.openstreetmap.fr", new String[] {"a", "b", "c"}, "/cyclosm/%d/%d/%d.png", 20,
-            "\u00a9 OpenStreetMap contributors \u00b7 CyclOSM");
+            "\u00a9 OpenStreetMap contributors \u00b7 CyclOSM"),
+
+    /** Maps © Thunderforest, Data © OpenStreetMap contributors (CC-BY-SA 4.0). Max zoom 22. Needs an API key. */
+    THUNDERFOREST_OUTDOORS("Thunderforest Outdoors", "tile.thunderforest.com", new String[] {"a", "b", "c"},
+            "/outdoors/%d/%d/%d.png", 22,
+            "Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors", "apikey"),
+
+    /** Maps © Thunderforest, Data © OpenStreetMap contributors (CC-BY-SA 4.0). Max zoom 22. Needs an API key. */
+    THUNDERFOREST_OPENCYCLEMAP("Thunderforest OpenCycleMap", "tile.thunderforest.com", new String[] {"a", "b", "c"},
+            "/cycle/%d/%d/%d.png", 22,
+            "Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors", "apikey");
 
     private final String label;
     private final String host;
@@ -30,14 +47,22 @@ public enum TileSource {
     private final String pathTemplate;
     private final int maxZoom;
     private final String attribution;
+    /** Query parameter name the API key is appended as ({@code null} = no key needed). */
+    private final String apiKeyParam;
 
     TileSource(String label, String host, String[] subdomains, String pathTemplate, int maxZoom, String attribution) {
+        this(label, host, subdomains, pathTemplate, maxZoom, attribution, null);
+    }
+
+    TileSource(String label, String host, String[] subdomains, String pathTemplate, int maxZoom, String attribution,
+               String apiKeyParam) {
         this.label = label;
         this.host = host;
         this.subdomains = subdomains;
         this.pathTemplate = pathTemplate;
         this.maxZoom = maxZoom;
         this.attribution = attribution;
+        this.apiKeyParam = apiKeyParam;
     }
 
     /** Short lowercase id used as the tile disk cache's subfolder name. */
@@ -58,10 +83,26 @@ public enum TileSource {
         return "https://" + hostWithSubdomain(subdomains[0]);
     }
 
-    /** The tile URL for {@code z}/{@code x}/{@code y}, round-robining over the source's subdomains. */
+    /** Whether this source needs an API key appended to its tile URL (Thunderforest's styles). */
+    public boolean requiresApiKey() {
+        return apiKeyParam != null;
+    }
+
+    /** The tile URL for {@code z}/{@code x}/{@code y}, round-robining over the source's subdomains;
+     *  no API key is appended. Only valid for a source where {@link #requiresApiKey()} is false. */
     public String tileUrl(int z, int x, int y, int requestIndex) {
+        return tileUrl(z, x, y, requestIndex, null);
+    }
+
+    /** Same as {@link #tileUrl(int, int, int, int)}, appending {@code ?<param>=<apiKey>} for a
+     *  source that {@link #requiresApiKey()} — {@code apiKey} is otherwise ignored. */
+    public String tileUrl(int z, int x, int y, int requestIndex, String apiKey) {
         String subdomain = subdomains[Math.floorMod(requestIndex, subdomains.length)];
-        return "https://" + hostWithSubdomain(subdomain) + pathTemplate.formatted(z, x, y);
+        String url = "https://" + hostWithSubdomain(subdomain) + pathTemplate.formatted(z, x, y);
+        if (apiKeyParam != null) {
+            url += "?" + apiKeyParam + "=" + (apiKey == null ? "" : apiKey);
+        }
+        return url;
     }
 
     /** Prefixes {@code host} with {@code subdomain + "."}, or returns {@code host} alone if the subdomain is blank

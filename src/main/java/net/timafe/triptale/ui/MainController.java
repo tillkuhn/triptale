@@ -327,7 +327,7 @@ public class MainController implements StatusSink {
         this.placeLookup = new PlaceLookup(version);
         this.weatherClient = new OpenMeteoClient(version);
         this.mapAssistantDialog = new MapAssistantDialog(store, version, attachmentsDir,
-                new PhotoLocations(impressions, exifReader), connectivityService, this);
+                new PhotoLocations(impressions, exifReader), connectivityService, this, settingsStore);
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =

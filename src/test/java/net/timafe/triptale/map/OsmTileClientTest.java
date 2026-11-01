@@ -82,6 +82,42 @@ class OsmTileClientTest {
         assertEquals(1, requests.get(), "a corrupt cache entry should be refetched, not reused");
     }
 
+    @Test
+    void tile_thunderforestWithoutAnApiKeyThrowsBeforeAnyRequest() throws IOException {
+        AtomicInteger requests = new AtomicInteger();
+        URI base = serve(200, pngBytes(2, 2), new CopyOnWriteArrayList<>(), requests);
+        OsmTileClient client = new OsmTileClient(cacheRoot, null, HttpClient.newBuilder().build(), base);
+
+        OsmTileClient.TileException e = assertThrows(OsmTileClient.TileException.class,
+                () -> client.tile(TileSource.THUNDERFOREST_OUTDOORS, 5, 10, 12));
+        assertTrue(e.getMessage().contains("Thunderforest API key"));
+        assertEquals(0, requests.get(), "no network request should be made without a key");
+    }
+
+    @Test
+    void tile_thunderforestWithAnApiKeyAppendsItToTheRequestUrl() throws IOException {
+        List<String> paths = new CopyOnWriteArrayList<>();
+        AtomicInteger requests = new AtomicInteger();
+        byte[] png = pngBytes(2, 2);
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requests.incrementAndGet();
+            paths.add(exchange.getRequestURI().toString());
+            exchange.sendResponseHeaders(200, png.length);
+            exchange.getResponseBody().write(png);
+            exchange.close();
+        });
+        server.start();
+        URI base = URI.create("http://127.0.0.1:" + server.getAddress().getPort());
+        OsmTileClient client = new OsmTileClient(cacheRoot, null, HttpClient.newBuilder().build(), base, "my-key");
+
+        BufferedImage image = client.tile(TileSource.THUNDERFOREST_OUTDOORS, 5, 10, 12);
+
+        assertNotNull(image);
+        assertEquals(1, requests.get());
+        assertEquals("/outdoors/5/10/12.png?apikey=my-key", paths.getFirst());
+    }
+
     private static byte[] pngBytes(int width, int height) throws IOException {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream out = new ByteArrayOutputStream();

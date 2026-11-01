@@ -33,6 +33,7 @@ import net.timafe.triptale.map.OsmTileClient;
 import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.TileSource;
 import net.timafe.triptale.storage.MarkdownStore;
+import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.ConnectivityService;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.StatusSink;
@@ -79,15 +80,18 @@ public final class MapAssistantDialog {
     private final PhotoLocations photoLocations;
     private final ConnectivityService connectivityService;
     private final StatusSink statusSink;
+    private final SettingsStore settingsStore;
 
     public MapAssistantDialog(MarkdownStore store, String appVersion, AttachmentsDir attachmentsDir,
-                              PhotoLocations photoLocations, ConnectivityService connectivityService, StatusSink statusSink) {
+                              PhotoLocations photoLocations, ConnectivityService connectivityService, StatusSink statusSink,
+                              SettingsStore settingsStore) {
         this.store = store;
         this.appVersion = appVersion;
         this.attachmentsDir = attachmentsDir;
         this.photoLocations = photoLocations;
         this.connectivityService = connectivityService;
         this.statusSink = statusSink;
+        this.settingsStore = settingsStore;
     }
 
     /** The whole trip. */
@@ -114,8 +118,10 @@ public final class MapAssistantDialog {
         }
         // Built here, not at app start (MainController): store.dataDir() throws until the data
         // dir is configured, and by this point loading the entries above already proved it is.
-        OsmMapRenderer mapRenderer = new OsmMapRenderer(new OsmTileClient(store.dataDir().resolve(".tile-cache"), appVersion));
-        new Session(trip, entries, from, to, mapRenderer).show();
+        String thunderforestApiKey = settingsStore.load().getThunderforestApiKey();
+        OsmMapRenderer mapRenderer = new OsmMapRenderer(
+                new OsmTileClient(store.dataDir().resolve(".tile-cache"), appVersion, thunderforestApiKey));
+        new Session(trip, entries, from, to, mapRenderer, thunderforestApiKey).show();
     }
 
     /** One opened dialog and its state. */
@@ -124,6 +130,7 @@ public final class MapAssistantDialog {
         private final Trip trip;
         private final List<DiaryEntry> entries;
         private final OsmMapRenderer mapRenderer;
+        private final boolean hasThunderforestKey;
         private final EntryRangePicker range;
         private final CheckBox photosCheck = new CheckBox("📷 Photo Locations from Backpack");
         private final ComboBox<TileSource> sourceCombo = new ComboBox<>();
@@ -144,10 +151,12 @@ public final class MapAssistantDialog {
         private final int width;
         private final int height;
 
-        Session(Trip trip, List<DiaryEntry> entries, LocalDate from, LocalDate to, OsmMapRenderer mapRenderer) {
+        Session(Trip trip, List<DiaryEntry> entries, LocalDate from, LocalDate to, OsmMapRenderer mapRenderer,
+                String thunderforestApiKey) {
             this.trip = trip;
             this.entries = entries;
             this.mapRenderer = mapRenderer;
+            this.hasThunderforestKey = thunderforestApiKey != null && !thunderforestApiKey.isBlank();
             this.range = new EntryRangePicker(trip, entries, from, to);
             int[] size = mapSize();
             this.width = size[0];
@@ -158,7 +167,7 @@ public final class MapAssistantDialog {
             dlg.setTitle("🗺 Sgt. Mapper");
             photosCheck.setSelected(true);
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
-            sourceCombo.getItems().setAll(TileSource.values());
+            sourceCombo.getItems().setAll(availableTileSources());
             sourceCombo.setValue(lastOrDefaultTileSource());
             sourceCombo.setTooltip(new Tooltip("Tile style the map is rendered from"));
             zoomCombo.getItems().setAll(OsmMapRenderer.ZoomLevel.values());
@@ -239,11 +248,20 @@ public final class MapAssistantDialog {
             store.saveLastMapStyle(sourceCombo.getValue().id());
         }
 
+        /** The sources shown in the Style dropdown — Thunderforest's key-gated styles are hidden
+         *  entirely (rather than shown disabled) when no {@code thunderforestApiKey} is configured. */
+        private List<TileSource> availableTileSources() {
+            return Arrays.stream(TileSource.values())
+                    .filter(s -> !s.requiresApiKey() || hasThunderforestKey)
+                    .toList();
+        }
+
         /** The style picked last time Map Assistant was closed (any trip), or {@link TileSource#OPEN_TOPO_MAP}
-         *  if none was saved yet or the saved id no longer matches a known source (e.g. after one was removed). */
+         *  if none was saved yet or the saved id no longer matches a known, available source (e.g. after one
+         *  was removed, or a Thunderforest style was saved while a key was configured and it no longer is). */
         private TileSource lastOrDefaultTileSource() {
             return store.loadLastMapStyle()
-                    .flatMap(id -> Arrays.stream(TileSource.values()).filter(s -> s.id().equals(id)).findFirst())
+                    .flatMap(id -> availableTileSources().stream().filter(s -> s.id().equals(id)).findFirst())
                     .orElse(TileSource.OPEN_TOPO_MAP);
         }
 

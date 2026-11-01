@@ -101,6 +101,10 @@ public final class EditSettingsDialog {
         publicBaseUrlField.setPrefColumnCount(36);
         CheckBox radioEnabledCheck = new CheckBox("Enable " + Station.NAME + " radio (restart required)");
         radioEnabledCheck.setSelected(settings.isRadioEnabled());
+        PasswordField thunderforestApiKeyField = new PasswordField();
+        thunderforestApiKeyField.setText(settings.getThunderforestApiKey());
+        thunderforestApiKeyField.setPromptText("free hobby key, e.g. 1234567890abcdef");
+        thunderforestApiKeyField.setPrefColumnCount(36);
         PasswordField telegramBotTokenField = new PasswordField();
         telegramBotTokenField.setText(settings.getTelegramBotToken());
         telegramBotTokenField.setPromptText("from @BotFather, e.g. 123456789:ABCdef…");
@@ -144,7 +148,14 @@ public final class EditSettingsDialog {
         general.add(languageHint, 1, row++);
         general.add(new Separator(), 0, row, 2, 1);
         row++;
-        general.add(radioEnabledCheck, 1, row);
+        general.add(radioEnabledCheck, 1, row++);
+        general.add(new Separator(), 0, row, 2, 1);
+        row++;
+        general.add(new Label("Thunderforest API key:"), 0, row);
+        general.add(thunderforestApiKeyField, 1, row++);
+        Label thunderforestHint = new Label("For the Outdoors/OpenCycleMap map styles in Map Assistant — blank hides them (see docs/61)");
+        thunderforestHint.getStyleClass().add("hint-label");
+        general.add(thunderforestHint, 1, row);
 
         GridPane photos = Dialogs.formGrid();
         row = 0;
@@ -287,6 +298,7 @@ public final class EditSettingsDialog {
         settings.setWordPress(readWordPress(wpSiteField, wpClientIdField, wpClientSecretField, accessToken[0]));
         settings.setTelegramBotToken(telegramBotTokenField.getText().trim());
         settings.setTelegramChatId(telegramChatIdField.getText().trim());
+        settings.setThunderforestApiKey(thunderforestApiKeyField.getText().trim());
         return Optional.of(settings);
     }
 

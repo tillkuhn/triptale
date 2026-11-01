@@ -52,15 +52,6 @@ pick one style.
 
 [Background](docs/62_wordpress_publish_dialog.md)
 
-## 61 Self-rendered trip maps from OSM tiles
-
-Mapbox static maps replaced with self-rendered OSM tiles (OpenTopoMap/OSM Standard/CyclOSM,
-all no-key). Remaining: wire up Thunderforest Outdoors + OpenCycleMap (key-gated styles) —
-terms checked and OK (CC-BY-SA 4.0, storing/publishing permitted), needs a new
-`thunderforestApiKey` setting (Telegram-token pattern) and a `TileSource` key-plumbing change.
-
-[Details](docs/61_osm_trip_maps.md)
-
 ## 56 Open the backpack from the main window
 
 The 🎒 Backpack button next to Map Assistant (added with todo 55) currently just triggers
@@ -259,6 +250,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 61 Self-rendered trip maps from OSM tiles
+
+Mapbox static maps replaced with self-rendered OSM tiles (OpenTopoMap, OSM Standard, CyclOSM,
+Thunderforest Outdoors/OpenCycleMap behind a `thunderforestApiKey` setting, hidden from the
+Style dropdown when blank). Added two more zoom levels (`SNUG`, `WIDER`) for finer-grained
+steps between Close/Normal/Wide/Very wide.
+
+[Details](docs/61_osm_trip_maps.md)
 
 ## DONE 79 Post diary entries to Polarsteps via API — won't do
 

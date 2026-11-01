@@ -49,9 +49,12 @@ class OsmMapRendererTest {
         int base = WebMercator.fitZoom(points, 960, 640, 0.12, 17);
         assertEquals(base, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.NORMAL, 17));
         assertEquals(base + 2, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.CLOSE, 17));
+        assertEquals(base + 1, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.SNUG, 17));
         assertEquals(base - 1, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.WIDE, 17));
+        assertEquals(base - 2, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.WIDER, 17));
         assertEquals(base - 3, OsmMapRenderer.fitZoom(points, 960, 640, OsmMapRenderer.ZoomLevel.VERY_WIDE, 17));
     }
+
 
     @Test
     void fitZoom_multiplePointsClampsTheBiasedZoomToMaxZoomAndZero() {
