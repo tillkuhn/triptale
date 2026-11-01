@@ -46,9 +46,13 @@ has nothing to put on screen.
   that order), On Screen (`ButtonData.APPLY`) next to Close on the right.
 - **On demand:** opening the dialog makes no network request. The map area shows a placeholder
   ("Choose a range, then put it on screen") until **🖥 On Screen** (a Star Trek nod) is
-  clicked. Changing the range, the checkbox, the tile style or the zoom level afterwards marks
-  the shown map as stale (the placeholder text returns over a dimmed map) until the next On
-  Screen. The button is a repeatable action (event filter + `consume()`), it doesn't close the
+  clicked. Changing the range or the photos checkbox afterwards marks the shown map as stale
+  (the placeholder text returns over a dimmed map) until the next On Screen. Changing the tile
+  style or the zoom level instead **re-engages automatically** once a map is already on screen
+  — tiles are disk-cached (`OsmTileClient`) and EXIF reads are disk-cached (`ExifReader`, todo
+  80), so re-rendering on every style/zoom pick is cheap; a change made while a render is still
+  in flight is deferred and fires once that render completes, rather than stacking tasks. The
+  On Screen button is a repeatable action (event filter + `consume()`), it doesn't close the
   dialog.
 - **Size:** fixed 960×640 map area, rendered at native 256px tile resolution (no retina
   supersampling — an accepted trade-off of moving off Mapbox, see `docs/61_osm_trip_maps.md`).

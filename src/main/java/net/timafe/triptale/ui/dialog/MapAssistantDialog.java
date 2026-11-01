@@ -52,7 +52,9 @@ import java.util.List;
  * Map Assistant (todo 54): plots a range of a trip's entries on a self-rendered OSM tile map
  * (todo 61) — a start pin per day, the last day's stop pin and, optionally, the locations of the
  * backpack images. Nothing is fetched until "On Screen" is clicked; changing the range afterwards
- * marks the shown map as stale. Every render is saved to the trip's attachments folder
+ * marks the shown map as stale, but changing the tile style or zoom level re-engages automatically
+ * once a map is on screen (tiles and EXIF reads are disk-cached, so this is cheap — see
+ * {@link #styleOrZoomChanged()}). Every render is saved to the trip's attachments folder
  * ({@link AttachmentsDir#mapFile}), overwriting any earlier render of the same range, so exports
  * can reuse it. See {@link OsmMapRenderer} for the tile stitching/drawing.
  */
@@ -147,6 +149,9 @@ public final class MapAssistantDialog {
         private Button onScreenButton;
         /** Bumped on every range/checkbox change, so a slow render can tell it's outdated. */
         private int generation;
+        /** Set when style/zoom changes while a render is already in flight; picked up by
+         *  {@link #renderAndDisplay()}'s completion handler to re-engage once, instead of stacking tasks. */
+        private boolean autoReloadPending;
         /** The map size actually used, shrunk from the default to fit the current screen. */
         private final int width;
         private final int height;
@@ -233,8 +238,8 @@ public final class MapAssistantDialog {
 
             range.onChange(this::changed);
             photosCheck.selectedProperty().addListener((obs, old, sel) -> changed());
-            sourceCombo.valueProperty().addListener((obs, old, sel) -> changed());
-            zoomCombo.valueProperty().addListener((obs, old, sel) -> changed());
+            sourceCombo.valueProperty().addListener((obs, old, sel) -> styleOrZoomChanged());
+            zoomCombo.valueProperty().addListener((obs, old, sel) -> styleOrZoomChanged());
             updateHeader(dayPoints(), false);
             if (entries.isEmpty()) {
                 setMessage("Nothing on sensors", "No entries in this trip yet.");
@@ -274,6 +279,26 @@ public final class MapAssistantDialog {
                 setMessage("Range changed — " + ON_SCREEN + " to update.");
             } else if (!entries.isEmpty()) {
                 setMessage(AWAITING_ORDERS, CHOOSE_RANGE);
+            }
+        }
+
+        /**
+         * Style or zoom changed: unlike a range/photos change, this re-engages automatically if a
+         * map is already on screen — tiles and EXIF reads are cached, so re-rendering is cheap. If
+         * a render is already in flight, the reload is deferred until it completes (see
+         * {@link #renderAndDisplay()}) rather than stacking a second background task.
+         */
+        private void styleOrZoomChanged() {
+            generation++;
+            updateHeader(dayPoints(), false);
+            if (imageView.getImage() == null) {
+                if (!entries.isEmpty()) setMessage(AWAITING_ORDERS, CHOOSE_RANGE);
+                return;
+            }
+            if (onScreenButton.isDisabled()) {
+                autoReloadPending = true;
+            } else {
+                onScreen();
             }
         }
 
@@ -327,7 +352,12 @@ public final class MapAssistantDialog {
                 onScreenButton.setDisable(false);
                 stopPulse();
                 display(task.getValue());
-                if (requested != generation) changed();
+                if (autoReloadPending) {
+                    autoReloadPending = false;
+                    onScreen();
+                } else if (requested != generation) {
+                    changed();
+                }
             });
             task.setOnFailed(e -> {
                 onScreenButton.setDisable(false);
