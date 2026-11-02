@@ -55,7 +55,7 @@ before adding it.
 | CyclOSM | cycling: bike infrastructure, surfaces, hillshading | no | © OpenStreetMap contributors · CyclOSM |
 | Waymarked Trails | transparent hiking/cycling route overlay on a base layer | no | CC BY-SA |
 | OSM standard | general street map | no | © OpenStreetMap contributors |
-| Thunderforest Outdoors / OpenCycleMap | polished outdoor styles | free hobby key | CC-BY-SA 4.0, storing/publishing OK — see Decisions |
+| Thunderforest Outdoors / OpenCycleMap / Landscape / Atlas Canvas | polished outdoor styles | free hobby key | CC-BY-SA 4.0, storing/publishing OK — see Decisions |
 
 OpenTopoMap is the preferred default for a nature look.
 
@@ -84,7 +84,10 @@ OpenTopoMap is the preferred default for a nature look.
   - **Scope**: wired up both **Outdoors** (`/outdoors/`) and **OpenCycleMap** (`/cycle/`) as two
     more `TileSource` constants (`THUNDERFOREST_OUTDOORS`, `THUNDERFOREST_OPENCYCLEMAP`), sharing
     one API key, `a`/`b`/`c` subdomains, max zoom 22 (vector-rendered at the server, unlike the
-    other three no-key raster sources which top out lower).
+    other three no-key raster sources which top out lower). **Landscape** (`/landscape/`,
+    `THUNDERFOREST_LANDSCAPE`) and **Atlas Canvas** (`/atlas-canvas/`, `THUNDERFOREST_ATLAS_CANVAS`)
+    were added later (2026-11) the same way — same key; the terms' CC-BY-SA 4.0 clause covers
+    "all individual map images", with no per-style exceptions.
   - **Key storage**: `thunderforestApiKey` field in `AppSettings`/`settings.yml`, same flat
     string/default-`""`/null-safe-setter pattern as `telegramBotToken`; edited via a masked
     `PasswordField` in `EditSettingsDialog`'s General tab (a new separator-delimited section,

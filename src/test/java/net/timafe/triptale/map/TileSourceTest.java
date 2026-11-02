@@ -65,6 +65,8 @@ class TileSourceTest {
     void requiresApiKey_isTrueForThunderforestSources() {
         assertTrue(TileSource.THUNDERFOREST_OUTDOORS.requiresApiKey());
         assertTrue(TileSource.THUNDERFOREST_OPENCYCLEMAP.requiresApiKey());
+        assertTrue(TileSource.THUNDERFOREST_LANDSCAPE.requiresApiKey());
+        assertTrue(TileSource.THUNDERFOREST_ATLAS_CANVAS.requiresApiKey());
     }
 
     @Test
@@ -79,6 +81,10 @@ class TileSourceTest {
                 TileSource.THUNDERFOREST_OUTDOORS.tileUrl(5, 10, 12, 0, "abc123"));
         assertEquals("https://b.tile.thunderforest.com/cycle/5/10/12.png?apikey=abc123",
                 TileSource.THUNDERFOREST_OPENCYCLEMAP.tileUrl(5, 10, 12, 1, "abc123"));
+        assertEquals("https://c.tile.thunderforest.com/landscape/5/10/12.png?apikey=abc123",
+                TileSource.THUNDERFOREST_LANDSCAPE.tileUrl(5, 10, 12, 2, "abc123"));
+        assertEquals("https://a.tile.thunderforest.com/atlas-canvas/5/10/12.png?apikey=abc123",
+                TileSource.THUNDERFOREST_ATLAS_CANVAS.tileUrl(5, 10, 12, 3, "abc123"));
     }
 
     @Test

@@ -8,7 +8,8 @@ import java.util.Locale;
  * overlay-only sources (Waymarked Trails) are out of scope for this simple enum and a separate
  * future todo.
  *
- * <p>Thunderforest's two styles ({@link #THUNDERFOREST_OUTDOORS}, {@link #THUNDERFOREST_OPENCYCLEMAP})
+ * <p>Thunderforest's styles ({@link #THUNDERFOREST_OUTDOORS}, {@link #THUNDERFOREST_OPENCYCLEMAP},
+ * {@link #THUNDERFOREST_LANDSCAPE}, {@link #THUNDERFOREST_ATLAS_CANVAS})
  * need an API key (free hobby plan) appended as a query parameter — see {@link #requiresApiKey()}
  * and the {@code apiKey} parameter of {@link #tileUrl(int, int, int, int, String)}. Their terms
  * (checked 2026-11) license tiles under CC-BY-SA 4.0, explicitly allowing storage/publishing,
@@ -39,6 +40,17 @@ public enum TileSource {
     /** Maps © Thunderforest, Data © OpenStreetMap contributors (CC-BY-SA 4.0). Max zoom 22. Needs an API key. */
     THUNDERFOREST_OPENCYCLEMAP("Thunderforest OpenCycleMap", "tile.thunderforest.com", new String[] {"a", "b", "c"},
             "/cycle/%d/%d/%d.png", 22,
+            "Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors", "apikey"),
+
+    /** Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors (CC-BY-SA 4.0). Max zoom 22. Needs an API key. */
+    THUNDERFOREST_LANDSCAPE("Thunderforest Landscape", "tile.thunderforest.com", new String[] {"a", "b", "c"},
+            "/landscape/%d/%d/%d.png", 22,
+            "Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors", "apikey"),
+
+    /** Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors (CC-BY-SA 4.0). Max zoom 22. Needs an API key.
+     *  A low-saturation variant of Thunderforest's Atlas style. */
+    THUNDERFOREST_ATLAS_CANVAS("Thunderforest Atlas Canvas", "tile.thunderforest.com", new String[] {"a", "b", "c"},
+            "/atlas-canvas/%d/%d/%d.png", 22,
             "Maps \u00a9 Thunderforest, Data \u00a9 OpenStreetMap contributors", "apikey");
 
     private final String label;
