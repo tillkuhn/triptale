@@ -1,5 +1,14 @@
 # ToDos for this app
 
+## Minor Queue
+
+* Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
+* New Activities: Swim, Shave
+* New Emojis: Music
+* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Auscheck Liste"
+* Replace dark "Notes" emoji in Weblinks label, not enough contrast
+* Coordinator: Where is the elevation for weather?
+
 ## Next Todo: 82
 
 ## 81 General repo housekeeping task
@@ -10,27 +19,6 @@ with, instead of each feature bolting on its own one-off sweep: orphaned `.exif-
 persistence of last-run time, trigger UI) still open.
 
 [Details](docs/81_housekeeping.md)
-
-## 80 Cache EXIF reads (disk cache)
-
-`ExifReader.read()` has no caching — `PhotoLocations.locations()` re-reads EXIF for every backpack
-image on every "🖥 On Screen" click in Map Assistant (200+ images on a real trip), and
-`ImageViewerDialog`'s own ad-hoc per-dialog cache has no invalidation check at all. Add a
-persistent disk cache in `ExifReader` itself: one `.properties` file per image under
-`<data-dir>/.exif-cache/`, mirroring the attachment's path relative to the data dir, keyed by
-file size (like `OsmTileClient`'s `.tile-cache`, gitignored via `GitService.GITIGNORE_ENTRIES`).
-Removes `ImageViewerDialog`'s local cache in favor of the shared one.
-
-[Details](docs/80_exif_cache.md)
-
-## Minor Queue
-
-* Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
-* New Activities: Swim, Shave
-* New Emojis: Music
-* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Auscheck Liste"
-* Replace dark "Notes" emoji in Weblinks label, not enough contrast
-* Coordinator: Where is the elevation for weather?
 
 ## 78 Dotted route line on Map Assistant
 
@@ -79,18 +67,6 @@ The 🎒 Backpack button next to Map Assistant (added with todo 55) currently ju
 "Add to Backpack…" (`onAddAttachments`). Give it a proper "open backpack" action for the
 current day (e.g. show the day's backpack files, with adding as one option), and show the
 number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
-
-## 50 WordPress export follow-ups
-
-Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, CDN images).
-
-- Day heading wording for blog posts (currently the Markdown export's `2026-05-29 Friday
-  Day 1: …`).
-- Watch the CloudFront bill in Cost Explorer for a few weeks; if it isn't ~€0, set
-  `enable_cdn = false` and host images on our own webserver (the blog is a Simple site, no SFTP).
-- Stage 2 (draft via the API) moved to todo 60.
-
-[Background](docs/44_wordpress_export.md)
 
 ## 49 Bulk import a whole trip's photo-lib impressions as attachments
 
@@ -258,6 +234,30 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 50 WordPress export follow-ups
+
+Leftovers from todo 44 (stage 1 shipped: Format → WordPress in Export Diary, CDN images).
+
+- Day heading wording for blog posts (currently the Markdown export's `2026-05-29 Friday
+  Day 1: …`).
+- Watch the CloudFront bill in Cost Explorer for a few weeks; if it isn't ~€0, set
+  `enable_cdn = false` and host images on our own webserver (the blog is a Simple site, no SFTP).
+- Stage 2 (draft via the API) moved to todo 60.
+
+[Background](docs/44_wordpress_export.md)
+
+## DONE 80 Cache EXIF reads (disk cache)
+
+`ExifReader.read()` has no caching — `PhotoLocations.locations()` re-reads EXIF for every backpack
+image on every "🖥 On Screen" click in Map Assistant (200+ images on a real trip), and
+`ImageViewerDialog`'s own ad-hoc per-dialog cache has no invalidation check at all. Add a
+persistent disk cache in `ExifReader` itself: one `.properties` file per image under
+`<data-dir>/.exif-cache/`, mirroring the attachment's path relative to the data dir, keyed by
+file size (like `OsmTileClient`'s `.tile-cache`, gitignored via `GitService.GITIGNORE_ENTRIES`).
+Removes `ImageViewerDialog`'s local cache in favor of the shared one.
+
+[Details](docs/80_exif_cache.md)
 
 ## DONE 33c Attachment delete propagation (sync base)
 

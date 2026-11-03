@@ -196,8 +196,8 @@ Resolved:
    hand-craft one WordPress post against those URLs, and watch Cost Explorer for a few weeks.
    Decision point: keep it, or destroy it and use the own webserver.
    Result: provisioned, a hand-made post with 26 CDN images (2 days of Dalmatiner 26, generated
-   by a throwaway script) renders fine on timafe.wordpress.com. Keep it; Cost Explorer still to
-   be watched.
+   by a throwaway script) renders fine on timafe.wordpress.com. Keep it: Cost Explorer showed
+   $0.00 for CloudFront by 2026-11-03, so `enable_cdn` stays on.
 2. Implement option 2 (block markup → clipboard) behind a new export menu item, with
    `publicAttachmentBaseUrl` in `settings.yml`. Depends on todo 47 for the images.
 3. Revisit option 3 if posts become frequent; reuse the option 2 generator.
