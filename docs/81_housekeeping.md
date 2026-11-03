@@ -12,6 +12,12 @@ either unimplemented or deferred ad hoc rather than tracked centrally:
 - Git repo bloat in the data dir over a long project lifetime (loose objects, no local `git gc`)
   — the app never runs it itself today (`git/GitService` only does init/add/commit/status via
   JGit, and push/pull via the OS `git` binary).
+  Former todo 31 ("Git Housekeeping", merged into this one) asked for exactly this as a
+  "Run Housekeeping" action in the Repository menu that runs `git gc` on the data repo and
+  **shows its output** to the user (e.g. `Writing objects: 100% (1027/1027), done.` /
+  `Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0`). Showing the result is a
+  requirement for the on-demand trigger; it argues for shelling out to `git gc` (like push/pull)
+  over JGit's `Git.gc()`, which returns statistics rather than that text.
 - Likely more of the same kind of thing will turn up over time (e.g. `ExportTempFiles.sweep()`
   already exists as a narrow precedent — one-off, not part of a general mechanism).
 

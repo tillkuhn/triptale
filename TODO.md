@@ -17,6 +17,7 @@ One mechanism (invokable on demand or periodically) that sweep/cleanup-style tas
 with, instead of each feature bolting on its own one-off sweep: orphaned `.exif-cache`/
 `.tile-cache` entries, local `git gc`, and whatever else turns up over time. Design (scheduling,
 persistence of last-run time, trigger UI) still open.
+Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with its output shown).
 
 [Details](docs/81_housekeeping.md)
 
@@ -187,41 +188,24 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## 31 Git Housekeeping
-
-Add a new action to the repository menu group called "Run Housekeeping" or similar, it should run "git gc" on the data repo and show the results
-Example (...)
-Writing objects: 100% (1027/1027), done.
-Total 1027 (delta 453), reused 972 (delta 415), pack-reused 0
-
 ## 29 implement delete (entire) trip
 
 we already have delete tale, but should be also possible to delete entire trip, which requires recursive delete of the folder in the git repo.
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
-## 28 store git revsion and add update check
+## 28 Check for updates
 
-Triptale -> About currently only shows the maven version which we don't maintain. It should show the git revision instead, derived from latest tag. 
-Add "Check for updates" function in Triptale left menu. Should to the github source (which is already in the system and public) and check for most recent release. If equal or older to current (older is possible since a local version could be ahead), show that the app is up2date.
-If there is a newer version (all should be semver), show a text with the new version and a hyperlink where to download.
-Use the dynamic dialogue from "Sync" while checking the remote with the spinner. If that is not a reusable dialogue yet, do it now since we have further future use cases that should show verbosely that there is interaction with a remote page
+Add a "Check for updates" function to the TripTale (app) menu. It queries the public GitHub
+repo for the most recent release. If that's equal to or older than the running version (older
+is possible, a local build can be ahead), show that the app is up to date; if newer (all tags
+are semver), show the new version and a hyperlink to download it.
+While checking the remote, show the Smart Sync style dialog with spinner; if that isn't reusable
+yet, make it so now (more future use cases will talk to remote pages verbosely).
+The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
 
-## 26 Show no of objects and repo size, optionally run gc
+## 26 Show no of objects and repo size
 
-in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`. also maybe add housekeeping task that calls "git gc" and capture output
-
-## 24 Support import gpx for Trip Entries
-
-see docs/24_gpx_import_tale_entry.md for the full design (from a grill-me session covering the
-menu placement/enablement, all-or-nothing overwrite confirmation gated on disk state (not form
-dirty state), reuse of the existing datePicker navigate-away guard, prefill-only/no-auto-save
-semantics, and the todo 25 delete-capability gap it surfaced).
-
-similar to todo 23 it should be possible to fill values for a trip tale entry via gpx.
-Trigger: Menu link in "Tale Entries" Group ".
-Let's skip a dedicated button in the UI, since it is fixed to particular day, and the import derives the day from the first trkpt element
-Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
-If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
+in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
 
 ## 19 DatePicker has no quick year navigation
 
@@ -234,6 +218,19 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 24 Support import gpx for Trip Entries
+
+see docs/24_gpx_import_tale_entry.md for the full design (from a grill-me session covering the
+menu placement/enablement, all-or-nothing overwrite confirmation gated on disk state (not form
+dirty state), reuse of the existing datePicker navigate-away guard, prefill-only/no-auto-save
+semantics, and the todo 25 delete-capability gap it surfaced).
+
+similar to todo 23 it should be possible to fill values for a trip tale entry via gpx.
+Trigger: Menu link in "Tale Entries" Group ".
+Let's skip a dedicated button in the UI, since it is fixed to particular day, and the import derives the day from the first trkpt element
+Similar to todo 23, the import should prefill title, and determine the date and start pos from the gpx data.
+If a day entry already exists, it should prompt if user wants to overwrite (but if yes overwrite only the field that can be derived, i.e. do not empty existing other fields    
 
 ## DONE 50 WordPress export follow-ups
 
