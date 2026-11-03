@@ -9,7 +9,20 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 82
+## Next Todo: 83
+
+## 82 Sgt. Mapper: format, temp renders, save to entry folder
+
+- Trip name moves into the window title (`🗺 Sgt. Mapper · <trip>`); options row: Style · Zoom ·
+  Format (3:2 default, 1:1, 2:3) · `📷 Add Photo POIs`.
+- Renders go to a temp location, not the trip folder. A new action row has the target-entry
+  dropdown (entries in range, active entry by default), `💾 Save` (as `<day dir>/tripmap.png`),
+  `Save as…`, Close and On Screen.
+- An existing `tripmap.png` is loaded from disk on open (works offline). The header says
+  cached or temporary, and the main `🗺 Sgt. Mapper` button shows a ✓ without changing width.
+- Follow-up, not part of this todo: conditional inclusion of the map in export galleries.
+
+[Details](docs/82_sgt_mapper_save_and_format.md)
 
 ## 81 General repo housekeeping task
 
