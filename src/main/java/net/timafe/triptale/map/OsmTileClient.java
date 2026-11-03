@@ -18,7 +18,7 @@ import javax.imageio.ImageIO;
 
 /**
  * Fetches OSM-family raster tiles over {@code java.net.http}, cached on disk under
- * {@code <data-dir>/.tile-cache/<source>/<z>/<x>/<y>.png} (todo 61, {@link OsmMapRenderer}).
+ * {@code <data-dir>/.triptale/cache/tiles/<source>/<z>/<x>/<y>.png} (todo 61, {@link OsmMapRenderer}).
  * Tile usage policies (e.g. OpenTopoMap's) ask for a local cache and an identifying
  * {@code User-Agent} rather than hammering the server; one map render per user action, with a
  * cache that's never evicted here, stays well within "no bulk download".

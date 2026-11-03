@@ -67,7 +67,7 @@ class GitServiceTest {
         gitService.initRepo();
         Path gitignore = dataDir.resolve(".gitignore");
         assertTrue(Files.exists(gitignore));
-        assertTrue(Files.readString(gitignore).contains(".state.yml"));
+        assertTrue(Files.readString(gitignore).contains(".triptale/"));
     }
 
     @Test
@@ -104,11 +104,11 @@ class GitServiceTest {
     void gitignoreEntryNotAddedWhenAlreadyPresent() throws Exception {
         Files.createDirectories(dataDir);
         Path gitignore = dataDir.resolve(".gitignore");
-        Files.writeString(gitignore, ".state.yml\n");
+        Files.writeString(gitignore, ".triptale/\n");
         gitService.initRepo();
         // entry must appear exactly once
         String content = Files.readString(gitignore);
-        assertEquals(1, content.lines().filter(".state.yml"::equals).count());
+        assertEquals(1, content.lines().filter(".triptale/"::equals).count());
     }
 
     @Test
@@ -119,7 +119,7 @@ class GitServiceTest {
         gitService.initRepo();
         String content = Files.readString(gitignore);
         assertTrue(content.contains("*.log"));
-        assertTrue(content.contains(".state.yml"));
+        assertTrue(content.contains(".triptale/"));
     }
 
     @Test
@@ -130,7 +130,7 @@ class GitServiceTest {
         gitService.initRepo();
         String content = Files.readString(gitignore);
         assertTrue(content.contains("*.log"));
-        assertTrue(content.contains(".state.yml"));
+        assertTrue(content.contains(".triptale/"));
     }
 
     // -------------------------------------------------------------------------
@@ -316,7 +316,9 @@ class GitServiceTest {
         Files.writeString(dataDir.resolve("2025/tour/README.md"), "# Tour\n\nedited outside the app\n");
         Files.delete(store.entryFile(ref, LocalDate.of(2025, 6, 1)));
         Files.writeString(dataDir.resolve("notes.md"), "new");
-        Files.writeString(dataDir.resolve(".state.yml"), "ignored: true");
+        Files.createDirectories(dataDir.resolve(".triptale/cache/tiles"));
+        Files.writeString(dataDir.resolve(".triptale/state.yml"), "ignored: true");
+        Files.writeString(dataDir.resolve(".triptale/cache/tiles/1.png"), "ignored");
 
         assertEquals(List.of("2025/tour/2025-06-01-Sunday.md", "2025/tour/README.md", "notes.md"),
                 gitService.dirtyFiles());

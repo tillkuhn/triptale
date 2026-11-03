@@ -357,7 +357,6 @@ public class MarkdownStore {
     // Repo-local internal state (gitignored, not synced, never UI-edited)
     // -------------------------------------------------------------------------
 
-    private static final String STATE_FILE = ".state.yml";
     private static final String STATE_LAST_TRIP_KEY = "lastTripPath";
     private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_LAST_GPX_FOLDER_KEY = "lastGpxFolder";
@@ -365,12 +364,12 @@ public class MarkdownStore {
     private static final String STATE_LAST_MAP_STYLE_KEY = "lastMapStyle";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
-            "# This file is listed in .gitignore and intentionally excluded from sync.\n" +
+            "# Its folder .triptale/ is listed in .gitignore and intentionally excluded from sync.\n" +
             "# Written programmatically only; never exposed in any settings UI.\n";
 
-    /** Reads the whole .state.yml as a key-value map (empty map if the file doesn't exist). */
+    /** Reads the whole .triptale/state.yml as a key-value map (empty map if the file doesn't exist). */
     public Map<String, Object> loadState() {
-        Path state = dataDir().resolve(STATE_FILE);
+        Path state = LocalDir.stateFile(dataDir());
         if (!Files.exists(state)) return new LinkedHashMap<>();
         try {
             String raw = Files.readString(state);
@@ -381,17 +380,18 @@ public class MarkdownStore {
             Map<String, Object> data = yaml.readValue(yaml_, Map.class);
             return data == null ? new LinkedHashMap<>() : new LinkedHashMap<>(data);
         } catch (IOException e) {
-            log.warn("Could not read {}: {}", STATE_FILE, e.getMessage());
+            log.warn("Could not read {}: {}", state, e.getMessage());
             return new LinkedHashMap<>();
         }
     }
 
-    /** Merges the given key into the existing .state.yml and writes the whole file back. */
+    /** Merges the given key into the existing .triptale/state.yml and writes the whole file back. */
     public void saveState(String key, Object value) {
         Map<String, Object> data = loadState();
         data.put(key, value);
-        Path statePath = dataDir().resolve(STATE_FILE);
+        Path statePath = LocalDir.stateFile(dataDir());
         try {
+            Files.createDirectories(statePath.getParent());
             String content = STATE_COMMENT + yaml.writeValueAsString(data);
             Files.writeString(statePath, content);
             log.info("Saved state '{}' to {}", key, statePath);

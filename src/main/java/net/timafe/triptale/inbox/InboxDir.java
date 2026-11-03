@@ -25,7 +25,7 @@ import java.util.List;
  * became a pending item at all (locations, undownloadable photos, …) — same purpose, just for
  * content v1 doesn't parse yet. Always local — unlike {@code attachments/}, there is no sync mode
  * choice; the whole folder (including all subfolders) is gitignored unconditionally, same spirit
- * as {@code .state.yml}. No JavaFX imports (package boundary rule).
+ * as {@code .triptale/}. No JavaFX imports (package boundary rule).
  */
 @Component
 public class InboxDir {

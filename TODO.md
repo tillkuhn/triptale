@@ -9,7 +9,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 83
+## Next Todo: 84
 
 ## 81 General repo housekeeping task
 
@@ -218,6 +218,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 83 One gitignored dir for local state and caches
+
+The data dir root collects one gitignore line per local file: `.state.yml`, `.tile-cache/`,
+`.exif-cache/`, `.attachments-sync.yml`, `.radio-sync.yml` (see `GitService.GITIGNORE_ENTRIES`).
+Move them all under one dir, ignored with a single line. Proposal: `.triptale/` with
+`state.yml`, `sync/<dir>.yml` and `cache/{tiles,exif}/`, so "throw-away" (`cache/`, safe to
+`rm -rf`, todo 81 sweeps it) stays apart from per-device state that must survive.
+Decided: name `.triptale/` (not `.cache/`, since not all of it is disposable). No migration code
+in the app: after implementation, a one-time ad hoc script moves existing files and removes the
+old per-file lines from `.gitignore`.
 
 ## DONE 82 Sgt. Mapper: format, temp renders, save to entry folder
 

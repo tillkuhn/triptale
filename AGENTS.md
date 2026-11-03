@@ -118,8 +118,11 @@ and return their result as data. See **UI structure** below.
 
 ```
 <data-dir>/              # also a git repo; set as dataDir in settings.yml (no default)
-├── .gitignore           # contains ".state.yml"
-├── .state.yml           # gitignored; internal state: lastTripPath ("<year>/<slug>", on trip selection), lastEntryDate (on close only)
+├── .gitignore           # contains ".triptale/" (one line for all device-local files)
+├── .triptale/           # gitignored, device-local (storage.LocalDir, todo 83); new local files go here, not into the root
+│   ├── state.yml        # internal state: lastTripPath ("<year>/<slug>", on trip selection), lastEntryDate (on close only)
+│   ├── sync/<dir>.yml   # bucket sync bases for attachments/ and radio/
+│   └── cache/           # disposable: tiles/, exif/
 ├── trip.md              # Tolaria type definition ("Trip"), created by GitService.initRepo()
 ├── tale.md              # Tolaria type definition ("Tale"), created by GitService.initRepo()
 ├── type.md              # Tolaria's self-referential "Type" meta-type, created by GitService.initRepo()

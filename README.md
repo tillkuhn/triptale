@@ -38,8 +38,8 @@ Everything lives under one **data directory**, which is itself a git repo. You c
 
 ```
 triptale-data/                         # git repo
-├── .gitignore                         # ignores .state.yml
-├── .state.yml                         # app bookkeeping (last opened trip), never committed
+├── .gitignore                         # ignores .triptale/
+├── .triptale/                         # local to this device, never committed: app state, sync bases, caches
 ├── trip.md  tale.md  type.md          # Tolaria type definitions
 ├── 2026/                              # year of the trip's start date
 │   └── alps-2026/                     # trip slug, fixed at creation

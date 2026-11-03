@@ -595,7 +595,7 @@ public class MainController implements StatusSink {
     }
 
     /**
-     * Remembers the open entry's date in .state.yml so the next launch reopens it. Called once
+     * Remembers the open entry's date in .triptale/state.yml so the next launch reopens it. Called once
      * from {@code TripTaleApplication.stop()}, i.e. on every normal shutdown (Quit, window close,
      * Cmd+Q) — never on navigation. The trip itself is already saved on selection.
      */
@@ -975,7 +975,7 @@ public class MainController implements StatusSink {
         status("View reset to defaults");
     }
 
-    /** Reads the persisted tale text font size from .state.yml, falling back to the default if unset or unconfigured. */
+    /** Reads the persisted tale text font size from .triptale/state.yml, falling back to the default if unset or unconfigured. */
     private void loadTaleFontSize() {
         try {
             Object stored = store.loadState().get(TALE_FONT_SIZE_STATE_KEY);

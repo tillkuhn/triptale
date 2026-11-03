@@ -519,7 +519,7 @@ class MarkdownStoreTest {
     }
 
     // -------------------------------------------------------------------------
-    // Repo-local internal state (.state.yml)
+    // Repo-local internal state (.triptale/state.yml)
     // -------------------------------------------------------------------------
 
     @Test
@@ -545,7 +545,7 @@ class MarkdownStoreTest {
     @Test
     void lastTripPathIsPersistedInStateYmlFile() {
         store.saveLastTripPath(ALPS_2025);
-        Path stateFile = store.dataDir().resolve(".state.yml");
+        Path stateFile = store.dataDir().resolve(".triptale/state.yml");
         assertTrue(Files.exists(stateFile));
     }
 

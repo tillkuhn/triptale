@@ -31,7 +31,7 @@ import java.util.Properties;
  * No JavaFX dependency — kept in the {@code storage} package per the project's package boundary
  * rule.
  *
- * <p>Reads are cached on disk under {@code <data-dir>/.exif-cache/}, mirroring the image's path
+ * <p>Reads are cached on disk under {@code <data-dir>/.triptale/cache/exif/}, mirroring the image's path
  * relative to the data dir (so the cache survives the data dir moving to a different absolute
  * path), one small {@link Properties} file per image, keyed by file size (todo 80): as long as
  * the source file's size hasn't changed, the cached fields are returned without touching
@@ -45,7 +45,6 @@ public class ExifReader {
 
     /** EXIF's own timestamp format, e.g. {@code 2026:08:19 10:37:10}. */
     private static final DateTimeFormatter EXIF_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
-    private static final String CACHE_DIR = ".exif-cache";
     private static final String KEY_SIZE = "size";
     private static final String KEY_CAMERA_MODEL = "cameraModel";
     private static final String KEY_APERTURE = "aperture";
@@ -85,14 +84,14 @@ public class ExifReader {
         }
     }
 
-    /** The mirrored {@code .exif-cache} entry file for {@code path}, or {@code null} if no data dir is configured. */
+    /** The mirrored exif cache entry file for {@code path}, or {@code null} if no data dir is configured. */
     private Path cacheFile(Path path) {
         try {
             Path dataDir = store.dataDir();
             Path absolute = path.toAbsolutePath().normalize();
             if (!absolute.startsWith(dataDir)) return null;
             Path relative = dataDir.relativize(absolute);
-            return dataDir.resolve(CACHE_DIR).resolve(relative.toString() + ".properties");
+            return LocalDir.cache(dataDir, "exif").resolve(relative.toString() + ".properties");
         } catch (StorageException e) {
             return null;
         }

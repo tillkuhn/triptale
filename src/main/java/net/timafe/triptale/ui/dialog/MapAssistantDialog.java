@@ -40,6 +40,7 @@ import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.PngText;
 import net.timafe.triptale.map.TileSource;
 import net.timafe.triptale.map.TripMapSettings;
+import net.timafe.triptale.storage.LocalDir;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.ConnectivityService;
@@ -151,7 +152,7 @@ public final class MapAssistantDialog {
         // dir is configured, and by this point loading the entries above already proved it is.
         String thunderforestApiKey = settingsStore.load().getThunderforestApiKey();
         OsmMapRenderer mapRenderer = new OsmMapRenderer(
-                new OsmTileClient(store.dataDir().resolve(".tile-cache"), appVersion, thunderforestApiKey));
+                new OsmTileClient(LocalDir.cache(store.dataDir(), "tiles"), appVersion, thunderforestApiKey));
         Path savedMap = null;
         if (loadSaved && activeDate != null) {
             Path file = attachmentsDir.tripMapFile(trip.ref(), activeDate);

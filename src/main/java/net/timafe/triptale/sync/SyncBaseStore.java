@@ -15,8 +15,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Loads/saves a {@link SyncBase} as a gitignored YAML file in the data dir root, e.g.
- * {@code .attachments-sync.yml} or {@code .radio-sync.yml} (todo 33c). Never throws for a
+ * Loads/saves a {@link SyncBase} as a gitignored YAML file in the data dir, e.g.
+ * {@code .triptale/sync/attachments.yml} or {@code .triptale/sync/radio.yml} (todo 33c). Never throws for a
  * missing, unreadable, or foreign-bucket base — {@link #load} returns an empty base <em>tagged
  * with the given {@code bucketUrl}/{@code keyPrefix}</em>, which is always safe for the run that
  * loads it (no files recorded means no delete can be classified, see ADR-0002) but still lets

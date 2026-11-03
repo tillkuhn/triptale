@@ -3,6 +3,7 @@ package net.timafe.triptale.ui.dialog;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.control.CheckBox;
+import net.timafe.triptale.storage.LocalDir;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.sync.BucketSyncer;
@@ -23,7 +24,7 @@ import java.util.Optional;
  * A sync dialog step that mirrors one data dir folder with the bucket via {@link BucketSyncer}'s
  * three-way merge (todo 33c): the Backpack row in Smart Sync ({@code attachments/}) and the
  * Tracks row in Sync Tracks ({@code radio/}). Owns the row's texts and its sync base
- * ({@code .<dirName>-sync.yml} next to the folder, in the data dir root); the dialog decides
+ * ({@code .triptale/sync/<dirName>.yml} in the data dir); the dialog decides
  * when to {@link #prepare} and {@link #run}.
  * <p>
  * A plan with deletes above {@link BucketSyncer.Plan#exceedsDeleteThreshold()} adds an explicit
@@ -143,7 +144,7 @@ final class BucketSyncStep {
     }
 
     private Path syncBaseFile() {
-        return dataDir.resolve("." + dirName + "-sync.yml");
+        return LocalDir.syncBase(dataDir, dirName);
     }
 
     private static void fx(Runnable r) {

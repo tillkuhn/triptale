@@ -170,7 +170,7 @@ class ExifReaderTest {
         return metadata;
     }
 
-    // --- todo 80: on-disk cache under <data-dir>/.exif-cache/ ---
+    // --- todo 80: on-disk cache under <data-dir>/.triptale/cache/exif/ ---
 
     @Test
     void writesCacheEntryMirroringRelativePathUnderDataDir() throws IOException {
@@ -178,7 +178,7 @@ class ExifReaderTest {
 
         reader.read(image);
 
-        Path cacheFile = store.dataDir().resolve(".exif-cache").resolve("with_exif.jpg.properties");
+        Path cacheFile = store.dataDir().resolve(".triptale/cache/exif").resolve("with_exif.jpg.properties");
         assertTrue(Files.isRegularFile(cacheFile), "expected a cache entry at " + cacheFile);
     }
 
@@ -225,7 +225,7 @@ class ExifReaderTest {
         ExifInfo info = reader.read(image);
 
         assertTrue(info.hasLocation());
-        Path wouldBeCacheFile = store.dataDir().resolve(".exif-cache")
+        Path wouldBeCacheFile = store.dataDir().resolve(".triptale/cache/exif")
                 .resolve(image.toAbsolutePath().toString().replaceFirst("^/", "") + ".properties");
         assertFalse(Files.exists(wouldBeCacheFile));
     }
