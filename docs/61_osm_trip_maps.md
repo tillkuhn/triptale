@@ -61,7 +61,7 @@ OpenTopoMap is the preferred default for a nature look.
 
 ## Decisions
 
-- **Save destination**: auto-saved to `attachments/map-<from>-<to>.png` in the trip's
+- **Save destination** (superseded by todo 82, see `docs/82_sgt_mapper_save_and_format.md`): auto-saved to `attachments/map-<from>-<to>.png` in the trip's
   attachments folder on every "On Screen" click (overwriting the same file per range) —
   synced by `BucketSyncer`, directly reusable by exports/WordPress without a separate "Save
   as…" step.

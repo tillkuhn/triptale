@@ -51,10 +51,23 @@ class AttachmentsDirTest {
     }
 
     @Test
-    void mapFile_namesByRangeUnderTheTripDir() {
+    void tripMapFile_isAFixedNameInTheDayDir() {
         TripRef ref = new TripRef(2026, "altenbeken-ruhr");
-        Path file = attachmentsDir.mapFile(ref, LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 26));
-        assertEquals(attachmentsDir.tripDir(ref).resolve("map-2026-09-20-2026-09-26.png"), file);
+        LocalDate date = LocalDate.of(2026, 9, 26);
+        assertEquals(attachmentsDir.dayDir(ref, date).resolve("tripmap.png"), attachmentsDir.tripMapFile(ref, date));
+    }
+
+    @Test
+    void saveTripMap_createsTheDayDirAndReplacesAnEarlierMap() throws Exception {
+        TripRef ref = new TripRef(2026, "trip");
+        LocalDate date = LocalDate.of(2026, 9, 26);
+        Files.createDirectories(dataDir);
+        Path first = Files.writeString(dataDir.resolve("first.png"), "first");
+        Path second = Files.writeString(dataDir.resolve("second.png"), "second");
+        attachmentsDir.saveTripMap(ref, date, first);
+        Path saved = attachmentsDir.saveTripMap(ref, date, second);
+        assertEquals(attachmentsDir.tripMapFile(ref, date), saved);
+        assertEquals("second", Files.readString(saved));
     }
 
     @Test

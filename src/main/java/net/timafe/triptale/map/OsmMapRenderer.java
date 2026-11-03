@@ -14,7 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
-import javax.imageio.ImageIO;
+import java.util.Map;
 
 /**
  * Renders a trip map by stitching OSM tiles and drawing pins with plain JDK AWT (todo 61):
@@ -92,14 +92,16 @@ public class OsmMapRenderer {
 
     /**
      * Renders {@code points} onto a {@code width}x{@code height} PNG and saves it to
-     * {@code target} (parent directories created on demand, an existing file overwritten).
-     * Blocks (tile fetches): call off the FX thread.
+     * {@code target} (parent directories created on demand, an existing file overwritten), with
+     * {@code text} as PNG {@code tEXt} chunks ({@link PngText}). Blocks (tile fetches): call off
+     * the FX thread.
      */
-    public void render(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height, Path target) {
+    public void render(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height,
+                       Map<String, String> text, Path target) {
         BufferedImage image = renderImage(points, source, zoom, width, height);
         try {
             Files.createDirectories(target.getParent());
-            ImageIO.write(image, "png", target.toFile());
+            PngText.write(image, target, text);
         } catch (IOException e) {
             throw new OsmTileClient.TileException("Could not save map to " + target, e);
         }

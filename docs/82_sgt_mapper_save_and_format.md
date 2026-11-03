@@ -69,11 +69,14 @@ gallery in trip exports. Until then it's exported like any other day image.
   dialog was opened with (open cached → tweak → save). A confirmation ("Replace the existing
   tripmap.png of Day 12?") appears only when saving to a different entry that already has a map.
 - **D6 Save enablement.** `💾 Save` is disabled while the map is stale (range/photos changed
-  without re-rendering), while a render is in flight, and while an unchanged cached map is shown.
-  `Save as…` works for any non-stale map on screen, cached ones included.
-- **D7 After Save.** The ✓ on the main button and the entry's gallery are refreshed, and the
-  header switches to `💾 cached tripmap.png`. In attachment-sync mode `git`, a save calls
-  `addPending(...)` like any other write.
+  without re-rendering), while a render is in flight, and when the target is the day whose
+  unchanged `tripmap.png` is already on screen (saving it onto itself would do nothing). Picking
+  another day still lets a cached map be copied there. `Save as…` works for any map on screen
+  that isn't stale, cached ones included.
+- **D7 After Save.** The header switches to `💾 cached tripmap.png`. When the dialog closes it
+  returns the saved days (`Set<LocalDate>`), and `MainController` refreshes the ✓ and the
+  Impressions count. No `addPending(...)`: 🎒 Backpack adds don't call it either, and in git
+  attachment-sync mode Smart Sync picks the file up from `git status` anyway.
 - **D8 Format** re-engages automatically like Style/Zoom. It is **not** remembered across
   sessions: the best format depends on the trip's shape, so it always starts at 3:2. A cached
   map restores its own format (D1).
@@ -82,6 +85,24 @@ gallery in trip exports. Until then it's exported like any other day image.
 - **D10 Old renders.** The app stops writing `attachments/<year>/<slug>/map-<from>-<to>.png`, and
   `AttachmentsDir.mapFile` is removed (`dayDir` + `tripmap.png` replaces it). Existing files are
   deleted once by an ad hoc script outside the app, the same way earlier data migrations were done.
+
+## Implementation notes
+
+- `map.MapFormat`: the format enum and its `fit(availableWidth, availableHeight)` sizing (D4).
+- `map.PngText`: reads and writes PNG `tEXt` chunks with `javax.imageio`.
+  `map.TripMapSettings` holds the settings record, with keys prefixed `triptale:` (`from`, `to`,
+  `style`, `zoom`, `format`, `photos`, plus the point counts `starts`, `stop`, `photosShown`,
+  `photosFound`, so the header of a cached map is right without re-reading EXIF). Unknown
+  style/zoom/format values fall back to the defaults; a missing or reversed range means "no
+  settings".
+- `OsmMapRenderer.render(..., Map<String,String> text, Path target)` writes the settings into
+  every render, so Save is a plain file copy.
+- `AttachmentsDir.tripMapFile(ref, date)` and `saveTripMap(ref, date, source)` replace `mapFile`.
+- `MapAssistantDialog.showDay(trip, date)` (loads the cached map) and `showTrip(trip, activeDate)`
+  (never does) both return the saved days. Temp renders come from `ExportTempFiles.newFile` and
+  are deleted when the dialog closes; the startup sweep catches any left behind.
+- `MainController.updateMapperButton` sets `🗺 Sgt. Mapper ✓`. The button keeps its fixed
+  `.half-width-button` width (130 px, left-aligned), so the ✓ doesn't shift the layout.
 
 ## Future ideas (not this todo)
 

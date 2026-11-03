@@ -113,6 +113,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.SequencedMap;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
@@ -165,6 +166,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem addAttachmentsMenuItem;
     @FXML private Button backpackButton;
+    @FXML private Button mapperButton;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
     @FXML private MenuItem viewSourceMenuItem;
@@ -323,7 +325,7 @@ public class MainController implements StatusSink {
         this.placeLookup = new PlaceLookup(version);
         this.weatherClient = new OpenMeteoClient(version);
         this.mapAssistantDialog = new MapAssistantDialog(store, version, attachmentsDir,
-                new PhotoLocations(impressions, exifReader), connectivityService, this, settingsStore);
+                new PhotoLocations(impressions, exifReader), connectivityService, this, settingsStore, exportTempFiles);
     }
 
     private static final DateTimeFormatter DATE_DISPLAY =
@@ -1012,6 +1014,7 @@ public class MainController implements StatusSink {
         if (inboxButton != null) inboxButton.setDisable(trip == null);
         if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
         if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
+        updateMapperButton(trip, date);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
             updateDeleteEntryMenuItem(false);
@@ -1146,7 +1149,7 @@ public class MainController implements StatusSink {
             status("Select a trip first");
             return;
         }
-        mapAssistantDialog.showDay(trip, datePicker.getValue());
+        afterMapAssistant(trip, mapAssistantDialog.showDay(trip, datePicker.getValue()));
     }
 
     /** Map Assistant on the whole trip (My Trips menu). */
@@ -1157,7 +1160,29 @@ public class MainController implements StatusSink {
             status("Select a trip first");
             return;
         }
-        mapAssistantDialog.show(trip);
+        afterMapAssistant(trip, mapAssistantDialog.showTrip(trip, datePicker.getValue()));
+    }
+
+    /** A saved map lands in a day's backpack: refresh the ✓ and the Impressions count of the shown day. */
+    private void afterMapAssistant(Trip trip, Set<LocalDate> savedDays) {
+        if (savedDays.isEmpty()) return;
+        updateMapperButton(trip, datePicker.getValue());
+        updateImpressionsButton(trip, datePicker.getValue());
+    }
+
+    /** "🗺 Sgt. Mapper ✓" once the day has a saved tripmap.png (todo 82); the button is fixed-width. */
+    private void updateMapperButton(Trip trip, LocalDate date) {
+        if (mapperButton == null) return;
+        boolean hasMap = false;
+        try {
+            hasMap = trip != null && date != null && Files.isRegularFile(attachmentsDir.tripMapFile(trip.ref(), date));
+        } catch (RuntimeException e) {
+            // data dir not configured: no map
+        }
+        mapperButton.setText("🗺 Sgt. Mapper" + (hasMap ? " ✓" : ""));
+        mapperButton.setTooltip(new Tooltip(hasMap
+                ? "Show this day's saved map (" + AttachmentsDir.TRIP_MAP_FILE + ")"
+                : "Show this day's start and end point on a map"));
     }
 
     private void updateViewSourceMenuItem(boolean exists) {

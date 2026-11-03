@@ -103,14 +103,16 @@ class OsmMapRendererTest {
     void render_savesAReadablePngToTheTargetPath(@TempDir Path tempDir) throws IOException {
         OsmMapRenderer renderer = renderer(serve(200, solidTile(Color.BLUE)));
         MapPoints points = pointsOf(new LatLon(10.0, 20.0));
-        Path target = tempDir.resolve("maps").resolve("map-2026-01-01-2026-01-02.png");
+        Path target = tempDir.resolve("maps").resolve("tripmap.png");
 
-        renderer.render(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.WIDE, 200, 150, target);
+        renderer.render(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.WIDE, 200, 150,
+                java.util.Map.of("triptale:from", "2026-01-01"), target);
 
         assertTrue(Files.exists(target));
         BufferedImage saved = ImageIO.read(target.toFile());
         assertEquals(200, saved.getWidth());
         assertEquals(150, saved.getHeight());
+        assertEquals("2026-01-01", PngText.read(target).get("triptale:from"));
     }
 
     private static MapPoints pointsOf(LatLon p) {

@@ -27,6 +27,8 @@ import java.util.List;
 public class AttachmentsDir {
 
     public static final String DIR_NAME = "attachments";
+    /** File name of a day's saved Sgt. Mapper map, see {@link #tripMapFile}. */
+    public static final String TRIP_MAP_FILE = "tripmap.png";
     /** Path of the managed .gitignore relative to the data dir (used as pending-commit label). */
     public static final String GITIGNORE_LABEL = DIR_NAME + "/.gitignore";
     /** Path of the managed .gitattributes relative to the data dir (used as pending-commit label). */
@@ -73,12 +75,22 @@ public class AttachmentsDir {
     }
 
     /**
-     * Where a rendered trip map (todo 61, {@code map.OsmMapRenderer}) for the range {@code from}
-     * ..{@code to} is saved — directly under the trip's folder, not a day folder, since a map
-     * usually spans more than one day. Re-rendering the same range overwrites the previous file.
+     * The day's saved Sgt. Mapper map (todo 82): one fixed name per entry, so there is at most
+     * one map per day and it shows up in the day's gallery like any other backpack image.
      */
-    public Path mapFile(TripRef ref, LocalDate from, LocalDate to) {
-        return tripDir(ref).resolve("map-" + from + "-" + to + ".png");
+    public Path tripMapFile(TripRef ref, LocalDate date) {
+        return dayDir(ref, date).resolve(TRIP_MAP_FILE);
+    }
+
+    /** Copies {@code map} (a temp render) to the day's {@link #tripMapFile}, replacing any earlier one. */
+    public Path saveTripMap(TripRef ref, LocalDate date, Path map) {
+        Path target = tripMapFile(ref, date);
+        try {
+            Files.createDirectories(target.getParent());
+            return Files.copy(map, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new StorageException("Could not save map to " + target, e);
+        }
     }
 
     /** Creates the day's folder on demand and returns it. */

@@ -57,7 +57,7 @@ has nothing to put on screen.
 - **Size:** fixed 960×640 map area, rendered at native 256px tile resolution (no retina
   supersampling — an accepted trade-off of moving off Mapbox, see `docs/61_osm_trip_maps.md`).
 - **Saved, not just shown (todo 61):** every "On Screen" render is written to
-  `attachments/<year>/<slug>/map-<from>-<to>.png` (`AttachmentsDir.mapFile`), overwriting any
+  `attachments/<year>/<slug>/map-<from>-<to>.png` (`AttachmentsDir.mapFile`; superseded by todo 82: renders are temporary until saved as a day's `tripmap.png`), overwriting any
   earlier render of the same range, so exports/WordPress can reuse the file without a separate
   "Save as…" step.
 - **Tile style:** `Style: [OpenTopoMap ▾]` combo (`map.TileSource`) — remembered across sessions
