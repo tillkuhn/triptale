@@ -27,7 +27,8 @@ Draw an optional dotted line through the Map Assistant's pins, in chronological 
 day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start.
 Off by default via a new checkbox next to "📷 Photo Locations from Backpack".
 
-- `PhotoLocations` pairs each photo with `ExifReader.captureTime()`; untimestamped photos are pins only.
+- `PhotoLocations` sorts each day's photos by `captureTime` from the cached `ExifInfo` (no extra
+  read, the exif cache already holds it), filename as tie-breaker; untimestamped = pins only.
 - New `OsmMapRenderer.drawPath`, dashed grey `BasicStroke`, under the pins.
 - Photo pin thinning (always on): after `fitZoom`, drop a photo pin within ~1 pin diameter (px)
   of any kept pin; start/stop never thinned. Replaces `sampleEvenly` (`MAX_PINS` = safety cap).

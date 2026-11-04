@@ -18,6 +18,17 @@ photo timestamps make a meaningful ordering possible.
   entirely. It needs to pair each location with its capture time, sort by it, and drop photos
   where `captureTime()` returns null (blank/unparseable `DateTimeOriginal`) **from the line
   only** — they still render as yellow pins, just not connected.
+- **EXIF time is free: reuse the exif cache, no second read (decided 2026-11-04).** Sorting by
+  filename was considered as the cheap option (phone/camera files are usually timestamp-prefixed),
+  but it isn't actually cheaper: `locations()` already calls `ExifReader.read()` per photo for
+  lat/lon, and the `.triptale/cache/exif/<path>.properties` entry (todo 80) has carried
+  `captureTime` since the cache was introduced, so there are no stale entries without it. The
+  sort uses the same `ExifInfo` that supplies the location: one cache hit, zero extra I/O. EXIF
+  time also works for files that aren't timestamp-named (`IMG_1234.jpg`, renamed, mixed cameras).
+  Filename order stays as the **tie-breaker**: `ImpressionsService.images()` already returns each
+  day's images sorted by filename, so a stable sort by `captureTime` keeps filename order for
+  photos with the same second (bursts). Sort per day (the day's start/stop frame each block), not
+  across the whole range, so a wrong camera clock can't pull a photo into another day.
 - **Line points: full chronological set, collapsed in pixel space — not `sampleEvenly`.**
   `MapPoints.withPhotos()` thins photos to `OsmMapRenderer.MAX_PINS` (150) via `sampleEvenly`;
   feeding that into the line would create visible, misleading jumps between sampled points. The
@@ -73,9 +84,9 @@ that would be hidden under another pin anyway.
 ## Implementation sketch
 
 - `map.PhotoLocations`: extend `locations(List<Path> images)` (or add a sibling method) to
-  return points paired with `ExifInfo.captureTime()` (needs an accessor if `ExifInfo` doesn't
-  already expose one — `ExifReader.captureTime(Metadata)` already computes it), sorted
-  ascending, nulls dropped. Decide whether the existing method's signature/return type changes
+  return points paired with `ExifInfo.captureTime()` (already a record component, and cached),
+  stable-sorted ascending per day, nulls dropped from the line. Must keep going through
+  `ExifReader.read()` (cached), never `ImageMetadataReader` directly. Decide whether the existing method's signature/return type changes
   or a new type wraps `(LatLon, LocalDateTime)` — keep `MapPoints`'s existing `List<LatLon>`
   photos field for pins; the line needs its own ordered sequence.
 - `map.MapPoints`: add a routeLine point list (or compute it in `OsmMapRenderer` from the
