@@ -1,6 +1,8 @@
 package net.timafe.triptale.ui;
 
+import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
+import net.timafe.triptale.domain.Trip;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -37,6 +39,17 @@ public final class UiText {
             case 3 -> "rd";
             default -> "th";
         };
+    }
+
+    /**
+     * "Day 2: Frankfurt to Mannheim"; the ISO date stands in for a missing day number (no trip
+     * start), the friendly date for a blank or default title.
+     */
+    public static String entryLabel(Trip trip, LocalDate date, String title) {
+        Long day = trip == null ? null : trip.dayNumber(date);
+        String shown = title == null || title.isBlank() || title.equals(DiaryEntry.DEFAULT_TITLE)
+                ? friendlyDate(date) : title;
+        return (day == null ? date.toString() : "Day " + day) + ": " + shown;
     }
 
     /** Flattens an exception chain into one line, so a wrapped JGit/IO cause isn't swallowed. */

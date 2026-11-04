@@ -680,3 +680,50 @@
     -fx-border-width: 0 1 1 1;
     -fx-padding: 6 9 6 9;
 }
+
+/* ── Tables (Backpack, todo 56) ─────────────────────────── */
+/* Modena's light header/rows clash with the global light .label text; match the combo popups. */
+.table-view {
+    -fx-background-color: #202e2e;
+    -fx-border-color: #3a5050;
+    -fx-table-cell-border-color: #2e4040;
+}
+.table-view:focused {
+    -fx-border-color: #4ec9b0;
+    -fx-background-insets: 0;
+}
+.table-view .column-header-background,
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: #16201f;
+    -fx-border-color: transparent #2e4040 #3a5050 transparent;
+}
+.table-view .column-header .label {
+    -fx-text-fill: #b0ccc8;
+    -fx-font-weight: bold;
+}
+.table-view .column-header .arrow {
+    -fx-background-color: #4ec9b0;
+}
+.table-row-cell {
+    -fx-background-color: #202e2e;
+    -fx-text-fill: #c8deda;
+}
+.table-row-cell:odd {
+    -fx-background-color: #243333;
+}
+.table-row-cell .table-cell {
+    -fx-text-fill: #c8deda;
+}
+.table-row-cell:filled:hover {
+    -fx-background-color: #2b3d3d;
+}
+.table-row-cell:filled:selected {
+    -fx-background-color: #4ec9b0;
+}
+.table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #16201f;
+}
+.table-view .placeholder .label {
+    -fx-text-fill: #5f7f7a;
+}

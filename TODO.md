@@ -1,11 +1,11 @@
 # ToDos for this app
 
-## Minor Queue
+## Inbox
 
 * Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
 * New Activities: Swim, Shave
 * New Emojis: Music
-* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Auscheck Liste"
+* Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Checkout Liste"
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
@@ -45,13 +45,6 @@ gives camelCase (`WeekendTrip`) while the one hand-made example from todo 60 is 
 pick one style.
 
 [Background](docs/62_wordpress_publish_dialog.md)
-
-## 56 Open the backpack from the main window
-
-The 🎒 Backpack button next to Map Assistant (added with todo 55) currently just triggers
-"Add to Backpack…" (`onAddAttachments`). Give it a proper "open backpack" action for the
-current day (e.g. show the day's backpack files, with adding as one option), and show the
-number of files in brackets, e.g. `🎒 Backpack (3)`; keep it within the half-width button.
 
 ## 49 Bulk import a whole trip's photo-lib impressions as attachments
 
@@ -202,6 +195,18 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 56 Open the backpack from the main window
+
+The 🎒 Backpack button (and the renamed "🎒 Open Backpack…" menu item) opens a modal dialog for
+the current day: "🎒 Your backpack for Day N: Title", an explorer-style table (name, kind,
+humanized size, changed) with Add, Open, Reveal in Finder, Copy Path and single-file Delete
+(confirmed; cloud sync propagates it via the 33c sync base). The button shows the count,
+`🎒 Backpack (3)`.
+
+Done 2026-11-04: visually checked; the label sits in the title bar, tables got a dark theme.
+
+[Details](docs/56_backpack_dialog.md)
 
 ## DONE 84 Export images open in original size
 

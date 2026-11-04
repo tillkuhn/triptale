@@ -111,9 +111,6 @@ final class EntryRangePicker {
 
     /** "Day 2: Frankfurt to Mannheim"; the date stands in for a missing day number or title. */
     static String entryLabel(Trip trip, DiaryEntry e) {
-        Long day = trip.dayNumber(e.date());
-        String title = e.title() == null || e.title().isBlank() || e.title().equals(DiaryEntry.DEFAULT_TITLE)
-                ? UiText.friendlyDate(e.date()) : e.title();
-        return (day == null ? e.date().toString() : "Day " + day) + ": " + title;
+        return UiText.entryLabel(trip, e.date(), e.title());
     }
 }

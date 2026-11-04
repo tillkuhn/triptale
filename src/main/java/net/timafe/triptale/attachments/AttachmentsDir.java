@@ -12,7 +12,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * The data dir's {@code attachments/} folder (todo 33a): one folder per tale entry day, named
@@ -122,6 +124,46 @@ public class AttachmentsDir {
             }
         }
         return copies;
+    }
+
+    /**
+     * The day's backpack (todo 56): regular, non-hidden files directly in the day folder, sorted
+     * by name (case-insensitive). Hidden files ({@code .DS_Store}, a pull's {@code .part}
+     * leftovers) and subfolders are skipped — a backpack is flat. Empty if the folder doesn't
+     * exist yet.
+     */
+    public List<BackpackFile> dayFiles(TripRef ref, LocalDate date) {
+        Path dir = dayDir(ref, date);
+        if (!Files.isDirectory(dir)) return List.of();
+        try (Stream<Path> files = Files.list(dir)) {
+            List<BackpackFile> result = new ArrayList<>();
+            for (Path p : files.toList()) {
+                if (p.getFileName().toString().startsWith(".") || !Files.isRegularFile(p)) continue;
+                result.add(new BackpackFile(p, Files.size(p), Files.getLastModifiedTime(p).toInstant()));
+            }
+            result.sort(Comparator.comparing(BackpackFile::name, String.CASE_INSENSITIVE_ORDER));
+            return result;
+        } catch (IOException e) {
+            throw new StorageException("Could not list " + dir, e);
+        }
+    }
+
+    /**
+     * Deletes one file from the day's backpack. Only the local file goes; cloud sync propagates
+     * the delete through its sync base (todo 33c), git mode sees an ordinary deletion. Refuses
+     * anything that isn't a file directly in the day folder.
+     */
+    public void deleteFile(TripRef ref, LocalDate date, String fileName) {
+        Path dir = dayDir(ref, date);
+        Path file = dir.resolve(fileName).normalize();
+        if (!dir.equals(file.getParent()) || !Files.isRegularFile(file)) {
+            throw new StorageException("Not a backpack file of " + date + ": " + fileName);
+        }
+        try {
+            Files.delete(file);
+        } catch (IOException e) {
+            throw new StorageException("Could not delete " + file, e);
+        }
     }
 
     /**

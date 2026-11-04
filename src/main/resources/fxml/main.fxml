@@ -62,7 +62,7 @@
                                 <MenuItem fx:id="todayMenuItem" text="◉ Go to Today" onAction="#onToday"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="impressionsMenuItem" text="📷 Show Impressions" onAction="#onShowImpressions" disable="true"/>
-                                <MenuItem fx:id="addAttachmentsMenuItem" text="🎒 Add to Backpack…" onAction="#onAddAttachments" disable="true"/>
+                                <MenuItem fx:id="openBackpackMenuItem" text="🎒 Open Backpack…" onAction="#onOpenBackpack" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="saveMenuItem" text="📅 Save the Day" onAction="#onSave" disable="true" accelerator="Shortcut+S"/>
                                 <MenuItem fx:id="addPrivateMenuItem" text="🔒 Add Private Notes" onAction="#onAddPrivateSection" disable="true"/>
@@ -184,8 +184,8 @@
                         <Button fx:id="mapperButton" text="🗺 Sgt. Mapper" onAction="#onMapAssistant" styleClass="half-width-button">
                             <tooltip><Tooltip text="Show this day's start and end point on a map"/></tooltip>
                         </Button>
-                        <Button fx:id="backpackButton" text="🎒 Backpack" onAction="#onAddAttachments" disable="true" styleClass="half-width-button">
-                            <tooltip><Tooltip text="Add files to this day's backpack"/></tooltip>
+                        <Button fx:id="backpackButton" text="🎒 Backpack" onAction="#onOpenBackpack" disable="true" styleClass="half-width-button">
+                            <tooltip><Tooltip text="Open this day's backpack: list, add, open and delete files"/></tooltip>
                         </Button>
                     </HBox>
                 </GridPane>

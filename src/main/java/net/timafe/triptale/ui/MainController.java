@@ -57,6 +57,7 @@ import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.ui.dialog.AboutDialog;
+import net.timafe.triptale.ui.dialog.BackpackDialog;
 import net.timafe.triptale.ui.dialog.CoordinatesDialog;
 import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
@@ -164,7 +165,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem pullMenuItem;
     @FXML private MenuItem syncAttachmentsMenuItem;
     @FXML private MenuItem syncTracksMenuItem;
-    @FXML private MenuItem addAttachmentsMenuItem;
+    @FXML private MenuItem openBackpackMenuItem;
     @FXML private Button backpackButton;
     @FXML private Button mapperButton;
     @FXML private MenuItem syncMenuItem;
@@ -1012,8 +1013,7 @@ public class MainController implements StatusSink {
         if (importGpxMenuItem != null) importGpxMenuItem.setDisable(trip == null || date == null);
         if (inboxMenuItem != null) inboxMenuItem.setDisable(trip == null);
         if (inboxButton != null) inboxButton.setDisable(trip == null);
-        if (addAttachmentsMenuItem != null) addAttachmentsMenuItem.setDisable(trip == null || date == null);
-        if (backpackButton != null) backpackButton.setDisable(trip == null || date == null);
+        updateBackpackButton(trip, date);
         updateMapperButton(trip, date);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
@@ -1104,6 +1104,22 @@ public class MainController implements StatusSink {
                 : "📷 Impressions: 🗂 " + photoLib + "  🎒 " + attached);
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
+        updateBackpackButton(trip, date);
+    }
+
+    /** "🎒 Backpack (3)" with the day's backpack file count, no brackets when empty (todo 56). */
+    private void updateBackpackButton(Trip trip, LocalDate date) {
+        boolean noDay = trip == null || date == null;
+        if (openBackpackMenuItem != null) openBackpackMenuItem.setDisable(noDay);
+        if (backpackButton == null) return;
+        backpackButton.setDisable(noDay);
+        int count = 0;
+        try {
+            count = noDay ? 0 : attachmentsDir.dayFiles(trip.ref(), date).size();
+        } catch (RuntimeException e) {
+            // data dir not configured or unreadable: show no count
+        }
+        backpackButton.setText("🎒 Backpack" + (count == 0 ? "" : " (" + count + ")"));
     }
 
     /** "🌐 Coordinator: 📍 ✓  🏁 –  🌞 22°" once either point is set; places and coordinates go in the tooltip. */
@@ -1759,23 +1775,15 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onAddAttachments() {
+    public void onOpenBackpack() {
         Trip trip = tripCombo.getValue();
         LocalDate date = datePicker.getValue();
         if (trip == null || date == null) return;
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Add to Backpack for " + DATE_DISPLAY.format(date));
-        chooser.setInitialDirectory(recentFolder.initial());
-        List<File> files = chooser.showOpenMultipleDialog(null);
-        if (files == null || files.isEmpty()) return;
-        recentFolder.remember(files.getFirst().getParentFile());
-        try {
-            List<Path> copies = attachmentsDir.addFiles(trip.ref(), date, files.stream().map(File::toPath).toList());
-            status("Added " + copies.size() + " file" + (copies.size() == 1 ? "" : "s") + " to "
-                    + UiText.homeRelative(copies.getFirst().getParent()));
+        boolean changed = new BackpackDialog(attachmentsDir, browser, this, recentFolder)
+                .show(trip, date, titleField.getText());
+        if (changed) {
+            updateMapperButton(trip, date);
             updateImpressionsButton(trip, date);
-        } catch (RuntimeException e) {
-            error(UiText.describe(e));
         }
     }
 

@@ -6,6 +6,7 @@ import net.timafe.triptale.config.TripTaleProperties;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.storage.StorageException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -93,6 +94,57 @@ class AttachmentsDirTest {
         Files.writeString(gpx, "v2");
         attachmentsDir.addFiles(ref, date, List.of(gpx));
         assertEquals("v2", Files.readString(dayDir.resolve("track.gpx")));
+    }
+
+    @Test
+    void dayFiles_emptyWhenTheDayDirIsMissing() {
+        assertEquals(List.of(), attachmentsDir.dayFiles(new TripRef(2026, "trip"), LocalDate.of(2026, 9, 26)));
+    }
+
+    @Test
+    void dayFiles_listsVisibleFilesByNameAndSkipsHiddenAndSubfolders() throws Exception {
+        TripRef ref = new TripRef(2026, "trip");
+        LocalDate date = LocalDate.of(2026, 9, 26);
+        Path dir = attachmentsDir.ensureDayDir(ref, date);
+        Files.writeString(dir.resolve("track.gpx"), "gpx");
+        Files.writeString(dir.resolve("Beach.JPG"), "jpeg!");
+        Files.writeString(dir.resolve(AttachmentsDir.TRIP_MAP_FILE), "png");
+        Files.writeString(dir.resolve(".DS_Store"), "x");
+        Files.writeString(dir.resolve(".photo.jpg.part"), "x");
+        Files.createDirectories(dir.resolve("sub"));
+
+        List<BackpackFile> files = attachmentsDir.dayFiles(ref, date);
+
+        assertEquals(List.of("Beach.JPG", "track.gpx", "tripmap.png"), files.stream().map(BackpackFile::name).toList());
+        assertEquals(5, files.getFirst().size());
+        assertEquals(FileKind.IMAGE, files.getFirst().kind());
+        assertEquals(FileKind.TRACK, files.get(1).kind());
+    }
+
+    @Test
+    void deleteFile_removesOnlyThatFile() throws Exception {
+        TripRef ref = new TripRef(2026, "trip");
+        LocalDate date = LocalDate.of(2026, 9, 26);
+        Path dir = attachmentsDir.ensureDayDir(ref, date);
+        Files.writeString(dir.resolve("a.txt"), "a");
+        Files.writeString(dir.resolve("b.txt"), "b");
+
+        attachmentsDir.deleteFile(ref, date, "a.txt");
+
+        assertFalse(Files.exists(dir.resolve("a.txt")));
+        assertTrue(Files.exists(dir.resolve("b.txt")));
+    }
+
+    @Test
+    void deleteFile_refusesPathsOutsideTheDayDirAndMissingFiles() throws Exception {
+        TripRef ref = new TripRef(2026, "trip");
+        LocalDate date = LocalDate.of(2026, 9, 26);
+        Path dir = attachmentsDir.ensureDayDir(ref, date);
+        Path outside = Files.writeString(dir.getParent().resolve("outside.txt"), "x");
+
+        assertThrows(StorageException.class, () -> attachmentsDir.deleteFile(ref, date, "../outside.txt"));
+        assertThrows(StorageException.class, () -> attachmentsDir.deleteFile(ref, date, "missing.txt"));
+        assertTrue(Files.exists(outside));
     }
 
     @Test
