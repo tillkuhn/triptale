@@ -21,19 +21,17 @@ Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with
 
 [Details](docs/81_housekeeping.md)
 
-## 78 Dotted route line on Map Assistant
+## 78 Dotted route line and photo pin thinning on Map Assistant
 
 Draw an optional dotted line through the Map Assistant's pins, in chronological order: each
-day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start —
-one continuous path across the whole exported range. Off by default via a new checkbox next to
-"📷 Photo Locations from Backpack".
+day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start.
+Off by default via a new checkbox next to "📷 Photo Locations from Backpack".
 
-- `PhotoLocations` must pair each photo's `LatLon` with `ExifReader.captureTime()` and sort by
-  it; photos with no/unparseable timestamp are skipped for the line (still shown as pins).
-- Line uses the full, untrimmed point set (not the 150-pin `sampleEvenly` budget used for pins).
-- New `OsmMapRenderer.drawLine`/`drawPath` using `WebMercator.pixelX/pixelY`, dashed `BasicStroke`,
-  neutral grey, drawn under the pins.
-- If the checkbox is on but "include photos" is off, still draw start→stop per day.
+- `PhotoLocations` pairs each photo with `ExifReader.captureTime()`; untimestamped photos are pins only.
+- New `OsmMapRenderer.drawPath`, dashed grey `BasicStroke`, under the pins.
+- Photo pin thinning (always on): after `fitZoom`, drop a photo pin within ~1 pin diameter (px)
+  of any kept pin; start/stop never thinned. Replaces `sampleEvenly` (`MAX_PINS` = safety cap).
+- Line collapses only consecutive points within that threshold, so A→B→A returns survive.
 
 [Details](docs/78_route_line_map_assistant.md)
 

@@ -1,4 +1,4 @@
-# 78 Dotted route line on Map Assistant
+# 78 Dotted route line and photo pin thinning on Map Assistant
 
 Adds an optional dotted line connecting the pins Map Assistant already plots, so a trip's
 day-by-day path becomes visible instead of just a scatter of dots. `docs/54_map_assistant.md`
@@ -18,11 +18,14 @@ photo timestamps make a meaningful ordering possible.
   entirely. It needs to pair each location with its capture time, sort by it, and drop photos
   where `captureTime()` returns null (blank/unparseable `DateTimeOriginal`) **from the line
   only** — they still render as yellow pins, just not connected.
-- **Full point set for the line, independent of pin thinning.** `MapPoints.withPhotos()` thins
-  photos to `OsmMapRenderer.MAX_PINS` (150) via `sampleEvenly` for legibility/perf of the drawn
-  pins. The line should use the full, untrimmed chronological point set — lines are cheap to
-  draw (one `Graphics2D.draw(Path2D)` call) and thinning the line would create visible,
-  misleading jumps between sampled points.
+- **Line points: full chronological set, collapsed in pixel space — not `sampleEvenly`.**
+  `MapPoints.withPhotos()` thins photos to `OsmMapRenderer.MAX_PINS` (150) via `sampleEvenly`;
+  feeding that into the line would create visible, misleading jumps between sampled points. The
+  line starts from the full time-sorted sequence and only drops a point that lies within the
+  pin-overlap threshold (see "Photo pin thinning" below) of the **previous kept line point** —
+  never of any earlier one, so a later return to the same spot (hotel → day out → hotel) keeps
+  its return leg. That removes the sub-pin-sized segments that wouldn't be visible anyway.
+- **Photo pin thinning by pixel distance (added 2026-11-04).** See the section below.
 - **New checkbox, off by default.** Mirrors the existing `📷 Photo Locations from Backpack`
   checkbox pattern (`MapAssistantDialog`, `ButtonData.LEFT`, triggers `changed()` /
   re-render-is-stale on toggle). Suggested label: `〰 Connect with Route Line` or similar; not
@@ -34,6 +37,38 @@ photo timestamps make a meaningful ordering possible.
   colors (`START_COLOR` red, `STOP_COLOR` teal, `PHOTO_COLOR` yellow) so it doesn't compete with
   them or imply it belongs to one kind of point. Drawn before `drawPin` calls so pins sit on top
   of the line at each vertex.
+
+## Photo pin thinning
+
+Photos are often taken within metres of each other, so on a trip-wide map their pins pile up into
+yellow clusters (and, with the route line, into tangles of tiny segments). Thinning removes pins
+that would be hidden under another pin anyway.
+
+- **Threshold in pixels, not km.** The map is a static PNG at one zoom chosen by
+  `OsmMapRenderer.fitZoom` *before* any pin is drawn. A pixel threshold at that zoom is
+  automatically a zoom-dependent ground distance (several km on Very wide, metres on Close) — no
+  km table per zoom level needed. Threshold ≈ one pin diameter, `2 × (PIN_RADIUS + 3)` (= 22 px
+  with `PIN_RADIUS = 8`); tune at implementation time.
+- **Start/stop pins are never thinned.** They're placed first; photo pins then go greedily
+  (chronological order once todo 78's sort exists, else current order) and a photo pin is
+  dropped if it lies within the threshold of **any** already kept pin, start/stop included.
+  Pins dedupe globally — unlike the line, which only collapses consecutive points.
+- **Happens in `OsmMapRenderer`, after `fitZoom`**, because it needs the zoom. Zoom and centre are
+  still computed from the full point set; dropped pins are within one pin width of a kept one,
+  so the framing doesn't shift.
+- **Replaces `sampleEvenly` as the main reduction.** `sampleEvenly` thins before the zoom is known
+  and ignores geography (can drop a lone photo while keeping ten stacked in one café).
+  `MAX_PINS` stays only as a safety cap applied after pixel thinning. `MapPoints` then carries
+  the full photo list; `MapAssistantDialog` (currently `withPhotos(locations, MAX_PINS - …)`)
+  changes accordingly.
+- **Always on, no checkbox** — the dropped pins are visually covered, so there's nothing to opt
+  out of.
+- **Status text:** the dialog's photo count should say how many pins were actually drawn, e.g.
+  "42 of 180 photos shown" — the renderer needs to report the kept count back (return value or
+  a small result record next to the image).
+- **Tests:** pure pixel-space helper (points + zoom + topLeft → kept points), unit-testable
+  without tiles: overlapping photos collapse, a photo on top of a start pin is dropped, far
+  apart photos all survive, consecutive-only collapse for the line keeps an A→B→A return.
 
 ## Implementation sketch
 
