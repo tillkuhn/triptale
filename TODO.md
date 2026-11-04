@@ -115,6 +115,8 @@ Upgrade the HTML export's impressions gallery from the CSS `column-count` masonr
 rows with one shared row height per row, zero gaps, chronological order preserved.
 Needs a packing algorithm, numeric image dimensions (`ExifReader.dimensions()` refactor),
 a static-HTML sizing strategy and a fallback for non-JPEG images.
+Update 2026-11: WordPress first, time order no longer important; likely approach is
+orientation pairing in Java for both exporters (see doc). Low priority.
 
 [Details](docs/41_justified_row_impressions_gallery.md)
 

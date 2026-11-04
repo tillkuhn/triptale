@@ -31,3 +31,39 @@ preserved — this looks the most polished of the options discussed. It needs:
   those) won't have a JPEG SOF marker — decide a fallback (skip dimension-based sizing and fall
   back to the masonry/table layout for that image, or read dimensions via `ImageIO` instead of the
   JPEG-specific path).
+
+## Update 2026-11: findings, WordPress first
+
+Seen in a real export: the masonry columns leave a ragged bottom (one column ends lower), and
+the last image doesn't really fit. Counting odd/even doesn't help with `column-count`, the
+problem is uneven column *heights*, not the image count.
+
+Changed priorities since the text above:
+
+- **WordPress is the real target**, the HTML export is mainly a preview, but it's still used for
+  PDF (family diary mail).
+- **Strict time order is not important** any more, so the packing may reorder images.
+
+Consequences:
+
+- CSS-only fixes (justified rows, `column-span: all`) don't carry over to WordPress: post content
+  can't rely on its own CSS (the block editor flags changed gallery markup, inline styles may be
+  stripped). We have to live with the core gallery block (`columns-2 is-cropped`): images in a row
+  are cropped to one row height, and an odd last image is stretched over the full row (to be
+  verified on the actual theme).
+- So the lever is the **order**, computed in Java before both exporters:
+  1. Orientation per image from the header plus EXIF orientation (5–8 swap width/height), ideally
+     cached next to the EXIF cache.
+  2. Pair landscape with landscape, portrait with portrait (little cropping); pairs keep rough
+     time order.
+  3. Odd landscape count: one landscape last, full width — preferably the day's map.
+     Odd portrait count: one mixed pair, still end on a landscape. Only-portrait odd count: accept
+     a full-width portrait (rare).
+- HTML/PDF should then mirror the WordPress layout (flex rows, cropped, odd last image full
+  width, same order) instead of masonry. Bonus for PDF: `break-inside: avoid` per row makes page
+  breaks fall between rows; multi-column layouts split badly across pages.
+- Uniform cropped grid (square/3:2 for all) and `grid-auto-flow: dense` with portrait spanning two
+  rows were rejected: too much cropping of portraits, and 2:3 vs. two 3:2 rows don't add up
+  (1.5 vs. 1.33 widths tall).
+
+Not followed up for now, low priority.
