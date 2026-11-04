@@ -294,7 +294,7 @@ public class WordPressExporter {
         Path root = attachmentsDir.root();
         List<String> items = images.stream()
                 .filter(p -> p.startsWith(root))
-                .map(p -> block("image", "{\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
+                .map(p -> block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
                         "<figure class=\"wp-block-image size-large\"><img src=\""
                                 + DiaryExporter.escapeHtml(baseUrl + urlPath(root.relativize(p)))
                                 + "\" alt=\"" + DiaryExporter.escapeHtml(altText(p)) + "\"/></figure>"))

@@ -49,6 +49,8 @@ public class DiaryExporter {
     // {{t.stats.distance}} in a template: a word from ExportTexts
     private static final Pattern TEXT_VAR = Pattern.compile("\\{\\{t\\.([\\w.]+)}}");
     private static final Pattern IMPRESSIONS_MARKER = Pattern.compile("<!--IMPRESSIONS:(\\d{4}-\\d{2}-\\d{2})-->");
+    /** Browser tab that full-size images open in, so clicks reuse one tab instead of piling up. */
+    static final String IMAGE_TARGET = "triptale-image";
 
     private final MarkdownStore store;
     private final ImpressionsService impressions;
@@ -221,8 +223,10 @@ public class DiaryExporter {
         StringBuilder sb = new StringBuilder();
         sb.append("<div class=\"impressions\" style=\"column-count: ").append(columns).append(";\">\n");
         for (Path image : images) {
-            String uri = image.toUri().toString();
-            sb.append("<img src=\"").append(escapeHtml(uri)).append("\" />\n");
+            String uri = escapeHtml(image.toUri().toString());
+            // A named target: every click reuses the same tab, which shows the original size
+            sb.append("<a href=\"").append(uri).append("\" target=\"").append(IMAGE_TARGET).append("\">")
+                    .append("<img src=\"").append(uri).append("\" /></a>\n");
         }
         sb.append("</div>\n");
         return sb.toString();

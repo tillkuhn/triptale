@@ -9,7 +9,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 84
+## Next Todo: 85
 
 ## 81 General repo housekeeping task
 
@@ -202,6 +202,14 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 84 Export images open in original size
+
+Impression images in exports are shown small (grid/gallery) with no way to see them full size.
+- HTML export: wrap each image in `<a href=… target="triptale-image">`, a named target, so all
+  clicks reuse one browser tab showing the original file.
+- WordPress export: enable Gutenberg's lightbox ("Expand on click", WP 6.4+,
+  `"lightbox":{"enabled":true}`) on each gallery image, so readers stay on the post.
 
 ## DONE 78 Dotted route line and photo pin thinning on Map Assistant
 

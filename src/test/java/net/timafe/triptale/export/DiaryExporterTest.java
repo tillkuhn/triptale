@@ -429,6 +429,8 @@ class DiaryExporterTest {
         assertTrue(html.contains("<div class=\"impressions\" style=\"column-count: 2;\">"));
         assertTrue(html.contains("20250701_one.jpg"));
         assertTrue(html.contains("20250701_two.jpg"));
+        String uri = tempDir.resolve("20250701_one.jpg").toUri().toString();
+        assertTrue(html.contains("<a href=\"" + uri + "\" target=\"triptale-image\"><img src=\"" + uri + "\" /></a>"), html);
     }
 
     @Test
