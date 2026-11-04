@@ -133,22 +133,30 @@ public class OsmTileClient {
                 .timeout(TIMEOUT)
                 .GET()
                 .build();
+        String shown = redact(uri);
         HttpResponse<byte[]> response;
         try {
-            log.debug("Tile GET {}", uri);
+            log.debug("Tile GET {}", shown);
             response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
         } catch (HttpTimeoutException e) {
-            throw new TileException("Timed out after " + TIMEOUT.toSeconds() + " s fetching tile " + uri);
+            throw new TileException("Timed out after " + TIMEOUT.toSeconds() + " s fetching tile " + shown);
         } catch (IOException e) {
             throw new TileException("Network error fetching tile "
-                    + uri + ": " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+                    + shown + ": " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new TileException("Interrupted");
         }
         if (response.statusCode() != 200) {
-            throw new TileException(source + " answered HTTP " + response.statusCode() + " for " + uri);
+            throw new TileException(source + " answered HTTP " + response.statusCode() + " for " + shown);
         }
         return response.body();
+    }
+
+    /** The tile URI with query parameter values masked, so an API key never reaches a log or alert. */
+    static String redact(URI uri) {
+        String s = uri.toString();
+        int q = s.indexOf('?');
+        return q < 0 ? s : s.substring(0, q + 1) + s.substring(q + 1).replaceAll("=[^&]*", "=***");
     }
 }

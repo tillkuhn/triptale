@@ -512,7 +512,9 @@ public class MarkdownStore {
                 try {
                     dates.add(LocalDate.parse(dateStr));
                 } catch (Exception ignored) {
-                    log.debug("Skipping non-date entry file: {}", name);
+                    if (!name.equals("README.md")) {
+                        log.debug("Skipping non-date entry file: {}", name);
+                    }
                 }
             });
             dates.sort(Comparator.naturalOrder());

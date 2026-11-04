@@ -30,6 +30,14 @@ class OsmTileClientTest {
 
     private HttpServer server;
 
+    @Test
+    void redact_masksQueryValues() {
+        assertEquals("https://a.tile.thunderforest.com/outdoors/10/533/342.png?apikey=***",
+                OsmTileClient.redact(URI.create("https://a.tile.thunderforest.com/outdoors/10/533/342.png?apikey=secret")));
+        assertEquals("https://tile.openstreetmap.org/1/2/3.png",
+                OsmTileClient.redact(URI.create("https://tile.openstreetmap.org/1/2/3.png")));
+    }
+
     @AfterEach
     void stopServer() {
         if (server != null) server.stop(0);
