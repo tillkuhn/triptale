@@ -9,22 +9,22 @@ import java.util.Optional;
 
 /**
  * What a Sgt. Mapper render was made with (todo 82, D1): the entry range, tile style, zoom,
- * format and whether photo locations were included, plus how many points it shows. Stored as
+ * format, whether photo locations and the route line (todo 78) were included, plus how many points it shows. Stored as
  * PNG {@code tEXt} chunks ({@link PngText}) in every render, so a saved {@code tripmap.png}
  * restores the dialog's controls when it's opened again.
  *
  * <p>No JavaFX imports (package boundary rule).
  */
 public record TripMapSettings(LocalDate from, LocalDate to, TileSource source, OsmMapRenderer.ZoomLevel zoom,
-                              MapFormat format, boolean photos, int starts, boolean stop, int photosShown,
+                              MapFormat format, boolean photos, boolean route, int starts, boolean stop, int photosShown,
                               int photosFound) {
 
     static final String PREFIX = "triptale:";
 
     /** The settings plus the point counts of {@code points}, as plotted. */
     public static TripMapSettings of(LocalDate from, LocalDate to, TileSource source, OsmMapRenderer.ZoomLevel zoom,
-                                     MapFormat format, boolean photos, MapPoints points) {
-        return new TripMapSettings(from, to, source, zoom, format, photos, points.starts().size(),
+                                     MapFormat format, boolean photos, boolean route, MapPoints points) {
+        return new TripMapSettings(from, to, source, zoom, format, photos, route, points.starts().size(),
                 points.stop() != null, points.photos().size(), points.photosFound());
     }
 
@@ -37,6 +37,7 @@ public record TripMapSettings(LocalDate from, LocalDate to, TileSource source, O
         text.put(PREFIX + "zoom", zoom.name());
         text.put(PREFIX + "format", format.name());
         text.put(PREFIX + "photos", Boolean.toString(photos));
+        text.put(PREFIX + "route", Boolean.toString(route));
         text.put(PREFIX + "starts", Integer.toString(starts));
         text.put(PREFIX + "stop", Boolean.toString(stop));
         text.put(PREFIX + "photosShown", Integer.toString(photosShown));
@@ -61,6 +62,7 @@ public record TripMapSettings(LocalDate from, LocalDate to, TileSource source, O
                     enumOr(OsmMapRenderer.ZoomLevel.class, text.get(PREFIX + "zoom"), OsmMapRenderer.DEFAULT_ZOOM),
                     enumOr(MapFormat.class, text.get(PREFIX + "format"), MapFormat.DEFAULT),
                     Boolean.parseBoolean(text.get(PREFIX + "photos")),
+                    Boolean.parseBoolean(text.get(PREFIX + "route")),
                     intOr(text.get(PREFIX + "starts")),
                     Boolean.parseBoolean(text.get(PREFIX + "stop")),
                     intOr(text.get(PREFIX + "photosShown")),

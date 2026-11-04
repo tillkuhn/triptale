@@ -3,18 +3,22 @@ package net.timafe.triptale.map;
 import net.timafe.triptale.util.Coordinates.LatLon;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Renders a trip map by stitching OSM tiles and drawing pins with plain JDK AWT (todo 61):
@@ -71,17 +75,34 @@ public class OsmMapRenderer {
      *  {@link ZoomLevel#zoomBias} does the actual Close/Normal/Wide/Very wide differentiation. */
     private static final double BASE_MARGIN_FRACTION = 0.12;
 
-    /** Pins drawn beyond this many photo locations would clutter the image and slow rendering. */
+    /** Safety cap on pins, applied after pixel thinning (todo 78) — that alone normally keeps far fewer. */
     public static final int MAX_PINS = 150;
 
-    private static final Color START_COLOR = new Color(0xf7, 0x4e, 0x4e);
-    private static final Color STOP_COLOR = new Color(0x3b, 0xb2, 0xd0);
-    private static final Color PHOTO_COLOR = new Color(0xf5, 0xc2, 0x42);
+    /**
+     * A pin's look: colored center of {@code radius}, a 1px white ring and a dark outline of
+     * {@code outline} px around it. {@code outerRadius} is what thinning measures overlap with.
+     */
+    record PinStyle(Color fill, int radius, int outline) {
+        int outerRadius() {
+            return radius + 1 + outline;
+        }
+    }
+
+    /*
+     * Pin styling (todo 78): one red family plus black, ranked by lightness and size rather than
+     * hue — survives colour blindness, and dark fills keep contrast on the mostly light tiles.
+     * Photos are the most numerous and least important, so they're light and small. Day pins
+     * stay a step bigger, but not so big that they hide the town name they sit on.
+     */
+    static final PinStyle START_PIN = new PinStyle(new Color(0xb7, 0x1c, 0x1c), 6, 2);
+    static final PinStyle STOP_PIN = new PinStyle(new Color(0x21, 0x21, 0x21), 6, 2);
+    static final PinStyle PHOTO_PIN = new PinStyle(new Color(0xe5, 0x73, 0x73), 5, 1);
     private static final Color BACKGROUND = new Color(0xdd, 0xdd, 0xdd);
     private static final Color PIN_OUTLINE = new Color(0x22, 0x22, 0x22);
     private static final Color PIN_SHADOW = new Color(0, 0, 0, 70);
-    /** Radius of the colored center; the dark outline and white ring add a few more px on top. */
-    private static final int PIN_RADIUS = 8;
+    private static final Color ROUTE_COLOR = new Color(0x44, 0x44, 0x44, 150);
+    private static final BasicStroke ROUTE_STROKE = new BasicStroke(2f, BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND, 10f, new float[] {5f, 5f}, 0f);
     private static final int TILE_SIZE = WebMercator.TILE_SIZE;
 
     private final OsmTileClient tileClient;
@@ -90,25 +111,29 @@ public class OsmMapRenderer {
         this.tileClient = tileClient;
     }
 
+    /** A rendered map plus the points actually plotted (photos thinned, see {@link #thinPhotos}). */
+    public record Rendered(BufferedImage image, MapPoints plotted) {}
+
     /**
      * Renders {@code points} onto a {@code width}x{@code height} PNG and saves it to
      * {@code target} (parent directories created on demand, an existing file overwritten), with
-     * {@code text} as PNG {@code tEXt} chunks ({@link PngText}). Blocks (tile fetches): call off
-     * the FX thread.
+     * {@code text} of the plotted points as PNG {@code tEXt} chunks ({@link PngText}). Returns the
+     * plotted points. Blocks (tile fetches): call off the FX thread.
      */
-    public void render(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height,
-                       Map<String, String> text, Path target) {
-        BufferedImage image = renderImage(points, source, zoom, width, height);
+    public MapPoints render(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height,
+                            Function<MapPoints, Map<String, String>> text, Path target) {
+        Rendered rendered = renderImage(points, source, zoom, width, height);
         try {
             Files.createDirectories(target.getParent());
-            PngText.write(image, target, text);
+            PngText.write(rendered.image(), target, text.apply(rendered.plotted()));
         } catch (IOException e) {
             throw new OsmTileClient.TileException("Could not save map to " + target, e);
         }
+        return rendered.plotted();
     }
 
     /** Same as {@link #render}, returning the image without saving it — mainly for tests. */
-    public BufferedImage renderImage(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height) {
+    public Rendered renderImage(MapPoints points, TileSource source, ZoomLevel zoom, int width, int height) {
         if (points.isEmpty()) throw new IllegalArgumentException("No points to plot");
         if (zoom == null) zoom = DEFAULT_ZOOM;
         List<LatLon> all = points.all();
@@ -126,13 +151,83 @@ public class OsmMapRenderer {
 
         drawTiles(g, source, z, topLeftX, topLeftY, width, height);
 
-        points.photos().forEach(p -> drawPin(g, p, z, topLeftX, topLeftY, PHOTO_COLOR));
-        points.starts().forEach(p -> drawPin(g, p, z, topLeftX, topLeftY, START_COLOR));
-        if (points.stop() != null) drawPin(g, points.stop(), z, topLeftX, topLeftY, STOP_COLOR);
+        // Zoom and centre come from the full point set; thinned pins sit under a kept one anyway.
+        List<LatLon> photos = MapPoints.sampleEvenly(thinPhotos(points.dayPins(), points.photos(), z),
+                Math.max(0, MAX_PINS - points.dayPinCount()));
+        drawRoute(g, collapseRoute(points.route(), z), z, topLeftX, topLeftY);
+        photos.forEach(p -> drawPin(g, p, z, topLeftX, topLeftY, PHOTO_PIN));
+        points.starts().forEach(p -> drawPin(g, p, z, topLeftX, topLeftY, START_PIN));
+        if (points.stop() != null) drawPin(g, points.stop(), z, topLeftX, topLeftY, STOP_PIN);
 
         drawAttribution(g, source, width, height);
         g.dispose();
-        return image;
+        return new Rendered(image, points.withPhotosShown(photos));
+    }
+
+    /**
+     * The photos that wouldn't be hidden under another pin at zoom {@code z} (todo 78), in their
+     * order: a photo is dropped if its pin overlaps any kept pin — the day pins, always kept, or
+     * an earlier kept photo. Distances are in world pixels, so the threshold is automatically a
+     * zoom-dependent ground distance. Package-private for tests.
+     */
+    static List<LatLon> thinPhotos(List<LatLon> dayPins, List<LatLon> photos, int z) {
+        double dayGap = PHOTO_PIN.outerRadius() + START_PIN.outerRadius();
+        double photoGap = 2.0 * PHOTO_PIN.outerRadius();
+        List<double[]> days = dayPins.stream().map(p -> pixel(p, z)).toList();
+        List<double[]> keptPixels = new ArrayList<>();
+        List<LatLon> kept = new ArrayList<>();
+        for (LatLon photo : photos) {
+            double[] px = pixel(photo, z);
+            if (days.stream().anyMatch(d -> closerThan(px, d, dayGap))) continue;
+            if (keptPixels.stream().anyMatch(k -> closerThan(px, k, photoGap))) continue;
+            keptPixels.add(px);
+            kept.add(photo);
+        }
+        return kept;
+    }
+
+    /**
+     * The route without points closer than a photo pin's width to the <em>previous kept</em>
+     * point — segments that small vanish under the pins anyway. Only consecutive points collapse,
+     * so a later return to the same spot keeps its return leg. Package-private for tests.
+     */
+    static List<LatLon> collapseRoute(List<LatLon> route, int z) {
+        double gap = 2.0 * PHOTO_PIN.outerRadius();
+        List<LatLon> kept = new ArrayList<>();
+        double[] last = null;
+        for (LatLon p : route) {
+            double[] px = pixel(p, z);
+            if (last != null && closerThan(px, last, gap)) continue;
+            kept.add(p);
+            last = px;
+        }
+        return kept;
+    }
+
+    private static double[] pixel(LatLon p, int z) {
+        return new double[] {WebMercator.pixelX(p.lon(), z), WebMercator.pixelY(p.lat(), z)};
+    }
+
+    private static boolean closerThan(double[] a, double[] b, double distance) {
+        double dx = a[0] - b[0];
+        double dy = a[1] - b[1];
+        return dx * dx + dy * dy < distance * distance;
+    }
+
+    /** A dashed grey line through the route, drawn under the pins (todo 78). */
+    private static void drawRoute(Graphics2D g, List<LatLon> route, int z, double topLeftX, double topLeftY) {
+        if (route.size() < 2) return;
+        Path2D.Double path = new Path2D.Double();
+        for (int i = 0; i < route.size(); i++) {
+            double[] px = pixel(route.get(i), z);
+            if (i == 0) path.moveTo(px[0] - topLeftX, px[1] - topLeftY);
+            else path.lineTo(px[0] - topLeftX, px[1] - topLeftY);
+        }
+        var oldStroke = g.getStroke();
+        g.setColor(ROUTE_COLOR);
+        g.setStroke(ROUTE_STROKE);
+        g.draw(path);
+        g.setStroke(oldStroke);
     }
 
     /** package-private for tests. */
@@ -189,19 +284,20 @@ public class OsmMapRenderer {
      * pin against a yellow road, pins against green/blue terrain); the dark ring keeps contrast
      * on every tile style, light or dark.
      */
-    private static void drawPin(Graphics2D g, LatLon p, int z, double topLeftX, double topLeftY, Color color) {
+    private static void drawPin(Graphics2D g, LatLon p, int z, double topLeftX, double topLeftY, PinStyle style) {
         int x = (int) Math.round(WebMercator.pixelX(p.lon(), z) - topLeftX);
         int y = (int) Math.round(WebMercator.pixelY(p.lat(), z) - topLeftY);
-        int outer = PIN_RADIUS + 3;
-        int mid = PIN_RADIUS + 1;
+        int outer = style.outerRadius();
+        int mid = style.radius() + 1;
+        int r = style.radius();
         g.setColor(PIN_SHADOW);
         g.fillOval(x - outer + 1, y - outer + 2, outer * 2, outer * 2);
         g.setColor(PIN_OUTLINE);
         g.fillOval(x - outer, y - outer, outer * 2, outer * 2);
         g.setColor(Color.WHITE);
         g.fillOval(x - mid, y - mid, mid * 2, mid * 2);
-        g.setColor(color);
-        g.fillOval(x - PIN_RADIUS, y - PIN_RADIUS, PIN_RADIUS * 2, PIN_RADIUS * 2);
+        g.setColor(style.fill());
+        g.fillOval(x - r, y - r, r * 2, r * 2);
     }
 
 

@@ -10,13 +10,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TripMapSettingsTest {
 
     private static final TripMapSettings SETTINGS = new TripMapSettings(LocalDate.of(2026, 9, 20),
             LocalDate.of(2026, 9, 23), TileSource.CYCLOSM, OsmMapRenderer.ZoomLevel.WIDE, MapFormat.PORTRAIT,
-            true, 4, true, 60, 212);
+            true, true, 4, true, 60, 212);
 
     @Test
     void roundTripsThroughText() {
@@ -56,5 +57,12 @@ class TripMapSettingsTest {
         assertEquals(OsmMapRenderer.DEFAULT_ZOOM, parsed.zoom());
         assertEquals(MapFormat.DEFAULT, parsed.format());
         assertEquals(SETTINGS.from(), parsed.from());
+    }
+
+    @Test
+    void mapsFromBeforeTheRouteLine_haveNone() {
+        Map<String, String> text = new HashMap<>(SETTINGS.toText());
+        text.remove("triptale:route");
+        assertFalse(TripMapSettings.fromText(text).orElseThrow().route());
     }
 }

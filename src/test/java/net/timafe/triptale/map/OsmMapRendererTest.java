@@ -69,10 +69,9 @@ class OsmMapRendererTest {
     void renderImage_producesTheRequestedSize() throws IOException {
         URI base = serve(200, solidTile(Color.GREEN));
         OsmMapRenderer renderer = renderer(base);
-        MapPoints points = MapPoints.of(List.of()).withPhotos(List.of(), 0);
-        points = pointsOf(new LatLon(51.5, 8.0));
+        MapPoints points = pointsOf(new LatLon(51.5, 8.0));
 
-        BufferedImage image = renderer.renderImage(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.NORMAL, 400, 300);
+        BufferedImage image = renderer.renderImage(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.NORMAL, 400, 300).image();
 
         assertEquals(400, image.getWidth());
         assertEquals(300, image.getHeight());
@@ -84,9 +83,9 @@ class OsmMapRendererTest {
         OsmMapRenderer renderer = renderer(base);
         MapPoints points = pointsOf(new LatLon(51.5, 8.0));
 
-        BufferedImage image = renderer.renderImage(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.NORMAL, 400, 300);
+        BufferedImage image = renderer.renderImage(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.NORMAL, 400, 300).image();
 
-        // The single point is centered; its red start pin should tint the very center pixel.
+        // The single point is centered; its red photo pin should tint the very center pixel.
         int rgb = image.getRGB(200, 150);
         Color center = new Color(rgb);
         assertTrue(center.getRed() > center.getBlue(), "center pixel should be reddish (start pin), was " + center);
@@ -105,18 +104,47 @@ class OsmMapRendererTest {
         MapPoints points = pointsOf(new LatLon(10.0, 20.0));
         Path target = tempDir.resolve("maps").resolve("tripmap.png");
 
-        renderer.render(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.WIDE, 200, 150,
-                java.util.Map.of("triptale:from", "2026-01-01"), target);
+        MapPoints plotted = renderer.render(points, TileSource.OPEN_TOPO_MAP, OsmMapRenderer.ZoomLevel.WIDE, 200, 150,
+                p -> java.util.Map.of("triptale:from", "2026-01-01", "triptale:photosShown", "" + p.photos().size()), target);
 
         assertTrue(Files.exists(target));
         BufferedImage saved = ImageIO.read(target.toFile());
         assertEquals(200, saved.getWidth());
         assertEquals(150, saved.getHeight());
         assertEquals("2026-01-01", PngText.read(target).get("triptale:from"));
+        assertEquals("1", PngText.read(target).get("triptale:photosShown"));
+        assertEquals(1, plotted.photos().size());
+    }
+
+    private static final int Z = 20;
+
+    /** A point {@code xPixels} world pixels east of 0,0 at zoom {@link #Z}. */
+    private static LatLon px(double xPixels) {
+        return new LatLon(0.0, xPixels * 360.0 / (WebMercator.TILE_SIZE * WebMercator.tilesPerSide(Z)));
+    }
+
+    @Test
+    void thinPhotos_dropsOverlappingPhotosAndPhotosOnADayPin() {
+        List<LatLon> photos = List.of(px(100), px(110), px(200), px(5));
+        // px(110) overlaps px(100) (< 14 px); px(5) sits on the start pin (< 16 px)
+        assertEquals(List.of(px(100), px(200)), OsmMapRenderer.thinPhotos(List.of(px(0)), photos, Z));
+    }
+
+    @Test
+    void thinPhotos_keepsFarApartPhotos() {
+        List<LatLon> photos = List.of(px(100), px(120), px(140));
+        assertEquals(photos, OsmMapRenderer.thinPhotos(List.of(), photos, Z));
+    }
+
+    @Test
+    void collapseRoute_dropsOnlyConsecutiveNearPoints_soAReturnLegSurvives() {
+        List<LatLon> route = List.of(px(0), px(5), px(300), px(2));
+        // px(5) is too close to px(0); px(2) is just as close to px(0) but follows px(300)
+        assertEquals(List.of(px(0), px(300), px(2)), OsmMapRenderer.collapseRoute(route, Z));
     }
 
     private static MapPoints pointsOf(LatLon p) {
-        return MapPoints.of(List.of()).withPhotos(List.of(p), 10);
+        return new MapPoints(List.of(), null, List.of(p), 1, List.of());
     }
 
     private OsmMapRenderer renderer(URI base) {

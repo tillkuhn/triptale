@@ -97,4 +97,27 @@ class PhotoLocationsTest {
 
         assertEquals(List.of(new LatLon(48.85566, 2.35203)), locations);
     }
+
+    @Test
+    void photosByDayCarryTheCaptureTime() throws IOException {
+        pack(DAY, "with_exif.jpg", "a.jpg");
+        pack(DAY, "no_exif.jpg", "b.jpg");
+
+        var byDay = photoLocations.photosByDay(trip, DAY, DAY.plusDays(1));
+
+        assertEquals(List.of(DAY), List.copyOf(byDay.keySet()));
+        assertEquals(1, byDay.get(DAY).size());
+        assertEquals(new LatLon(48.85566, 2.35203), byDay.get(DAY).getFirst().location());
+    }
+
+    @Test
+    void byCaptureTimeIsStableAndPutsUntimedLast() {
+        PhotoLocations.Photo untimed = new PhotoLocations.Photo(new LatLon(0, 0), null);
+        PhotoLocations.Photo late = new PhotoLocations.Photo(new LatLon(1, 1), DAY.atTime(15, 0));
+        PhotoLocations.Photo burst1 = new PhotoLocations.Photo(new LatLon(2, 2), DAY.atTime(9, 0));
+        PhotoLocations.Photo burst2 = new PhotoLocations.Photo(new LatLon(3, 3), DAY.atTime(9, 0));
+
+        assertEquals(List.of(burst1, burst2, late, untimed),
+                PhotoLocations.byCaptureTime(List.of(untimed, late, burst1, burst2)));
+    }
 }

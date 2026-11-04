@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -602,14 +603,24 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void saveAndLoadLastMapStyleRoundTrip() {
-        store.saveLastMapStyle("cyclosm");
-        assertEquals("cyclosm", store.loadLastMapStyle().orElseThrow());
+    void saveAndLoadLastMapOptionsRoundTrip() {
+        Map<String, String> options = Map.of("style", "cyclosm", "zoom", "SNUG", "route", "true");
+        store.saveLastMapOptions(options);
+        assertEquals(options, store.loadLastMapOptions());
     }
 
     @Test
-    void loadLastMapStyleReturnsEmptyWhenStateFileMissing() {
-        assertTrue(store.loadLastMapStyle().isEmpty());
+    void loadLastMapOptionsIsEmptyWhenStateFileMissing() {
+        assertTrue(store.loadLastMapOptions().isEmpty());
+    }
+
+    @Test
+    void legacyLastMapStyleIsReadAsStyle_andDroppedOnSave() throws IOException {
+        store.saveState("lastMapStyle", "cyclosm");
+        assertEquals(Map.of("style", "cyclosm"), store.loadLastMapOptions());
+
+        store.saveLastMapOptions(Map.of("style", "osm"));
+        assertFalse(Files.readString(store.dataDir().resolve(".triptale/state.yml")).contains("lastMapStyle"));
     }
 
     // -------------------------------------------------------------------------

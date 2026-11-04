@@ -61,7 +61,8 @@ has nothing to put on screen.
   earlier render of the same range, so exports/WordPress can reuse the file without a separate
   "Save as…" step.
 - **Tile style:** `Style: [OpenTopoMap ▾]` combo (`map.TileSource`) — remembered across sessions
-  in `.state.yml` (`lastMapStyle`), not per-trip. Ships OpenTopoMap (nature look: contours,
+  in `.triptale/state.yml`, not per-trip (since todo 78 together with zoom, format and both
+  checkboxes, as `lastMapOptions`). Ships OpenTopoMap (nature look: contours,
   hillshading, forests, paths), OSM Standard (plain street map) and CyclOSM (cycling-oriented,
   flatter nature look); overlay-only or API-key sources (Waymarked Trails, Thunderforest) are
   future todos.
@@ -78,13 +79,14 @@ has nothing to put on screen.
 
 | Kind  | Source                                              | Pin                          |
 |-------|-----------------------------------------------------|------------------------------|
-| Start | `start_lat`/`start_lon` of every entry in range      | red filled circle            |
-| Stop  | `stop_lat`/`stop_lon` of the **last** entry in range | teal filled circle           |
-| Photo | EXIF GPS of backpack images of the days in range     | yellow filled circle         |
+| Start | `start_lat`/`start_lon` of every entry in range      | dark red circle (todo 78)    |
+| Stop  | `stop_lat`/`stop_lon` of the **last** entry in range | near-black circle            |
+| Photo | EXIF GPS of backpack images of the days in range     | smaller light red circle     |
 
 - **Stop:** only the last day's stop, as before — a daily stop is usually the next day's
   start. With a single-day range this gives exactly start → stop for that day.
-- **No route line**, pins only.
+- **Route line** (todo 78): optional dashed grey line through the pins in time order, see
+  `docs/78_route_line_map_assistant.md`. Pin colours were also reworked there.
 - **Photos:** off by default (`📷 Photo Locations from Backpack` checkbox, not remembered). All
   backpack images (`attachments/<year>/<slug>/<date>/`) that pass the base filter and carry
   EXIF GPS. No photo-library scan. The fave filter does **not** apply: the backpack is already
@@ -99,9 +101,10 @@ has nothing to put on screen.
 
 Unlike Mapbox's static-image API, there's no URL length limit here — the cap
 (`OsmMapRenderer.MAX_PINS`, 150) is purely to keep the image legible and rendering fast. Day
-pins (starts + stop) are always kept. Photo pins are thinned to the remaining budget by
-sampling evenly across the date-ordered list (so every part of the range keeps some coverage),
-and the header says so: `📷 60 of 212 photo locations`.
+pins (starts + stop) are always kept. Since todo 78, photo pins are first thinned by pixel
+distance at the rendered zoom (a photo hidden under another pin is dropped); the even sampling
+across the list only applies as a safety cap after that. The header says how many are shown:
+`📷 60 of 212 photo locations`.
 
 ## Code
 

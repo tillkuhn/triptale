@@ -33,6 +33,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.ExportTempFiles;
 import net.timafe.triptale.map.MapFormat;
+import net.timafe.triptale.map.MapOptions;
 import net.timafe.triptale.map.MapPoints;
 import net.timafe.triptale.map.OsmMapRenderer;
 import net.timafe.triptale.map.OsmTileClient;
@@ -47,7 +48,6 @@ import net.timafe.triptale.ui.ConnectivityService;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.StatusSink;
 import net.timafe.triptale.ui.UiText;
-import net.timafe.triptale.util.Coordinates.LatLon;
 
 import java.io.File;
 import java.io.IOException;
@@ -181,6 +181,7 @@ public final class MapAssistantDialog {
         private final boolean hasThunderforestKey;
         private final EntryRangePicker range;
         private final CheckBox photosCheck = new CheckBox("📷 Add Photo POIs");
+        private final CheckBox routeCheck = new CheckBox("〰 Route Line");
         private final ComboBox<TileSource> sourceCombo = new ComboBox<>();
         private final ComboBox<OsmMapRenderer.ZoomLevel> zoomCombo = new ComboBox<>();
         private final ComboBox<MapFormat> formatCombo = new ComboBox<>();
@@ -251,17 +252,22 @@ public final class MapAssistantDialog {
 
         Set<LocalDate> show() {
             dlg.setTitle("🗺 Sgt. Mapper · " + trip.name());
-            photosCheck.setSelected(shownSettings == null || shownSettings.photos());
+            // A saved map's own settings win; otherwise start the way the dialog was last closed.
+            MapOptions last = MapOptions.fromMap(store.loadLastMapOptions());
+            photosCheck.setSelected(shownSettings != null ? shownSettings.photos() : last.photos());
             photosCheck.setTooltip(new Tooltip("Locations of the backpack images of these days, from their EXIF GPS"));
+            routeCheck.setSelected(shownSettings != null ? shownSettings.route() : last.route());
+            routeCheck.setTooltip(new Tooltip("Dotted line through the pins in time order: each day's start, "
+                    + "its photos by capture time, its stop"));
             sourceCombo.getItems().setAll(availableTileSources());
             sourceCombo.setValue(shownSettings != null && sourceCombo.getItems().contains(shownSettings.source())
-                    ? shownSettings.source() : lastOrDefaultTileSource());
+                    ? shownSettings.source() : availableOrDefault(last.source()));
             sourceCombo.setTooltip(new Tooltip("Tile style the map is rendered from"));
             zoomCombo.getItems().setAll(OsmMapRenderer.ZoomLevel.values());
-            zoomCombo.setValue(shownSettings != null ? shownSettings.zoom() : OsmMapRenderer.DEFAULT_ZOOM);
+            zoomCombo.setValue(shownSettings != null ? shownSettings.zoom() : last.zoom());
             zoomCombo.setTooltip(new Tooltip("How far to zoom out around the plotted pins"));
             formatCombo.getItems().setAll(MapFormat.values());
-            formatCombo.setValue(shownSettings != null ? shownSettings.format() : MapFormat.DEFAULT);
+            formatCombo.setValue(shownSettings != null ? shownSettings.format() : last.format());
             formatCombo.setTooltip(new Tooltip("Aspect ratio of the map — portrait suits a trip that runs north–south"));
             targetCombo.setConverter(new StringConverter<>() {
                 @Override public String toString(LocalDate d) { return d == null ? "" : entryLabels.getOrDefault(d, d.toString()); }
@@ -294,7 +300,7 @@ public final class MapAssistantDialog {
             applyFormatSize();
 
             HBox options = new HBox(14, labeled("Style:", sourceCombo), labeled("Zoom:", zoomCombo),
-                    labeled("Format:", formatCombo), photosCheck);
+                    labeled("Format:", formatCombo), photosCheck, routeCheck);
             options.setAlignment(Pos.CENTER_LEFT);
             VBox content = new VBox(8, range.node(), mapArea, options);
             // Keeps a narrower (portrait) map centered under the range row
@@ -328,6 +334,7 @@ public final class MapAssistantDialog {
 
             range.onChange(this::changed);
             photosCheck.selectedProperty().addListener((obs, old, sel) -> changed());
+            routeCheck.selectedProperty().addListener((obs, old, sel) -> changed());
             sourceCombo.valueProperty().addListener((obs, old, sel) -> styleOrZoomChanged());
             zoomCombo.valueProperty().addListener((obs, old, sel) -> styleOrZoomChanged());
             formatCombo.valueProperty().addListener((obs, old, sel) -> formatChanged());
@@ -348,7 +355,8 @@ public final class MapAssistantDialog {
             Dialogs.applyStylesheet(dlg.getDialogPane());
             dlg.showAndWait();
             pulse.stop();
-            store.saveLastMapStyle(sourceCombo.getValue().id());
+            store.saveLastMapOptions(new MapOptions(sourceCombo.getValue(), zoomCombo.getValue(), formatCombo.getValue(),
+                    photosCheck.isSelected(), routeCheck.isSelected()).toMap());
             tempRenders.forEach(f -> {
                 try {
                     Files.deleteIfExists(f);
@@ -373,13 +381,10 @@ public final class MapAssistantDialog {
                     .toList();
         }
 
-        /** The style picked last time Sgt. Mapper was closed (any trip), or {@link TileSource#OPEN_TOPO_MAP}
-         *  if none was saved yet or the saved id no longer matches a known, available source (e.g. after one
-         *  was removed, or a Thunderforest style was saved while a key was configured and it no longer is). */
-        private TileSource lastOrDefaultTileSource() {
-            return store.loadLastMapStyle()
-                    .flatMap(id -> availableTileSources().stream().filter(s -> s.id().equals(id)).findFirst())
-                    .orElse(TileSource.OPEN_TOPO_MAP);
+        /** {@code source} if it's in the Style dropdown, else {@link TileSource#OPEN_TOPO_MAP} — e.g. a
+         *  Thunderforest style remembered while a key was configured, and it no longer is. */
+        private TileSource availableOrDefault(TileSource source) {
+            return availableTileSources().contains(source) ? source : TileSource.OPEN_TOPO_MAP;
         }
 
         /** Sizes the map area for the current format (D4) and, once shown, the window around it. */
@@ -471,7 +476,7 @@ public final class MapAssistantDialog {
         private record RenderResult(MapPoints points, boolean withPhotos, Path file, TripMapSettings settings) {}
 
         private void renderAndDisplay() {
-            MapPoints days = dayPoints();
+            List<DiaryEntry> rangeEntries = rangeEntries();
             int requested = generation;
             LocalDate from = range.from();
             LocalDate to = range.to();
@@ -481,18 +486,18 @@ public final class MapAssistantDialog {
             int w = width;
             int h = height;
             boolean wantPhotos = photosCheck.isSelected();
+            boolean wantRoute = routeCheck.isSelected();
             Task<RenderResult> task = new Task<>() {
                 @Override protected RenderResult call() throws IOException {
-                    MapPoints points = days;
-                    if (wantPhotos) {
-                        List<LatLon> locations = photoLocations.locations(photoLocations.images(trip, from, to));
-                        points = days.withPhotos(locations, OsmMapRenderer.MAX_PINS - days.dayPinCount());
-                    }
+                    Map<LocalDate, List<PhotoLocations.Photo>> photos =
+                            wantPhotos ? photoLocations.photosByDay(trip, from, to) : Map.of();
+                    MapPoints points = MapPoints.of(rangeEntries, photos, wantRoute);
                     if (points.isEmpty()) return new RenderResult(points, wantPhotos, null, null);
-                    TripMapSettings settings = TripMapSettings.of(from, to, source, zoom, format, wantPhotos, points);
                     Path target = tempFiles.newFile("tripmap-", ".png");
-                    mapRenderer.render(points, source, zoom, w, h, settings.toText(), target);
-                    return new RenderResult(points, wantPhotos, target, settings);
+                    MapPoints plotted = mapRenderer.render(points, source, zoom, w, h,
+                            p -> TripMapSettings.of(from, to, source, zoom, format, wantPhotos, wantRoute, p).toText(), target);
+                    TripMapSettings settings = TripMapSettings.of(from, to, source, zoom, format, wantPhotos, wantRoute, plotted);
+                    return new RenderResult(plotted, wantPhotos, target, settings);
                 }
             };
             task.setOnSucceeded(e -> {
@@ -647,12 +652,16 @@ public final class MapAssistantDialog {
         }
 
         private MapPoints dayPoints() {
+            return MapPoints.of(rangeEntries());
+        }
+
+        private List<DiaryEntry> rangeEntries() {
             LocalDate from = range.from();
             LocalDate to = range.to();
-            if (from == null || to == null) return MapPoints.of(List.of());
-            return MapPoints.of(entries.stream()
+            if (from == null || to == null) return List.of();
+            return entries.stream()
                     .filter(e -> !e.date().isBefore(from) && !e.date().isAfter(to))
-                    .toList());
+                    .toList();
         }
 
         /**

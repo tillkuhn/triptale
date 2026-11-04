@@ -10,8 +10,12 @@ import net.timafe.triptale.util.Coordinates.LatLon;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -22,6 +26,9 @@ import java.util.Objects;
  * <p>No JavaFX imports (package boundary rule).
  */
 public class PhotoLocations {
+
+    /** A photo's location and its EXIF capture time ({@code null} if the image has none). */
+    public record Photo(LatLon location, LocalDateTime captureTime) {}
 
     private final ImpressionsService impressions;
     private final ExifReader exifReader;
@@ -50,6 +57,42 @@ public class PhotoLocations {
                 .map(exifReader::read)
                 .map(PhotoLocations::location)
                 .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * The located backpack photos of the days {@code from}..{@code to}, per day in date order,
+     * each day sorted by capture time (todo 78). Days without located photos are left out. Reads
+     * EXIF for every image (cached), so keep it off the FX thread.
+     */
+    public Map<LocalDate, List<Photo>> photosByDay(Trip trip, LocalDate from, LocalDate to) {
+        Map<LocalDate, List<Photo>> result = new LinkedHashMap<>();
+        if (trip == null || from == null || to == null) return result;
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            List<Photo> photos = photos(impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
+            if (!photos.isEmpty()) result.put(d, photos);
+        }
+        return result;
+    }
+
+    /** The located photos among {@code images}, sorted by {@link #byCaptureTime}. */
+    public List<Photo> photos(List<Path> images) {
+        List<Photo> photos = new ArrayList<>();
+        for (Path image : images) {
+            ExifInfo info = exifReader.read(image);
+            LatLon location = location(info);
+            if (location != null) photos.add(new Photo(location, info.captureTime()));
+        }
+        return byCaptureTime(photos);
+    }
+
+    /**
+     * Stable sort by capture time, photos without one last: the input order (filename order, as
+     * {@code ImpressionsService.images} returns it) breaks ties, e.g. a burst within one second.
+     */
+    static List<Photo> byCaptureTime(List<Photo> photos) {
+        return photos.stream()
+                .sorted(Comparator.comparing(Photo::captureTime, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
     }
 

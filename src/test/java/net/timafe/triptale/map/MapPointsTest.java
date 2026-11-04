@@ -1,11 +1,13 @@
 package net.timafe.triptale.map;
 
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.map.PhotoLocations.Photo;
 import net.timafe.triptale.util.Coordinates.LatLon;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,31 +58,61 @@ class MapPointsTest {
         assertEquals(List.of(new LatLon(0.0, 0.0)), points.starts());
     }
 
+    private static Photo photo(double lat, Integer hour) {
+        return new Photo(new LatLon(lat, lat), hour == null ? null : DAY.atTime(hour, 0));
+    }
+
     @Test
     void photosAloneAreEnoughToPlot() {
-        MapPoints points = MapPoints.of(List.of()).withPhotos(List.of(new LatLon(1.0, 2.0)), 10);
+        MapPoints points = MapPoints.of(List.of(), Map.of(DAY, List.of(photo(1.0, 9))), false);
 
         assertFalse(points.isEmpty());
         assertEquals(0, points.dayPinCount());
         assertEquals(1, points.photosFound());
+        assertEquals(List.of(), points.route());
     }
 
     @Test
-    void photosAreThinnedButTheFoundCountIsKept() {
-        List<LatLon> photos = IntStream.range(0, 10).mapToObj(i -> new LatLon(i, i)).toList();
+    void shownPhotosKeepTheFoundCount() {
+        List<Photo> photos = IntStream.range(0, 10).mapToObj(i -> photo(i, i)).toList();
 
-        MapPoints points = MapPoints.of(List.of()).withPhotos(photos, 4);
+        MapPoints points = MapPoints.of(List.of(), Map.of(DAY, photos), false)
+                .withPhotosShown(List.of(new LatLon(1, 1)));
 
-        assertEquals(4, points.photos().size());
+        assertEquals(1, points.photos().size());
         assertEquals(10, points.photosFound());
     }
 
     @Test
     void allDrawsPhotosFirstAndTheStopLast() {
-        MapPoints points = MapPoints.of(List.of(entry(0, 1.0, 1.0, 2.0, 2.0)))
-                .withPhotos(List.of(new LatLon(3.0, 3.0)), 10);
+        MapPoints points = MapPoints.of(List.of(entry(0, 1.0, 1.0, 2.0, 2.0)),
+                Map.of(DAY, List.of(photo(3.0, 9))), false);
 
         assertEquals(List.of(new LatLon(3.0, 3.0), new LatLon(1.0, 1.0), new LatLon(2.0, 2.0)), points.all());
+    }
+
+    @Test
+    void routeRunsStartPhotosStopPerDay_andSkipsUntimedPhotos() {
+        MapPoints points = MapPoints.of(
+                List.of(entry(0, 1.0, 1.0, 2.0, 2.0), entry(1, 5.0, 5.0, 6.0, 6.0)),
+                Map.of(DAY, List.of(photo(3.0, 9), photo(4.0, null)), DAY.plusDays(1), List.of(photo(7.0, 9))),
+                true);
+
+        assertEquals(List.of(new LatLon(1, 1), new LatLon(3, 3), new LatLon(2, 2),
+                new LatLon(5, 5), new LatLon(7, 7), new LatLon(6, 6)), points.route());
+        // the untimed photo is still a pin; only the last day's stop is
+        assertEquals(3, points.photos().size());
+        assertEquals(new LatLon(6, 6), points.stop());
+    }
+
+    @Test
+    void routeAlsoFramesTheIntermediateStops() {
+        MapPoints points = MapPoints.of(List.of(entry(0, 1.0, 1.0, 9.0, 9.0), entry(1, 5.0, 5.0, null, null)),
+                Map.of(), true);
+
+        assertTrue(points.all().contains(new LatLon(9, 9)));
+        assertFalse(MapPoints.of(List.of(entry(0, 1.0, 1.0, 9.0, 9.0), entry(1, 5.0, 5.0, null, null)))
+                .all().contains(new LatLon(9, 9)));
     }
 
     @Test

@@ -20,7 +20,7 @@ Follow-up to todo 54 (Map Assistant) and todo 61 (self-rendered OSM maps). Main 
 1. **Title.** Window title becomes `🗺 Sgt. Mapper · <trip name>`, and the trip-name line goes
    from the header. The header keeps the points line (`📍 1 start point · 🏁 stop point · 📷 2
    photo locations`).
-2. **Options row** (below the map): `Style:` · `Zoom:` · `Format:` · `📷 Add Photo POIs`
+2. **Options row** (below the map): `Style:` · `Zoom:` · `Format:` · `📷 Add Photo POIs` · `〰 Route Line` (todo 78)
    checkbox last (renamed; the backpack is implied as the source).
 3. **Format dropdown**: `3:2 Landscape` (default, as today), `1:1 Square`, `2:3 Portrait`.
 4. **Renders are temporary.** "On Screen" renders to a temp location rather than the attachments

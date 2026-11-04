@@ -21,21 +21,6 @@ Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with
 
 [Details](docs/81_housekeeping.md)
 
-## 78 Dotted route line and photo pin thinning on Map Assistant
-
-Draw an optional dotted line through the Map Assistant's pins, in chronological order: each
-day's start, its photo pins (sorted by EXIF capture time), its stop, then the next day's start.
-Off by default via a new checkbox next to "📷 Photo Locations from Backpack".
-
-- `PhotoLocations` sorts each day's photos by `captureTime` from the cached `ExifInfo` (no extra
-  read, the exif cache already holds it), filename as tie-breaker; untimestamped = pins only.
-- New `OsmMapRenderer.drawPath`, dashed grey `BasicStroke`, under the pins.
-- Photo pin thinning (always on): after `fitZoom`, drop a photo pin within ~1 pin diameter (px)
-  of any kept pin; start/stop never thinned. Replaces `sampleEvenly` (`MAX_PINS` = safety cap).
-- Line collapses only consecutive points within that threshold, so A→B→A returns survive.
-
-[Details](docs/78_route_line_map_assistant.md)
-
 ## 67 Private images
 
 Mark individual backpack images as private so they're kept but never exported — a per-day
@@ -217,6 +202,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 78 Dotted route line and photo pin thinning on Map Assistant
+
+Optional `〰 Route Line` through each day's start, its photos by EXIF capture time and its stop;
+photo pins thinned by pixel distance at the rendered zoom; pins restyled (dark red start,
+near-black stop, smaller light red photos); all Sgt. Mapper options remembered as
+`lastMapOptions` in `.triptale/state.yml`.
+
+[Details](docs/78_route_line_map_assistant.md)
 
 ## DONE 83 One gitignored dir for local state and caches
 

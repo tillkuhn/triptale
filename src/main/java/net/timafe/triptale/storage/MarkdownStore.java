@@ -361,7 +361,9 @@ public class MarkdownStore {
     private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_LAST_GPX_FOLDER_KEY = "lastGpxFolder";
     private static final String STATE_TELEGRAM_OFFSET_KEY = "telegramOffset";
+    /** Pre-todo-78 key, the tile style alone; read as a fallback, dropped on the next save. */
     private static final String STATE_LAST_MAP_STYLE_KEY = "lastMapStyle";
+    private static final String STATE_LAST_MAP_OPTIONS_KEY = "lastMapOptions";
     private static final String STATE_COMMENT =
             "# Repo-local internal state — machine-specific, not committed to git.\n" +
             "# Its folder .triptale/ is listed in .gitignore and intentionally excluded from sync.\n" +
@@ -387,7 +389,13 @@ public class MarkdownStore {
 
     /** Merges the given key into the existing .triptale/state.yml and writes the whole file back. */
     public void saveState(String key, Object value) {
+        saveState(key, value, List.of());
+    }
+
+    /** Same as {@link #saveState(String, Object)}, also removing the {@code obsolete} keys. */
+    private void saveState(String key, Object value, List<String> obsolete) {
         Map<String, Object> data = loadState();
+        obsolete.forEach(data::remove);
         data.put(key, value);
         Path statePath = LocalDir.stateFile(dataDir());
         try {
@@ -467,17 +475,29 @@ public class MarkdownStore {
         }
     }
 
-    /** The {@code map.TileSource} id (todo 61) last picked in Map Assistant's Style dropdown, so the
-     *  next time it opens it starts where you left off. Stored as a plain string — {@code storage}
-     *  must not depend on {@code map} (package boundary / dependency direction), so the caller is
-     *  responsible for resolving the id back to a {@code TileSource}, falling back to a default if
-     *  the id is unknown (e.g. an old id from a removed source). */
-    public void saveLastMapStyle(String tileSourceId) {
-        saveState(STATE_LAST_MAP_STYLE_KEY, tileSourceId);
+    /**
+     * The options Sgt. Mapper was last closed with (style, zoom, format, photos, route — todo 78),
+     * so the next time it opens it starts where you left off. A flat string map, nested under
+     * {@code lastMapOptions} in state.yml — {@code storage} must not depend on {@code map}
+     * (dependency direction), so {@code map.MapOptions} turns it into types and falls back to
+     * defaults for unknown or missing values.
+     */
+    public void saveLastMapOptions(Map<String, String> options) {
+        saveState(STATE_LAST_MAP_OPTIONS_KEY, new LinkedHashMap<>(options), List.of(STATE_LAST_MAP_STYLE_KEY));
     }
 
-    public Optional<String> loadLastMapStyle() {
-        return Optional.ofNullable(asString(loadState().get(STATE_LAST_MAP_STYLE_KEY)));
+    /** Empty if never saved; a state.yml from before todo 78 yields just its {@code style}. */
+    public Map<String, String> loadLastMapOptions() {
+        Map<String, Object> state = loadState();
+        Map<String, String> options = new LinkedHashMap<>();
+        if (state.get(STATE_LAST_MAP_OPTIONS_KEY) instanceof Map<?, ?> map) {
+            map.forEach((k, v) -> {
+                if (k != null && v != null) options.put(k.toString(), v.toString());
+            });
+        } else if (asString(state.get(STATE_LAST_MAP_STYLE_KEY)) != null) {
+            options.put("style", asString(state.get(STATE_LAST_MAP_STYLE_KEY)));
+        }
+        return options;
     }
 
     public List<LocalDate> listEntryDates(TripRef ref) {

@@ -37,17 +37,46 @@ photo timestamps make a meaningful ordering possible.
   never of any earlier one, so a later return to the same spot (hotel → day out → hotel) keeps
   its return leg. That removes the sub-pin-sized segments that wouldn't be visible anyway.
 - **Photo pin thinning by pixel distance (added 2026-11-04).** See the section below.
+- **Pin restyling: one red family + size hierarchy (added 2026-11-04).** See "Pin styling" below.
 - **New checkbox, off by default.** Mirrors the existing `📷 Photo Locations from Backpack`
   checkbox pattern (`MapAssistantDialog`, `ButtonData.LEFT`, triggers `changed()` /
-  re-render-is-stale on toggle). Suggested label: `〰 Connect with Route Line` or similar; not
-  persisted across sessions (same as the photos checkbox).
+  re-render-is-stale on toggle). Suggested label: `〰 Connect with Route Line` or similar.
+  Remembered across sessions since all options are (see "As implemented").
 - **Independent of the photos checkbox.** If route-line is on but photos is off, still draw
   start→stop per day (in range order) — the two checkboxes are orthogonal, not gated on each
   other.
-- **Style — neutral grey dotted line, drawn under the pins.** Distinct from all three pin
-  colors (`START_COLOR` red, `STOP_COLOR` teal, `PHOTO_COLOR` yellow) so it doesn't compete with
-  them or imply it belongs to one kind of point. Drawn before `drawPin` calls so pins sit on top
+- **Style — neutral grey dotted line, drawn under the pins.** Distinct from the red-family pin
+  colors (see "Pin styling") so it doesn't compete with them or imply it belongs to one kind of
+  point; a red line would fight the pins. Drawn before `drawPin` calls so pins sit on top
   of the line at each vertex.
+
+## Pin styling
+
+The original red/teal/yellow pins (`OsmMapRenderer` `START_COLOR`/`STOP_COLOR`/`PHOTO_COLOR`)
+are three equally loud hues, and yellow is the brightest of them, so the most numerous and
+least important pins (photos) grab the eye first and the map reads as a colour mix.
+
+- **Hierarchy by lightness and size, not hue.** One red family plus black. Using lightness
+  instead of different hues also survives every type of colour blindness. Dark fills give
+  better contrast on the (mostly light) tile styles; red also reads well on blue sea and green
+  terrain.
+
+  | Pin | Fill | Radius | Role |
+  |---|---|---|---|
+  | Start (one per day) | dark red `#B71C1C` | 6 | main marker, carries the trip |
+  | Stop (last entry only) | near-black `#212121` | 6 | end point; black inside the white ring reads as a target |
+  | Photo | light, slightly muted red `#E57373` | 5, thinner outline | same family, recedes, smaller clusters |
+
+- **Size makes the start/photo split reliable.** Dark vs light red alone is clear side by side
+  but weaker for a lone pin; the smaller photo pin also covers less of OSM Carto's salmon/pink
+  roads, which a light red could otherwise blend into (the dark outline helps too).
+- **Day pins smaller than before (radius 8 → 6, outer 11 → 9 px):** first look on screen
+  showed the big ones hiding the town names they sit on; still a step bigger than photos.
+- **Draw order unchanged:** photos, then starts, then stop on top.
+- **`drawPin` takes a radius** (or a small pin-style record: fill, radius, outline width)
+  instead of the fixed `PIN_RADIUS`.
+- **Exact hex values to be tuned on screen** — an agent can't view the rendered map, so the
+  user checks and the values get adjusted from that.
 
 ## Photo pin thinning
 
@@ -58,8 +87,10 @@ that would be hidden under another pin anyway.
 - **Threshold in pixels, not km.** The map is a static PNG at one zoom chosen by
   `OsmMapRenderer.fitZoom` *before* any pin is drawn. A pixel threshold at that zoom is
   automatically a zoom-dependent ground distance (several km on Very wide, metres on Close) — no
-  km table per zoom level needed. Threshold ≈ one pin diameter, `2 × (PIN_RADIUS + 3)` (= 22 px
-  with `PIN_RADIUS = 8`); tune at implementation time.
+  km table per zoom level needed. With the smaller photo pins (see "Pin styling") the threshold
+  is the sum of the two pins' outer radii: photo vs photo ≈ 14 px, photo vs start/stop ≈ 16 px,
+  so more lone photos survive than with a flat one-full-pin-diameter (22 px) rule; tune at
+  implementation time.
 - **Start/stop pins are never thinned.** They're placed first; photo pins then go greedily
   (chronological order once todo 78's sort exists, else current order) and a photo pin is
   dropped if it lies within the threshold of **any** already kept pin, start/stop included.
@@ -107,10 +138,27 @@ that would be hidden under another pin anyway.
   — replace "No route line, pins only" and add the new checkbox to the ASCII mockup and bullet
   list.
 
-## Open questions for implementation time
+## As implemented
 
-- Exact checkbox label/emoji (needs a short, clear glyph — `〰` dotted-line-ish, or reuse `🧵`/
-  `📍`-adjacent icon; pick during implementation, not a blocking design decision).
-- Whether `MapPoints` grows a new field or a parallel helper type carries the per-day
-  start+stop+sorted-photos sequence used only for the line — an implementation detail to settle
-  against the existing unit tests for `MapPoints`.
+- **Checkbox:** `〰 Route Line`, off by default, but restored from a saved map: `TripMapSettings`
+  gained a `route` flag (`triptale:route` PNG text; absent in older maps = off).
+- **All options remembered (added 2026-11-04):** the old `lastMapStyle` (style only) in
+  `.triptale/state.yml` became `lastMapOptions`, a nested YAML map (`style`, `zoom`, `format`,
+  `photos`, `route`) written on close (`MarkdownStore.saveLastMapOptions`, plain strings since
+  `storage` must not depend on `map`; `map.MapOptions` parses them, each unknown/missing value
+  falling back on its own). A saved map's own settings still win when it's shown. A pre-78
+  `lastMapStyle` is read once as the style and removed on the next save. A `;`-packed string
+  was rejected: state.yml is YAML already, a nested map needs no parser.
+- **`PhotoLocations.photosByDay(trip, from, to)`** returns `Map<LocalDate, List<Photo>>`,
+  `Photo(LatLon location, LocalDateTime captureTime)`, each day stable-sorted by
+  `byCaptureTime` (untimed photos last). `locations(...)` stays for the plain list.
+- **`MapPoints`** grew a `route` field and `of(entries, photosByDay, withRoute)`; `withPhotos` /
+  up-front `sampleEvenly` thinning is gone. `all()` (used for framing) includes the route, so
+  intermediate days' stops, which have no pin, stay inside the map.
+- **`OsmMapRenderer`**: `PinStyle(fill, radius, outline)`, `thinPhotos(dayPins, photos, z)` and
+  `collapseRoute(route, z)` work in world pixels at zoom `z` (no topLeft needed, distances
+  don't depend on it). Thresholds come from `PinStyle.outerRadius()`: photo vs photo 14 px,
+  photo vs day pin 16 px, route collapse 14 px. Route stroke: 2 px, dash 5/5, `#444` at
+  alpha 150 (first tried 2.5 px, 6/6, alpha 200: too heavy over labels). A white line with a
+  dark casing (Polarsteps-like) was considered; plain white vanishes on the light tile styles. `render(...)` now returns the plotted `MapPoints` and takes the PNG text as a
+  function of them, so the saved `photosShown` count is the one actually drawn.
