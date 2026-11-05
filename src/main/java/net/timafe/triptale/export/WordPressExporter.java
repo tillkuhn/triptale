@@ -292,8 +292,8 @@ public class WordPressExporter {
 
     private Optional<String> gallery(List<Path> images, String baseUrl, int columns) {
         Path root = attachmentsDir.root();
-        List<String> items = images.stream()
-                .filter(p -> p.startsWith(root))
+        List<String> items = impressions.galleryRows(images.stream().filter(p -> p.startsWith(root)).toList()).stream()
+                .flatMap(row -> row.images().stream())
                 .map(p -> block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
                         "<figure class=\"wp-block-image size-large\"><img src=\""
                                 + DiaryExporter.escapeHtml(baseUrl + urlPath(root.relativize(p)))

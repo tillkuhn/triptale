@@ -77,9 +77,8 @@ Decided together with a rework of the Impression Curator (`ui/dialog/ImageViewer
   *backpack* images laid out as the exports would, honouring "Faves only". Layout comes from
   `impressions.GalleryLayout` (pure Java): full rows of N same-orientation images, a landscape
   and a portrait remainder share one row if they fit, otherwise portrait rows then an odd
-  landscape last and full width. Row height follows the mean aspect (cropped rows). The exporters
-  do **not** use it yet; making WordPress/HTML consume the same plan is the remaining step, so the
-  preview can't drift from the export.
+  landscape last and full width. Row height follows the mean aspect (cropped rows). Both exporters
+  and the preview go through `ImpressionsService.galleryRows`, so they can't drift apart.
 - **Orientation.** `ExifInfo` carries the EXIF orientation; `displayAspect()` swaps width and
   height for 5-8. The exif cache entries got a `version` key (entries without it are re-read).
 - **Put / Unpack instead of Select + Import.** The select checkbox, Select All and Import
@@ -91,3 +90,9 @@ Decided together with a rework of the Impression Curator (`ui/dialog/ImageViewer
   folder has the same name and size). Only when the backpack holds the only copy there is a
   warning (Cancel is the default). Deletion is permanent, no OS trash; the bucket copy goes at the
   next backpack sync (delete propagation, ADR-0002).
+- **Exporters.** WordPress emits the core gallery block with the images in plan order (the block
+  fills rows of N itself, leftovers flow portrait first so an odd landscape is last and full
+  width). HTML/PDF renders one flex row per plan row (`div.impressions-row`, inline
+  `aspect-ratio` = 1 / row height ratio, images `object-fit: cover`, `break-inside: avoid`),
+  replacing the `column-count` masonry. Numbering in the preview follows the plan order, not the
+  file order; the reordering is intentional (time order no longer matters).

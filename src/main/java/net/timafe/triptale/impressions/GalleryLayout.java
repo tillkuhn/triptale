@@ -10,8 +10,9 @@ import java.util.List;
  * height stays small, followed by the leftovers. Strict time order is not kept; rows keep their
  * rough order by the earliest image they contain.
  *
- * <p>Leftovers: a landscape and a portrait remainder that fit into one row share a mixed row;
- * otherwise portrait rows come first and an odd landscape comes last, alone on a full-width row.
+ * <p>Leftovers (portrait first, then landscape) fill the following rows, so a mixed row appears
+ * only when both orientations have a remainder, and an odd landscape comes last, alone on a
+ * full-width row.
  *
  * <p>Pure computation on aspect ratios (width / height as displayed, {@code null} = unknown, treated
  * as 3:2). No JavaFX imports (package boundary rule); the curator's preview draws the result.
@@ -47,17 +48,13 @@ public final class GalleryLayout {
         List<Cell> portraitLeft = chunk(portrait, cols, full);
         full.sort(Comparator.comparingInt(r -> r.getFirst().index()));
 
+        // Leftovers flow on in the order portrait, landscape: the same way the WordPress gallery
+        // block fills its rows, so an odd landscape ends up last (alone and full width)
+        List<Cell> rest = new ArrayList<>(portraitLeft);
+        rest.addAll(landscapeLeft);
         List<List<Cell>> rows = new ArrayList<>(full);
-        if (!landscapeLeft.isEmpty() && !portraitLeft.isEmpty()
-                && landscapeLeft.size() + portraitLeft.size() <= cols) {
-            List<Cell> mixed = new ArrayList<>(portraitLeft);
-            mixed.addAll(landscapeLeft);
-            mixed.sort(Comparator.comparingInt(Cell::index));
-            rows.add(mixed);
-        } else {
-            if (!portraitLeft.isEmpty()) rows.add(portraitLeft);
-            if (!landscapeLeft.isEmpty()) rows.add(landscapeLeft);
-        }
+        List<Cell> tail = chunk(rest, cols, rows);
+        if (!tail.isEmpty()) rows.add(tail);
         return rows.stream().map(GalleryLayout::row).toList();
     }
 

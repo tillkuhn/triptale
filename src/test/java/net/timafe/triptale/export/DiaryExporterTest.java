@@ -47,7 +47,8 @@ class DiaryExporterTest {
         store = new MarkdownStore(settingsStore);
         attachmentsDir = new AttachmentsDir(store);
         ImpressionsService impressions = new ImpressionsService(
-                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
+                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore,
+                new net.timafe.triptale.storage.ExifReader(store));
         exporter = new DiaryExporter(store, impressions, settingsStore);
     }
 
@@ -426,7 +427,9 @@ class DiaryExporterTest {
         String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.PHOTO_LIBRARY, false);
 
         assertFalse(html.contains("IMPRESSIONS"), "marker should be replaced");
-        assertTrue(html.contains("<div class=\"impressions\" style=\"column-count: 2;\">"));
+        assertTrue(html.contains("<div class=\"impressions\">"));
+        // two images of unknown size count as 3:2 landscape: one row of two, cropped to 1 / (2 x 1.5)
+        assertTrue(html.contains("<div class=\"impressions-row\" style=\"aspect-ratio: 3.0000;\">"), html);
         assertTrue(html.contains("20250701_one.jpg"));
         assertTrue(html.contains("20250701_two.jpg"));
         String uri = tempDir.resolve("20250701_one.jpg").toUri().toString();

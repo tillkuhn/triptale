@@ -3,6 +3,8 @@ package net.timafe.triptale.impressions;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.storage.ExifReader;
+import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.ImpressionsResolver;
 import net.timafe.triptale.storage.SettingsStore;
 import org.slf4j.Logger;
@@ -35,9 +37,11 @@ public class ImpressionsService {
     private final ImpressionsResolver resolver;
     private final AttachmentsDir attachmentsDir;
     private final SettingsStore settingsStore;
+    private final ExifReader exifReader;
 
     public ImpressionsService(ImpressionsResolver resolver, AttachmentsDir attachmentsDir,
-                              SettingsStore settingsStore) {
+                              SettingsStore settingsStore, ExifReader exifReader) {
+        this.exifReader = exifReader;
         this.resolver = resolver;
         this.attachmentsDir = attachmentsDir;
         this.settingsStore = settingsStore;
@@ -46,6 +50,21 @@ public class ImpressionsService {
     /** True if the photo library source has a pattern to work with. */
     public boolean photoLibraryConfigured() {
         return !settingsStore.load().getImpressionsFilePattern().isBlank();
+    }
+
+    /** One gallery row: its images and the row height relative to the gallery width. */
+    public record GalleryRow(List<Path> images, double heightRatio) {}
+
+    /**
+     * The gallery rows for the images, as the exports render them and the curator previews them
+     * ({@link GalleryLayout}): same-orientation pairs first, an odd landscape last. Reorders.
+     */
+    public List<GalleryRow> galleryRows(List<Path> images) {
+        List<Double> aspects = images.stream().map(p -> exifReader.read(p).displayAspect()).toList();
+        return GalleryLayout.plan(aspects, gridColumns()).stream()
+                .map(row -> new GalleryRow(row.cells().stream().map(c -> images.get(c.index())).toList(),
+                        row.heightRatio()))
+                .toList();
     }
 
     /** The configured number of gallery columns (at least 1). */

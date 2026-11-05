@@ -30,13 +30,13 @@ class GalleryLayoutTest {
 
     @Test
     void oddLandscapeAndOddPortraitShareAMixedRow() {
-        assertEquals(List.of(List.of(0, 1)), indices(List.of(L, P), 2));
+        assertEquals(List.of(List.of(1, 0)), indices(List.of(L, P), 2));
     }
 
     @Test
     void portraitRowsPrecedeTheTrailingLandscape() {
         // 3 portraits + 1 landscape, 2 columns: P pair, then leftover P and L mixed
-        assertEquals(List.of(List.of(1, 2), List.of(0, 3)), indices(List.of(L, P, P, P), 2));
+        assertEquals(List.of(List.of(1, 2), List.of(3, 0)), indices(List.of(L, P, P, P), 2));
     }
 
     @Test

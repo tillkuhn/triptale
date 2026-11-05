@@ -44,7 +44,8 @@ class ImpressionsServiceTest {
         settings.setDataDir(tempDir.resolve("data").toString());
         settingsStore.save(settings);
         attachmentsDir = new AttachmentsDir(new MarkdownStore(settingsStore));
-        service = new ImpressionsService(new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
+        service = new ImpressionsService(new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore,
+                new net.timafe.triptale.storage.ExifReader(new MarkdownStore(settingsStore)));
     }
 
     private void update(java.util.function.Consumer<AppSettings> change) {

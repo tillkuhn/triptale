@@ -36,7 +36,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImageFilter;
-import net.timafe.triptale.impressions.GalleryLayout;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ExifInfo;
@@ -615,8 +614,8 @@ public final class ImageViewerDialog {
                 galleryPane.getChildren().add(none);
                 return;
             }
-            List<Double> aspects = images.stream().map(p -> exifReader.read(p).displayAspect()).toList();
-            List<GalleryLayout.Row> rows = GalleryLayout.plan(aspects, impressions.gridColumns());
+            List<ImpressionsService.GalleryRow> rows = impressions.galleryRows(images);
+            int number = 0;
             double gap = 4;
             double total = rows.stream().mapToDouble(r -> r.heightRatio() * IMAGE_W).sum() + gap * (rows.size() - 1);
             double scale = Math.min(1, IMAGE_H / total);
@@ -624,18 +623,18 @@ public final class ImageViewerDialog {
             double x0 = (IMAGE_W - width) / 2;
             double y = 0;
             Path current = visible.isEmpty() ? null : visible.get(index);
-            for (GalleryLayout.Row row : rows) {
+            for (ImpressionsService.GalleryRow row : rows) {
                 double h = row.heightRatio() * width;
-                int n = row.cells().size();
+                int n = row.images().size();
                 double cellW = (width - gap * (n - 1)) / n;
                 for (int c = 0; c < n; c++) {
-                    Path image = images.get(row.cells().get(c).index());
+                    Path image = row.images().get(c);
                     boolean isCurrent = current != null && image.getFileName().equals(current.getFileName());
                     Rectangle rect = new Rectangle(x0 + c * (cellW + gap), y, cellW, h);
                     rect.setFill(Color.web(isCurrent ? "#2a9d8f" : "#3b4a4f"));
                     rect.setStroke(isCurrent ? Color.web("#e9c46a") : Color.web("#566a70"));
                     Tooltip.install(rect, new Tooltip(image.getFileName().toString()));
-                    Text label = new Text(rect.getX() + 6, rect.getY() + 16, Integer.toString(row.cells().get(c).index() + 1));
+                    Text label = new Text(rect.getX() + 6, rect.getY() + 16, Integer.toString(++number));
                     label.setFill(Color.web("#d0dcdf"));
                     label.setMouseTransparent(true);
                     rect.setOnMouseClicked(ev -> {

@@ -53,7 +53,8 @@ class WordPressExporterTest {
         store = new MarkdownStore(settingsStore);
         attachmentsDir = new AttachmentsDir(store);
         ImpressionsService impressions = new ImpressionsService(
-                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
+                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore,
+                new net.timafe.triptale.storage.ExifReader(store));
         exporter = new WordPressExporter(store, impressions, attachmentsDir, settingsStore);
         trip = new Trip(2025, "alps-2025", "Alps 2025", DAY1, null, "Summer ride");
         store.saveTrip(trip);

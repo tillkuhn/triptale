@@ -48,7 +48,8 @@ class PhotoLocationsTest {
         settingsStore.save(settings);
         attachmentsDir = new AttachmentsDir(new MarkdownStore(settingsStore));
         ImpressionsService impressions = new ImpressionsService(
-                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore);
+                new ImpressionsResolver(new PathPatternResolver()), attachmentsDir, settingsStore,
+                new net.timafe.triptale.storage.ExifReader(new MarkdownStore(settingsStore)));
         photoLocations = new PhotoLocations(impressions, new ExifReader(new MarkdownStore(settingsStore)));
     }
 

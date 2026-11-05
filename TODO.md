@@ -107,18 +107,6 @@ Report back with "x references updated" or similar.
 If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
 Depends on todo 33c (remote deletes); S3 rename = copy + delete.
 
-## 41 justified-row (Flickr/Google Photos-style) impressions gallery for HTML export
-
-Upgrade the HTML export's impressions gallery from the CSS `column-count` masonry layout
-(quick win, no gaps, but loses left-to-right photo order) to a justified-row gallery: full-width
-rows with one shared row height per row, zero gaps, chronological order preserved.
-Needs a packing algorithm, numeric image dimensions (`ExifReader.dimensions()` refactor),
-a static-HTML sizing strategy and a fallback for non-JPEG images.
-Update 2026-11: WordPress first, time order no longer important; likely approach is
-orientation pairing in Java for both exporters (see doc). Low priority.
-
-[Details](docs/41_justified_row_impressions_gallery.md)
-
 ## 40 add "Re-init Repository" action to Repository menu
 
 `GitService.initRepo()` is currently only invoked on startup (`MainController.performStartupChecks()`),
@@ -196,6 +184,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 41 justified-row impressions gallery for HTML/WordPress export
+
+Exports and the curator's "Gallery Layout" preview share `ImpressionsService.galleryRows`
+(same-orientation pairs, odd landscape last, rows cropped to one height). Time order is no
+longer kept. Cropping in the HTML export is a known trade-off; images link to the full size.
+
+[Details](docs/41_justified_row_impressions_gallery.md)
+
 
 ## DONE 56 Open the backpack from the main window
 

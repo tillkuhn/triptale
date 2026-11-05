@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -206,27 +207,32 @@ public class DiaryExporter {
     private String injectImpressions(String html, Trip trip, ImpressionSource source, boolean favesOnly) {
         AppSettings settings = settingsStore.load();
         ImageFilter faves = favesOnly ? impressions.faveFilter() : ImageFilter.parse("");
-        int columns = Math.max(1, settings.getImpressionsGridColumns());
         Matcher m = IMPRESSIONS_MARKER.matcher(html);
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
             LocalDate date = LocalDate.parse(m.group(1));
-            String replacement = renderImpressionsTable(faves.apply(impressions.images(source, trip, date)), columns);
+            String replacement = renderImpressionsTable(faves.apply(impressions.images(source, trip, date)));
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(sb);
         return sb.toString();
     }
 
-    private static String renderImpressionsTable(List<Path> images, int columns) {
+    /** Rows from {@link ImpressionsService#galleryRows}, each cropped to one height, like the WordPress gallery. */
+    private String renderImpressionsTable(List<Path> images) {
         if (images.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
-        sb.append("<div class=\"impressions\" style=\"column-count: ").append(columns).append(";\">\n");
-        for (Path image : images) {
-            String uri = escapeHtml(image.toUri().toString());
-            // A named target: every click reuses the same tab, which shows the original size
-            sb.append("<a href=\"").append(uri).append("\" target=\"").append(IMAGE_TARGET).append("\">")
-                    .append("<img src=\"").append(uri).append("\" /></a>\n");
+        sb.append("<div class=\"impressions\">\n");
+        for (ImpressionsService.GalleryRow row : impressions.galleryRows(images)) {
+            sb.append("<div class=\"impressions-row\" style=\"aspect-ratio: ")
+                    .append(String.format(Locale.ROOT, "%.4f", 1 / row.heightRatio())).append(";\">\n");
+            for (Path image : row.images()) {
+                String uri = escapeHtml(image.toUri().toString());
+                // A named target: every click reuses the same tab, which shows the original size
+                sb.append("<a href=\"").append(uri).append("\" target=\"").append(IMAGE_TARGET).append("\">")
+                        .append("<img src=\"").append(uri).append("\" /></a>\n");
+            }
+            sb.append("</div>\n");
         }
         sb.append("</div>\n");
         return sb.toString();
