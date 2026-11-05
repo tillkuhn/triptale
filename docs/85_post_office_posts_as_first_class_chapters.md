@@ -38,3 +38,13 @@ that hold a date range together with their own intro, independent of WordPress.
   Days without an entry are skipped on export; a post whose range has zero entries gets a warning mark in the table.
 - **`PostPicker.daysChange` and the "range wins on send" logic are removed**: the range comes from the Post and
   is only editable in the Post Office. `preselect` becomes "first post whose range contains the date".
+
+## Implementation notes
+- `Post(slug, title, intro, from, to, wpId, wpModified)`; file keys `end_date`, `start_date`, `type`, `wp_id`, `wp_modified`.
+  Files without a range (old `has:` format) are skipped with a warning; existing data dirs were migrated ad hoc.
+- `ui.dialog.PostOfficeDialog` (menu "My Trips > Post Office"): table + editor, saves/deletes immediately, `addPending`.
+- `ui.dialog.PostRangePicker` replaces `EntryRangePicker` in the Diary Composer only (Map Assistant still uses `EntryRangePicker`).
+  Whole-trip opening preselects the Post containing the current entry; Export Tale (single day) stays Ad Hoc.
+- `DiaryExporter.exportTrip/exportTripAsHtml` take an optional Post (title replaces trip name, intro replaces description);
+  `WordPressExporter.exportPost` renders the Post's range. Social Media export ignores Posts (plain text only).
+- `WordPressPublishDialog` now only sends a saved Post; title/intro/range editing moved to the Post Office.

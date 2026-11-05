@@ -3,6 +3,7 @@ package net.timafe.triptale.export;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.i18n.TripLanguage;
@@ -72,6 +73,14 @@ public class DiaryExporter {
      * totals cover that range only; "Day N" stays relative to the trip start.
      */
     public String exportTrip(Trip trip, LocalDate from, LocalDate to) {
+        return exportTrip(trip, from, to, null);
+    }
+
+    /**
+     * Like {@link #exportTrip(Trip, LocalDate, LocalDate)}; a non-null {@code post} (todo 85) heads the
+     * export as a chapter: its title replaces the trip name, its intro the trip description.
+     */
+    public String exportTrip(Trip trip, LocalDate from, LocalDate to, Post post) {
         Objects.requireNonNull(trip, "trip");
         List<LocalDate> allDates = store.listEntryDates(trip.ref());
         List<LocalDate> dates = allDates.stream()
@@ -81,8 +90,8 @@ public class DiaryExporter {
         LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        String heading = headingWithDayRange(trip, allDates, dates, trip.name());
-        return buildMarkdown(trip, dates, heading, trip.description(), startDate, endDate, false, false);
+        String heading = chapterHeading(trip, allDates, dates, post);
+        return buildMarkdown(trip, dates, heading, description(trip, post), startDate, endDate, false, false);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
@@ -98,6 +107,12 @@ public class DiaryExporter {
      */
     public String exportTripAsHtml(Trip trip, LocalDate from, LocalDate to,
                                    ImpressionSource images, boolean favesOnly) {
+        return exportTripAsHtml(trip, from, to, images, favesOnly, null);
+    }
+
+    /** Like the range variant; a non-null {@code post} heads the export as a chapter (todo 85). */
+    public String exportTripAsHtml(Trip trip, LocalDate from, LocalDate to,
+                                   ImpressionSource images, boolean favesOnly, Post post) {
         Objects.requireNonNull(trip, "trip");
         List<LocalDate> allDates = store.listEntryDates(trip.ref());
         List<LocalDate> dates = allDates.stream()
@@ -106,8 +121,8 @@ public class DiaryExporter {
         LocalDate startDate = dates.isEmpty() || dates.getFirst().equals(allDates.getFirst())
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
-        String heading = headingWithDayRange(trip, allDates, dates, trip.name());
-        return renderHtml(trip, dates, heading, trip.description(), startDate, endDate, images, favesOnly);
+        String heading = chapterHeading(trip, allDates, dates, post);
+        return renderHtml(trip, dates, heading, description(trip, post), startDate, endDate, images, favesOnly);
     }
 
     private String renderHtml(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
@@ -137,6 +152,16 @@ public class DiaryExporter {
      * sub-range of the trip (not the full set of entries) — so an export covering only part of a
      * trip says so in its own heading rather than looking like a complete diary.
      */
+    /** The post's title as is (its range is its own business), else the trip name with the day range. */
+    private String chapterHeading(Trip trip, List<LocalDate> allDates, List<LocalDate> dates, Post post) {
+        if (post != null && post.title() != null && !post.title().isBlank()) return post.title();
+        return headingWithDayRange(trip, allDates, dates, trip.name());
+    }
+
+    private static String description(Trip trip, Post post) {
+        return post == null ? trip.description() : post.intro();
+    }
+
     private String headingWithDayRange(Trip trip, List<LocalDate> allDates, List<LocalDate> dates, String name) {
         String suffix = dayRangeSuffix(trip, allDates, dates, texts());
         return suffix == null || name == null ? name : name + " · " + suffix;

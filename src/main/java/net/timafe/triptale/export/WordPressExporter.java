@@ -94,7 +94,7 @@ public class WordPressExporter {
 
     /**
      * Block markup for exactly {@code dates} (already resolved and sorted, possibly with gaps —
-     * a Post's {@code has:} list, see {@link #exportPost}), same rendering as the range-based
+     * see {@link #exportPost}), same rendering as the range-based
      * {@link #export(Trip, LocalDate, LocalDate, boolean, boolean)}.
      */
     public String export(Trip trip, List<LocalDate> dates, boolean images, boolean favesOnly) {
@@ -133,14 +133,14 @@ public class WordPressExporter {
 
     /**
      * Block markup for a Post (todo 60): its intro as leading paragraph block(s), followed by the
-     * per-day blocks for {@code post.entryDates()}. No title heading: WordPress shows the post
+     * per-day blocks for the trip's entries within the post's range. No title heading: WordPress shows the post
      * title from its own field, a heading would repeat it.
      */
     public String exportPost(Trip trip, Post post, boolean images, boolean favesOnly) {
         Objects.requireNonNull(trip, "trip");
         Objects.requireNonNull(post, "post");
         String intro = post.intro() == null ? "" : Markdown.stripPrivate(post.intro()).strip();
-        String body = export(trip, post.entryDates(), images, favesOnly);
+        String body = export(trip, post.from(), post.to(), images, favesOnly);
         if (intro.isEmpty()) return body;
         String leading = String.join("\n\n", blocks(PARSER.parse(intro)));
         return body.isEmpty() ? leading + "\n" : leading + "\n\n" + body;

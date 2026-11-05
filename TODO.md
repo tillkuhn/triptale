@@ -10,12 +10,6 @@
 
 ## Next Todo: 86
 
-## 85 Post Office: posts as first-class chapters
-
-Posts become first-class chapters: a trip's date range (from/to) with title + intro, optionally WordPress-linked. New Post Office dialog (Trip menu, 📮) lists posts (start day, end day, title, WP status), highlights the one covering the current entry, and has Add/Delete/Edit. Export dialog replaces 'all days' with [post selector][from][to] (Ad Hoc / Entire Trip / real posts); WordPress export requires a real post and the 2nd step goes away. Details in doc.
-
-[Details](docs/85_post_office_posts_as_first_class_chapters.md)
-
 ## 81 General repo housekeeping task
 
 One mechanism (invokable on demand or periodically) that sweep/cleanup-style tasks register
@@ -190,6 +184,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 85 Post Office: posts as first-class chapters
+
+Posts become first-class chapters: a trip's date range (from/to) with title + intro, optionally WordPress-linked. New Post Office dialog (Trip menu, 📮) lists posts (start day, end day, title, WP status), highlights the one covering the current entry, and has Add/Delete/Edit. Export dialog replaces 'all days' with [post selector][from][to] (Ad Hoc / Entire Trip / real posts); WordPress export requires a real post and the 2nd step goes away. Details in doc.
+
+[Details](docs/85_post_office_posts_as_first_class_chapters.md)
 
 ## DONE 41 justified-row impressions gallery for HTML/WordPress export
 

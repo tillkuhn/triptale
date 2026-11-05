@@ -62,6 +62,7 @@ import net.timafe.triptale.ui.dialog.CoordinatesDialog;
 import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
+import net.timafe.triptale.ui.dialog.PostOfficeDialog;
 import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.InboxDialog;
@@ -673,10 +674,17 @@ public class MainController implements StatusSink {
     }
 
     @FXML
+    public void onOpenPostOffice() {
+        Trip trip = tripCombo.getValue();
+        if (trip == null) { error("No trip selected"); return; }
+        new PostOfficeDialog(store, this, this::addPending).show(null, trip, datePicker.getValue(), null);
+    }
+
+    @FXML
     public void onExportDiary() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
-        exportDiaryDialog.show(trip);
+        exportDiaryDialog.show(trip, datePicker.getValue());
     }
 
     /** Exports just the current entry, saving pending edits first so the export sees them. */

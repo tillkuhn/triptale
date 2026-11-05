@@ -17,6 +17,7 @@ import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.export.DiaryExporter;
 import net.timafe.triptale.export.ExportTempFiles;
@@ -43,8 +44,8 @@ import java.util.function.BiConsumer;
  * Shows the export of a range of a trip's entries (the whole trip from the Trip menu, a single
  * day from Export Tale) as Markdown, WordPress block markup (todo 44) or a flattened plain-text
  * Social Media summary (todo 67), with actions to copy it or preview it in the system browser. In
- * WordPress format, "Post to WordPress" opens {@link WordPressPublishDialog} for the range
- * (todo 62). The image source defaults to the richest one that has images (todo 47); Social
+ * WordPress format, "Post to WordPress" opens {@link WordPressPublishDialog} for the selected
+ * Post (todos 62, 85); the range is a Post, the whole trip or an Ad Hoc range ({@link PostRangePicker}). The image source defaults to the richest one that has images (todo 47); Social
  * Media has no images at all, it is plain text only.
  */
 public final class ExportDiaryDialog {
@@ -96,21 +97,24 @@ public final class ExportDiaryDialog {
         this.addPending = addPending;
     }
 
-    /** Exports the whole trip. */
-    public void show(Trip trip) {
-        show(trip, null, null);
+    /** Opens on the Post containing {@code current} (the current entry's day), else on an Ad Hoc whole-trip range. */
+    public void show(Trip trip, LocalDate current) {
+        show(trip, null, null, current);
     }
 
-    /** Exports the entries {@code from}..{@code to}; null means the first/last entry. */
+    /** Opens on the Post containing {@code from}, else an Ad Hoc range {@code from}..{@code to}; null means the first/last entry. */
     public void show(Trip trip, LocalDate from, LocalDate to) {
-        EntryRangePicker range;
-        List<LocalDate> entryDates;
+        // A Post containing the day wins over the single-day range, as in the whole-trip case
+        show(trip, from, to, from);
+    }
+
+    private void show(Trip trip, LocalDate from, LocalDate to, LocalDate current) {
+        PostRangePicker range;
         try {
             List<DiaryEntry> entries = store.listEntryDates(trip.ref()).stream()
                     .map(d -> store.loadEntry(trip.ref(), d))
                     .toList();
-            range = new EntryRangePicker(trip, entries, from, to);
-            entryDates = entries.stream().map(DiaryEntry::date).toList();
+            range = new PostRangePicker(trip, entries, store.listPosts(trip.ref()), current, from, to);
         } catch (RuntimeException e) {
             statusSink.error("Export failed: " + e.getMessage());
             return;
@@ -151,13 +155,26 @@ public final class ExportDiaryDialog {
         formatCombo.setTooltip(new Tooltip("WordPress: block markup for the block editor's Code editor"
                 + " · Social Media: plain-text paragraphs, no facts, links or images"));
 
+        ButtonType sendType = new ButtonType("📡 Post to WordPress", ButtonBar.ButtonData.OTHER);
+        Tooltip sendTip = new Tooltip();
+        // Sending needs the WordPress format and a real Post (it carries the WordPress id)
+        Runnable[] updateSend = new Runnable[1];
         Runnable render = () -> {
+            if (updateSend[0] != null) updateSend[0].run();
+            if (range.isEmpty()) {
+                ta.setText("");
+                return;
+            }
+            Post post = range.selectedPost();
             try {
                 ta.setText(switch (formatCombo.getValue()) {
-                    case WORDPRESS -> wordPressExporter.export(trip, range.from(), range.to(),
-                            imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected());
+                    case WORDPRESS -> post != null
+                            ? wordPressExporter.exportPost(trip, post, imagesCombo.getValue() == Images.ATTACHMENTS,
+                                    favesCheck.isSelected())
+                            : wordPressExporter.export(trip, range.from(), range.to(),
+                                    imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected());
                     case SOCIAL_MEDIA -> socialMediaExporter.export(trip, range.from(), range.to());
-                    case MARKDOWN -> diaryExporter.exportTrip(trip, range.from(), range.to());
+                    case MARKDOWN -> diaryExporter.exportTrip(trip, range.from(), range.to(), post);
                 });
             } catch (RuntimeException e) {
                 statusSink.error("Export failed: " + e.getMessage());
@@ -188,9 +205,16 @@ public final class ExportDiaryDialog {
         dlg.getDialogPane().setContent(new VBox(8, range.node(), ta, imagesBox));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
+        range.onOpenPostOffice(() -> {
+            Post selected = range.selectedPost();
+            new PostOfficeDialog(store, statusSink, addPending).show(dlg.getDialogPane().getScene().getWindow(), trip,
+                    current != null ? current : range.from(), selected == null ? null : selected.slug());
+            reloadPosts(trip, range, current);
+            render.run();
+        });
+
         ButtonType copyType = new ButtonType("📋 Clipboard", ButtonBar.ButtonData.OTHER);
         ButtonType previewType = new ButtonType("👁 Browser Preview", ButtonBar.ButtonData.OTHER);
-        ButtonType sendType = new ButtonType("📡 Post to WordPress", ButtonBar.ButtonData.OTHER);
         ButtonType closeType = new ButtonType("❌ Close", ButtonBar.ButtonData.CANCEL_CLOSE);
         dlg.getDialogPane().getButtonTypes().setAll(copyType, previewType, sendType, closeType);
 
@@ -213,29 +237,37 @@ public final class ExportDiaryDialog {
                 case WORDPRESS -> openInBrowser(wordPressExporter.previewHtml(trip.name(), ta.getText()));
                 case SOCIAL_MEDIA -> openInBrowser(socialMediaExporter.previewHtml(trip.name(), ta.getText()));
                 case MARKDOWN -> previewInBrowser(trip, range.from(), range.to(),
-                        imagesCombo.getValue().source, favesCheck.isSelected());
+                        imagesCombo.getValue().source, favesCheck.isSelected(), range.selectedPost());
             }
             ev.consume();
         });
 
         Button sendBtn = (Button) dlg.getDialogPane().lookupButton(sendType);
-        sendBtn.disableProperty().bind(formatCombo.valueProperty().isNotEqualTo(Format.WORDPRESS));
+        sendBtn.setTooltip(sendTip);
+        updateSend[0] = () -> {
+            boolean wordPress = formatCombo.getValue() == Format.WORDPRESS;
+            boolean hasPost = range.selectedPost() != null;
+            sendBtn.setDisable(!wordPress || !hasPost || range.isEmpty());
+            sendTip.setText(wordPress && !hasPost
+                    ? "Create a post in the Post Office first, then select it here"
+                    : "Send the selected post to WordPress");
+        };
+        updateSend[0].run();
         sendBtn.addEventFilter(ActionEvent.ACTION, ev -> {
             ev.consume();
             AppSettings.WordPress wp = settingsStore.load().getWordPress();
-            List<LocalDate> dates = entryDates.stream()
-                    .filter(d -> (range.from() == null || !d.isBefore(range.from()))
-                            && (range.to() == null || !d.isAfter(range.to())))
-                    .toList();
+            Post post = range.selectedPost();
             if (wp.getAccessToken().isBlank()) {
                 Dialogs.showInfo("📡 Post to WordPress", "Not connected to WordPress",
                         new Label("Connect WordPress in ⚙ Edit Settings first."));
-            } else if (dates.isEmpty()) {
-                statusSink.error("No entries in the selected range");
+            } else if (post == null || range.isEmpty()) {
+                statusSink.error("No entries in the selected post");
             } else {
                 new WordPressPublishDialog(wordPressExporter, store, wp, browser, statusSink, addPending)
-                        .show(dlg.getDialogPane().getScene().getWindow(), trip, dates,
+                        .show(dlg.getDialogPane().getScene().getWindow(), trip, post,
                                 imagesCombo.getValue() == Images.ATTACHMENTS, favesCheck.isSelected());
+                // The send stored the WordPress id in the Post file
+                reloadPosts(trip, range, current);
             }
         });
 
@@ -243,9 +275,19 @@ public final class ExportDiaryDialog {
         dlg.showAndWait();
     }
 
-    private void previewInBrowser(Trip trip, LocalDate from, LocalDate to, ImpressionSource images, boolean favesOnly) {
+    /** Re-reads the Posts after the Post Office or a send changed them. */
+    private void reloadPosts(Trip trip, PostRangePicker range, LocalDate current) {
         try {
-            openInBrowser(diaryExporter.exportTripAsHtml(trip, from, to, images, favesOnly));
+            range.reload(store.listPosts(trip.ref()), current, range.from(), range.to());
+        } catch (RuntimeException e) {
+            statusSink.error("Could not reload Posts: " + e.getMessage());
+        }
+    }
+
+    private void previewInBrowser(Trip trip, LocalDate from, LocalDate to, ImpressionSource images, boolean favesOnly,
+                                  Post post) {
+        try {
+            openInBrowser(diaryExporter.exportTripAsHtml(trip, from, to, images, favesOnly, post));
         } catch (RuntimeException ex) {
             statusSink.error("Preview failed: " + ex.getMessage());
         }

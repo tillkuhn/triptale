@@ -45,6 +45,7 @@
                                 <MenuItem text="✎ New Trip…" onAction="#onNewTrip"/>
                                 <MenuItem text="📝 Edit Trip…" onAction="#onTripDetails"/>
                                 <SeparatorMenuItem/>
+                                <MenuItem text="📮 Post Office…" onAction="#onOpenPostOffice"/>
                                 <MenuItem text="⇧ Export Diary…" onAction="#onExportDiary"/>
                                 <MenuItem text="🗺 Sgt. Mapper…" onAction="#onMapAssistantTrip"/>
                             </items>

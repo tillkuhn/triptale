@@ -254,6 +254,14 @@
 .combo-box:focused {
     -fx-border-color: #4ec9b0;
 }
+/* Read-only values (e.g. the Diary Composer's range of a Post) must stay legible */
+.combo-box:disabled {
+    -fx-opacity: 0.85;
+}
+.combo-box:disabled .label,
+.combo-box:disabled .list-cell {
+    -fx-text-fill: #a9c4bf;
+}
 .combo-box .arrow-button {
     -fx-background-color: transparent;
 }

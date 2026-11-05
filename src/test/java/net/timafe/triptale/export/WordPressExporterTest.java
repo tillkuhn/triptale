@@ -300,7 +300,7 @@ class WordPressExporterTest {
     @Test
     void postStartsWithIntroWithoutRepeatingTheTitle() {
         store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).title("A → B").tales("one").build());
-        Post post = new Post("full", "Full Post", "This covers the trip", List.of(DAY1), null, null);
+        Post post = new Post("full", "Full Post", "This covers the trip", DAY1, DAY1, null, null);
 
         String out = exporter.exportPost(trip, post, false, false);
 

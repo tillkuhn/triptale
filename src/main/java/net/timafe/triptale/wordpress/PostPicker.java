@@ -5,7 +5,6 @@ import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.MarkdownStore;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -14,83 +13,43 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Choosing and labelling the Post a date range is sent to (todo 62, see
- * {@code docs/62_wordpress_publish_dialog.md}). The range always wins: whichever Post is picked
- * gets the range's days on send.
+ * Choosing and labelling a trip's Posts (todos 62, 85, see {@code docs/85_post_office_posts_as_first_class_chapters.md}).
  */
 public final class PostPicker {
 
     private PostPicker() {}
 
-    /**
-     * The Post to preselect for {@code dates}: one with exactly these days, else the one sharing
-     * the most days (ties: first in {@code posts}), else empty for "create new".
-     */
-    public static Optional<Post> preselect(List<Post> posts, List<LocalDate> dates) {
-        Set<LocalDate> range = new HashSet<>(dates);
-        Post best = null;
-        long bestOverlap = 0;
-        for (Post post : posts) {
-            if (new HashSet<>(post.entryDates()).equals(range) && !range.isEmpty()) return Optional.of(post);
-            long overlap = post.entryDates().stream().filter(range::contains).count();
-            if (overlap > bestOverlap) {
-                best = post;
-                bestOverlap = overlap;
-            }
-        }
-        return Optional.ofNullable(best);
+    /** The Post to preselect for {@code date}: the first whose range contains it, else empty. */
+    public static Optional<Post> preselect(List<Post> posts, LocalDate date) {
+        return posts.stream().filter(p -> p.contains(date)).findFirst();
     }
 
-    /** Dropdown label, e.g. {@code Day 1–2: Nice weekend · wp 1234432} or {@code … · not sent}. */
+    /** Dropdown label, e.g. {@code Day 1-2: Nice weekend} or {@code ... · wp 1234432}. */
     public static String label(Trip trip, Post post) {
-        String days = days(trip, post.entryDates());
         String title = post.title() == null || post.title().isBlank() ? post.slug() : post.title();
-        String wp = post.wpId() == null || post.wpId().isBlank() ? "not sent" : "wp " + post.wpId();
-        return (days.isEmpty() ? "" : days + ": ") + title + " · " + wp;
+        String days = days(trip, post.from(), post.to());
+        String wp = post.wpId() == null || post.wpId().isBlank() ? "" : " · wp " + post.wpId();
+        return (days.isEmpty() ? "" : days + ": ") + title + wp;
     }
 
-    /**
-     * {@code dates} as trip days with consecutive runs collapsed, e.g. {@code Day 1–2, 4};
-     * plain dates if the trip has no start date; empty for no dates.
-     */
-    public static String days(Trip trip, List<LocalDate> dates) {
-        if (dates.isEmpty()) return "";
-        List<LocalDate> sorted = dates.stream().sorted().toList();
-        List<String> runs = new ArrayList<>();
-        LocalDate runStart = sorted.getFirst();
-        LocalDate prev = runStart;
-        for (LocalDate d : sorted.subList(1, sorted.size())) {
-            if (!d.equals(prev.plusDays(1))) {
-                runs.add(run(trip, runStart, prev));
-                runStart = d;
-            }
-            prev = d;
-        }
-        runs.add(run(trip, runStart, prev));
-        return (trip.startDate() == null ? "" : "Day ") + String.join(", ", runs);
-    }
-
-    private static String run(Trip trip, LocalDate from, LocalDate to) {
+    /** {@code from}..{@code to} as trip days, e.g. {@code Day 1-2}; plain dates if the trip has no start date. */
+    public static String days(Trip trip, LocalDate from, LocalDate to) {
+        if (from == null || to == null) return "";
         String start = day(trip, from);
-        return from.equals(to) ? start : start + "–" + day(trip, to);
+        String range = from.equals(to) ? start : start + "–" + day(trip, to);
+        return (trip.startDate() == null ? "" : "Day ") + range;
     }
 
-    private static String day(Trip trip, LocalDate date) {
+    /** The trip day number of {@code date}, or its ISO date if the trip has no start date. */
+    public static String day(Trip trip, LocalDate date) {
         Long n = trip.dayNumber(date);
         return n == null ? date.toString() : String.valueOf(n);
     }
 
-    /** Title prefilled for a new Post, e.g. {@code Alps 2025: Day 1–2}. */
-    public static String defaultTitle(Trip trip, List<LocalDate> dates) {
-        String days = days(trip, dates);
+    /** Title prefilled for a new Post, e.g. {@code Alps 2025: Day 1-2}. */
+    public static String defaultTitle(Trip trip, LocalDate from, LocalDate to) {
+        String days = days(trip, from, to);
         return days.isEmpty() ? trip.name() : trip.name() + ": " + days;
-    }
-
-    /** The warning shown when sending would change {@code post}'s days, or empty if it wouldn't. */
-    public static Optional<String> daysChange(Trip trip, Post post, List<LocalDate> dates) {
-        if (new HashSet<>(post.entryDates()).equals(new HashSet<>(dates))) return Optional.empty();
-        String before = days(trip, post.entryDates());
-        return Optional.of("Days change: " + (before.isEmpty() ? "none" : before) + " → " + days(trip, dates));
     }
 
     /**

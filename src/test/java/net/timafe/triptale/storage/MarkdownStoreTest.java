@@ -629,11 +629,8 @@ class MarkdownStoreTest {
 
     @Test
     void saveAndLoadPostRoundTrip() {
-        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
-        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 2)).tales("b").build());
         net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
-                "weekend-trip", "Weekend Trip", "A nice weekend.",
-                List.of(LocalDate.of(2025, 7, 2), LocalDate.of(2025, 7, 1)));
+                "weekend-trip", "Weekend Trip", "A nice weekend.", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2));
 
         store.savePost(ALPS_2025, post);
         Optional<net.timafe.triptale.domain.Post> loaded = store.loadPost(ALPS_2025, "weekend-trip");
@@ -642,8 +639,8 @@ class MarkdownStoreTest {
         assertEquals("weekend-trip", loaded.get().slug());
         assertEquals("Weekend Trip", loaded.get().title());
         assertEquals("A nice weekend.", loaded.get().intro());
-        // Sorted ascending regardless of input order
-        assertEquals(List.of(LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2)), loaded.get().entryDates());
+        assertEquals(LocalDate.of(2025, 7, 1), loaded.get().from());
+        assertEquals(LocalDate.of(2025, 7, 2), loaded.get().to());
         assertNull(loaded.get().wpId());
         assertNull(loaded.get().wpModified());
     }
@@ -655,37 +652,41 @@ class MarkdownStoreTest {
     }
 
     @Test
-    void savePostWritesTypePostAndHasWikilinks() throws Exception {
-        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
+    void savePostWritesTypePostAndRangeKeysAlphabetically() throws Exception {
         net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
-                "weekend-trip", "Weekend Trip", "", List.of(LocalDate.of(2025, 7, 1)));
+                "weekend-trip", "Weekend Trip", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 3));
 
         store.savePost(ALPS_2025, post);
 
         String content = Files.readString(store.postFile(ALPS_2025, "weekend-trip"));
         assertTrue(content.contains("type: Post"), content);
-        assertTrue(content.contains("[[2025/alps-2025/2025-07-01-Tuesday]]"), content);
+        assertTrue(content.indexOf("end_date: ") < content.indexOf("start_date: "), content);
+        assertTrue(content.contains("start_date: \"2025-07-01\"") || content.contains("start_date: 2025-07-01"), content);
         assertTrue(content.contains("# Weekend Trip"), content);
     }
 
     @Test
-    void loadPostSkipsMissingEntryWithoutThrowing() throws Exception {
-        store.saveEntry(ALPS_2025, DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("a").build());
-        net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of("weekend-trip", "Weekend Trip", "",
-                List.of(LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 2)));
-        store.savePost(ALPS_2025, post);
-        // 2025-07-02 was never saved as an entry
+    void loadPostWithoutRangeIsSkipped() throws Exception {
+        Path file = store.postFile(ALPS_2025, "old");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "---\ntype: Post\nhas: []\n---\n\n# Old\n");
 
-        Optional<net.timafe.triptale.domain.Post> loaded = store.loadPost(ALPS_2025, "weekend-trip");
+        assertTrue(store.loadPost(ALPS_2025, "old").isEmpty());
+    }
 
-        assertTrue(loaded.isPresent());
-        assertEquals(List.of(LocalDate.of(2025, 7, 1)), loaded.get().entryDates());
+    @Test
+    void deletePostRemovesFileAndToleratesMissing() {
+        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("p", "P", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1)));
+        store.deletePost(ALPS_2025, "p");
+        store.deletePost(ALPS_2025, "p");
+
+        assertTrue(store.loadPost(ALPS_2025, "p").isEmpty());
     }
 
     @Test
     void saveAndLoadPostRoundTripsWordPressFields() {
         net.timafe.triptale.domain.Post post = net.timafe.triptale.domain.Post.of(
-                "weekend-trip", "Weekend Trip", "", List.of())
+                "weekend-trip", "Weekend Trip", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1))
                 .withWordPress("12345677", java.time.Instant.parse("2026-10-13T14:02:11Z"));
 
         store.savePost(ALPS_2025, post);
@@ -708,8 +709,8 @@ class MarkdownStoreTest {
 
     @Test
     void listPostsReturnsAllPostsSortedByTitle() {
-        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("b-post", "B Post", "", List.of()));
-        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("a-post", "A Post", "", List.of()));
+        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("b-post", "B Post", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1)));
+        store.savePost(ALPS_2025, net.timafe.triptale.domain.Post.of("a-post", "A Post", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1)));
 
         List<net.timafe.triptale.domain.Post> posts = store.listPosts(ALPS_2025);
 

@@ -237,7 +237,7 @@ public class MarkdownStore {
     }
 
     // -------------------------------------------------------------------------
-    // Posts (todo 60): <trip>/posts/<slug>.md, a Tolaria `type: Post` grouping of entry dates
+    // Posts (todo 60): <trip>/posts/<slug>.md, a Tolaria `type: Post` chapter with a start_date/end_date range
     // -------------------------------------------------------------------------
 
     public Path postsDir(TripRef ref) {
@@ -285,51 +285,40 @@ public class MarkdownStore {
                 title = (nl < 0 ? body.substring(2) : body.substring(2, nl)).trim();
                 intro = (nl < 0 ? "" : body.substring(nl + 1)).stripLeading();
             }
-            List<LocalDate> dates = resolveEntryDates(ref, slug, data.get("has"));
-            return Optional.of(new Post(slug, title, intro, dates, asString(data.get("wp_id")), asInstant(data.get("wp_modified"))));
+            LocalDate from;
+            LocalDate to;
+            try {
+                from = asDate(data.get("start_date"));
+                to = asDate(data.get("end_date"));
+            } catch (RuntimeException e) {
+                from = null;
+                to = null;
+            }
+            if (from == null || to == null) {
+                log.warn("Post '{}' has no start_date/end_date - skipping", slug);
+                return Optional.empty();
+            }
+            return Optional.of(new Post(slug, title, intro, from, to, asString(data.get("wp_id")), asInstant(data.get("wp_modified"))));
         } catch (IOException e) {
             throw new StorageException("Failed to load post: " + ref.path() + "/" + slug, e);
         }
     }
 
-    /** {@code has:} wikilinks resolved back to dates; a link to a missing entry file is skipped with a warning. */
-    private List<LocalDate> resolveEntryDates(TripRef ref, String slug, Object hasValue) {
-        List<LocalDate> dates = new ArrayList<>();
-        if (!(hasValue instanceof List<?> raw)) return dates;
-        for (Object o : raw) {
-            String target = stripWikilink(String.valueOf(o));
-            String stem = target.substring(target.lastIndexOf('/') + 1);
-            String dateStr = stem.length() < 10 ? stem : stem.substring(0, 10);
-            try {
-                LocalDate date = LocalDate.parse(dateStr);
-                if (entryExists(ref, date)) {
-                    dates.add(date);
-                } else {
-                    log.warn("Post '{}' references missing entry {} — skipping", slug, date);
-                }
-            } catch (RuntimeException e) {
-                log.warn("Post '{}' has a malformed has: entry '{}' — skipping", slug, o);
-            }
+    /** Removes a Post's file; a missing file is fine. */
+    public void deletePost(TripRef ref, String slug) {
+        try {
+            Files.deleteIfExists(postFile(ref, slug));
+        } catch (IOException e) {
+            throw new StorageException("Failed to delete post: " + ref.path() + "/" + slug, e);
         }
-        dates.sort(Comparator.naturalOrder());
-        return dates;
-    }
-
-    private static String stripWikilink(String raw) {
-        String s = raw.strip();
-        if (s.startsWith("[[") && s.endsWith("]]")) s = s.substring(2, s.length() - 2);
-        return s;
     }
 
     public void savePost(TripRef ref, Post post) {
         ensureDir(postsDir(ref));
         // Keys are inserted in alphabetical order so the serialized YAML is stable and diffs stay minimal.
         Map<String, Object> fm = new LinkedHashMap<>();
-        List<String> has = post.entryDates().stream()
-                .sorted(Comparator.naturalOrder())
-                .map(d -> "[[" + ref.path() + "/" + entryStem(d) + "]]")
-                .toList();
-        fm.put("has", has);
+        fm.put("end_date", post.to().toString());
+        fm.put("start_date", post.from().toString());
         fm.put("type", POST_TYPE);
         if (post.wpId() != null) fm.put("wp_id", post.wpId());
         if (post.wpModified() != null) fm.put("wp_modified", post.wpModified().toString());
@@ -341,11 +330,6 @@ public class MarkdownStore {
         } catch (IOException e) {
             throw new StorageException("Failed to save post: " + ref.path() + "/" + post.slug(), e);
         }
-    }
-
-    /** The entry file stem (no extension), e.g. {@code 2025-09-15-Monday}, as used in a Post's {@code has:} wikilinks. */
-    private static String entryStem(LocalDate date) {
-        return date.format(FILE_DATE) + "-" + date.format(FILE_WEEKDAY);
     }
 
     /** Slug for a new post's title; a post is addressed within its trip by this slug alone. */

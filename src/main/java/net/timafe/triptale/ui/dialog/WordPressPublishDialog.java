@@ -7,18 +7,12 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
-import javafx.util.StringConverter;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
@@ -32,9 +26,6 @@ import net.timafe.triptale.wordpress.PostPicker;
 import net.timafe.triptale.wordpress.WordPressApiClient;
 import net.timafe.triptale.wordpress.WordPressException;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -42,9 +33,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Sends the Diary Composer's date range to WordPress (todo 62, see
- * {@code docs/62_wordpress_publish_dialog.md}): pick one of the trip's Posts or create a new one,
- * edit title and intro, send. The range wins over the Post's stored days. Follows todo 60's send
+ * Sends a Post (todos 62, 85) to WordPress: the Post's title, intro and range are edited in the
+ * Post Office, this dialog only shows what will be sent and sends it. Follows todo 60's send
  * rules (drafts only, conflict check before an update); the network calls run on worker threads,
  * the Post file is written only after a successful send. Stays open and shows the result.
  */
@@ -61,15 +51,11 @@ public final class WordPressPublishDialog {
     private final WordPressApiClient api = new WordPressApiClient();
 
     private Trip trip;
-    private List<LocalDate> dates;
+    private Post post;
     private boolean images;
     private boolean favesOnly;
-    private final List<Post> posts = new ArrayList<>();
 
-    private final ComboBox<Post> postCombo = new ComboBox<>();
-    private final TextField titleField = new TextField();
-    private final TextArea introArea = new TextArea();
-    private final Label daysLabel = new Label();
+    private final Label postLabel = new Label();
     private final Label resultLabel = new Label();
     private final Hyperlink openLink = new Hyperlink("Open in WordPress");
     private Button sendBtn;
@@ -86,48 +72,30 @@ public final class WordPressPublishDialog {
         this.addPending = addPending;
     }
 
-    /** {@code dates} are the entry days of the Composer's range, {@code images}/{@code favesOnly} its image choice. */
-    public void show(Window owner, Trip trip, List<LocalDate> dates, boolean images, boolean favesOnly) {
+    /** {@code post} is the saved Post to send, {@code images}/{@code favesOnly} the Composer's image choice. */
+    public void show(Window owner, Trip trip, Post post, boolean images, boolean favesOnly) {
         this.trip = trip;
-        this.dates = List.copyOf(dates);
+        this.post = post;
         this.images = images;
         this.favesOnly = favesOnly;
-        try {
-            posts.addAll(store.listPosts(trip.ref()));
-        } catch (RuntimeException e) {
-            statusSink.error("Could not load Posts: " + e.getMessage());
-            return;
-        }
 
-        postCombo.setConverter(new StringConverter<>() {
-            @Override public String toString(Post p) { return p == null ? "-- create new post --" : PostPicker.label(trip, p); }
-            @Override public Post fromString(String s) { return null; }
-        });
-        postCombo.setMaxWidth(Double.MAX_VALUE);
-        postCombo.valueProperty().addListener((obs, old, p) -> fill(p));
-        introArea.setWrapText(true);
-        introArea.setPrefRowCount(4);
-        introArea.setPromptText("Optional lead paragraph (Markdown)");
-        titleField.setPrefColumnCount(40);
+        postLabel.setText(PostPicker.label(trip, post));
+        postLabel.setWrapText(true);
         resultLabel.setWrapText(true);
         openLink.setVisible(false);
-
-        GridPane grid = Dialogs.formGrid();
-        grid.addRow(0, new Label("Post:"), postCombo);
-        grid.addRow(1, new Label("Days:"), daysLabel);
-        grid.addRow(2, new Label("Title:"), titleField);
-        grid.addRow(3, new Label("Intro:"), introArea);
-        GridPane.setHgrow(postCombo, Priority.ALWAYS);
+        Label hint = new Label(post.wpId() == null || post.wpId().isBlank()
+                ? "A new draft will be created on WordPress."
+                : "The existing WordPress post " + post.wpId() + " will be updated.");
+        hint.getStyleClass().add("sync-status-muted");
         HBox result = new HBox(8, resultLabel, openLink);
         result.setAlignment(Pos.CENTER_LEFT);
 
         dlg = new Dialog<>();
         dlg.initOwner(owner);
         dlg.setTitle("📡 Send to WordPress");
-        dlg.setHeaderText(trip.name() + " · " + PostPicker.days(trip, this.dates)
-                + " · " + this.dates.size() + (this.dates.size() == 1 ? " entry" : " entries"));
+        dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
-        dlg.getDialogPane().setContent(new VBox(8, grid, result));
+        dlg.getDialogPane().setContent(new VBox(8, postLabel, hint, result));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         ButtonType sendType = new ButtonType("📡 Send to WordPress", ButtonBar.ButtonData.OTHER);
@@ -139,40 +107,12 @@ public final class WordPressPublishDialog {
             ev.consume();
             send();
         });
-
-        refreshPosts(PostPicker.preselect(posts, this.dates).orElse(null));
         dlg.showAndWait();
     }
 
-    private void refreshPosts(Post select) {
-        List<Post> items = new ArrayList<>();
-        items.add(null);
-        items.addAll(posts);
-        postCombo.getItems().setAll(items);
-        postCombo.setValue(select);
-        fill(select);
-    }
-
-    /** Prefills title/intro and the days line for {@code post} (null = create new). */
-    private void fill(Post post) {
-        titleField.setText(post == null ? PostPicker.defaultTitle(trip, dates) : post.title());
-        introArea.setText(post == null || post.intro() == null ? "" : post.intro().strip());
-        String days = PostPicker.days(trip, dates);
-        daysLabel.setText(post == null ? days
-                : PostPicker.daysChange(trip, post, dates).map(c -> "⚠ " + c).orElse(days));
-    }
-
     private void send() {
-        String title = titleField.getText() == null ? "" : titleField.getText().strip();
-        if (title.isEmpty()) {
-            result("❌ A title is required", false);
-            return;
-        }
-        Post selected = postCombo.getValue();
-        String slug = selected != null ? selected.slug()
-                : PostPicker.uniqueSlug(title, posts.stream().map(Post::slug).toList());
-        Post draft = new Post(slug, title, introArea.getText().strip(), dates,
-                selected == null ? null : selected.wpId(), selected == null ? null : selected.wpModified());
+        Post draft = post;
+        String title = draft.title();
         String markup;
         try {
             markup = exporter.exportPost(trip, draft, images, favesOnly);
@@ -183,7 +123,7 @@ public final class WordPressPublishDialog {
         busy(true);
         boolean sent = draft.wpId() != null && !draft.wpId().isBlank();
         if (!sent) {
-            run(() -> api.createDraft(wp, title, markup), r -> finish(selected, draft, r, true));
+            run(() -> api.createDraft(wp, title, markup), r -> finish(draft, r, true));
             return;
         }
         run(() -> fetch(draft.wpId()), existing -> {
@@ -193,8 +133,8 @@ public final class WordPressPublishDialog {
                     busy(false);
                     result("Cancelled, nothing sent", null);
                 }
-                case CREATE -> run(() -> api.createDraft(wp, title, markup), r -> finish(selected, draft, r, true));
-                case UPDATE -> run(() -> api.updatePost(wp, draft.wpId(), title, markup), r -> finish(selected, draft, r, false));
+                case CREATE -> run(() -> api.createDraft(wp, title, markup), r -> finish(draft, r, true));
+                case UPDATE -> run(() -> api.updatePost(wp, draft.wpId(), title, markup), r -> finish(draft, r, false));
             }
         });
     }
@@ -238,7 +178,7 @@ public final class WordPressPublishDialog {
     }
 
     /** Saves the Post with the returned WordPress fields; WordPress already has it, so report a failed save loudly. */
-    private void finish(Post selected, Post draft, WordPressApiClient.PostResult r, boolean created) {
+    private void finish(Post draft, WordPressApiClient.PostResult r, boolean created) {
         busy(false);
         Post saved = draft.withWordPress(r.id(), r.modified());
         String what = (created ? "Created draft " : "Updated ") + r.id();
@@ -248,11 +188,9 @@ public final class WordPressPublishDialog {
             result("⚠ " + what + " on WordPress, but saving the Post file failed: " + UiText.describe(e), false);
             return;
         }
-        addPending.accept(trip.ref().path() + "/posts/" + saved.slug(), selected == null ? "Create" : "Update");
-        if (selected != null) posts.remove(selected);
-        posts.add(saved);
-        posts.sort(Comparator.comparing(Post::title, Comparator.nullsLast(Comparator.naturalOrder())));
-        refreshPosts(saved);
+        addPending.accept(trip.ref().path() + "/posts/" + saved.slug(), "Update");
+        post = saved;
+        postLabel.setText(PostPicker.label(trip, saved));
         result("✅ " + what, true);
         String editor = PostPicker.editorUrl(wp.getSite(), r.id());
         openLink.setOnAction(e -> browser.open(editor));
@@ -277,7 +215,6 @@ public final class WordPressPublishDialog {
 
     private void busy(boolean busy) {
         sendBtn.setDisable(busy);
-        postCombo.setDisable(busy);
         if (busy) {
             openLink.setVisible(false);
             result("Sending…", null);

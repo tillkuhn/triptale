@@ -5,13 +5,13 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * A WordPress-bound grouping of a trip's days (todo 60): {@code title}/{@code intro} become the
- * post's heading and lead paragraph on export, {@code entryDates} the days it covers (sorted
- * ascending; a {@code has:} wikilink to a missing entry file is dropped by {@code MarkdownStore}
- * with a warning, never surfaced here). {@code wpId}/{@code wpModified} are set only after a
- * successful send to WordPress; both null means "never sent".
+ * A chapter of a trip (todos 60, 85): a date range {@code from}..{@code to} (inclusive, plain
+ * dates that need not match entry files; days without an entry are skipped on export) with a
+ * {@code title} and {@code intro} that head the chapter in every export. It need not go to
+ * WordPress; {@code wpId}/{@code wpModified} are set only after a successful send, both null
+ * means "never sent".
  *
- * <p>Lives at {@code <trip>/posts/<slug>.md} — a Post is scoped to one trip, identified within it
+ * <p>Lives at {@code <trip>/posts/<slug>.md} - a Post is scoped to one trip, identified within it
  * by {@code slug} (derived once from {@code title} via {@code Slugs.toSlug()}, immutable like a
  * trip slug: renaming the title does not rename the file).
  */
@@ -19,21 +19,28 @@ public record Post(
         String slug,
         String title,
         String intro,
-        List<LocalDate> entryDates,
+        LocalDate from,
+        LocalDate to,
         String wpId,
         Instant wpModified
 ) {
-    public Post {
-        entryDates = entryDates == null ? List.of() : List.copyOf(entryDates);
-    }
-
     /** A new, never-sent Post. */
-    public static Post of(String slug, String title, String intro, List<LocalDate> entryDates) {
-        return new Post(slug, title, intro, entryDates, null, null);
+    public static Post of(String slug, String title, String intro, LocalDate from, LocalDate to) {
+        return new Post(slug, title, intro, from, to, null, null);
     }
 
     /** This Post with {@code wpId}/{@code wpModified} set after a successful send. */
     public Post withWordPress(String wpId, Instant wpModified) {
-        return new Post(slug, title, intro, entryDates, wpId, wpModified);
+        return new Post(slug, title, intro, from, to, wpId, wpModified);
+    }
+
+    /** True if {@code date} lies within the range (inclusive). */
+    public boolean contains(LocalDate date) {
+        return date != null && from != null && to != null && !date.isBefore(from) && !date.isAfter(to);
+    }
+
+    /** The days of {@code entryDates} that fall into this range, in the given order. */
+    public List<LocalDate> datesIn(List<LocalDate> entryDates) {
+        return entryDates.stream().filter(this::contains).toList();
     }
 }
