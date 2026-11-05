@@ -727,3 +727,18 @@
 .table-view .placeholder .label {
     -fx-text-fill: #5f7f7a;
 }
+
+/* Impression Curator: Unpack is a deliberate, muted action next to the Put button. */
+.unpack-button {
+    -fx-text-fill: #d9a066;
+}
+.unpack-button:disabled {
+    -fx-text-fill: derive(-fx-text-base-color, -40%);
+}
+
+/* Backpack emoji on a light chip, so the red glyph stands out on dark buttons and labels. */
+.backpack-chip {
+    -fx-background-color: #e8efe9;
+    -fx-background-radius: 8;
+    -fx-padding: 0 3 0 3;
+}

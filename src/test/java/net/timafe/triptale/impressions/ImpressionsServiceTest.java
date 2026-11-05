@@ -155,4 +155,37 @@ class ImpressionsServiceTest {
 
         assertTrue(service.alreadyImported(trip, DAY, List.of(img)).isEmpty());
     }
+
+    @Test
+    void backpackCopy_matchesNameAndSize_andUnpackRemovesIt() throws IOException {
+        Path src = Files.writeString(tempDir.resolve("a.jpg"), "12345");
+        assertTrue(service.backpackCopy(trip, DAY, src).isEmpty());
+
+        Path copy = service.importToAttachments(trip, DAY, List.of(src)).getFirst();
+        assertEquals(Optional.of(copy), service.backpackCopy(trip, DAY, src));
+
+        service.unpack(trip, DAY, copy);
+        assertFalse(Files.exists(copy));
+        assertTrue(service.backpackCopy(trip, DAY, src).isEmpty());
+    }
+
+    @Test
+    void unpack_refusesFilesOutsideTheDayFolder() throws IOException {
+        Path outside = Files.writeString(tempDir.resolve("b.jpg"), "x");
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.unpack(trip, DAY, outside));
+        assertTrue(Files.exists(outside));
+    }
+
+    @Test
+    void hasMasterCopy_needsSameNameAndSizeElsewhere() throws IOException {
+        Path src = Files.writeString(tempDir.resolve("c.jpg"), "12345");
+        Path copy = service.importToAttachments(trip, DAY, List.of(src)).getFirst();
+        assertTrue(service.hasMasterCopy(copy, List.of(src)));
+        assertFalse(service.hasMasterCopy(copy, List.of(copy)));
+        assertFalse(service.hasMasterCopy(copy, List.of()));
+        Path other = Files.createDirectories(tempDir.resolve("o")).resolve("c.jpg");
+        Files.writeString(other, "1234");
+        assertFalse(service.hasMasterCopy(copy, List.of(other)));
+    }
 }

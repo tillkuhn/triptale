@@ -54,6 +54,8 @@ public class ExifReader {
     private static final String KEY_LONGITUDE = "longitude";
     private static final String KEY_DIMENSIONS = "dimensions";
     private static final String KEY_CAPTURE_TIME = "captureTime";
+    private static final String KEY_VERSION = "version";
+    private static final String KEY_ORIENTATION = "orientation";
 
     private final MarkdownStore store;
 
@@ -77,7 +79,8 @@ public class ExifReader {
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(new File(path.toUri()));
             return new ExifInfo(cameraModel(metadata), aperture(metadata), exposureTime(metadata), iso(metadata),
-                    latitude(metadata), longitude(metadata), dimensions(metadata), captureTime(metadata));
+                    latitude(metadata), longitude(metadata), dimensions(metadata), captureTime(metadata),
+                    orientation(metadata));
         } catch (ImageProcessingException | IOException | RuntimeException e) {
             log.debug("Could not read EXIF metadata from {}: {}", path, e.getMessage());
             return ExifInfo.empty();
@@ -107,6 +110,8 @@ public class ExifReader {
             }
             long cachedSize = Long.parseLong(props.getProperty(KEY_SIZE, "-1"));
             if (cachedSize != currentSize) return null;
+            // Entries written before the orientation was cached carry no version: re-read them.
+            if (!"2".equals(props.getProperty(KEY_VERSION))) return null;
             return new ExifInfo(
                     props.getProperty(KEY_CAMERA_MODEL),
                     props.getProperty(KEY_APERTURE),
@@ -115,7 +120,8 @@ public class ExifReader {
                     parseDouble(props.getProperty(KEY_LATITUDE)),
                     parseDouble(props.getProperty(KEY_LONGITUDE)),
                     props.getProperty(KEY_DIMENSIONS),
-                    parseCaptureTime(props.getProperty(KEY_CAPTURE_TIME)));
+                    parseCaptureTime(props.getProperty(KEY_CAPTURE_TIME)),
+                    props.containsKey(KEY_ORIENTATION) ? Integer.valueOf(props.getProperty(KEY_ORIENTATION)) : null);
         } catch (IOException | NumberFormatException e) {
             log.debug("Could not read EXIF cache entry {}: {}", cacheFile, e.getMessage());
             return null;
@@ -127,6 +133,7 @@ public class ExifReader {
             long size = Files.size(imagePath);
             Properties props = new Properties();
             props.setProperty(KEY_SIZE, Long.toString(size));
+            props.setProperty(KEY_VERSION, "2");
             putIfPresent(props, KEY_CAMERA_MODEL, info.cameraModel());
             putIfPresent(props, KEY_APERTURE, info.aperture());
             putIfPresent(props, KEY_EXPOSURE_TIME, info.exposureTime());
@@ -135,6 +142,7 @@ public class ExifReader {
             if (info.longitude() != null) props.setProperty(KEY_LONGITUDE, Double.toString(info.longitude()));
             putIfPresent(props, KEY_DIMENSIONS, info.dimensions());
             if (info.captureTime() != null) props.setProperty(KEY_CAPTURE_TIME, info.captureTime().toString());
+            if (info.orientation() != null) props.setProperty(KEY_ORIENTATION, Integer.toString(info.orientation()));
             Files.createDirectories(cacheFile.getParent());
             try (var out = Files.newOutputStream(cacheFile)) {
                 props.store(out, null);
@@ -217,6 +225,17 @@ public class ExifReader {
         if (dir == null) return null;
         String iso = trimToNull(dir.getDescription(ExifSubIFDDirectory.TAG_ISO_EQUIVALENT));
         return iso == null ? null : "ISO " + iso;
+    }
+
+    /** EXIF orientation tag (1-8), or null when absent. */
+    private static Integer orientation(Metadata metadata) {
+        ExifIFD0Directory dir = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        if (dir == null || !dir.containsTag(ExifIFD0Directory.TAG_ORIENTATION)) return null;
+        try {
+            return dir.getInt(ExifIFD0Directory.TAG_ORIENTATION);
+        } catch (MetadataException e) {
+            return null;
+        }
     }
 
     /**

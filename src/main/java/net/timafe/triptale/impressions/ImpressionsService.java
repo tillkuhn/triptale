@@ -48,6 +48,11 @@ public class ImpressionsService {
         return !settingsStore.load().getImpressionsFilePattern().isBlank();
     }
 
+    /** The configured number of gallery columns (at least 1). */
+    public int gridColumns() {
+        return Math.max(1, settingsStore.load().getImpressionsGridColumns());
+    }
+
     /** The folder the source reads from for that day, if it exists. */
     public Optional<Path> directory(ImpressionSource source, Trip trip, LocalDate date) {
         return switch (source) {
@@ -106,6 +111,55 @@ public class ImpressionsService {
             }
         }
         return packed;
+    }
+
+    /**
+     * The day's backpack copy of {@code image} (same name and size), or empty if it isn't packed.
+     * For an image that already lives in the backpack, that is the image itself.
+     */
+    public Optional<Path> backpackCopy(Trip trip, LocalDate date, Path image) {
+        if (trip == null || date == null || image == null) return Optional.empty();
+        Path dir = attachmentsDir.dayDir(trip.ref(), date);
+        Path copy = dir.resolve(image.getFileName());
+        try {
+            return Files.isRegularFile(copy) && Files.size(copy) == Files.size(image)
+                    ? Optional.of(copy) : Optional.empty();
+        } catch (IOException e) {
+            log.debug("Could not compare {} with {}: {}", image, copy, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * True if a file with the same name and size as the backpack file {@code packed} exists in
+     * one of {@code others} (typically the photo library's and a picked folder's images for the
+     * day) — i.e. a copy outside the backpack, so removing the backpack copy loses nothing.
+     */
+    public boolean hasMasterCopy(Path packed, List<Path> others) {
+        try {
+            long size = Files.size(packed);
+            for (Path other : others) {
+                if (other.equals(packed) || !other.getFileName().equals(packed.getFileName())) continue;
+                if (Files.isRegularFile(other) && Files.size(other) == size) return true;
+            }
+        } catch (IOException e) {
+            log.debug("Could not check for a master copy of {}: {}", packed, e.getMessage());
+        }
+        return false;
+    }
+
+    /** Removes an image from the day's backpack folder (permanent delete; refuses other locations). */
+    public void unpack(Trip trip, LocalDate date, Path packed) {
+        Path dir = attachmentsDir.dayDir(trip.ref(), date).toAbsolutePath().normalize();
+        Path file = packed.toAbsolutePath().normalize();
+        if (!file.startsWith(dir) || file.equals(dir)) {
+            throw new IllegalArgumentException("Not in this day's backpack: " + packed);
+        }
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not remove " + packed.getFileName() + ": " + e.getMessage(), e);
+        }
     }
 
     private static List<Path> listFiles(Path dir) {

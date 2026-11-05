@@ -2,7 +2,6 @@
 
 ## Inbox
 
-* Impression Curator: if > 0 selected items. show warning before close (otherwise likely to forget to copy selected images
 * New Activities: Swim, Shave
 * New Emojis: Music
 * Checkout Liste für Weblinks (title for separate Paragraph), deutsch: "Checkout Liste"

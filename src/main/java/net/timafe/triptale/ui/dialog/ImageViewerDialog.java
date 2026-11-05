@@ -10,6 +10,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
@@ -20,17 +21,22 @@ import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.impressions.ImageFilter;
+import net.timafe.triptale.impressions.GalleryLayout;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
 import net.timafe.triptale.storage.ExifInfo;
@@ -50,7 +56,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -62,8 +67,8 @@ import java.util.Set;
  * its menu sets the photo's location as the tale's start or end point (through {@link RoutePoints},
  * so the main window applies it as an unsaved form change).
  * Below the image, the user picks the source (trip attachments, local photo library, or an
- * ad-hoc folder), can narrow it to faves, select images and import them as attachments of the
- * day (todo 47).
+ * ad-hoc folder), can narrow it to faves, put the shown image into the day's backpack or unpack
+ * it again (todo 47), and preview how the day's gallery would be laid out in the exports (todo 41).
  * <p>
  * The layout is deliberately pinned to fixed pixel sizes (640x480 image box, fixed-width meta
  * labels, fixed-height info header). With {@code preserveRatio=true} an {@link ImageView}'s own
@@ -139,7 +144,6 @@ public final class ImageViewerDialog {
         private final Runnable onImported;
         private final RoutePoints route;
         private final ImageFilter faveFilter = impressions.faveFilter();
-        private final Set<Path> selected = new LinkedHashSet<>();
         /** Images of the source already in the day's backpack (same name and size). */
         private Set<Path> packed = Set.of();
 
@@ -161,16 +165,17 @@ public final class ImageViewerDialog {
         private final Button prevBtn = new Button("◀");
         private final Button nextBtn = new Button("▶");
         private final Button lastBtn = new Button("⏭");
-        private final CheckBox selectCheck = new CheckBox("Select");
-        private final Label packedBadge = new Label("🎒 In backpack");
+        private final Button putBtn = new Button("＋ Put into");
+        private final Button unpackBtn = new Button("－ Unpack from");
+        private final Pane galleryPane = new Pane();
+        private final Button galleryBtn = new Button("▦ Gallery Layout");
+        private boolean galleryShown;
         private final ComboBox<SourceChoice> sourceCombo = new ComboBox<>();
         private final Label dirLabel = new Label();
         private final Button copySourceDirBtn = new Button("📋");
         private final Button pickBtn = new Button("📂");
         private final CheckBox favesCheck = new CheckBox();
         private final Label packedSummary = new Label();
-        private final Button selectAllBtn = new Button();
-        private final Button importBtn = new Button();
         private final MenuItem setStartItem = new MenuItem();
         private final MenuItem setEndItem = new MenuItem();
         private final SplitMenuButton mapButton = new SplitMenuButton(setStartItem, setEndItem);
@@ -202,7 +207,11 @@ public final class ImageViewerDialog {
             // Wrapping the ImageView in a fixed-size, centered box keeps the layout footprint
             // constant at 640x480 regardless of the photo's aspect ratio, so nothing above or
             // below it ever moves between images.
-            StackPane imageBox = new StackPane(imageView, placeholder);
+            galleryPane.setMinSize(IMAGE_W, IMAGE_H);
+            galleryPane.setPrefSize(IMAGE_W, IMAGE_H);
+            galleryPane.setMaxSize(IMAGE_W, IMAGE_H);
+            galleryPane.setVisible(false);
+            StackPane imageBox = new StackPane(imageView, placeholder, galleryPane);
             imageBox.setAlignment(Pos.CENTER);
             imageBox.setMinSize(IMAGE_W, IMAGE_H);
             imageBox.setPrefSize(IMAGE_W, IMAGE_H);
@@ -247,13 +256,26 @@ public final class ImageViewerDialog {
             prevBtn.setOnAction(ev -> go(index - 1));
             nextBtn.setOnAction(ev -> go(index + 1));
             lastBtn.setOnAction(ev -> go(visible.size() - 1));
-            selectCheck.setOnAction(ev -> toggleSelected());
-
-            // Stays managed when hidden, so the nav row doesn't shift between images.
-            // Tooltip text is set per-source in updatePacked().
-            packedBadge.setVisible(false);
-            HBox nav = new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn, selectCheck, packedBadge);
-            nav.setAlignment(Pos.CENTER);
+            // Fixed width (room for "99 / 99"), so the buttons don't shift when the digits change.
+            counter.setMinWidth(56);
+            counter.setPrefWidth(56);
+            counter.setMaxWidth(56);
+            counter.setAlignment(Pos.CENTER);
+            putBtn.setOnAction(ev -> putIntoBackpack());
+            unpackBtn.setOnAction(ev -> unpackFromBackpack());
+            // Two buttons at fixed places instead of one toggle: a click at the same spot never
+            // adds or deletes depending on state. Unpack is muted and set apart from the nav.
+            putBtn.setGraphic(backpackChip());
+            putBtn.setContentDisplay(ContentDisplay.RIGHT);
+            unpackBtn.setGraphic(backpackChip());
+            unpackBtn.setContentDisplay(ContentDisplay.RIGHT);
+            putBtn.setMinWidth(Region.USE_PREF_SIZE);
+            unpackBtn.setMinWidth(Region.USE_PREF_SIZE);
+            unpackBtn.getStyleClass().add("unpack-button");
+            Region navGap = new Region();
+            navGap.setMinWidth(16);
+            HBox nav = fixedWidth(new HBox(8, firstBtn, prevBtn, counter, nextBtn, lastBtn, navGap, putBtn, unpackBtn));
+            nav.setAlignment(Pos.CENTER_LEFT);
             nav.setPadding(new Insets(0, 0, 4, 0));
 
             sourceCombo.getItems().setAll(SourceChoice.values());
@@ -282,15 +304,15 @@ public final class ImageViewerDialog {
             sourceRow.setAlignment(Pos.CENTER_LEFT);
 
             favesCheck.setOnAction(ev -> applyFaves());
-            selectAllBtn.setOnAction(ev -> toggleSelectAll());
-            importBtn.setOnAction(ev -> importSelected());
+            galleryBtn.setOnAction(ev -> toggleGallery());
+            galleryBtn.setTooltip(new Tooltip("Preview how this day's backpack images are laid out in the gallery of the exports"));
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, selectAllBtn, importBtn));
+            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, galleryBtn));
             actionRow.setAlignment(Pos.CENTER_LEFT);
 
             VBox content = fixedWidth(new VBox(6, topInfo, imageBox, nav, new Separator(), sourceRow, actionRow));
-            content.setAlignment(Pos.CENTER);
+            content.setAlignment(Pos.CENTER_LEFT);
 
             dlg.setResizable(true);
             dlg.getDialogPane().getStyleClass().add("image-viewer-dialog");
@@ -317,9 +339,11 @@ public final class ImageViewerDialog {
                 } else if (ev.getCode() == KeyCode.RIGHT) {
                     go(index + 1);
                     ev.consume();
-                } else if (ev.getCode() == KeyCode.SPACE && !visible.isEmpty()
-                        && !(source instanceof ImpressionSource.TripAttachments)) {
-                    toggleSelected();
+                } else if (ev.getCode() == KeyCode.SPACE && !putBtn.isDisabled()) {
+                    putIntoBackpack();
+                    ev.consume();
+                } else if (ev.getCode() == KeyCode.BACK_SPACE && ev.isShortcutDown() && !unpackBtn.isDisabled()) {
+                    unpackFromBackpack();
                     ev.consume();
                 }
             });
@@ -334,15 +358,20 @@ public final class ImageViewerDialog {
             dlg.showAndWait();
         }
 
-        /** Attachments if the day has any, else the photo library if it has any, else Pick Folder. */
+        /**
+         * The photo library while it still has images that aren't in the backpack yet (it often
+         * grows), else the backpack if it has images, else the library if it has any, else Pick
+         * Folder. Counts follow the base filter, so GPX, PDF etc. in the backpack don't count.
+         */
         private SourceChoice defaultChoice() {
+            List<Path> library = impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date);
+            if (impressions.alreadyImported(trip, date, library).size() < library.size()) {
+                return SourceChoice.PHOTO_LIB;
+            }
             if (!impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date).isEmpty()) {
                 return SourceChoice.ATTACHMENTS;
             }
-            if (!impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date).isEmpty()) {
-                return SourceChoice.PHOTO_LIB;
-            }
-            return SourceChoice.FOLDER;
+            return library.isEmpty() ? SourceChoice.FOLDER : SourceChoice.PHOTO_LIB;
         }
 
         private void selectSource(SourceChoice choice) {
@@ -370,11 +399,10 @@ public final class ImageViewerDialog {
             loadSource(new ImpressionSource.Folder(pickedFolder));
         }
 
-        /** Switches to {@code newSource} (null = nothing to show yet); clears the selection. */
+        /** Switches to {@code newSource} (null = nothing to show yet). */
         private void loadSource(ImpressionSource newSource) {
             source = newSource;
             all = source == null ? List.of() : impressions.images(source, trip, date);
-            selected.clear();
             updatePacked();
             index = 0;
             dirLabel.setText(describeDirectory());
@@ -404,13 +432,12 @@ public final class ImageViewerDialog {
         private void updatePacked() {
             boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
             packed = source == null ? Set.of() : fromAttachments ? Set.copyOf(all) : impressions.alreadyImported(trip, date, all);
-            packedSummary.setText(packed.isEmpty() ? "" : "🎒 " + packed.size() + " packed");
+            packedSummary.setText(packed.isEmpty() ? "" : packed.size() + " packed");
+            packedSummary.setGraphic(packed.isEmpty() ? null : backpackChip());
+            packedSummary.setContentDisplay(ContentDisplay.LEFT);
             packedSummary.setTooltip(packed.isEmpty() ? null : new Tooltip(fromAttachments
                     ? "This is the backpack — everything here is already imported"
                     : "Already in this day's backpack (same name and size)"));
-            packedBadge.setTooltip(new Tooltip(fromAttachments
-                    ? "This is the backpack — everything here is already imported"
-                    : "Already in this day's backpack (same name and size) — importing it again overwrites the copy"));
         }
 
         private void updateFavesCheck() {
@@ -430,7 +457,7 @@ public final class ImageViewerDialog {
             if (!usable) favesCheck.setSelected(false);
         }
 
-        /** Recomputes the visible set from the faves checkbox; the selection is kept. */
+        /** Recomputes the visible set from the faves checkbox. */
         private void applyFaves() {
             Path current = visible.isEmpty() ? null : visible.get(index);
             visible = favesCheck.isSelected() ? faveFilter.apply(all) : all;
@@ -443,33 +470,6 @@ public final class ImageViewerDialog {
             if (visible.isEmpty()) return;
             index = Math.max(0, Math.min(visible.size() - 1, newIndex));
             refresh();
-        }
-
-        private void toggleSelected() {
-            if (visible.isEmpty() || source instanceof ImpressionSource.TripAttachments) return;
-            Path p = visible.get(index);
-            if (!selected.remove(p)) selected.add(p);
-            refresh();
-        }
-
-        /** Select All skips images that are already in the backpack; Unselect All clears them too. */
-        private void toggleSelectAll() {
-            if (source instanceof ImpressionSource.TripAttachments) return;
-            if (selectAllUnselects()) {
-                visible.forEach(selected::remove);
-            } else {
-                selected.addAll(unpackedVisible());
-            }
-            refresh();
-        }
-
-        private List<Path> unpackedVisible() {
-            return visible.stream().filter(p -> !packed.contains(p)).toList();
-        }
-
-        /** True once everything Select All would pick is selected (and something visible is). */
-        private boolean selectAllUnselects() {
-            return selected.containsAll(unpackedVisible()) && visible.stream().anyMatch(selected::contains);
         }
 
         private Optional<ExifInfo> currentExif() {
@@ -517,51 +517,159 @@ public final class ImageViewerDialog {
             return confirm.showAndWait().filter(apply::equals).isPresent();
         }
 
-        private void importSelected() {
-            // Keep the source's order; the selection may include images hidden by Faves only.
-            List<Path> files = all.stream().filter(selected::contains).toList();
-            if (files.isEmpty()) return;
+        /** Copies the shown image into the day's backpack. */
+        private void putIntoBackpack() {
+            if (visible.isEmpty()) return;
+            Path image = visible.get(index);
             List<Path> copies;
             try {
-                copies = impressions.importToAttachments(trip, date, files);
+                copies = impressions.importToAttachments(trip, date, List.of(image));
             } catch (RuntimeException e) {
-                statusSink.error("Import failed: " + UiText.describe(e));
+                statusSink.error("Put into backpack failed: " + UiText.describe(e));
                 return;
             }
-            selected.clear();
             updatePacked();
             refresh();
-            statusSink.status("Imported " + copies.size() + " impression" + (copies.size() == 1 ? "" : "s")
-                    + " to " + UiText.homeRelative(copies.getFirst().getParent()));
+            statusSink.status("🎒 Put " + image.getFileName() + " into " + UiText.homeRelative(copies.getFirst().getParent()));
             onImported.run();
+        }
+
+        /**
+         * Removes the shown image's backpack copy. Silent when a copy outside the backpack exists
+         * (any other source shows its own file, or the library/picked folder has the same name and
+         * size); otherwise asks first, with Cancel as the default.
+         */
+        private void unpackFromBackpack() {
+            if (visible.isEmpty()) return;
+            Path shown = visible.get(index);
+            boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
+            Optional<Path> copy = fromAttachments ? Optional.of(shown) : impressions.backpackCopy(trip, date, shown);
+            if (copy.isEmpty()) return;
+
+            boolean hasMaster = !fromAttachments || impressions.hasMasterCopy(copy.get(), masterCandidates());
+            if (!hasMaster && !confirmUnpack(copy.get())) return;
+            try {
+                impressions.unpack(trip, date, copy.get());
+            } catch (RuntimeException e) {
+                statusSink.error("Unpack failed: " + UiText.describe(e));
+                return;
+            }
+            int keep = index;
+            if (fromAttachments) {
+                loadSource(source);
+                go(keep);
+            } else {
+                updatePacked();
+                refresh();
+            }
+            statusSink.status("Unpacked " + shown.getFileName() + " from 🎒"
+                    + (hasMaster ? " (copy still outside the backpack)" : ""));
+            onImported.run();
+        }
+
+        /** Images outside the backpack that could be the master of a backpack file. */
+        private List<Path> masterCandidates() {
+            List<Path> candidates = new ArrayList<>(impressions.images(ImpressionSource.PHOTO_LIBRARY, trip, date));
+            if (pickedFolder != null) {
+                candidates.addAll(impressions.images(new ImpressionSource.Folder(pickedFolder), trip, date));
+            }
+            return candidates;
+        }
+
+        private boolean confirmUnpack(Path file) {
+            ButtonType remove = new ButtonType("Unpack anyway", ButtonBar.ButtonData.OTHER);
+            Alert confirm = new Alert(Alert.AlertType.WARNING,
+                    "No copy of " + file.getFileName() + " was found in the photo library"
+                            + (pickedFolder == null ? "" : " or the picked folder") + ".\n\n"
+                            + "Unpacking deletes the only copy here"
+                            + ", and the bucket copy goes at the next backpack sync.",
+                    remove, ButtonType.CANCEL);
+            confirm.initOwner(dlg.getDialogPane().getScene().getWindow());
+            confirm.setTitle("📷 Impression Curator");
+            confirm.setHeaderText("Unpack the only copy of this image?");
+            Dialogs.applyStylesheet(confirm.getDialogPane());
+            // Enter must not confirm the delete: Cancel is the default button
+            ((Button) confirm.getDialogPane().lookupButton(remove)).setDefaultButton(false);
+            ((Button) confirm.getDialogPane().lookupButton(ButtonType.CANCEL)).setDefaultButton(true);
+            return confirm.showAndWait().filter(remove::equals).isPresent();
+        }
+
+        private void toggleGallery() {
+            galleryShown = !galleryShown;
+            refresh();
+        }
+
+        /** The day's backpack images as the exports would list them (faves only if ticked). */
+        private List<Path> galleryImages() {
+            List<Path> images = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
+            return favesCheck.isSelected() ? faveFilter.apply(images) : images;
+        }
+
+        /** Draws the schematic: cell shapes follow the images' displayed aspect ratios. */
+        private void drawGallery() {
+            galleryPane.getChildren().clear();
+            List<Path> images = galleryImages();
+            if (images.isEmpty()) {
+                Text none = new Text(20, 30, "No images in the backpack for this day");
+                none.setFill(Color.GRAY);
+                galleryPane.getChildren().add(none);
+                return;
+            }
+            List<Double> aspects = images.stream().map(p -> exifReader.read(p).displayAspect()).toList();
+            List<GalleryLayout.Row> rows = GalleryLayout.plan(aspects, impressions.gridColumns());
+            double gap = 4;
+            double total = rows.stream().mapToDouble(r -> r.heightRatio() * IMAGE_W).sum() + gap * (rows.size() - 1);
+            double scale = Math.min(1, IMAGE_H / total);
+            double width = IMAGE_W * scale;
+            double x0 = (IMAGE_W - width) / 2;
+            double y = 0;
+            Path current = visible.isEmpty() ? null : visible.get(index);
+            for (GalleryLayout.Row row : rows) {
+                double h = row.heightRatio() * width;
+                int n = row.cells().size();
+                double cellW = (width - gap * (n - 1)) / n;
+                for (int c = 0; c < n; c++) {
+                    Path image = images.get(row.cells().get(c).index());
+                    boolean isCurrent = current != null && image.getFileName().equals(current.getFileName());
+                    Rectangle rect = new Rectangle(x0 + c * (cellW + gap), y, cellW, h);
+                    rect.setFill(Color.web(isCurrent ? "#2a9d8f" : "#3b4a4f"));
+                    rect.setStroke(isCurrent ? Color.web("#e9c46a") : Color.web("#566a70"));
+                    Tooltip.install(rect, new Tooltip(image.getFileName().toString()));
+                    Text label = new Text(rect.getX() + 6, rect.getY() + 16, Integer.toString(row.cells().get(c).index() + 1));
+                    label.setFill(Color.web("#d0dcdf"));
+                    label.setMouseTransparent(true);
+                    rect.setOnMouseClicked(ev -> {
+                        int at = visible.indexOf(image);
+                        if (at >= 0) {
+                            galleryShown = false;
+                            go(at);
+                        }
+                    });
+                    galleryPane.getChildren().addAll(rect, label);
+                }
+                y += h + gap;
+            }
         }
 
         private void refresh() {
             boolean empty = visible.isEmpty();
-            boolean fromAttachments = source instanceof ImpressionSource.TripAttachments;
-            placeholder.setVisible(empty);
+            placeholder.setVisible(empty && !galleryShown);
             placeholder.setText(placeholderText());
-            imageView.setVisible(!empty);
+            imageView.setVisible(!empty && !galleryShown);
+            galleryPane.setVisible(galleryShown);
+            galleryBtn.setText(galleryShown ? "🖼 Image Viewer" : "▦ Gallery Layout");
+            if (galleryShown) drawGallery();
             counter.setText(empty ? "0 / 0" : (index + 1) + " / " + visible.size());
             firstBtn.setDisable(empty || index == 0);
             prevBtn.setDisable(empty || index == 0);
             nextBtn.setDisable(empty || index == visible.size() - 1);
             lastBtn.setDisable(empty || index == visible.size() - 1);
-            // Selecting is pointless here — everything in the backpack is already imported, and
-            // there's nowhere else to send it from this dialog (todo: revisit once the backpack
-            // supports its own actions, e.g. removing an item).
-            selectCheck.setDisable(empty || fromAttachments);
-            selectCheck.setTooltip(new Tooltip(fromAttachments
-                    ? "Nothing to select — these are already in the backpack"
-                    : "Select this image for import (Space)"));
             copyDirBtn.setDisable(empty);
 
             if (empty) {
                 imageView.setImage(null);
                 pathLabel.setText("");
                 metaLabel.setText("");
-                selectCheck.setSelected(false);
-                packedBadge.setVisible(false);
                 mapButton.setDisable(true);
                 mapTooltip.setText("No image");
             } else {
@@ -570,8 +678,6 @@ public final class ImageViewerDialog {
                 pathLabel.setText(UiText.homeRelative(p));
                 ExifInfo exif = exifReader.read(p);
                 metaLabel.setText(describeExif(exif, sizeOf(p)));
-                selectCheck.setSelected(selected.contains(p));
-                packedBadge.setVisible(packed.contains(p));
                 mapButton.setDisable(!exif.hasLocation());
                 mapTooltip.setText(exif.hasLocation()
                         ? "Open coordinates in Google Maps — ▾ to use them as the tale's start or end point"
@@ -582,14 +688,15 @@ public final class ImageViewerDialog {
             setEndItem.setText(RoutePoint.END.emoji + (hasStart ? " Set as End" : " Set as End (set a start point first)"));
             setEndItem.setDisable(!hasStart);
 
-            boolean unselects = selectAllUnselects();
-            selectAllBtn.setText(unselects ? "☐ Unselect All" : "☑ Select All");
-            selectAllBtn.setDisable(empty || fromAttachments || (!unselects && unpackedVisible().isEmpty()));
-            importBtn.setText("🎒 Import Selected (" + selected.size() + ")");
-            importBtn.setDisable(selected.isEmpty() || fromAttachments);
-            importBtn.setTooltip(new Tooltip(fromAttachments
-                    ? "These images are already in this day's backpack"
-                    : "Copy the selected images to this day's backpack"));
+            boolean isPacked = !empty && packed.contains(visible.get(index));
+            putBtn.setDisable(empty || isPacked);
+            putBtn.setTooltip(new Tooltip(isPacked
+                    ? "Already in this day's backpack (same name and size)"
+                    : "Copy this image into this day's backpack (Space)"));
+            unpackBtn.setDisable(!isPacked);
+            unpackBtn.setTooltip(new Tooltip(isPacked
+                    ? "Remove this image from the backpack — asks first if no other copy exists (Cmd/Ctrl+Backspace)"
+                    : "Not in this day's backpack"));
         }
 
         private String placeholderText() {
@@ -597,6 +704,13 @@ public final class ImageViewerDialog {
             String where = source instanceof ImpressionSource.Folder ? "this folder" : source.label();
             return favesCheck.isSelected() ? "No faves in " + where : "No images in " + where;
         }
+    }
+
+    /** The backpack emoji on a light chip: the red glyph has little contrast on the dark buttons. */
+    private static Label backpackChip() {
+        Label chip = new Label("🎒");
+        chip.getStyleClass().add("backpack-chip");
+        return chip;
     }
 
     private static <T extends Region> T fixedWidth(T region) {

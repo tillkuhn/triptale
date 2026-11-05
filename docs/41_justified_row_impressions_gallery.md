@@ -67,3 +67,27 @@ Consequences:
   (1.5 vs. 1.33 widths tall).
 
 Not followed up for now, low priority.
+
+## Update 2026-11: curator gallery preview and Put/Unpack
+
+Decided together with a rework of the Impression Curator (`ui/dialog/ImageViewerDialog`):
+
+- **Gallery preview.** A "▦ Gallery" toggle in the curator replaces the image with a schematic
+  (plain rectangles, numbered, current image highlighted, click jumps to the image) of the day's
+  *backpack* images laid out as the exports would, honouring "Faves only". Layout comes from
+  `impressions.GalleryLayout` (pure Java): full rows of N same-orientation images, a landscape
+  and a portrait remainder share one row if they fit, otherwise portrait rows then an odd
+  landscape last and full width. Row height follows the mean aspect (cropped rows). The exporters
+  do **not** use it yet; making WordPress/HTML consume the same plan is the remaining step, so the
+  preview can't drift from the export.
+- **Orientation.** `ExifInfo` carries the EXIF orientation; `displayAspect()` swaps width and
+  height for 5-8. The exif cache entries got a `version` key (entries without it are re-read).
+- **Put / Unpack instead of Select + Import.** The select checkbox, Select All and Import
+  Selected are gone. `＋ Put into 🎒` (Space) copies the shown image, `－ Unpack from 🎒`
+  (Cmd/Ctrl+Backspace) deletes the backpack copy. Two buttons at fixed places rather than one
+  toggle, so a habitual click never flips between add and delete.
+- **Safe unpack.** "In the backpack" is name + size, independent of the viewed source. Unpacking is
+  silent when a copy outside the backpack exists (viewing another source, or the library / picked
+  folder has the same name and size). Only when the backpack holds the only copy there is a
+  warning (Cancel is the default). Deletion is permanent, no OS trash; the bucket copy goes at the
+  next backpack sync (delete propagation, ADR-0002).
