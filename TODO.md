@@ -8,7 +8,13 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 85
+## Next Todo: 86
+
+## 85 Post Office: posts as first-class chapters
+
+Posts become first-class chapters: a trip's date range (from/to) with title + intro, optionally WordPress-linked. New Post Office dialog (Trip menu, 📮) lists posts (start day, end day, title, WP status), highlights the one covering the current entry, and has Add/Delete/Edit. Export dialog replaces 'all days' with [post selector][from][to] (Ad Hoc / Entire Trip / real posts); WordPress export requires a real post and the 2nd step goes away. Details in doc.
+
+[Details](docs/85_post_office_posts_as_first_class_chapters.md)
 
 ## 81 General repo housekeeping task
 
