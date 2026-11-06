@@ -13,6 +13,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -33,6 +34,7 @@ import net.timafe.triptale.wordpress.PostPicker;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +69,7 @@ public final class PostOfficeDialog {
     private final ComboBox<LocalDate> fromPicker = new ComboBox<>();
     private final ComboBox<LocalDate> toPicker = new ComboBox<>();
     private Map<LocalDate, String> dayLabels = new HashMap<>();
+    private final TextField tagsField = new TextField();
     private final TextArea introArea = new TextArea();
     private final Label errorLabel = new Label();
     private Button saveBtn;
@@ -111,6 +114,9 @@ public final class PostOfficeDialog {
         table.setPrefHeight(150);
 
         titleField.setPrefColumnCount(40);
+        tagsField.setTooltip(new Tooltip("An existing WordPress tag is reused whatever its case (reisen finds Reisen);"
+                + " a new one is created exactly as typed here"));
+        tagsField.setPromptText("WordPress tags, comma-separated (sent with a new draft, optional on update)");
         introArea.setWrapText(true);
         introArea.setPrefRowCount(5);
         introArea.setPromptText("Optional lead paragraph (Markdown) shown above the days");
@@ -140,7 +146,9 @@ public final class PostOfficeDialog {
         grid.addRow(0, new Label("Title:"), titleField);
         grid.addRow(1, new Label("From:"), fromPicker);
         grid.addRow(2, new Label("To:"), toPicker);
-        grid.addRow(3, new Label("Intro:"), introArea);
+        grid.addRow(3, new Label("Tags:"), tagsField);
+        grid.addRow(4, new Label("Intro:"), introArea);
+        GridPane.setHgrow(tagsField, Priority.ALWAYS);
         GridPane.setHgrow(titleField, Priority.ALWAYS);
         GridPane.setHgrow(introArea, Priority.ALWAYS);
 
@@ -215,6 +223,7 @@ public final class PostOfficeDialog {
         }
         fromPicker.setValue(post.from());
         toPicker.setValue(post.to());
+        tagsField.setText(String.join(", ", post.tags()));
         introArea.setText(post.intro() == null ? "" : post.intro().strip());
         errorLabel.setText("");
         deleteBtn.setDisable(false);
@@ -248,6 +257,7 @@ public final class PostOfficeDialog {
         LocalDate start = entryDates.contains(day) ? day : entryDates.isEmpty() ? null : entryDates.getFirst();
         fromPicker.setValue(start);
         toPicker.setValue(start);
+        tagsField.setText("");
         introArea.setText("");
         errorLabel.setText("");
         deleteBtn.setDisable(true);
@@ -257,13 +267,14 @@ public final class PostOfficeDialog {
     }
 
     private void setEditorEnabled(boolean enabled) {
-        for (var n : List.of(titleField, fromPicker, toPicker, introArea, saveBtn, deleteBtn)) {
+        for (var n : List.of(titleField, fromPicker, toPicker, tagsField, introArea, saveBtn, deleteBtn)) {
             if (n != null) n.setDisable(!enabled);
         }
         if (!enabled) {
             titleField.clear();
             fromPicker.setValue(null);
             toPicker.setValue(null);
+            tagsField.clear();
             introArea.clear();
         }
     }
@@ -276,12 +287,14 @@ public final class PostOfficeDialog {
         if (from == null || to == null) { errorLabel.setText("From and To are required"); return; }
         if (to.isBefore(from)) { errorLabel.setText("To must not be before From"); return; }
         String intro = introArea.getText() == null ? "" : introArea.getText().strip();
+        List<String> tags = Arrays.stream((tagsField.getText() == null ? "" : tagsField.getText()).split(","))
+                .map(String::strip).filter(t -> !t.isEmpty()).distinct().toList();
         Post saved;
         if (creating || editing == null) {
             String slug = PostPicker.uniqueSlug(title, posts.stream().map(Post::slug).toList());
-            saved = Post.of(slug, title, intro, from, to);
+            saved = Post.of(slug, title, intro, from, to).withTags(tags);
         } else {
-            saved = new Post(editing.slug(), title, intro, from, to, editing.wpId(), editing.wpModified());
+            saved = new Post(editing.slug(), title, intro, from, to, editing.wpId(), editing.wpModified(), tags);
         }
         try {
             store.savePost(trip.ref(), saved);

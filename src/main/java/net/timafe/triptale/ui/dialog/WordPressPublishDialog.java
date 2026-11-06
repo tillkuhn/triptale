@@ -5,6 +5,7 @@ import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
@@ -58,6 +59,7 @@ public final class WordPressPublishDialog {
     private final Label postLabel = new Label();
     private final Label resultLabel = new Label();
     private final Hyperlink openLink = new Hyperlink("Open in WordPress");
+    private final CheckBox sendTagsBox = new CheckBox();
     private Button sendBtn;
     private Dialog<ButtonType> dlg;
 
@@ -87,6 +89,12 @@ public final class WordPressPublishDialog {
                 ? "A new draft will be created on WordPress."
                 : "The existing WordPress post " + post.wpId() + " will be updated.");
         hint.getStyleClass().add("sync-status-muted");
+        // Tags are always sent with a new draft; on an update they would replace the ones edited on WordPress, so opt in
+        boolean update = post.wpId() != null && !post.wpId().isBlank();
+        sendTagsBox.setText("Also send tags (" + String.join(", ", post.tags()) + "), replacing those on WordPress");
+        sendTagsBox.setSelected(false);
+        sendTagsBox.setVisible(update && !post.tags().isEmpty());
+        sendTagsBox.setManaged(sendTagsBox.isVisible());
         HBox result = new HBox(8, resultLabel, openLink);
         result.setAlignment(Pos.CENTER_LEFT);
 
@@ -95,7 +103,7 @@ public final class WordPressPublishDialog {
         dlg.setTitle("📡 Send to WordPress");
         dlg.setHeaderText(trip.name());
         dlg.setResizable(true);
-        dlg.getDialogPane().setContent(new VBox(8, postLabel, hint, result));
+        dlg.getDialogPane().setContent(new VBox(8, postLabel, hint, sendTagsBox, result));
         Dialogs.applyStylesheet(dlg.getDialogPane());
 
         ButtonType sendType = new ButtonType("📡 Send to WordPress", ButtonBar.ButtonData.OTHER);
@@ -121,9 +129,10 @@ public final class WordPressPublishDialog {
             return;
         }
         busy(true);
+        boolean sendTags = sendTagsBox.isSelected();
         boolean sent = draft.wpId() != null && !draft.wpId().isBlank();
         if (!sent) {
-            run(() -> api.createDraft(wp, title, markup), r -> finish(draft, r, true));
+            run(() -> api.createDraft(wp, title, markup, draft.tags()), r -> finish(draft, r, true));
             return;
         }
         run(() -> fetch(draft.wpId()), existing -> {
@@ -133,8 +142,8 @@ public final class WordPressPublishDialog {
                     busy(false);
                     result("Cancelled, nothing sent", null);
                 }
-                case CREATE -> run(() -> api.createDraft(wp, title, markup), r -> finish(draft, r, true));
-                case UPDATE -> run(() -> api.updatePost(wp, draft.wpId(), title, markup), r -> finish(draft, r, false));
+                case CREATE -> run(() -> api.createDraft(wp, title, markup, draft.tags()), r -> finish(draft, r, true));
+                case UPDATE -> run(() -> api.updatePost(wp, draft.wpId(), title, markup, sendTags ? draft.tags() : null), r -> finish(draft, r, false));
             }
         });
     }

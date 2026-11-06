@@ -25,6 +25,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Objects;
 import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -298,10 +301,16 @@ public class MarkdownStore {
                 log.warn("Post '{}' has no start_date/end_date - skipping", slug);
                 return Optional.empty();
             }
-            return Optional.of(new Post(slug, title, intro, from, to, asString(data.get("wp_id")), asInstant(data.get("wp_modified"))));
+            return Optional.of(new Post(slug, title, intro, from, to, asString(data.get("wp_id")), asInstant(data.get("wp_modified")), asStringList(data.get("tags"))));
         } catch (IOException e) {
             throw new StorageException("Failed to load post: " + ref.path() + "/" + slug, e);
         }
+    }
+
+    private static List<String> asStringList(Object o) {
+        if (o instanceof Collection<?> c) return c.stream().filter(Objects::nonNull).map(x -> x.toString().strip()).filter(x -> !x.isEmpty()).toList();
+        if (o == null) return List.of();
+        return Arrays.stream(o.toString().split(",")).map(String::strip).filter(x -> !x.isEmpty()).toList();
     }
 
     /** Removes a Post's file; a missing file is fine. */
@@ -319,6 +328,7 @@ public class MarkdownStore {
         Map<String, Object> fm = new LinkedHashMap<>();
         fm.put("end_date", post.to().toString());
         fm.put("start_date", post.from().toString());
+        if (!post.tags().isEmpty()) fm.put("tags", post.tags());
         fm.put("type", POST_TYPE);
         if (post.wpId() != null) fm.put("wp_id", post.wpId());
         if (post.wpModified() != null) fm.put("wp_modified", post.wpModified().toString());

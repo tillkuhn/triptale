@@ -4,7 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.timafe.triptale.config.AppSettings;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,6 +22,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 /**
  * Create/update/get a WordPress.com post via {@code public-api.wordpress.com/wp/v2} (todo 60,
@@ -24,6 +31,7 @@ import java.util.Map;
  */
 public final class WordPressApiClient {
 
+    private static final Logger log = LoggerFactory.getLogger(WordPressApiClient.class);
     private static final String API_BASE = "https://public-api.wordpress.com/wp/v2/sites/";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
@@ -42,9 +50,13 @@ public final class WordPressApiClient {
         }
     }
 
-    /** Creates a new draft. */
-    public PostResult createDraft(AppSettings.WordPress settings, String title, String contentHtml) {
+    /**
+     * Creates a new draft. {@code tags} (names, may be empty) are sent here only: on update WordPress
+     * would replace the post's whole tag set, wiping what was edited there.
+     */
+    public PostResult createDraft(AppSettings.WordPress settings, String title, String contentHtml, List<String> tags) {
         Map<String, String> form = new LinkedHashMap<>();
+        if (tags != null && !tags.isEmpty()) form.put("tags", tagIds(settings, tags));
         form.put("title", title);
         form.put("content", contentHtml);
         form.put("status", "draft");
@@ -55,9 +67,14 @@ public final class WordPressApiClient {
      * Updates an existing post's title/content. Deliberately never sends {@code status} — per the
      * send rules, publishing only ever happens in WordPress, never from TripTale, so an update
      * must not accidentally flip a published post back to (or away from) draft.
+     *
+     * <p>{@code tags} is null or empty to leave the post's tags untouched; otherwise the list
+     * <em>replaces</em> all tags on the post (WordPress doesn't merge), so the caller must opt in.
      */
-    public PostResult updatePost(AppSettings.WordPress settings, String id, String title, String contentHtml) {
+    public PostResult updatePost(AppSettings.WordPress settings, String id, String title, String contentHtml,
+                                 List<String> tags) {
         Map<String, String> form = new LinkedHashMap<>();
+        if (tags != null && !tags.isEmpty()) form.put("tags", tagIds(settings, tags));
         form.put("title", title);
         form.put("content", contentHtml);
         return send(postsUrl(settings) + "/" + id, settings.getAccessToken(), form);
@@ -79,6 +96,61 @@ public final class WordPressApiClient {
         return parse(response.body());
     }
 
+    /**
+     * The wp/v2 posts endpoint wants tag term IDs, not names: looks each name up (exact match,
+     * ignoring case) and creates the missing ones. Returns the IDs comma-separated, which
+     * WordPress accepts for array parameters.
+     */
+    private String tagIds(AppSettings.WordPress settings, List<String> names) {
+        List<String> ids = new ArrayList<>();
+        for (String name : names) ids.add(tagId(settings, name));
+        return String.join(",", ids);
+    }
+
+    private String tagId(AppSettings.WordPress settings, String name) {
+        String url = API_BASE + settings.getSite() + "/tags";
+        HttpResponse<String> found = execute(HttpRequest.newBuilder()
+                .uri(URI.create(url + "?per_page=100&search=" + URLEncoder.encode(name, StandardCharsets.UTF_8)))
+                .timeout(REQUEST_TIMEOUT)
+                .header("Authorization", "Bearer " + settings.getAccessToken())
+                .GET().build());
+        checkOk(found);
+        try {
+            for (JsonNode tag : JSON.readTree(found.body())) {
+                if (name.equalsIgnoreCase(tag.path("name").asText(""))) {
+                    log.info("WordPress: tag '{}' reuses existing '{}' (id {})", name, tag.path("name").asText(), tag.path("id").asText());
+                    return tag.path("id").asText();
+                }
+            }
+        } catch (IOException e) {
+            throw new WordPressException("Unexpected response from WordPress.com: " + e.getMessage(), e);
+        }
+        HttpResponse<String> created = execute(HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(REQUEST_TIMEOUT)
+                .header("Authorization", "Bearer " + settings.getAccessToken())
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(FormCodec.encode(Map.of("name", name))))
+                .build());
+        if (created.statusCode() == 400) {
+            // term_exists (e.g. name differs only by HTML escaping): WordPress names the existing term's id
+            try {
+                String existing = JSON.readTree(created.body()).path("data").path("term_id").asText("");
+                if (!existing.isEmpty()) return existing;
+            } catch (IOException ignored) {
+                // fall through to the normal error
+            }
+        }
+        checkOk(created);
+        try {
+            String id = JSON.readTree(created.body()).path("id").asText();
+            log.info("WordPress: created tag '{}' (id {})", name, id);
+            return id;
+        } catch (IOException e) {
+            throw new WordPressException("Unexpected response from WordPress.com: " + e.getMessage(), e);
+        }
+    }
+
     private PostResult send(String url, String accessToken, Map<String, String> form) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -87,9 +159,13 @@ public final class WordPressApiClient {
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(FormCodec.encode(form)))
                 .build();
+        log.info("WordPress: POST {} (title='{}', content={} chars, tags={}, status={})", url, form.get("title"),
+                form.getOrDefault("content", "").length(), form.getOrDefault("tags", "-"), form.getOrDefault("status", "-"));
         HttpResponse<String> response = execute(request);
         checkOk(response);
-        return parse(response.body());
+        PostResult result = parse(response.body());
+        log.info("WordPress: post {} is '{}', modified {}, {}", result.id(), result.status(), result.modified(), result.link());
+        return result;
     }
 
     private HttpResponse<String> execute(HttpRequest request) {
@@ -105,8 +181,18 @@ public final class WordPressApiClient {
 
     private static void checkOk(HttpResponse<String> response) {
         if (response.statusCode() / 100 != 2) {
-            throw new WordPressException("WordPress API call failed: HTTP " + response.statusCode()
-                    + " – " + response.body());
+            log.warn("WordPress API call failed: HTTP {} {} – {}", response.statusCode(),
+                    response.request().uri(), response.body());
+            String detail = response.body();
+            try {
+                JsonNode json = JSON.readTree(detail);
+                if (json.hasNonNull("message")) {
+                    detail = json.path("code").asText("") + ": " + json.path("message").asText();
+                }
+            } catch (IOException ignored) {
+                // not JSON: keep the raw body
+            }
+            throw new WordPressException("WordPress API call failed: HTTP " + response.statusCode() + " – " + detail);
         }
     }
 

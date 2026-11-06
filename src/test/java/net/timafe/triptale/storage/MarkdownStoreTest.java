@@ -646,6 +646,18 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void postTagsRoundTripAndAreOmittedWhenEmpty() throws IOException {
+        var post = net.timafe.triptale.domain.Post.of("t", "T", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1));
+
+        store.savePost(ALPS_2025, post);
+        assertFalse(Files.readString(store.postFile(ALPS_2025, "t")).contains("tags"));
+        assertTrue(store.loadPost(ALPS_2025, "t").orElseThrow().tags().isEmpty());
+
+        store.savePost(ALPS_2025, post.withTags(java.util.List.of("sumatra", "railtrip")));
+        assertEquals(java.util.List.of("sumatra", "railtrip"), store.loadPost(ALPS_2025, "t").orElseThrow().tags());
+    }
+
+    @Test
     void postFileLivesInPostsSubfolder() {
         Path file = store.postFile(ALPS_2025, "weekend-trip");
         assertEquals(store.tripDir(ALPS_2025).resolve("posts").resolve("weekend-trip.md"), file);
