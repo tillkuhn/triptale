@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 87
+## Next Todo: 88
 
 ## 81 General repo housekeeping task
 
@@ -170,6 +170,10 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 87 Trip details: tabs with entries overview table
+
+Make the Trip details dialog (TripDetailsDialog) wider and add a TabPane: tab 'Details' (existing form) and tab 'Overview' (read-only TableView of all entries: day, title, activity, start place). Entry form in the main window stays focused on the trip details, no overview there. Try on a branch.
 
 ## DONE 86 Tailwind FM: foldable track list, tape-style buttons, DJ line fix
 

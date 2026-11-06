@@ -667,13 +667,16 @@ public class MainController implements StatusSink {
     public void onTripDetails() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
-        Optional<Trip> updated = new TripDetailsDialog(store).showAndWait(trip);
-        if (updated.isEmpty()) return;
-        store.saveTrip(updated.get());
-        addPending(trip.ref().path(), UPDATE);
-        reloadTrips(trip.year());
-        tripCombo.getSelectionModel().select(findTrip(trip.slug()));
-        status("Updated trip " + trip.ref().path());
+        Optional<TripDetailsDialog.Result> result = new TripDetailsDialog(store, attachmentsDir).showAndWait(trip);
+        if (result.isEmpty()) return;
+        if (result.get().trip() != null) {
+            store.saveTrip(result.get().trip());
+            addPending(trip.ref().path(), UPDATE);
+            reloadTrips(trip.year());
+            tripCombo.getSelectionModel().select(findTrip(trip.slug()));
+            status("Updated trip " + trip.ref().path());
+        }
+        if (result.get().openDate() != null) datePicker.setValue(result.get().openDate());
     }
 
     @FXML
