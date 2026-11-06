@@ -136,7 +136,7 @@ still alpha, so it's off by default: tick **Enable Tailwind FM radio** in ⚙ Ed
 restart.
 
 - Drop `mp3`, `m4a`, `aac`, `wav` or `aif(f)` files into `radio/` (subfolders are fine;
-  **📂 Open Radio Folder** gets you there). FLAC and OGG don't play.
+  **📂 Open Record Crate** gets you there). FLAC and OGG don't play.
 - The 🔊 toolbar button plays and pauses; the tooltip shows "Artist – Title" from the tags. When
   a track ends, the next random one starts. The **Tailwind FM** menu also has Next Random Track
   and Stop.

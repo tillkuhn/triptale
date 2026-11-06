@@ -30,6 +30,21 @@ class StationTest {
     }
 
     @Test
+    void djNameFallsBackToPlainDj() {
+        assertEquals("DJ", new Station(List.of()).djName(new Random(1)));
+        assertEquals("DJ Zed", new Station(List.of(), List.of("DJ Zed")).djName(new Random(1)));
+    }
+
+    @Test
+    void bundledDjNamesAreWellFormed() {
+        List<String> names = Station.load().djNames();
+        assertFalse(names.isEmpty());
+        for (String name : names) {
+            assertTrue(name.startsWith("DJ ") && name.length() <= 20, () -> "bad DJ name: " + name);
+        }
+    }
+
+    @Test
     void bundledLinesAreWellFormed() {
         List<String> all = Station.load().djLines();
         assertFalse(all.isEmpty());

@@ -82,13 +82,13 @@
                         </Menu>
                         <Menu fx:id="radioMenu" text="Tailwind FM">
                             <items>
-                                <MenuItem text="📻 Show Tailwind FM…" onAction="#onShowRadio"/>
+                                <MenuItem text="📻 Open Radio…" onAction="#onShowRadio"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
                                 <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
                                 <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
                                 <SeparatorMenuItem/>
-                                <MenuItem text="📂 Open Radio Folder" onAction="#onOpenRadioFolder"/>
+                                <MenuItem text="📂 Open Record Crate" onAction="#onOpenRadioFolder"/>
                                 <MenuItem fx:id="syncTracksMenuItem" text="⛅ Sync Tracks…" onAction="#onSyncTracks" disable="true"/>
                             </items>
                         </Menu>

@@ -38,7 +38,7 @@ the station itself — `StationTest` checks both). Branding only: classes, the `
   at startup and adds it to the pending commit, like `attachments/.gitignore`.
 - **Playback:** `ui.RadioPlayer` wraps `javafx.scene.media.MediaPlayer`. `MainController`
   creates it lazily on first use, so `javafx.media` and its natives aren't loaded at startup
-  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Radio Folder. A 🔊
+  (todo 43). The Radio menu has Play / Pause, Next Random Track, Stop and Open Record Crate. A 🔊
   toolbar button toggles playback; its tooltip shows the current track. At the end of a track
   the next random one starts.
 - **Labels:** "Artist – Title" from the ID3 tags once the media is `READY`, else the file name.
@@ -78,9 +78,14 @@ the station itself — `StationTest` checks both). Branding only: classes, the `
 
 ## Tailwind FM window
 
-`ui.dialog.TailwindFmDialog` is a **non-modal** window (Radio menu → "Show Tailwind FM…") so the
+`ui.dialog.TailwindFmDialog` is a **non-modal** window (Radio menu → "Open Radio…") so the
 radio can be controlled while writing. It shows the logo (`images/tailwind-fm.png`, 1000px source
 displayed at 400px for Retina), the now-playing line, the DJ line of the current track and
 play/pause/next/stop. It observes `RadioPlayer` via `addChangeListener` while open; the DJ line is
 kept in `RadioPlayer.djLine()`. The logo was generated with ChatGPT, see the prompts in the
 `toolbox` repo (`prompts/logo.md`).
+
+Todo 86 extended the window: symbol-only transport buttons, single-line (ellipsis) title and
+DJ line with a random DJ name prefix (`dj-names.txt`), a foldable "Record Crate" table of the
+tracks (beautified file names, sortable, click to play) and an equalizer strip while playing.
+See [86_tailwind_fm_foldable_track_list_tape_style_buttons_dj_line_f.md](86_tailwind_fm_foldable_track_list_tape_style_buttons_dj_line_f.md).

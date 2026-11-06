@@ -1,0 +1,24 @@
+# DJ names for the radio station "Tailwind FM" (see radio.Station): one is picked at random and
+# shown before a DJ line, e.g. DJ Backflip: "<line>". Keep them short; travel and activity themed.
+# Blank lines and # comments are ignored. Write them with the "DJ" prefix.
+
+DJ Backflip
+DJ Tailwind
+DJ Switchback
+DJ Summit
+DJ Detour
+DJ Cadence
+DJ Kickstand
+DJ Trailhead
+DJ Daypack
+DJ Layover
+DJ Windsock
+DJ Basecamp
+DJ Freewheel
+DJ Slipstream
+DJ Compass
+DJ Sherpa
+DJ Boardwalk
+DJ Pannier
+DJ Gravel
+DJ Milestone

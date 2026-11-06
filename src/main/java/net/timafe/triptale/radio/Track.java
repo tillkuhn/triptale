@@ -7,8 +7,9 @@ import java.nio.file.Path;
  *
  * @param file     absolute path of the audio file
  * @param relative path relative to {@code radio/}, with {@code /} separators on every OS
+ * @param size     file size in bytes
  */
-public record Track(Path file, String relative) {
+public record Track(Path file, String relative, long size) {
 
     /**
      * The file name without extension, underscores as blanks, e.g. {@code "Motörhead - Ace of Spades"}

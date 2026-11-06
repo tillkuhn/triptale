@@ -41,8 +41,15 @@ public class RadioPlayer {
     /** Whether the next "on air" message gets a DJ line. */
     private boolean announce;
     private String lastDjLine;
+    /** The DJ name that goes with {@link #djLine()}, e.g. "DJ Backflip"; empty if none. */
+    public String djName() {
+        return djLine().isEmpty() ? "" : currentDjName;
+    }
+
     /** The DJ line announced with the current track, null if none. */
     private String currentDjLine;
+    /** The DJ who read {@link #currentDjLine}, e.g. "DJ Backflip". */
+    private String currentDjName = "";
 
     /**
      * @param onChange runs after every state change (track, play/pause, stop), e.g. to refresh
@@ -69,6 +76,22 @@ public class RadioPlayer {
     /** The DJ line announced with the current track; empty if none (or stopped). */
     public String djLine() {
         return current == null || currentDjLine == null ? "" : currentDjLine;
+    }
+
+    /** All tracks of the library, for the track list of the radio window. */
+    public List<Track> tracks() {
+        return library.listTracks();
+    }
+
+    /** The track currently loaded, null when stopped. */
+    public Track currentTrack() {
+        return current;
+    }
+
+    /** Plays the given track; afterwards the radio continues with random tracks as usual. */
+    public void playTrack(Track track) {
+        announce = player == null || ThreadLocalRandom.current().nextInt(4) == 0;
+        play(track);
     }
 
     /** Plays a random track (never the current one, unless it's the only one). */
@@ -99,6 +122,7 @@ public class RadioPlayer {
     public void stop() {
         disposePlayer();
         current = null;
+        currentDjLine = null;
         onChange.run();
     }
 
@@ -126,7 +150,7 @@ public class RadioPlayer {
     private void play(Track track) {
         disposePlayer();
         current = track;
-        currentDjLine = null;
+        // currentDjLine stays: the last DJ line remains visible until the next announced one.
         try {
             // toUri() percent-encodes spaces and umlauts; string concatenation would not.
             player = new MediaPlayer(new Media(track.file().toUri().toString()));
@@ -173,7 +197,8 @@ public class RadioPlayer {
                 .map(line -> {
                     lastDjLine = line;
                     currentDjLine = line;
-                    return message + " — \"" + line + "\"";
+                    currentDjName = station.djName(ThreadLocalRandom.current());
+                    return message + " — " + currentDjName + ": \"" + line + "\"";
                 })
                 .orElse(message);
     }

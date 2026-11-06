@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 86
+## Next Todo: 87
 
 ## 81 General repo housekeeping task
 
@@ -22,17 +22,11 @@ Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with
 
 ## 67 Private images
 
-Mark individual backpack images as private so they're kept but never exported — a per-day
-`private.txt` sidecar lists excluded filenames (not EXIF; the only EXIF library in use,
-metadata-extractor, is read-only). See ADR-0005 for why a sidecar, and why it must not be
-dot-prefixed (CLOUD-mode sync drops dotfiles silently, see `sync.BucketSyncer.isHidden`).
-
-- New `attachments.PrivateImages` helper: load/mark/unmark against `private.txt` in a day's
-  attachments folder.
-- Filter private images out in `DiaryExporter.injectImpressions`, `WordPressExporter.gallery`,
-  and `map.PhotoLocations`. Private wins over the fave marker.
-- `ImageViewerDialog` gets a per-image toggle, writing through immediately (not part of
-  "Save the Day" — it's filesystem state, not frontmatter).
+Mark individual backpack images as private so they're kept but never exported, via a per-day
+`private.txt` sidecar listing excluded filenames (not dot-prefixed, so CLOUD sync keeps it).
+- New `attachments.PrivateImages` helper; filter in `DiaryExporter`, `WordPressExporter`,
+  `map.PhotoLocations`. Private wins over the fave marker.
+- `ImageViewerDialog` gets a per-image toggle that writes through immediately.
 
 [Details](docs/adr/0005-private-images.md)
 
@@ -66,20 +60,12 @@ both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay 
 
 ## 46 Radio: play favorite tracks from a radio/ pool
 
-I listen to a lot of music on bike trips and often quote a small tracklist in a tale. Add a
-"radio": a reusable pool of favourite tracks in `<data-dir>/radio/` (not versioned in git,
-separate from attachments), playable from the app while writing.
-
-- Stage 1 (in progress, branch `feature/radio`): `javafx-media` playback, `radio.RadioLibrary`
-  + `ui.RadioPlayer`, Radio menu + 🎵 toolbar button: random track, play/pause, auto-next, stop,
-  open radio folder. Managed `radio/.gitignore`. Gated off by default behind a new "Enable Radio
-  (restart required)" setting until it's out of alpha.
-- Stage 2: cloud sync of `radio/` via its own S3 prefix — see todo 52.
-- Stage 3: Tolaria-style wikilinks to tracks in tales (`Track` note type?), "Soundtrack of this
-  trip" playlist, 📌 insert `[[current track]]` at the cursor, export rendering.
-- Open: Linux playback depends on a supported system FFmpeg — test the release jar.
-- Done: a non-modal Tailwind FM window (Radio menu → "Show Tailwind FM…") with the logo, the
-  now-playing and DJ line, and play/pause/next/stop (`ui.dialog.TailwindFmDialog`).
+A "radio": a reusable pool of favourite tracks in `<data-dir>/radio/` (not in git), playable
+from the app while writing. Branded Tailwind FM, gated behind a setting while in alpha.
+- Done: random playback, play/pause/next/stop, Tailwind FM window with track list (todo 86).
+- Stage 2: cloud sync of `radio/` via its own S3 prefix, see todo 52.
+- Stage 3: wikilinks to tracks in tales, trip soundtrack, insert current track, export.
+- Open: Linux playback depends on a supported system FFmpeg, test the release jar.
 
 [Details](docs/46_radio.md)
 
@@ -184,6 +170,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 86 Tailwind FM: foldable track list, tape-style buttons, DJ line fix
+
+Extend TailwindFmDialog (width stays 400 + padding, no wider):
+- Foldable (collapsed by default) track table like the backpack section: beautified name (Track.title()), human-friendly size, sortable by name and by size (sorted by bytes).
+- Click a row plays that track, then continues with random next as today.
+- Buttons: symbols only (play/pause, stop, next) like a tape recorder.
+- Bug: long title wraps to 2 lines and clips the buttons. Fix: single-line title and DJ line, cut with ellipsis. Keep the last DJ line visible until the next announced one.
+Filename-derived titles only, no ID3 reading (too costly).
+
+[Details](docs/86_tailwind_fm_foldable_track_list_tape_style_buttons_dj_line_f.md)
 
 ## DONE 85 Post Office: posts as first-class chapters
 

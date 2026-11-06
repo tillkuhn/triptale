@@ -55,7 +55,7 @@ public class RadioLibrary {
         try (Stream<Path> files = Files.walk(root)) {
             return files.filter(Files::isRegularFile)
                     .filter(RadioLibrary::isPlayable)
-                    .map(f -> new Track(f, root.relativize(f).toString().replace('\\', '/')))
+                    .map(f -> new Track(f, root.relativize(f).toString().replace('\\', '/'), sizeOf(f)))
                     .sorted(Comparator.comparing(Track::relative, String.CASE_INSENSITIVE_ORDER))
                     .toList();
         } catch (IOException e) {
@@ -90,6 +90,14 @@ public class RadioLibrary {
             return true;
         } catch (IOException e) {
             throw new StorageException("Could not write " + file, e);
+        }
+    }
+
+    private static long sizeOf(Path file) {
+        try {
+            return Files.size(file);
+        } catch (IOException e) {
+            return 0;
         }
     }
 
