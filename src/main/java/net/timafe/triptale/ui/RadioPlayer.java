@@ -9,6 +9,8 @@ import net.timafe.triptale.radio.Track;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -29,6 +31,8 @@ public class RadioPlayer {
     private final RadioLibrary library;
     private final StatusSink statusSink;
     private final Runnable onChange;
+    /** Extra observers, e.g. the open Tailwind FM window; run after {@link #onChange}. */
+    private final List<Runnable> listeners = new ArrayList<>();
     private final Station station = Station.load();
 
     /** Held in a field on purpose: a MediaPlayer nothing references is garbage-collected mid-track. */
@@ -37,6 +41,8 @@ public class RadioPlayer {
     /** Whether the next "on air" message gets a DJ line. */
     private boolean announce;
     private String lastDjLine;
+    /** The DJ line announced with the current track, null if none. */
+    private String currentDjLine;
 
     /**
      * @param onChange runs after every state change (track, play/pause, stop), e.g. to refresh
@@ -45,7 +51,24 @@ public class RadioPlayer {
     public RadioPlayer(RadioLibrary library, StatusSink statusSink, Runnable onChange) {
         this.library = library;
         this.statusSink = statusSink;
-        this.onChange = onChange;
+        this.onChange = () -> {
+            onChange.run();
+            List.copyOf(listeners).forEach(Runnable::run);
+        };
+    }
+
+    /** Registers an observer that runs on the FX thread after every state change. */
+    public void addChangeListener(Runnable listener) {
+        listeners.add(listener);
+    }
+
+    public void removeChangeListener(Runnable listener) {
+        listeners.remove(listener);
+    }
+
+    /** The DJ line announced with the current track; empty if none (or stopped). */
+    public String djLine() {
+        return current == null || currentDjLine == null ? "" : currentDjLine;
     }
 
     /** Plays a random track (never the current one, unless it's the only one). */
@@ -103,6 +126,7 @@ public class RadioPlayer {
     private void play(Track track) {
         disposePlayer();
         current = track;
+        currentDjLine = null;
         try {
             // toUri() percent-encodes spaces and umlauts; string concatenation would not.
             player = new MediaPlayer(new Media(track.file().toUri().toString()));
@@ -148,6 +172,7 @@ public class RadioPlayer {
         return station.djLine(ThreadLocalRandom.current(), lastDjLine)
                 .map(line -> {
                     lastDjLine = line;
+                    currentDjLine = line;
                     return message + " — \"" + line + "\"";
                 })
                 .orElse(message);

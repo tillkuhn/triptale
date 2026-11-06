@@ -82,6 +82,8 @@
                         </Menu>
                         <Menu fx:id="radioMenu" text="Tailwind FM">
                             <items>
+                                <MenuItem text="📻 Show Tailwind FM…" onAction="#onShowRadio"/>
+                                <SeparatorMenuItem/>
                                 <MenuItem text="⏯ Play / Pause" onAction="#onRadioToggle"/>
                                 <MenuItem text="🎲 Next Random Track" onAction="#onRadioRandom"/>
                                 <MenuItem text="⏹ Stop" onAction="#onRadioStop"/>
@@ -142,7 +144,7 @@
                 <Button fx:id="inboxButton" minWidth="-Infinity" text="🐙" onAction="#onCheckInbox" styleClass="inbox-button" disable="true">
                     <tooltip><Tooltip text="Check Octobot's Inbox"/></tooltip>
                 </Button>
-                <Button fx:id="radioButton" minWidth="-Infinity" onAction="#onRadioToggle" styleClass="radio-button">
+                <Button fx:id="radioButton" minWidth="-Infinity" onAction="#onShowRadio" styleClass="radio-button">
                     <tooltip><Tooltip text="Tailwind FM — play a random track from radio/"/></tooltip>
                 </Button>
                 <Button fx:id="connectivityButton" minWidth="-Infinity" text="⟳" onAction="#onCheckConnectivity" styleClass="connectivity-checking">

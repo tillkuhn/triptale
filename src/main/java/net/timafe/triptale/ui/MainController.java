@@ -74,6 +74,7 @@ import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.SyncAttachmentsDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
+import net.timafe.triptale.ui.dialog.TailwindFmDialog;
 import net.timafe.triptale.ui.dialog.TripDetailsDialog;
 import net.timafe.triptale.ui.dialog.ViewSourceDialog;
 import net.timafe.triptale.util.CommitMessage;
@@ -269,6 +270,8 @@ public class MainController implements StatusSink {
     private boolean radioEnabled;
     /** Created on first use, so javafx.media stays unloaded until the radio is touched (todo 46). */
     private RadioPlayer radio;
+    /** The non-modal Tailwind FM window; created on first use. */
+    private TailwindFmDialog radioDialog;
     private EqualizerIcon equalizerIcon;
     private SpeakerIcon speakerIcon;
     private final RecentFolder recentFolder = new RecentFolder();
@@ -1824,6 +1827,15 @@ public class MainController implements StatusSink {
     }
 
     @FXML
+    public void onShowRadio() {
+        if (!radioEnabled) return;
+        if (radioDialog == null) {
+            radioDialog = new TailwindFmDialog(radio(), radioButton.getScene().getWindow());
+        }
+        radioDialog.show();
+    }
+
+    @FXML
     public void onRadioToggle() {
         if (!radioEnabled) return;
         radio().togglePause();
@@ -1874,11 +1886,11 @@ public class MainController implements StatusSink {
             radioButton.setText(idle ? "" : playing ? "⏸" : "▶");
         }
         if (radio == null || !radio.isLoaded()) {
-            radioButton.setTooltip(new Tooltip(Station.NAME + " — play a random track from radio/"));
+            radioButton.setTooltip(new Tooltip(Station.NAME + " — open the radio window"));
         } else if (playing) {
-            radioButton.setTooltip(new Tooltip("On air: " + radio.label() + " — click to pause"));
+            radioButton.setTooltip(new Tooltip("On air: " + radio.label() + " — click to open the radio"));
         } else {
-            radioButton.setTooltip(new Tooltip("Paused: " + radio.label() + " — click to resume"));
+            radioButton.setTooltip(new Tooltip("Paused: " + radio.label() + " — click to open the radio"));
         }
     }
 

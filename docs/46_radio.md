@@ -75,3 +75,12 @@ the station itself — `StationTest` checks both). Branding only: classes, the `
 - **Export:** render track links as "Artist – Title" (`DiaryExporter`).
   Optionally a "🎵 Soundtrack of the day" line per day in the diary/HTML export, reusable for
   the WordPress export (todo 44).
+
+## Tailwind FM window
+
+`ui.dialog.TailwindFmDialog` is a **non-modal** window (Radio menu → "Show Tailwind FM…") so the
+radio can be controlled while writing. It shows the logo (`images/tailwind-fm.png`, 1000px source
+displayed at 400px for Retina), the now-playing line, the DJ line of the current track and
+play/pause/next/stop. It observes `RadioPlayer` via `addChangeListener` while open; the DJ line is
+kept in `RadioPlayer.djLine()`. The logo was generated with ChatGPT, see the prompts in the
+`toolbox` repo (`prompts/logo.md`).
