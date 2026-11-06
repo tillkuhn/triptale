@@ -27,6 +27,8 @@ import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.StatusSink;
 import net.timafe.triptale.ui.UiText;
+import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.wordpress.PostPicker;
 
 import java.time.LocalDate;
@@ -50,6 +52,8 @@ public final class PostOfficeDialog {
     private final MarkdownStore store;
     private final StatusSink statusSink;
     private final BiConsumer<String, String> addPending;
+    private final SettingsStore settingsStore;
+    private final BrowserLauncher browser;
 
     private Trip trip;
     private List<LocalDate> entryDates = List.of();
@@ -67,10 +71,14 @@ public final class PostOfficeDialog {
     private final Label errorLabel = new Label();
     private Button saveBtn;
     private Button deleteBtn;
+    private Button openWpBtn;
     private Dialog<ButtonType> dlg;
 
-    public PostOfficeDialog(MarkdownStore store, StatusSink statusSink, BiConsumer<String, String> addPending) {
+    public PostOfficeDialog(MarkdownStore store, SettingsStore settingsStore, BrowserLauncher browser,
+                            StatusSink statusSink, BiConsumer<String, String> addPending) {
         this.store = store;
+        this.settingsStore = settingsStore;
+        this.browser = browser;
         this.statusSink = statusSink;
         this.addPending = addPending;
     }
@@ -143,7 +151,10 @@ public final class PostOfficeDialog {
         saveBtn = new Button("💾 Save Post");
         saveBtn.setDefaultButton(true);
         saveBtn.setOnAction(e -> save());
-        HBox actions = new HBox(8, addBtn, deleteBtn, saveBtn);
+        openWpBtn = new Button("🌐 Open in WordPress");
+        openWpBtn.setOnAction(e -> openInWordPress());
+        openWpBtn.setDisable(true);
+        HBox actions = new HBox(8, addBtn, deleteBtn, saveBtn, openWpBtn);
 
         VBox content = new VBox(8, table, grid, errorLabel, actions);
         content.setPadding(new Insets(4));
@@ -207,6 +218,21 @@ public final class PostOfficeDialog {
         introArea.setText(post.intro() == null ? "" : post.intro().strip());
         errorLabel.setText("");
         deleteBtn.setDisable(false);
+        openWpBtn.setDisable(!hasWpId(post));
+    }
+
+    private static boolean hasWpId(Post p) {
+        return p != null && p.wpId() != null && !p.wpId().isBlank();
+    }
+
+    private void openInWordPress() {
+        if (!hasWpId(editing)) return;
+        String site = settingsStore.load().getWordPress().getSite();
+        if (site == null || site.isBlank()) {
+            errorLabel.setText("No WordPress site configured in Settings");
+            return;
+        }
+        browser.open(PostPicker.editorUrl(site, editing.wpId()));
     }
 
     private void startNew(LocalDate currentDate) {
@@ -225,6 +251,7 @@ public final class PostOfficeDialog {
         introArea.setText("");
         errorLabel.setText("");
         deleteBtn.setDisable(true);
+        openWpBtn.setDisable(true);
         titleField.requestFocus();
         titleField.selectAll();
     }

@@ -199,4 +199,15 @@ class MarkdownTest {
     void privateDefaultHeadingIsRecognizedAsPrivate() {
         assertEquals("Public.", Markdown.stripPrivate("Public.\n\n" + Markdown.PRIVATE_DEFAULT_HEADING + "\nsecret"));
     }
+
+    @Test
+    void shiftHeadingsToMinLiftsShallowestToMin() {
+        assertEquals("#### A\ntext\n##### B", Markdown.shiftHeadingsToMin("## A\ntext\n### B", 4));
+    }
+
+    @Test
+    void shiftHeadingsToMinLeavesDeepEnoughBodiesAlone() {
+        assertEquals("#### A", Markdown.shiftHeadingsToMin("#### A", 4));
+        assertEquals("plain", Markdown.shiftHeadingsToMin("plain", 4));
+    }
 }

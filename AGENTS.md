@@ -214,7 +214,7 @@ same or higher level. Every exporter must run tales through `Markdown.stripPriva
 **Entry facts (todo 53):** an entry heading is its title only (`DiaryEntry.DEFAULT_TITLE` / blank
 → "Day N", or the date without a trip start). Date, activity + distance/climb and start/stop
 point come from `export.EntryFacts`: an italic byline in Markdown, a "ticket stub" HTML block
-(styled in `html-shell.html`) in the HTML export, a `wp:columns` block on WordPress. Readers
+(styled in `html-shell.html`) in the HTML export, a single small paragraph (the byline) on WordPress. Readers
 never see an ISO date. See `docs/53_entry_fact_strip.md`.
 The location fact prefers `start_place`/`stop_place` over coordinates (todo 58). An export
 that contains any place ends with one OpenStreetMap credit line (ODbL, always English). See

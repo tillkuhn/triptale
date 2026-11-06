@@ -61,6 +61,20 @@ public final class Markdown {
     }
 
     /**
+     * Shifts headings down just enough that the shallowest one lands at {@code minLevel}; a body
+     * whose headings are all at least that deep, or has none, is returned unchanged.
+     */
+    public static String shiftHeadingsToMin(String body, int minLevel) {
+        if (body == null || body.isEmpty()) return body;
+        int shallowest = 0;
+        for (String line : body.split("\n", -1)) {
+            int level = headingLevel(line);
+            if (level > 0 && (shallowest == 0 || level < shallowest)) shallowest = level;
+        }
+        return shallowest == 0 || shallowest >= minLevel ? body : shiftHeadings(body, minLevel - shallowest);
+    }
+
+    /**
      * Returns the ATX heading level (1-6) of {@code line} if it matches {@code ^#{1,6} },
      * otherwise 0 (not a heading, including 7+ leading {@code #} before the space).
      */

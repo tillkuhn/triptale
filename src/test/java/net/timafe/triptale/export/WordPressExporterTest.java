@@ -79,7 +79,7 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, DAY2, DAY3, false, false);
 
-        assertTrue(out.startsWith("<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">B → C</h2>\n<!-- /wp:heading -->"), out);
+        assertTrue(out.startsWith("<!-- wp:heading {\"level\":3} -->\n<h3 class=\"wp-block-heading\">B → C</h3>\n<!-- /wp:heading -->"), out);
         assertTrue(out.contains("<!-- wp:paragraph -->\n<p>three</p>\n<!-- /wp:paragraph -->"));
         assertFalse(out.contains("one"));
         assertFalse(out.contains("Alps 2025"));
@@ -99,7 +99,7 @@ class WordPressExporterTest {
         assertFalse(out.contains("Internal"), out);
         assertFalse(out.contains("Komoot"), out);
         assertFalse(out.contains("secret"), out);
-        assertTrue(out.contains(">B → C</h2>"), out);
+        assertTrue(out.contains(">B → C</h3>"), out);
     }
 
     @Test
@@ -109,21 +109,11 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains("""
-                <!-- wp:column -->
-                <div class="wp-block-column"><!-- wp:paragraph {"align":"center","fontSize":"x-large"} -->
-                <p class="has-text-align-center has-x-large-font-size">🚴</p>
-                <!-- /wp:paragraph -->
-
-                <!-- wp:paragraph {"align":"center"} -->
-                <p class="has-text-align-center"><strong>Cycling</strong><br><small>~42 km, 650 m climbed</small></p>
-                <!-- /wp:paragraph --></div>
-                <!-- /wp:column -->"""), out);
-        assertTrue(out.contains(">🗓\uFE0F</p>"), out);
-        assertTrue(out.contains("<strong>Tuesday · Day 1</strong><br><small>July 1st 2025</small>"), out);
-        assertTrue(out.contains("<strong>1°00′N 2°00′E</strong><br><small>Starting point</small>"), out);
-        assertTrue(out.contains("<!-- wp:columns -->\n<div class=\"wp-block-columns\"><!-- wp:column -->"), out);
-        assertTrue(out.indexOf("</h2>") < out.indexOf("wp:columns") && out.indexOf("wp:columns") < out.indexOf("<p>tale</p>"), out);
+        assertTrue(out.contains("<!-- wp:paragraph {\"fontSize\":\"small\"} -->\n<p class=\"has-small-font-size\">"), out);
+        assertTrue(out.contains("🗓\uFE0F Tuesday, July 1st 2025 · Day 1"), out);
+        assertTrue(out.contains("🚴 "), out);
+        assertFalse(out.contains("wp:columns"), out);
+        assertTrue(out.indexOf("</h3>") < out.indexOf("has-small-font-size") && out.indexOf("has-small-font-size") < out.indexOf("<p>tale</p>"), out);
     }
 
     @Test
@@ -133,8 +123,8 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains("<strong>Soest, DE</strong><br><small>Starting point</small><br><small>1°00′N 2°00′E</small>"), out);
-        assertTrue(out.contains("<strong>→ Hagen, DE</strong><br><small>Destination</small></p>"), out);
+        assertTrue(out.contains("Day 1<br>🧭 Soest, DE</p>"), out);
+        assertTrue(out.contains("Day 2<br>🧭 → Hagen, DE</p>"), out);
         assertTrue(out.strip().endsWith("""
                 <!-- wp:paragraph {"fontSize":"small"} -->
                 <p class="has-small-font-size">Place names © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</p>
@@ -231,7 +221,7 @@ class WordPressExporterTest {
         String out = exporter.export(trip, null, null, false, false);
 
         assertTrue(out.contains("<p>First line same paragraph with <strong>bold</strong>.</p>"), out);
-        assertTrue(out.contains("<!-- wp:heading {\"level\":3} -->\n<h3 class=\"wp-block-heading\">Sub</h3>\n<!-- /wp:heading -->"), out);
+        assertTrue(out.contains("<!-- wp:heading {\"level\":4} -->\n<h4 class=\"wp-block-heading\">Sub</h4>\n<!-- /wp:heading -->"), out);
         assertTrue(out.contains("<!-- wp:list -->\n<ul class=\"wp-block-list\">\n<!-- wp:list-item -->\n<li>a</li>\n<!-- /wp:list-item -->"), out);
         assertTrue(out.contains("<!-- wp:list {\"ordered\":true,\"start\":3} -->\n<ol class=\"wp-block-list\" start=\"3\">"), out);
         assertTrue(out.contains("<!-- wp:quote -->\n<blockquote class=\"wp-block-quote\"><!-- wp:paragraph -->\n<p>quoted</p>\n<!-- /wp:paragraph --></blockquote>\n<!-- /wp:quote -->"), out);
@@ -306,7 +296,7 @@ class WordPressExporterTest {
 
         assertTrue(out.startsWith("<!-- wp:paragraph -->\n<p>This covers the trip</p>"), out);
         assertFalse(out.contains("Full Post"), out);
-        assertTrue(out.contains(">A → B</h2>"), out);
+        assertTrue(out.contains(">A → B</h3>"), out);
     }
 
     @Test
@@ -327,9 +317,9 @@ class WordPressExporterTest {
 
         String out = exporter.export(trip, null, null, false, false);
 
-        assertTrue(out.contains(">B → C</h2>"), out);
-        assertTrue(out.contains("<strong>Mittwoch · Tag 2</strong><br><small>2. Juli 2025</small>"), out);
-        assertTrue(out.contains("<strong>42,5 km</strong><br><small>650 m bergauf</small>"), out);
+        assertTrue(out.contains(">B → C</h3>"), out);
+        assertTrue(out.contains("Mittwoch, 2. Juli 2025 · Tag 2<br>"), out);
+        assertTrue(out.contains("42,5 km, 650 m bergauf</p>"), out);
         assertTrue(out.contains("<li>🍲 Essen: <a href=\"https://food.example.com/\">food.example.com</a></li>"), out);
         assertTrue(exporter.previewHtml("t", "").contains("<html lang=\"de\">"));
     }

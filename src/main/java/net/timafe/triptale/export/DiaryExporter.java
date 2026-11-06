@@ -302,7 +302,7 @@ public class DiaryExporter {
                 : substitute(load(ENTRY_FACTS), Map.of("facts", facts.byline())).stripTrailing());
 
         // Private sections (todo 48) never leave the app
-        String tales = e.tales() == null ? "" : Markdown.shiftHeadings(Markdown.stripPrivate(e.tales()).strip(), 1);
+        String tales = e.tales() == null ? "" : Markdown.shiftHeadingsToMin(Markdown.stripPrivate(e.tales()).strip(), 3);
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);

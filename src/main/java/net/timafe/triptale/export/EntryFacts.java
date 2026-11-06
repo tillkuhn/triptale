@@ -59,6 +59,16 @@ record EntryFacts(List<Item> items) {
         return tripStart == null ? null : ChronoUnit.DAYS.between(tripStart, date) + 1;
     }
 
+    /**
+     * Two lines: the day (calendar emoji, date, day number), then everything else (activity,
+     * weather, location) joined with " · ". The second is empty when there is nothing else.
+     */
+    List<String> twoLines() {
+        String day = items.getFirst().inline();
+        String rest = items.stream().skip(1).map(Item::inline).collect(Collectors.joining(" · "));
+        return List.of(DATE_EMOJI + " " + day, rest);
+    }
+
     /** All facts on one line, e.g. "Mittwoch, 23. Juli 2026 · Tag 3 · 🚴 123,0 km, 100 m bergauf". */
     String byline() {
         return items.stream().map(Item::inline).collect(Collectors.joining(" · "));

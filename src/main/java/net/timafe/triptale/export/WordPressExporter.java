@@ -51,6 +51,9 @@ import java.util.stream.StreamSupport;
 @Component
 public class WordPressExporter {
 
+    /** Level of each day's title; headings inside the tale always sit below it. */
+    private static final int DAY_HEADING_LEVEL = 3;
+
     private static final String PREVIEW_SHELL = "/export/wordpress-preview.html";
     private static final Parser PARSER = Parser.builder().build();
     // A soft line break is a space, as in the HTML export, not a <br>
@@ -108,14 +111,14 @@ public class WordPressExporter {
         for (LocalDate date : dates) {
             DiaryEntry e = store.loadEntry(trip.ref(), date);
             String heading = DiaryExporter.headingLine(trip, e, texts).replaceFirst("^#+\\s*", "");
-            blocks.add(heading(2, DiaryExporter.escapeHtml(heading)));
+            blocks.add(heading(DAY_HEADING_LEVEL, DiaryExporter.escapeHtml(heading)));
             blocks.add(facts(EntryFacts.of(trip.startDate(), e, texts)));
             places |= EntryFacts.hasPlace(e);
             // Private sections (todo 48) never leave the app
             String tales = e.tales() == null ? "" : Markdown.stripPrivate(e.tales()).strip();
             if (!tales.isEmpty()) {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
-                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadings(tales, 1))));
+                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadingsToMin(tales, DAY_HEADING_LEVEL + 1))));
             }
             blocks.addAll(linkBlocks(e, texts));
             if (!baseUrl.isEmpty()) {
@@ -155,25 +158,18 @@ public class WordPressExporter {
     }
 
     /**
-     * The entry facts (todo 53) as a columns block, one centered column per fact: a big emoji over
-     * one paragraph with the value in bold and a small note below. Every column has the same rows
-     * so they line up; the day stamp is HTML-only, here the day joins the weekday. No custom CSS
-     * on the blog, so the theme styles it.
+     * The entry facts (todo 53) as one small paragraph of two lines: the day, then activity,
+     * weather and location. The earlier columns layout (big emoji over bold text) was far too
+     * prominent on the blog. Coordinates keep their lat/lon together with a no-break space. No
+     * custom CSS, so the theme styles it.
      */
     private static String facts(EntryFacts facts) {
-        List<String> columns = new ArrayList<>();
-        for (EntryFacts.Item item : facts.items()) {
-            String value = item.stamp() == null ? item.value()
-                    : item.value() + " · " + item.stamp().label() + " " + item.stamp().day();
-            StringBuilder text = new StringBuilder("<strong>").append(DiaryExporter.escapeHtml(value)).append("</strong>");
-            if (item.note() != null) text.append("<br><small>").append(DiaryExporter.escapeHtml(item.note())).append("</small>");
-            if (item.detail() != null) text.append("<br><small>").append(DiaryExporter.escapeHtml(item.detail())).append("</small>");
-            String emoji = block("paragraph", "{\"align\":\"center\",\"fontSize\":\"x-large\"}",
-                    "<p class=\"has-text-align-center has-x-large-font-size\">" + item.emoji() + "</p>");
-            String body = block("paragraph", "{\"align\":\"center\"}", "<p class=\"has-text-align-center\">" + text + "</p>");
-            columns.add(block("column", "", "<div class=\"wp-block-column\">" + emoji + "\n\n" + body + "</div>"));
+        List<String> lines = facts.twoLines();
+        String html = DiaryExporter.escapeHtml(lines.get(0));
+        if (!lines.get(1).isEmpty()) {
+            html += "<br>" + DiaryExporter.escapeHtml(lines.get(1)).replaceAll("([NS]) (\\d)", "$1\u00A0$2");
         }
-        return block("columns", "", "<div class=\"wp-block-columns\">" + String.join("\n\n", columns) + "</div>");
+        return block("paragraph", "{\"fontSize\":\"small\"}", "<p class=\"has-small-font-size\">" + html + "</p>");
     }
 
     /**

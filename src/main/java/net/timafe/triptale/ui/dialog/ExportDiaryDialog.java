@@ -207,7 +207,7 @@ public final class ExportDiaryDialog {
 
         range.onOpenPostOffice(() -> {
             Post selected = range.selectedPost();
-            new PostOfficeDialog(store, statusSink, addPending).show(dlg.getDialogPane().getScene().getWindow(), trip,
+            new PostOfficeDialog(store, settingsStore, browser, statusSink, addPending).show(dlg.getDialogPane().getScene().getWindow(), trip,
                     current != null ? current : range.from(), selected == null ? null : selected.slug());
             reloadPosts(trip, range, current);
             render.run();

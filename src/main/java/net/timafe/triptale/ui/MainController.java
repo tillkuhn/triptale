@@ -680,7 +680,7 @@ public class MainController implements StatusSink {
     public void onOpenPostOffice() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
-        new PostOfficeDialog(store, this, this::addPending).show(null, trip, datePicker.getValue(), null);
+        new PostOfficeDialog(store, settingsStore, browser, this, this::addPending).show(null, trip, datePicker.getValue(), null);
     }
 
     @FXML
