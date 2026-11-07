@@ -10,6 +10,7 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.Dialog;
 import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
@@ -35,7 +36,7 @@ public final class NewTripDialog {
     }
 
     /** {@code activity} is the trip's default for new entries, null for none. */
-    public record Spec(String name, LocalDate startDate, String activity, String description, Optional<FirstEntry> firstEntry) {}
+    public record Spec(String name, LocalDate startDate, String activity, String postTags, String description, Optional<FirstEntry> firstEntry) {}
 
     /**
      * All fields but {@code title} are null unless the trip was created from a GPX import;
@@ -56,6 +57,9 @@ public final class NewTripDialog {
         DatePicker startField = new DatePicker(LocalDate.now());
         startField.setConverter(Dialogs.isoDateConverter());
         ComboBox<String> activityCombo = ActivityChoices.newComboBox(null);
+        TextField postTagsField = new TextField();
+        postTagsField.setPromptText("WordPress tags, semicolon-separated");
+        postTagsField.setTooltip(new Tooltip("Only a starting suggestion for the tags of a new Post"));
         TextArea descArea = new TextArea();
         descArea.setPromptText("Optional description");
         descArea.setPrefRowCount(3);
@@ -84,10 +88,12 @@ public final class NewTripDialog {
         grid.add(startField, 1, 1);
         grid.add(new Label("Default activity:"), 0, 2);
         grid.add(activityCombo, 1, 2);
-        grid.add(new Label("Description:"), 0, 3);
-        grid.add(descArea, 1, 3);
-        grid.add(initFirstEntryCheck, 1, 4);
-        grid.add(importHintLabel, 1, 5);
+        grid.add(new Label("Default post tags:"), 0, 3);
+        grid.add(postTagsField, 1, 3);
+        grid.add(new Label("Description:"), 0, 4);
+        grid.add(descArea, 1, 4);
+        grid.add(initFirstEntryCheck, 1, 5);
+        grid.add(importHintLabel, 1, 6);
 
         dlg.getDialogPane().setContent(grid);
         ButtonType importType = new ButtonType("Import GPX…", ButtonBar.ButtonData.LEFT);
@@ -145,6 +151,6 @@ public final class NewTripDialog {
                     : new FirstEntry(name, null, null, null, null, null, null, null));
         }
         return Optional.of(new Spec(name, startField.getValue(), ActivityChoices.value(activityCombo),
-                descArea.getText(), firstEntry));
+                postTagsField.getText(), descArea.getText(), firstEntry));
     }
 }

@@ -91,7 +91,7 @@ public final class WordPressPublishDialog {
         hint.getStyleClass().add("sync-status-muted");
         // Tags are always sent with a new draft; on an update they would replace the ones edited on WordPress, so opt in
         boolean update = post.wpId() != null && !post.wpId().isBlank();
-        sendTagsBox.setText("Also send tags (" + String.join(", ", post.tags()) + "), replacing those on WordPress");
+        sendTagsBox.setText("Also send tags (" + String.join("; ", post.tags()) + "), replacing those on WordPress");
         sendTagsBox.setSelected(false);
         sendTagsBox.setVisible(update && !post.tags().isEmpty());
         sendTagsBox.setManaged(sendTagsBox.isVisible());

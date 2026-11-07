@@ -637,7 +637,7 @@ public class MainController implements StatusSink {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity()));
+        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity(), spec.get().postTags()));
         addPending(ref.path(), CREATE);
         spec.get().firstEntry().ifPresent(fe -> {
             DiaryEntry entry = DiaryEntry.builder(start)

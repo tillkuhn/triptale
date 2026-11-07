@@ -57,3 +57,11 @@ fact header layout.
 - `storage/MarkdownStore.java` (`saveTrip`, `loadTrip`)
 - `ui/dialog/NewTripDialog.java` (`Spec`), `ui/dialog/TripDetailsDialog.java`
 - `ui/MainController.java` (`showActivity`, `loadEntry`, new-trip first entry, GPX import)
+
+## Follow-up: default post tags
+
+Same pattern for WordPress tags: trip `README.md` frontmatter `post_tags` (semicolon-separated
+scalar, tags may contain commas), edited in New Trip and Trip Details. `PostOfficeDialog`
+copies it into the Tags field when a **new** Post is created; the user can overwrite it, and
+later changes to the trip never touch existing Posts. Post tags themselves are also
+`;`-separated when stored as a scalar.

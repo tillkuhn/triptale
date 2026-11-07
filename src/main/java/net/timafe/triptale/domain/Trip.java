@@ -6,6 +6,8 @@ import java.time.temporal.ChronoUnit;
 /**
  * {@code activity} is the default for new entries (todo 57), copied into an entry when it's first
  * created rather than inherited at read time; normalized by {@link Activity#normalize}, null = none.
+ * {@code postTags} is a semicolon-separated string of WordPress tags that merely pre-fills a new Post
+ * (a one-time copy, never kept in sync); blank = null.
  */
 public record Trip(
         int year,
@@ -14,10 +16,17 @@ public record Trip(
         LocalDate startDate,
         LocalDate endDate,
         String description,
-        String activity
+        String activity,
+        String postTags
 ) {
     public Trip {
         activity = Activity.normalize(activity);
+        postTags = postTags == null || postTags.isBlank() ? null : postTags.strip();
+    }
+
+    /** A trip without default post tags. */
+    public Trip(int year, String slug, String name, LocalDate startDate, LocalDate endDate, String description, String activity) {
+        this(year, slug, name, startDate, endDate, description, activity, null);
     }
 
     /** A trip without a default activity. */

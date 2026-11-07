@@ -105,6 +105,15 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void tripPostTagsRoundTripAndAreOmittedWhenBlank() {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", null, " reisen; sumatra "));
+        assertEquals("reisen; sumatra", store.loadTrip(ALPS_2025).orElseThrow().postTags());
+
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", null, " "));
+        assertNull(store.loadTrip(ALPS_2025).orElseThrow().postTags());
+    }
+
+    @Test
     void tripActivityIsFirstKeyRoundTripsAndIsOmittedWhenNotSet() throws Exception {
         store.saveTrip(new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", "Bikepacking"));
 

@@ -136,6 +136,11 @@ public final class TripDetailsDialog {
 
         ComboBox<String> activityCombo = ActivityChoices.newComboBox(trip.activity());
 
+        TextField postTagsField = new TextField(trip.postTags() == null ? "" : trip.postTags());
+        postTagsField.setPromptText("WordPress tags, semicolon-separated");
+        postTagsField.setTooltip(new Tooltip("Only a starting suggestion for the tags of a new Post;"
+                + " later changes here don't touch existing Posts"));
+
         GridPane grid = Dialogs.formGrid();
         int row = 0;
         ColumnConstraints labelCol = new ColumnConstraints();
@@ -151,6 +156,8 @@ public final class TripDetailsDialog {
         grid.add(dateBox, 1, row++);
         grid.add(new Label("Default activity:"), 0, row);
         grid.add(activityCombo, 1, row++);
+        grid.add(new Label("Default post tags:"), 0, row);
+        grid.add(postTagsField, 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
         grid.add(new Label(stats.distanceText()), 1, row++);
         grid.add(new Label("Total altitude:"), 0, row);
@@ -188,7 +195,8 @@ public final class TripDetailsDialog {
                             || (nameField.getText().trim().equals(trip.name())
                                     && descArea.getText().equals(originalDesc)
                                     && Objects.equals(newEnd, trip.endDate())
-                                    && Objects.equals(ActivityChoices.value(activityCombo), trip.activity())));
+                                    && Objects.equals(ActivityChoices.value(activityCombo), trip.activity())
+                                    && Objects.equals(blankToNull(postTagsField.getText()), trip.postTags())));
         };
         Node openButton = dlg.getDialogPane().lookupButton(openType);
         // Open = apply valid edits + jump, so it needs a valid form (see refreshOk) and a selected row
@@ -213,6 +221,7 @@ public final class TripDetailsDialog {
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
         endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
         activityCombo.valueProperty().addListener((o, a, b) -> refreshOk.run());
+        postTagsField.textProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isEmpty()) return Optional.empty();
@@ -223,13 +232,19 @@ public final class TripDetailsDialog {
         String newDesc = descArea.getText();
         LocalDate newEnd = endField.getValue();
         String newActivity = ActivityChoices.value(activityCombo);
+        String newPostTags = blankToNull(postTagsField.getText());
         Trip edited = null;
         if (!(newName.equals(trip.name()) && newDesc.equals(originalDesc)
-                && Objects.equals(newEnd, trip.endDate()) && Objects.equals(newActivity, trip.activity()))) {
+                && Objects.equals(newEnd, trip.endDate()) && Objects.equals(newActivity, trip.activity())
+                && Objects.equals(newPostTags, trip.postTags()))) {
             // Slug and year are immutable — a rename never moves the directory.
-            edited = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity);
+            edited = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity, newPostTags);
         }
         return edited == null && openDate == null ? Optional.empty() : Optional.of(new Result(edited, openDate));
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.strip();
     }
 
     /** Backpack file count per day, same number as the Backpack button; failures count as 0. */

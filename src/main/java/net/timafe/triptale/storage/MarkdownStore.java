@@ -150,7 +150,8 @@ public class MarkdownStore {
                     asDate(data.get("start_date")),
                     asDate(data.get("end_date")),
                     description,
-                    asString(data.get("activity"))
+                    asString(data.get("activity")),
+                    asString(data.get("post_tags"))
             ));
         } catch (IOException e) {
             throw new StorageException("Failed to load trip: " + ref.path(), e);
@@ -165,6 +166,7 @@ public class MarkdownStore {
         Map<String, Object> fm = new LinkedHashMap<>();
         if (trip.activity() != null) fm.put("activity", trip.activity());
         if (trip.endDate() != null) fm.put("end_date", trip.endDate().toString());
+        if (trip.postTags() != null) fm.put("post_tags", trip.postTags());
         fm.put("start_date", trip.startDate() == null ? null : trip.startDate().toString());
         fm.put("type", TRIP_TYPE);
         try {
@@ -310,7 +312,7 @@ public class MarkdownStore {
     private static List<String> asStringList(Object o) {
         if (o instanceof Collection<?> c) return c.stream().filter(Objects::nonNull).map(x -> x.toString().strip()).filter(x -> !x.isEmpty()).toList();
         if (o == null) return List.of();
-        return Arrays.stream(o.toString().split(",")).map(String::strip).filter(x -> !x.isEmpty()).toList();
+        return Arrays.stream(o.toString().split(";")).map(String::strip).filter(x -> !x.isEmpty()).toList();
     }
 
     /** Removes a Post's file; a missing file is fine. */

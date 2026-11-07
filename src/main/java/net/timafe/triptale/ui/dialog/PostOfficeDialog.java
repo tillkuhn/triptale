@@ -116,7 +116,7 @@ public final class PostOfficeDialog {
         titleField.setPrefColumnCount(40);
         tagsField.setTooltip(new Tooltip("An existing WordPress tag is reused whatever its case (reisen finds Reisen);"
                 + " a new one is created exactly as typed here"));
-        tagsField.setPromptText("WordPress tags, comma-separated (sent with a new draft, optional on update)");
+        tagsField.setPromptText("WordPress tags, semicolon-separated (sent with a new draft, optional on update)");
         introArea.setWrapText(true);
         introArea.setPrefRowCount(5);
         introArea.setPromptText("Optional lead paragraph (Markdown) shown above the days");
@@ -223,7 +223,7 @@ public final class PostOfficeDialog {
         }
         fromPicker.setValue(post.from());
         toPicker.setValue(post.to());
-        tagsField.setText(String.join(", ", post.tags()));
+        tagsField.setText(String.join("; ", post.tags()));
         introArea.setText(post.intro() == null ? "" : post.intro().strip());
         errorLabel.setText("");
         deleteBtn.setDisable(false);
@@ -257,7 +257,8 @@ public final class PostOfficeDialog {
         LocalDate start = entryDates.contains(day) ? day : entryDates.isEmpty() ? null : entryDates.getFirst();
         fromPicker.setValue(start);
         toPicker.setValue(start);
-        tagsField.setText("");
+        // Initial suggestion only: copied from the trip now, never synced afterwards
+        tagsField.setText(trip.postTags() == null ? "" : trip.postTags());
         introArea.setText("");
         errorLabel.setText("");
         deleteBtn.setDisable(true);
@@ -287,7 +288,7 @@ public final class PostOfficeDialog {
         if (from == null || to == null) { errorLabel.setText("From and To are required"); return; }
         if (to.isBefore(from)) { errorLabel.setText("To must not be before From"); return; }
         String intro = introArea.getText() == null ? "" : introArea.getText().strip();
-        List<String> tags = Arrays.stream((tagsField.getText() == null ? "" : tagsField.getText()).split(","))
+        List<String> tags = Arrays.stream((tagsField.getText() == null ? "" : tagsField.getText()).split(";"))
                 .map(String::strip).filter(t -> !t.isEmpty()).distinct().toList();
         Post saved;
         if (creating || editing == null) {
