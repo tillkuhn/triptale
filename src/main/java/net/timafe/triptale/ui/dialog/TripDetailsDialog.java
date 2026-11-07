@@ -151,8 +151,6 @@ public final class TripDetailsDialog {
         grid.add(dateBox, 1, row++);
         grid.add(new Label("Default activity:"), 0, row);
         grid.add(activityCombo, 1, row++);
-        grid.add(new Label("Entries:"), 0, row);
-        grid.add(new Label(Integer.toString(stats.entries())), 1, row++);
         grid.add(new Label("Total distance:"), 0, row);
         grid.add(new Label(stats.distanceText()), 1, row++);
         grid.add(new Label("Total altitude:"), 0, row);
@@ -165,7 +163,7 @@ public final class TripDetailsDialog {
         dlg.setHeaderText(trip.year() + " · " + trip.name());
         TableView<DiaryEntry> table = overviewTable(trip, entries, backpackCounts(trip, entries), mapDates(trip, entries));
         Tab detailsTab = new Tab("Trip Details", grid);
-        Tab overviewTab = new Tab("Tale Entries", table);
+        Tab overviewTab = new Tab("Tale Entries (" + stats.entries() + ")", table);
         TabPane tabs = new TabPane(detailsTab, overviewTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
