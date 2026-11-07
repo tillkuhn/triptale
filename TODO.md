@@ -8,7 +8,11 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 88
+## Next Todo: 89
+
+## 88 Share trip form between New Trip and Trip Details
+
+Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
 
 ## 81 General repo housekeeping task
 
