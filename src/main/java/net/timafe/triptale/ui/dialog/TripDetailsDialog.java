@@ -333,7 +333,14 @@ public final class TripDetailsDialog {
         map.setMinWidth(50);
         map.setMaxWidth(50);
         map.setStyle("-fx-alignment: CENTER;");
-        table.getColumns().addAll(day, title, activity, place, links, pack, map);
+        TableColumn<DiaryEntry, String> weather = new TableColumn<>("⛅");
+        weather.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                c.getValue().weather() == null ? "" : c.getValue().weather().tempMax() + "°"));
+        weather.setPrefWidth(55);
+        weather.setMinWidth(55);
+        weather.setMaxWidth(55);
+        weather.setStyle("-fx-alignment: CENTER;");
+        table.getColumns().addAll(day, title, activity, place, weather, links, pack, map);
         return table;
     }
 
