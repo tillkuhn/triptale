@@ -137,9 +137,6 @@
 .tale-empty-overlay {
     -fx-background-color: #1e2a2a;
 }
-.tale-empty-dragon {
-    -fx-font-size: 64px;
-}
 .tale-empty-heading {
     -fx-text-fill: #7a9490;
     -fx-font-size: 20px;

@@ -35,6 +35,8 @@ public class TripTaleApplication extends Application {
      */
     static final String AOT_TRAINING_PROPERTY = "triptale.aot-training";
 
+    private static final long MIN_SPLASH_MS = 2000;
+
     /** Kept for IDE run configs; the jar's real entry point is {@link Launcher}. */
     public static void main(String[] args) {
         Launcher.main(args);
@@ -42,12 +44,26 @@ public class TripTaleApplication extends Application {
 
     @Override
     public void init() {
+        long started = System.nanoTime();
         // Read by logging.pattern.console in application.yml to shorten the home dir to "~".
         System.setProperty("triptale.home-regex", Pattern.quote(System.getProperty("user.home")));
         javafx.application.HostServices hs = getHostServices();
         SpringApplication app = new SpringApplication(TripTaleApplication.class);
         app.addInitializers(ctx -> ctx.getBeanFactory().registerSingleton("hostServices", hs));
         spring = app.run(getParameters().getRaw().toArray(new String[0]));
+        keepSplashVisible(started);
+    }
+
+    /** Spring boots in well under a second; without this the splash would only flash. */
+    private static void keepSplashVisible(long startedNanos) {
+        long remainingMs = MIN_SPLASH_MS - (System.nanoTime() - startedNanos) / 1_000_000;
+        if (remainingMs > 0 && !Boolean.getBoolean(AOT_TRAINING_PROPERTY)) {
+            try {
+                Thread.sleep(remainingMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     @Override

@@ -23,6 +23,7 @@ public final class Launcher {
                 .setLanguage("en")
                 .setRegion(Locale.getDefault().getCountry())
                 .build());
+        System.setProperty("javafx.preloader", SplashPreloader.class.getName());
         Application.launch(TripTaleApplication.class, args);
     }
 }

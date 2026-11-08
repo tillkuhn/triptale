@@ -12,6 +12,8 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
@@ -198,7 +200,10 @@
                 <TextArea fx:id="talesArea" styleClass="tale-text" wrapText="true"/>
                 <VBox fx:id="taleEmptyOverlay" styleClass="tale-empty-overlay" alignment="CENTER" spacing="14"
                       visible="false" managed="false">
-                    <Label text="🐉" styleClass="tale-empty-dragon"/>
+                    <ImageView fitWidth="160" fitHeight="160" preserveRatio="true" smooth="true">
+                        <Image url="@/images/triptale-dragon.png" requestedWidth="320" requestedHeight="320"
+                               preserveRatio="true" smooth="true"/>
+                    </ImageView>
                     <Label text="Here be dragons" styleClass="tale-empty-heading"/>
                     <Hyperlink fx:id="createTaleLink" text="👉 Click here to create a tale" onAction="#onCreateTaleLink"
                                styleClass="tale-empty-link"/>
