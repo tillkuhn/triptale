@@ -8,7 +8,16 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 90
+## Next Todo: 91
+
+## 90 External track suggestions for Import GPX
+
+The shared external track app backup folder (`tour_recorded`, ~500 `YYYY-MM-DD_<tourId>_<slug>.gpx` files,
+date = recording date) makes "Import GPX…" a scroll through everything. Match tours by the
+entry's date instead: (A) the import offers date-matched candidates first, (B) the entry
+shows that an unimported tour exists. Folder source and scope still to decide.
+
+[Details](docs/90_external_track_suggestions.md)
 
 ## 88 Share trip form between New Trip and Trip Details
 
