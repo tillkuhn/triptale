@@ -31,6 +31,10 @@ else
 RUN_CMD := $(MVN) $(MVNARGS) -Dmvnd.rawStreams=true javafx:run
 endif
 
+# Dev targets skip the artificial minimum splash time (default 2000 ms for real use).
+# Override: make run TRIPTALE_SPLASH_MS=2000
+run run-fast frun: export TRIPTALE_SPLASH_MS ?= 0
+
 run: ## Launch the TripTale JavaFX app (via Maven plugin)
 	$(RUN_CMD)
 

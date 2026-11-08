@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 89
+## Next Todo: 90
 
 ## 88 Share trip form between New Trip and Trip Details
 
@@ -174,6 +174,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 89 Splash screen and dragon logo
+
+Preloader splash with the TripTale dragon logo while Spring boots (min. 2 s, 0 in dev targets), dragon image in the About dialog and the empty state instead of the emoji.
+
+[Details](docs/89_splash_screen_and_dragon_logo.md)
 
 ## DONE 87 Trip details: tabs with entries overview table
 

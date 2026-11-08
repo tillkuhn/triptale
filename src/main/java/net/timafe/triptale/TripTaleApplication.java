@@ -35,7 +35,11 @@ public class TripTaleApplication extends Application {
      */
     static final String AOT_TRAINING_PROPERTY = "triptale.aot-training";
 
-    private static final long MIN_SPLASH_MS = 2000;
+    /**
+     * Minimum splash time. Override with env {@code TRIPTALE_SPLASH_MS} (or the system property
+     * {@code triptale.splash-ms}); {@code make run}/{@code run-fast} set it to 0 for fast dev restarts.
+     */
+    private static final long DEFAULT_MIN_SPLASH_MS = 2000;
 
     /** Kept for IDE run configs; the jar's real entry point is {@link Launcher}. */
     public static void main(String[] args) {
@@ -54,9 +58,22 @@ public class TripTaleApplication extends Application {
         keepSplashVisible(started);
     }
 
+    private static long minSplashMs() {
+        String value = System.getProperty("triptale.splash-ms", System.getenv("TRIPTALE_SPLASH_MS"));
+        if (value == null || value.isBlank()) {
+            return DEFAULT_MIN_SPLASH_MS;
+        }
+        try {
+            return Math.max(0, Long.parseLong(value.trim()));
+        } catch (NumberFormatException e) {
+            log.warn("Ignoring invalid splash time '{}'", value);
+            return DEFAULT_MIN_SPLASH_MS;
+        }
+    }
+
     /** Spring boots in well under a second; without this the splash would only flash. */
     private static void keepSplashVisible(long startedNanos) {
-        long remainingMs = MIN_SPLASH_MS - (System.nanoTime() - startedNanos) / 1_000_000;
+        long remainingMs = minSplashMs() - (System.nanoTime() - startedNanos) / 1_000_000;
         if (remainingMs > 0 && !Boolean.getBoolean(AOT_TRAINING_PROPERTY)) {
             try {
                 Thread.sleep(remainingMs);
