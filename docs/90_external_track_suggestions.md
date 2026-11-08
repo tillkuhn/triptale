@@ -98,3 +98,12 @@ clickable, so any file from any folder can be imported. Only its emphasis change
 
 - How a GPX attachment is recognised for the ✓ state (same lookup as the Backpack button).
 - Whether the FX-thread check needs to move to a background thread (measure).
+
+## Follow-up: places on save
+
+After a GPX import the start/stop points were set and weather was fetched silently on save,
+but `start_place`/`stop_place` stayed empty. The silent post-save enrichment in
+`MainController.maybeFetchWeather` now also runs the reverse lookup (`PlaceLookup`) for a start/stop
+point that has coordinates but no place, one request after the other (Nominatim rate limit), and the
+weather's place echoes the start place. Existing values are never overwritten; failures are only
+logged, so a save retries the missing lookups.

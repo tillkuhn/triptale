@@ -1614,42 +1614,79 @@ public class MainController implements StatusSink {
         maybeFetchWeather(trip, entry);
     }
 
+    /** Background enrichment result: any part may be null (not needed, or the lookup failed). */
+    private record Enrichment(String startPlace, String stopPlace, Weather weather) {}
+
     /**
-     * Kicks off an async, silent weather fetch (todo 65) when the just-saved entry has a start
-     * point but no weather yet. Never overwrites an existing value, never blocks the FX thread,
-     * never shows an alert on failure (weather is background enrichment, not load-bearing).
+     * Kicks off an async, silent enrichment of the just-saved entry (todos 65, 90): reverse place
+     * lookups for a start/stop point that has coordinates but no place, and a weather fetch when
+     * a start point exists but weather is absent. The start place (given or just looked up) is
+     * echoed into the weather. Never overwrites existing values, never blocks the FX thread,
+     * never shows an alert on failure (background enrichment, not load-bearing).
      */
     private void maybeFetchWeather(TripRef trip, DiaryEntry entry) {
-        if (entry.weather() != null || entry.startLat() == null || entry.startLon() == null) return;
-        double lat = entry.startLat();
-        double lon = entry.startLon();
+        boolean hasStart = entry.startLat() != null && entry.startLon() != null;
+        boolean hasStop = entry.stopLat() != null && entry.stopLon() != null;
+        boolean needStartPlace = hasStart && isBlank(entry.startPlace());
+        boolean needStopPlace = hasStop && isBlank(entry.stopPlace());
+        boolean needWeather = hasStart && entry.weather() == null;
+        if (!needStartPlace && !needStopPlace && !needWeather) return;
         LocalDate date = entry.date();
-        String place = entry.startPlace();
-        Task<Weather> task = new Task<>() {
+        Task<Enrichment> task = new Task<>() {
             @Override
-            protected Weather call() {
-                return weatherClient.fetch(lat, lon, date);
+            protected Enrichment call() {
+                String sp = null;
+                String ep = null;
+                if (needStartPlace) sp = lookupPlaceQuietly(entry.startLat(), entry.startLon());
+                if (needStopPlace) ep = lookupPlaceQuietly(entry.stopLat(), entry.stopLon());
+                Weather w = null;
+                if (needWeather) {
+                    try {
+                        w = weatherClient.fetch(entry.startLat(), entry.startLon(), date);
+                    } catch (RuntimeException e) {
+                        log.debug("Weather fetch failed for {}/{}: {}", trip.path(), date, e.getMessage());
+                    }
+                }
+                return new Enrichment(sp, ep, w);
             }
         };
-        task.setOnSucceeded(ev -> Platform.runLater(() -> applyFetchedWeather(trip, date, task.getValue(), place)));
-        task.setOnFailed(ev -> log.debug("Weather fetch failed for {}/{}: {}", trip.path(), date,
+        task.setOnSucceeded(ev -> Platform.runLater(() -> applyEnrichment(trip, date, task.getValue())));
+        task.setOnFailed(ev -> log.debug("Enrichment failed for {}/{}: {}", trip.path(), date,
                 task.getException() != null ? task.getException().getMessage() : "unknown error"));
-        Thread thread = new Thread(task, "weather-fetch");
+        Thread thread = new Thread(task, "entry-enrich");
         thread.setDaemon(true);
         thread.start();
     }
 
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private String lookupPlaceQuietly(double lat, double lon) {
+        try {
+            return placeLookup.lookup(lat, lon).label();
+        } catch (RuntimeException e) {
+            log.debug("Place lookup failed for {},{}: {}", lat, lon, e.getMessage());
+            return null;
+        }
+    }
+
     /**
-     * Applies a background weather fetch result once it arrives. Reloads the entry from disk
+     * Applies a background enrichment result once it arrives. Reloads the entry from disk
      * right before writing (not the possibly-stale in-memory copy) so a save made in the
-     * meantime isn't clobbered; bails out if something already set weather meanwhile.
+     * meantime isn't clobbered; only fills values that are still absent.
      */
-    private void applyFetchedWeather(TripRef trip, LocalDate date, Weather fetched, String place) {
-        if (fetched == null) return;
+    private void applyEnrichment(TripRef trip, LocalDate date, Enrichment found) {
+        if (found == null) return;
         DiaryEntry current = store.loadEntry(trip, date);
-        if (current.weather() != null) return;
-        Weather withPlace = place == null ? fetched
-                : new Weather(fetched.tempMin(), fetched.tempMax(), fetched.code(), fetched.elevation(), place);
+        String newStart = isBlank(current.startPlace()) && !isBlank(found.startPlace()) ? found.startPlace() : null;
+        String newStop = isBlank(current.stopPlace()) && !isBlank(found.stopPlace()) ? found.stopPlace() : null;
+        Weather fetched = current.weather() == null ? found.weather() : null;
+        if (newStart == null && newStop == null && fetched == null) return;
+        String startPlaceNow = newStart != null ? newStart : current.startPlace();
+        Weather newWeather = fetched == null ? null
+                : isBlank(startPlaceNow) ? fetched
+                : new Weather(fetched.tempMin(), fetched.tempMax(), fetched.code(), fetched.elevation(), startPlaceNow);
         DiaryEntry updated = DiaryEntry.builder(date)
                 .activity(current.activity())
                 .distance(current.distance())
@@ -1660,23 +1697,34 @@ public class MainController implements StatusSink {
                 .startLon(current.startLon())
                 .stopLat(current.stopLat())
                 .stopLon(current.stopLon())
-                .startPlace(current.startPlace())
-                .stopPlace(current.stopPlace())
-                .weather(withPlace)
+                .startPlace(startPlaceNow)
+                .stopPlace(newStop != null ? newStop : current.stopPlace())
+                .weather(newWeather != null ? newWeather : current.weather())
                 .tales(current.tales())
                 .build();
         store.saveEntry(trip, updated);
         addPending(trip.path() + "/" + date, UPDATE);
-        log.debug("Weather saved for {}/{}: {}", trip.path(), date, withPlace.toRaw());
+        log.debug("Entry enriched for {}/{}: startPlace={} stopPlace={} weather={}", trip.path(), date,
+                newStart, newStop, newWeather != null ? newWeather.toRaw() : null);
         Trip selectedTrip = tripCombo.getValue();
         LocalDate selectedDate = datePicker.getValue();
         if (selectedTrip != null && selectedTrip.ref().equals(trip) && date.equals(selectedDate)) {
             // Already persisted above, so the baseline moves too — otherwise isDirty() would
             // report an unsaved change for a field the user never touched.
-            weather = withPlace;
-            baselineWeather = withPlace;
+            if (newStart != null && isBlank(startPlace)) {
+                startPlace = newStart;
+                baselineStartPlace = newStart;
+            }
+            if (newStop != null && isBlank(stopPlace)) {
+                stopPlace = newStop;
+                baselineStopPlace = newStop;
+            }
+            if (newWeather != null) {
+                weather = newWeather;
+                baselineWeather = newWeather;
+            }
             updateCoordinatesButton();
-            status("Weather fetched for " + date);
+            status("Places/weather fetched for " + date);
         }
         updateDirty();
     }
