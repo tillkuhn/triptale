@@ -33,6 +33,7 @@ public class AppSettings {
     private int impressionsGridColumns = 2;
     private String impressionsBaseFilter = DEFAULT_IMPRESSIONS_BASE_FILTER;
     private String impressionsFaveFilter = "";
+    private String gpxFilePattern = "";
     private Attachments attachments = new Attachments();
     private boolean radioEnabled = false;
     private String defaultTripLanguage = "en";
@@ -42,7 +43,7 @@ public class AppSettings {
     private String thunderforestApiKey = "";
 
     /**
-     * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}}
+     * Resolves {@link #dataDir} to an absolute, normalized path. Supports {@code ${HOME}} and {@code ${USER}}
      * expansion (this project's established placeholder convention, see
      * {@code ImpressionsResolver}) and, for good measure, legacy leading {@code ~} expansion.
      * Returns {@link Optional#empty()} when {@link #dataDir} is blank (unconfigured) —
@@ -51,7 +52,8 @@ public class AppSettings {
     public Optional<Path> resolvedDataDir() {
         if (dataDir == null || dataDir.isBlank()) return Optional.empty();
         String home = System.getProperty("user.home", "");
-        String expanded = dataDir.replace("${HOME}", home);
+        String expanded = dataDir.replace("${HOME}", home)
+                .replace("${USER}", System.getProperty("user.name", ""));
         if (expanded.startsWith("~")) {
             expanded = home + expanded.substring(1);
         }
@@ -72,6 +74,9 @@ public class AppSettings {
     /** Space-separated filename globs marking faves, e.g. {@code *+.*}; blank = none defined (todo 47). */
     public String getImpressionsFaveFilter() { return impressionsFaveFilter; }
     public void setImpressionsFaveFilter(String impressionsFaveFilter) { this.impressionsFaveFilter = impressionsFaveFilter == null ? "" : impressionsFaveFilter; }
+    /** Where an external track app's GPX backup lives, same variables as the impressions pattern, e.g. {@code ${HOME}/tours/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*.gpx}; blank = no suggestions (todo 90). */
+    public String getGpxFilePattern() { return gpxFilePattern; }
+    public void setGpxFilePattern(String gpxFilePattern) { this.gpxFilePattern = gpxFilePattern == null ? "" : gpxFilePattern; }
     public Attachments getAttachments() { return attachments; }
     public void setAttachments(Attachments attachments) { this.attachments = attachments; }
     /** Gates the Radio feature (todo 46): off by default, UI and folder stay untouched until a restart with this on. */

@@ -63,6 +63,8 @@ import net.timafe.triptale.ui.dialog.EditSettingsDialog;
 import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.PostOfficeDialog;
+import net.timafe.triptale.impressions.GpxCandidates;
+import net.timafe.triptale.ui.dialog.GpxCandidatesDialog;
 import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
 import net.timafe.triptale.ui.dialog.InboxDialog;
@@ -169,6 +171,7 @@ public class MainController implements StatusSink {
     @FXML private MenuItem syncTracksMenuItem;
     @FXML private MenuItem openBackpackMenuItem;
     @FXML private Button backpackButton;
+    @FXML private Button gpxButton;
     @FXML private Button mapperButton;
     @FXML private MenuItem syncMenuItem;
     @FXML private MenuItem commitMenuItem;
@@ -257,6 +260,8 @@ public class MainController implements StatusSink {
     private final MarkdownStore store;
     private final GitService gitService;
     private final SettingsStore settingsStore;
+    private final GpxCandidates gpxCandidates;
+    private long gpxCheckSeq;
     private final ImpressionsService impressions;
     private final ConnectivityService connectivityService;
     private final ExportTempFiles exportTempFiles;
@@ -303,6 +308,7 @@ public class MainController implements StatusSink {
                           ConnectivityService connectivityService,
                           ExportTempFiles exportTempFiles,
                           AttachmentsDir attachmentsDir,
+                          GpxCandidates gpxCandidates,
                           InboxDir inboxDir,
                           RadioLibrary radioLibrary,
                           TripTaleProperties tripTaleProperties,
@@ -315,6 +321,7 @@ public class MainController implements StatusSink {
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
         this.attachmentsDir = attachmentsDir;
+        this.gpxCandidates = gpxCandidates;
         this.inboxDir = inboxDir;
         this.telegramInboxClient = new TelegramInboxClient(settingsStore, inboxDir);
         this.radioLibrary = radioLibrary;
@@ -735,11 +742,32 @@ public class MainController implements StatusSink {
     public void onImportGpx() {
         Trip trip = tripCombo.getValue();
         if (trip == null) { error("No trip selected"); return; }
+        LocalDate day = datePicker.getValue();
+        List<Path> found = List.of();
+        try {
+            found = gpxCandidates.find(trip, day);
+        } catch (RuntimeException e) {
+            // unreadable backup folder: fall back to the plain chooser
+        }
+        File file = null;
+        if (!found.isEmpty()) {
+            Optional<GpxCandidatesDialog.Choice> choice = GpxCandidatesDialog.showAndWait(day, found);
+            if (choice.isEmpty()) return;
+            if (choice.get().file() != null) file = choice.get().file().toFile();
+        }
+        if (file == null) file = chooseGpxFile();
+        if (file == null) return;
+        importGpx(trip, file);
+    }
+
+    private File chooseGpxFile() {
         FileChooser chooser = new FileChooser();
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("GPX files", "*.gpx"));
         store.loadLastGpxFolder().ifPresent(folder -> chooser.setInitialDirectory(folder.toFile()));
-        File file = chooser.showOpenDialog(null);
-        if (file == null) return;
+        return chooser.showOpenDialog(null);
+    }
+
+    private void importGpx(Trip trip, File file) {
         store.saveLastGpxFolder(file.getParentFile().toPath());
         Optional<GpxImport.Parsed> parsed = GpxImport.parse(file);
         if (parsed.isEmpty()) {
@@ -785,6 +813,7 @@ public class MainController implements StatusSink {
             activityCombo.setValue(p.activity());
         }
         updateCoordinatesButton();
+        updateGpxButton(trip, p.date());
         updateDirty();
         status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus);
     }
@@ -1028,6 +1057,7 @@ public class MainController implements StatusSink {
         if (inboxMenuItem != null) inboxMenuItem.setDisable(trip == null);
         if (inboxButton != null) inboxButton.setDisable(trip == null);
         updateBackpackButton(trip, date);
+        updateGpxButton(trip, date);
         updateMapperButton(trip, date);
         if (trip == null || date == null) {
             updateViewSourceMenuItem(false);
@@ -1119,6 +1149,53 @@ public class MainController implements StatusSink {
         impressionsButton.setDisable(noDay);
         if (impressionsMenuItem != null) impressionsMenuItem.setDisable(noDay);
         updateBackpackButton(trip, date);
+    }
+
+    /**
+     * GPX button state (todo 90): "✅ GPX" when the day's backpack holds a GPX file, "📥 GPX" highlighted when a
+     * recorded tour waits in the backup folder, "❓ GPX" otherwise. Always clickable on a day. The folder
+     * check runs off the FX thread; a stale result (date changed meanwhile) is dropped.
+     */
+    private void updateGpxButton(Trip trip, LocalDate date) {
+        if (gpxButton == null) return;
+        long seq = ++gpxCheckSeq;
+        boolean noDay = trip == null || date == null;
+        gpxButton.setDisable(noDay);
+        applyGpxState(false, List.of());
+        if (noDay) return;
+        Thread t = new Thread(() -> {
+            boolean imported = false;
+            List<Path> found = List.of();
+            try {
+                imported = gpxCandidates.hasImported(trip, date);
+                if (!imported) found = gpxCandidates.find(trip, date);
+            } catch (RuntimeException e) {
+                // data dir or backup folder unreadable: show the plain button
+            }
+            boolean imp = imported;
+            List<Path> f = found;
+            Platform.runLater(() -> { if (seq == gpxCheckSeq) applyGpxState(imp, f); });
+        }, "gpx-check");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void applyGpxState(boolean imported, List<Path> found) {
+        gpxButton.getStyleClass().removeAll("gpx-imported", "gpx-candidate");
+        if (imported) {
+            gpxButton.setText("✅ GPX");
+            gpxButton.getStyleClass().add("gpx-imported");
+            gpxButton.setTooltip(new Tooltip("GPX Gecko: a GPX track is already in this day's backpack; click to import another"));
+        } else if (!found.isEmpty()) {
+            gpxButton.setText("📥 GPX");
+            gpxButton.getStyleClass().add("gpx-candidate");
+            gpxButton.setTooltip(new Tooltip(found.size() == 1
+                    ? "GPX Gecko: recorded tour waiting: " + found.getFirst().getFileName()
+                    : found.size() + " recorded tours waiting for this day (GPX Gecko)"));
+        } else {
+            gpxButton.setText("❓ GPX");
+            gpxButton.setTooltip(new Tooltip("GPX Gecko: no recorded tour found for this day; click to pick a GPX file"));
+        }
     }
 
     /** "🎒 Backpack (3)" with the day's backpack file count, no brackets when empty (todo 56). */

@@ -1,7 +1,5 @@
 # 90 External track suggestions for Import GPX
 
-Status: design discussed, nothing built. Decisions marked **open** are still to make.
-
 ## Problem
 
 A separate tool backs up recorded tours from an external track app into a shared folder
@@ -19,22 +17,22 @@ opens a plain `FileChooser` in `lastGpxFolder` (todo 71), which shows all ~500 t
 ## Approaches considered
 
 - **A. Smarter import.** "Import GPX…" first looks for tours matching the current entry's date.
-- **B. Indicator on the entry.** A hint/button appears when a tour exists for the entry's date.
-  Should be hidden when the entry already has a track attachment or a `url_track`.
+- **B. Indicator on the entry.** A small always-visible GPX button in the Distance/Alt/Activity row
+  whose look shows the state (see B below).
 - **C. Trip-level bulk import.** Match every day of the trip's date range at once. Biggest
   feature; only worth it if whole trips are imported in one go. Not planned.
 - **D. Just a friendlier chooser.** Rejected: a native `FileChooser` can't filter by date.
 
-Chosen direction: **A and B**, sharing one date-matching class.
+Chosen direction: **A and B**, sharing one date-matching step (first cut covers both).
 
 ## Design
 
 ### Matching
 
-- New JavaFX-free class, e.g. `util.GpxFolderScan`:
-  `List<Path> findForDate(Path folder, LocalDate date)`, regex `^<date>_.*\\.gpx$`.
-  Plain `Files.list`, no GPX parsing, fast enough to run on every date change.
-  Unit-tested with `@TempDir` like the other util classes.
+- **Reuse `storage.ImpressionsResolver.resolve(pattern, trip, date)`** (`${HOME}`, `${ENTRY_YEAR}`,
+  `${ENTRY_MONTH}`, `${ENTRY_DAY}`, directory cached, last segment a filename glob). No new scan
+  class. The date format of the export tool's filenames is thereby configurable, not hard-coded.
+- Matching is on the filename only, no GPX parsing, so it is cheap enough to run on every date change.
 - Match on the filename date only. It can differ from the GPX's first `<time>` near midnight
   or across time zones; the dialog shows the parsed date and the existing date-range check
   still catches real mismatches.
@@ -53,18 +51,50 @@ Chosen direction: **A and B**, sharing one date-matching class.
    copy. Nothing there changes.
 5. Possible later addition: a text filter and the whole folder below the date matches.
 
-### B: indicator
+### B: GPX button
 
-- Shown next to the date when `findForDate` is non-empty and the entry has no track yet.
-- Check runs off the FX thread (or is cheap enough not to matter, to be measured) on
-  trip/date change. Clicking it starts the same flow as A.
+A small standalone **GPX** button in the Distance / Alt / Activity row, between the activity
+combo and the Coordinator button (which stays where it is). The Altitude label becomes "Alt:" and the
+distance/altitude fields get a little narrower to make room. The button is never hidden and always
+clickable, so any file from any folder can be imported. Only its emphasis changes:
 
-## Open decisions
+| State | Look | Click |
+|---|---|---|
+| Entry has a GPX attachment | `✅ GPX`, muted text | Chooser to re-import (existing overwrite matrix) |
+| Matching file(s) in the folder, not imported | `📥 GPX`, filled teal; tooltip names the file (or count) | Candidate dialog from A |
+| Nothing found / no pattern | `❓ GPX`, normal | `FileChooser` as today |
 
-1. **Folder source**: reuse `lastGpxFolder` (no new setting, but only works after the folder was
-   picked once), or an optional `gpxBackupDir` in `settings.yml` edited in Edit Settings.
-   Leaning towards the setting for B, since B has to work without a prior import.
-2. **Scope of the first cut**: A alone, or A + B together.
-3. **B's "already has a track" rule**: which signals count (GPX attachment, `url_track`, both).
-4. Keep docs/UI wording in English; the folder path is device-local, so if it becomes a setting
-   check whether it belongs in `settings.yml` or in `.triptale/state.yml`.
+- An imported entry shows ✓ even if a matching file still sits in the folder; the highlight
+  means "importable and not yet imported".
+- The check runs on trip/date change (cached directory, one listing), preferably off the FX thread.
+- The Import GPX menu item stays and runs the same flow.
+
+## Decisions
+
+1. **Folder and pattern**: a new optional `gpxFilePattern` in `settings.yml` (`AppSettings`),
+   edited in Edit Settings next to the impressions pattern and resolved the same way, e.g.
+   `${HOME}/Backup/tour_recorded/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*.gpx`. Blank = both
+   A's suggestions and B's indicator are off and Import GPX behaves as before. `lastGpxFolder`
+   stays only the start folder of the Browse… chooser. Device-local path in the synced-nowhere
+   `settings.yml` is fine: settings.yml is per device anyway.
+2. **Scope of the first cut**: A and B together.
+3. **B's "imported" rule**: only a GPX attachment counts (shows ✓). A `url_track` alone does not
+   (it may point at another tool).
+4. **Several matches**: single selection, one import per invocation.
+5. Docs/UI wording in English.
+
+## Implementation notes
+
+- The feature is branded **🦎 GPX Gecko** (menu item "Import with GPX Gecko…", titles of the
+  candidate and overwrite dialogs). The button keeps the 📥/✅/❓ icons, which carry the state;
+  plain `✓`/`?`/`⬇` were too faint or rendered tiny. The button has a fixed width so the row doesn't shift.
+- The candidate dialog shows the folder (home-relative) and each file's size (to spot the biggest
+  of several). Sizes use the shared `util.ByteSizes.humanize`.
+- `${USER}` (`user.name`) was added to the pattern variables (and `dataDir`).
+- Code: `impressions.GpxCandidates` (find + hasImported), `ui.dialog.GpxCandidatesDialog`,
+  `MainController.updateGpxButton`/`importGpx`.
+
+## Open points (resolved)
+
+- How a GPX attachment is recognised for the ✓ state (same lookup as the Backpack button).
+- Whether the FX-thread check needs to move to a background thread (measure).

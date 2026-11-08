@@ -56,7 +56,7 @@
                             <items>
                                 <MenuItem fx:id="viewSourceMenuItem" text="👁 View Source…" onAction="#onViewSource" disable="true"/>
                                 <MenuItem text="😀 Emoji Picker…" onAction="#onEmojiPicker" accelerator="Shortcut+E"/>
-                                <MenuItem fx:id="importGpxMenuItem" text="📥 Import GPX…" onAction="#onImportGpx" disable="true"/>
+                                <MenuItem fx:id="importGpxMenuItem" text="🦎 Import with GPX Gecko…" onAction="#onImportGpx" disable="true"/>
                                 <MenuItem fx:id="inboxMenuItem" text="🐙 Check Octobot's Inbox…" onAction="#onCheckInbox" disable="true"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="firstDayMenuItem" text="⏮ Go to Day 1" onAction="#onFirstDay"/>
@@ -172,16 +172,21 @@
                         </Button>
                     </HBox>
                     <Label text="Distance:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="distanceField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <TextField fx:id="distanceField" prefWidth="90" GridPane.rowIndex="1" GridPane.columnIndex="1">
                         <tooltip><Tooltip text="In km; append m to enter metres, e.g. 850 m"/></tooltip>
                     </TextField>
-                    <Label text="Altitude:" minWidth="-Infinity" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-                    <TextField fx:id="altField" prefWidth="100" GridPane.rowIndex="1" GridPane.columnIndex="3">
+                    <Label text="Alt:" minWidth="-Infinity" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                    <TextField fx:id="altField" prefWidth="90" GridPane.rowIndex="1" GridPane.columnIndex="3">
                         <tooltip><Tooltip text="In m; append km to enter kilometres, e.g. 1.2 km"/></tooltip>
                     </TextField>
-                    <ComboBox fx:id="activityCombo" prefWidth="190" maxWidth="Infinity" GridPane.rowIndex="1" GridPane.columnIndex="4">
-                        <tooltip><Tooltip text="Main activity of the day"/></tooltip>
-                    </ComboBox>
+                    <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="4">
+                        <ComboBox fx:id="activityCombo" prefWidth="150" minWidth="120" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                            <tooltip><Tooltip text="Main activity of the day"/></tooltip>
+                        </ComboBox>
+                        <Button fx:id="gpxButton" text="❓ GPX" onAction="#onImportGpx" disable="true" minWidth="84" prefWidth="84" maxWidth="84">
+                            <tooltip><Tooltip text="Import a GPX track for this day"/></tooltip>
+                        </Button>
+                    </HBox>
                     <HBox spacing="6" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="5">
                         <Button fx:id="coordinatesButton" text="🌐 Coordinator: Uncharted" onAction="#onCoordinates" styleClass="fixed-width-button">
                             <tooltip><Tooltip text="Set start and end point"/></tooltip>

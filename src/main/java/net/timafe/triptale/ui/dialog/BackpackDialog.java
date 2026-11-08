@@ -23,6 +23,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.attachments.BackpackFile;
 import net.timafe.triptale.attachments.FileKind;
 import net.timafe.triptale.domain.Trip;
@@ -92,7 +93,7 @@ public final class BackpackDialog {
         nameCol.setPrefWidth(260);
         TableColumn<BackpackFile, FileKind> kindCol = column("Kind", BackpackFile::kind, FileKind::display);
         kindCol.setPrefWidth(90);
-        TableColumn<BackpackFile, Long> sizeCol = column("Size", BackpackFile::size, UiText::fileSize);
+        TableColumn<BackpackFile, Long> sizeCol = column("Size", BackpackFile::size, ByteSizes::humanize);
         sizeCol.setStyle("-fx-alignment: center-right;");
         sizeCol.setPrefWidth(80);
         TableColumn<BackpackFile, Instant> changedCol = column("Changed", BackpackFile::modified, CHANGED::format);
@@ -219,7 +220,7 @@ public final class BackpackDialog {
     private boolean delete(Trip trip, LocalDate date, BackpackFile file) {
         if (file == null) return false;
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Delete \"" + file.name() + "\" (" + UiText.fileSize(file.size()) + ") from this day's backpack?"
+                "Delete \"" + file.name() + "\" (" + ByteSizes.humanize(file.size()) + ") from this day's backpack?"
                         + "\n\nThis cannot be undone. With cloud sync, the next sync removes it from the bucket too.",
                 ButtonType.YES, ButtonType.NO);
         confirm.setTitle("🎒 Backpack");

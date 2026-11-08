@@ -23,6 +23,7 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import net.timafe.triptale.radio.Station;
+import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.radio.Track;
 import net.timafe.triptale.ui.EqualizerIcon;
 import net.timafe.triptale.ui.RadioPlayer;
@@ -143,7 +144,7 @@ public final class TailwindFmDialog {
             @Override
             protected void updateItem(Track t, boolean empty) {
                 super.updateItem(t, empty);
-                setText(empty || t == null ? null : UiText.fileSize(t.size()));
+                setText(empty || t == null ? null : ByteSizes.humanize(t.size()));
                 setAlignment(Pos.CENTER_RIGHT);
             }
         });

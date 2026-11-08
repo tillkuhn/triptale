@@ -6,13 +6,13 @@ import javafx.scene.image.ImageView;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import net.timafe.triptale.ui.BrowserLauncher;
+import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.Greetings.Greeting;
 import org.springframework.boot.info.BuildProperties;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 /** Version, runtime and license popup. */
 public final class AboutDialog {
@@ -105,6 +105,6 @@ public final class AboutDialog {
     private static String usedMemory() {
         Runtime runtime = Runtime.getRuntime();
         long usedBytes = runtime.totalMemory() - runtime.freeMemory();
-        return String.format(Locale.ROOT, "%.0f MB", usedBytes / (1024.0 * 1024.0));
+        return ByteSizes.humanize(usedBytes);
     }
 }

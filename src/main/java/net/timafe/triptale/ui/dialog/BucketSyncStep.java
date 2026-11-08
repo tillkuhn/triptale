@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.scene.control.CheckBox;
 import net.timafe.triptale.storage.LocalDir;
+import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.sync.BucketSyncer;
@@ -17,7 +18,6 @@ import net.timafe.triptale.ui.UiText;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -88,10 +88,10 @@ final class BucketSyncStep {
             } else {
                 List<String> parts = new ArrayList<>();
                 if (plan.toDownload() > 0) {
-                    parts.add("↓ " + plan.toDownload() + " to download (" + megabytes(plan.downloadBytes()) + ")");
+                    parts.add("↓ " + plan.toDownload() + " to download (" + ByteSizes.humanize(plan.downloadBytes()) + ")");
                 }
                 if (plan.toUpload() > 0) {
-                    parts.add("↑ " + plan.toUpload() + " to upload (" + megabytes(plan.uploadBytes()) + ")");
+                    parts.add("↑ " + plan.toUpload() + " to upload (" + ByteSizes.humanize(plan.uploadBytes()) + ")");
                 }
                 if (plan.deleteLocal() > 0) parts.add("✕ " + plan.deleteLocal() + " local");
                 if (plan.deleteRemote() > 0) parts.add("✕ " + plan.deleteRemote() + " remote");
@@ -149,9 +149,5 @@ final class BucketSyncStep {
 
     private static void fx(Runnable r) {
         Platform.runLater(r);
-    }
-
-    private static String megabytes(long bytes) {
-        return String.format(Locale.ROOT, "%.1f MB", bytes / 1_000_000.0);
     }
 }

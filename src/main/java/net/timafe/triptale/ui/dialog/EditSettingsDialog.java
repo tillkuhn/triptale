@@ -62,6 +62,9 @@ public final class EditSettingsDialog {
         TextField patternField = new TextField(settings.getImpressionsFilePattern());
         patternField.setPromptText("e.g. ${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_*/${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*.jpg");
         patternField.setPrefColumnCount(36);
+        TextField gpxPatternField = new TextField(settings.getGpxFilePattern());
+        gpxPatternField.setPromptText("e.g. ${HOME}/tours/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*.gpx");
+        gpxPatternField.setPrefColumnCount(36);
         TextField columnsField = new TextField(Integer.toString(settings.getImpressionsGridColumns()));
         columnsField.setPrefColumnCount(4);
         TextField baseFilterField = new TextField(settings.getImpressionsBaseFilter());
@@ -166,7 +169,9 @@ public final class EditSettingsDialog {
         photos.add(new Label("Impressions base filter:"), 0, row);
         photos.add(baseFilterField, 1, row++);
         photos.add(new Label("Impressions fave filter:"), 0, row);
-        photos.add(faveFilterField, 1, row);
+        photos.add(faveFilterField, 1, row++);
+        photos.add(new Label("GPX file pattern:"), 0, row);
+        photos.add(gpxPatternField, 1, row);
 
         GridPane backpack = Dialogs.formGrid();
         row = 0;
@@ -292,6 +297,7 @@ public final class EditSettingsDialog {
         settings.setImpressionsGridColumns(parseColumns(columnsField.getText()));
         settings.setImpressionsBaseFilter(baseFilterField.getText().trim());
         settings.setImpressionsFaveFilter(faveFilterField.getText().trim());
+        settings.setGpxFilePattern(gpxPatternField.getText().trim());
         settings.setDefaultTripLanguage(languageCombo.getValue().code());
         settings.setAttachments(readAttachments(syncCombo, bucketUrlField, regionField, accessKeyIdField, secretField, publicBaseUrlField));
         settings.setRadioEnabled(radioEnabledCheck.isSelected());

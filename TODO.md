@@ -10,15 +10,6 @@
 
 ## Next Todo: 91
 
-## 90 External track suggestions for Import GPX
-
-The shared external track app backup folder (`tour_recorded`, ~500 `YYYY-MM-DD_<tourId>_<slug>.gpx` files,
-date = recording date) makes "Import GPX…" a scroll through everything. Match tours by the
-entry's date instead: (A) the import offers date-matched candidates first, (B) the entry
-shows that an unimported tour exists. Folder source and scope still to decide.
-
-[Details](docs/90_external_track_suggestions.md)
-
 ## 88 Share trip form between New Trip and Trip Details
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
@@ -183,6 +174,15 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 90 External track suggestions for Import GPX
+
+The shared external track app backup folder (`tour_recorded`, ~500 `YYYY-MM-DD_<tourId>_<slug>.gpx` files,
+date = recording date) makes "Import GPX…" a scroll through everything. Match tours by the
+entry's date instead: (A) the import offers date-matched candidates first, (B) the entry
+shows that an unimported tour exists. Folder comes from a new `gpxFilePattern` setting (same resolver as impressions); A + B in the first cut; B is a small always-visible GPX button in the Distance/Alt row (📥 candidate found, ✅ imported, ❓ none), branded GPX Gecko.
+
+[Details](docs/90_external_track_suggestions.md)
 
 ## DONE 89 Splash screen and dragon logo
 

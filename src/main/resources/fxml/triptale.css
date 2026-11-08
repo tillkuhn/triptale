@@ -747,3 +747,24 @@
     -fx-background-radius: 8;
     -fx-padding: 0 3 0 3;
 }
+
+/* GPX button (todo 90): filled teal = a recorded tour for this day waits in the backup folder
+   (a plain focused button also has a teal border, so the border alone is no signal). */
+.button.gpx-candidate,
+.button.gpx-candidate:focused {
+    -fx-background-color:
+        #7ee0cb,
+        linear-gradient(to bottom, #56d3b9, #43bca3);
+    -fx-border-color: #38b09a;
+    -fx-text-fill: #10201d;
+    -fx-font-weight: bold;
+}
+.button.gpx-candidate:hover {
+    -fx-background-color:
+        #8ee8d4,
+        linear-gradient(to bottom, #62dcc2, #4ec9b0);
+}
+/* Imported: calm, no fill; the green check emoji carries the signal. */
+.button.gpx-imported {
+    -fx-text-fill: #8fb5ae;
+}

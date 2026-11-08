@@ -27,6 +27,7 @@ import java.util.stream.Stream;
  * <p>Supported variables:
  * <ul>
  *     <li>{@code ${HOME}} — the current user's home directory</li>
+ *     <li>{@code ${USER}} — the current OS user name ({@code user.name}, also set on Windows)</li>
  *     <li>{@code ${TRIP_SLUG}} — the active trip's slug</li>
  *     <li>{@code ${TRIP_YEAR}} — the active trip's start-date year, e.g. {@code 2026}</li>
  *     <li>{@code ${TRIP_MONTH}} — the active trip's start-date month, zero-padded, e.g. {@code 06}</li>
@@ -110,6 +111,7 @@ public class ImpressionsResolver {
     private static Map<String, String> variables(Trip trip, LocalDate date) {
         Map<String, String> vars = new java.util.HashMap<>();
         vars.put("HOME", System.getProperty("user.home", ""));
+        vars.put("USER", System.getProperty("user.name", ""));
         if (trip != null && trip.startDate() != null) {
             vars.put("TRIP_SLUG", trip.slug());
             vars.put("TRIP_YEAR", Integer.toString(trip.startDate().getYear()));

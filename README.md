@@ -26,7 +26,7 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 ## Features ✨
 
 - **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, links (track, explore, visit, dive, eat, drink, sleep, …) and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
-- **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …).
+- **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …). With a `gpxFilePattern` pointing at your track app's backup folder, 🦎 **GPX Gecko** (the **GPX** button next to the activity) offers that day's recorded tours: 📥 a tour is waiting, ✅ a GPX is already in the backpack, ❓ nothing found. You can still pick any file.
 - **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a self-rendered OpenStreetMap (OpenTopoMap tiles) map, saved to the trip's attachments so exports can reuse it.
 - **Impressions & Faves** — show that day's photos straight from your picture folders, see [below](#impressions--faves-).
 - **Export** — render a whole trip as one Markdown document (copy to clipboard) or as an HTML page with a photo gallery.
@@ -176,6 +176,7 @@ The photo library pattern is a filesystem path containing `${VAR}` placeholders:
 | Variable         | Expands to                                  | Example              |
 |------------------|----------------------------------------------|-----------------------|
 | `${HOME}`        | user home directory                          | `/Users/alice`        |
+| `${USER}`        | OS user name (also on Windows)               | `alice`               |
 | `${TRIP_SLUG}`   | the active trip's slug                       | `iceland-roadtrip`    |
 | `${TRIP_YEAR}`   | the active trip's start-date year            | `2026`                |
 | `${TRIP_MONTH}`  | the active trip's start-date month, 2-digit  | `06`                  |
@@ -269,9 +270,10 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 
 | Setting | Notes |
 |---|---|
-| `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data`. Changing it needs a restart. |
+| `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data` (`${HOME}` and `${USER}` work). Changing it needs a restart. |
 | `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
 | `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
+| `gpxFilePattern` | Where recorded tours are backed up, same placeholders as the photo pattern, e.g. `${HOME}/tours/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*.gpx`. Blank = no suggestions. |
 | `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. The same bucket also syncs Tailwind FM's tracks. |
 | `radioEnabled` | Shows the Tailwind FM menu and 🔊 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
 

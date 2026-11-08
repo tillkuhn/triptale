@@ -93,7 +93,7 @@ public final class GpxImportDialog {
         CheckBox copyCheck = addRow(grid, row, "GPX attachment", "(not copied)", fileName, true);
 
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Import GPX");
+        dialog.setTitle("🦎 GPX Gecko");
         dialog.setHeaderText("Imported \"" + parsed.name() + "\" for " + parsed.date()
                 + " — choose which fields to overwrite");
         dialog.getDialogPane().setContent(grid);

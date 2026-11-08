@@ -35,6 +35,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.impressions.ImageFilter;
 import net.timafe.triptale.impressions.ImpressionSource;
 import net.timafe.triptale.impressions.ImpressionsService;
@@ -743,7 +744,7 @@ public final class ImageViewerDialog {
             sb.append(" · ").append(exif.dimensions());
         }
         if (fileSize != null) {
-            sb.append(" · ").append(UiText.fileSize(fileSize));
+            sb.append(" · ").append(ByteSizes.humanize(fileSize));
         }
         sb.append(exif.hasLocation()
                 ? " · 📍 " + Coordinates.toDdm(exif.latitude(), exif.longitude())
