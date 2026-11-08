@@ -102,7 +102,15 @@ public final class Dialogs {
      * a bold heading with the platform "i" icon, and arbitrary content below.
      */
     public static void showInfo(String title, String headerText, Node content) {
+        showInfo(title, headerText, content, null);
+    }
+
+    /** Like {@link #showInfo(String, String, Node)}, with {@code graphic} replacing the default (i) icon. */
+    public static void showInfo(String title, String headerText, Node content, Node graphic) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        if (graphic != null) {
+            alert.setGraphic(graphic);
+        }
         alert.setTitle(title);
         alert.setHeaderText(headerText);
         alert.getDialogPane().setContent(content);

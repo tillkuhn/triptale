@@ -1,6 +1,8 @@
 package net.timafe.triptale.ui.dialog;
 
 import javafx.scene.control.Hyperlink;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import net.timafe.triptale.ui.BrowserLauncher;
@@ -18,6 +20,8 @@ public final class AboutDialog {
     private static final String REPO_URL = "https://github.com/tillkuhn/triptale";
     private static final DateTimeFormatter BUILT_AT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static final int DRAGON_SIZE = 110;
 
     private final String appName;
     private static final String OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
@@ -74,7 +78,19 @@ public final class AboutDialog {
         osm.setOnAction(e -> browser.open(OSM_COPYRIGHT_URL));
         grid.add(osm, 1, row);
 
-        Dialogs.showInfo("About " + appName, header, grid);
+        Dialogs.showInfo("About " + appName, header, grid, dragon());
+    }
+
+    /** The logo dragon in place of the default (i) icon; loaded at 2x for Retina. */
+    private static ImageView dragon() {
+        ImageView view = new ImageView(new Image(
+                AboutDialog.class.getResource("/images/triptale-dragon.png").toExternalForm(),
+                DRAGON_SIZE * 2, DRAGON_SIZE * 2, true, true));
+        view.setFitWidth(DRAGON_SIZE);
+        view.setFitHeight(DRAGON_SIZE);
+        view.setPreserveRatio(true);
+        view.setSmooth(true);
+        return view;
     }
 
     private String builtAt() {
