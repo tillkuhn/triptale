@@ -1,5 +1,9 @@
 # TripTale 🏔️🚴
 
+<p align="center">
+  <img src="./src/main/resources/images/triptale-splash.png" alt="TripTale dragon logo" width="320">
+</p>
+
 > An offline-first diary for long cycling and hiking trips — your notes live as plain Markdown in a git repo you own.
 
 TripTale is a small JavaFX app for keeping a day-by-day journal of a trip: kilometres ridden, altitude climbed, where you started and stopped, and whatever notes you want to scribble. The twist: no account, no database, and no cloud unless you want one. Every entry is a plain Markdown file on disk, and the whole thing is a git repository — so you can sync between machines, hack it from the command line, or never touch the app again and just edit `.md` files in your favourite editor.
