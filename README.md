@@ -1,8 +1,6 @@
 # TripTale 🏔️🚴
 
-<p align="center">
-  <img src="./src/main/resources/images/triptale-splash.png" alt="TripTale dragon logo" width="320">
-</p>
+<img src="./docs/images/triptale-logo.png" alt="TripTale dragon logo" width="120" align="right">
 
 > An offline-first diary for long cycling and hiking trips — your notes live as plain Markdown in a git repo you own.
 
