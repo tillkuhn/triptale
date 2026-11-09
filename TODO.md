@@ -10,13 +10,6 @@
 
 ## Next Todo: 92
 
-## 91 Derive name for weblinks
-
-Add a 🔍 button next to the URL field in the Weblinks dialogs (LinksDialog, QuickWeblinkDialog). It fetches the URL, confirms it is reachable and derives a name from og:title, then <title> (trim only).
-Empty name + success: fill silently. Existing different name: small Replace/Keep popup. Problems (unreachable, HTTP error, no title): ⏳/⚠️ on the button with the error as tooltip, like the Coordinator 🔍. Button only, no auto-fetch.
-
-[Details](docs/91_derive_name_for_weblinks.md)
-
 ## 88 Share trip form between New Trip and Trip Details
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
@@ -181,6 +174,13 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 91 Derive name for weblinks
+
+Add a 🔍 button next to the URL field in the Weblinks dialogs (LinksDialog, QuickWeblinkDialog). It fetches the URL, confirms it is reachable and derives a name from og:title, then <title> (trim only).
+Empty name + success: fill silently. Existing different name: small Replace/Keep popup. Problems (unreachable, HTTP error, no title): ⏳/⚠️ on the button with the error as tooltip, like the Coordinator 🔍. Button only, no auto-fetch.
+
+[Details](docs/91_derive_name_for_weblinks.md)
 
 ## DONE 90 External track suggestions for Import GPX
 
