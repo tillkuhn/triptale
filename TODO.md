@@ -8,7 +8,14 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 91
+## Next Todo: 92
+
+## 91 Derive name for weblinks
+
+Add a 🔍 button next to the URL field in the Weblinks dialogs (LinksDialog, QuickWeblinkDialog). It fetches the URL, confirms it is reachable and derives a name from og:title, then <title> (trim only).
+Empty name + success: fill silently. Existing different name: small Replace/Keep popup. Problems (unreachable, HTTP error, no title): ⏳/⚠️ on the button with the error as tooltip, like the Coordinator 🔍. Button only, no auto-fetch.
+
+[Details](docs/91_derive_name_for_weblinks.md)
 
 ## 88 Share trip form between New Trip and Trip Details
 
