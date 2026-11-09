@@ -14,6 +14,7 @@ import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.ui.BrowserLauncher;
 import net.timafe.triptale.ui.Dialogs;
+import net.timafe.triptale.ui.TitleLookupButton;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,7 +125,7 @@ public final class LinksDialog {
                     rows.remove(row);
                     rebuild[0].run();
                 });
-                grid.addRow(r++, label, row.url(), row.name(), open, delete);
+                grid.addRow(r++, label, row.url(), row.name(), new TitleLookupButton(row.url(), row.name()), open, delete);
             }
             List<LinkKind> unused = Arrays.stream(LinkKind.values())
                     .filter(k -> rows.stream().noneMatch(row -> row.verb().equals(k.key())))
@@ -132,12 +133,12 @@ public final class LinksDialog {
             newKind.getItems().setAll(unused);
             if (!unused.isEmpty()) {
                 if (!unused.contains(newKind.getValue())) newKind.setValue(unused.getFirst());
-                grid.addRow(r++, newKind, newUrl, newName, add);
+                grid.addRow(r++, newKind, newUrl, newName, new TitleLookupButton(newUrl, newName), add);
             } else {
                 newKind.setValue(null);
-                grid.add(new Label("All kinds of links are in use."), 0, r++, 5, 1);
+                grid.add(new Label("All kinds of links are in use."), 0, r++, 6, 1);
             }
-            grid.add(hintLabel, 0, r, 5, 1);
+            grid.add(hintLabel, 0, r, 6, 1);
             refresh.run();
             if (dlg.getDialogPane().getScene() != null) dlg.getDialogPane().getScene().getWindow().sizeToScene();
         };

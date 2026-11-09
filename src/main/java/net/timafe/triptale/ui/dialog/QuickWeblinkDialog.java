@@ -12,6 +12,7 @@ import javafx.scene.layout.GridPane;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.ui.Dialogs;
+import net.timafe.triptale.ui.TitleLookupButton;
 
 import java.util.List;
 import java.util.Optional;
@@ -65,9 +66,9 @@ public final class QuickWeblinkDialog {
 
         GridPane grid = Dialogs.formGrid();
         grid.addRow(0, new Label("Kind"), verb);
-        grid.addRow(1, new Label("URL"), urlField);
+        grid.addRow(1, new Label("URL"), urlField, new TitleLookupButton(urlField, nameField));
         grid.addRow(2, new Label("Name"), nameField);
-        grid.add(hint, 0, 3, 2, 1);
+        grid.add(hint, 0, 3, 3, 1);
         dlg.getDialogPane().setContent(grid);
 
         ButtonType okType = new ButtonType("Add Weblink", ButtonBar.ButtonData.OK_DONE);

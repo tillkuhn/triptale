@@ -74,7 +74,7 @@ This may be revisited later (e.g. granting Accessibility access to the terminal/
 
 ## Package boundary rule
 
-JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `map`, `radio`, `sync`, `weather`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
+JavaFX imports are **forbidden** in `storage`, `git`, `config`, `export`, `i18n`, `attachments`, `impressions`, `map`, `radio`, `sync`, `weather`, `weblink`, and `domain` packages. Only `ui` and the bootstrap class may touch JavaFX.
 
 ---
 
@@ -91,6 +91,7 @@ ui.MainController ──► storage.MarkdownStore ──► storage.SettingsStor
                   ├── ui.ConnectivityService
                   ├── map.PhotoLocations ──► ImpressionsService, storage.ExifReader   (for ui.dialog.MapAssistantDialog)
                   ├── map.PlaceLookup (Nominatim reverse + forward geocoding, java.net.http)   (for ui.dialog.CoordinatesDialog)
+                  ├── weblink.PageTitleLookup (page fetch for og:title/<title>, java.net.http)   (for ui.TitleLookupButton in the Weblinks dialogs)
                   ├── weather.OpenMeteoClient (Open-Meteo forecast API, no key, java.net.http)   (auto-fetched on save by MainController)
                   ├── radio.RadioLibrary ──► MarkdownStore   (played by ui.RadioPlayer, created lazily)
                   └── ui.dialog.* ──► the services each dialog needs
