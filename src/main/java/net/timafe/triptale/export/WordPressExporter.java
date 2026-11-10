@@ -1,5 +1,6 @@
 package net.timafe.triptale.export;
 
+import net.timafe.triptale.attachments.InlineImages;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
@@ -16,11 +17,13 @@ import net.timafe.triptale.util.Markdown;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
+import org.commonmark.node.Image;
 import org.commonmark.node.IndentedCodeBlock;
 import org.commonmark.node.ListBlock;
 import org.commonmark.node.Node;
 import org.commonmark.node.OrderedList;
 import org.commonmark.node.Paragraph;
+import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
@@ -39,7 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Pattern;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -58,16 +61,16 @@ public class WordPressExporter {
     private static final Parser PARSER = Parser.builder().build();
     // A soft line break is a space, as in the HTML export, not a <br>
     private static final HtmlRenderer HTML = HtmlRenderer.builder().softbreak(" ").build();
-    // 20260530_091312_SaveAussicht+_mini.jpg: camera timestamp prefix, fave marker, size suffix
-    private static final Pattern TIMESTAMP_PREFIX = Pattern.compile("^\\d{8}_\\d{6}_");
-    private static final Pattern NAME_SUFFIX = Pattern.compile("(_mini|\\+)+$");
-    private static final Pattern WORD_BOUNDARY = Pattern.compile(
-            "(?<=\\p{Ll})(?=\\p{Lu})|(?<=\\p{L})(?=\\p{N})|(?<=\\p{N})(?=\\p{L})|(?<=\\p{Lu})(?=\\p{Lu}\\p{Ll})");
 
     private final MarkdownStore store;
     private final ImpressionsService impressions;
     private final AttachmentsDir attachmentsDir;
     private final SettingsStore settingsStore;
+    private volatile List<String> lastInlineImageProblems = List.of();
+
+    /** What the blocks of one export need to place inline images (todo 92), and where they report problems. */
+    private record Ctx(Path dataDir, String baseUrl, List<String> problems) {
+    }
 
     public WordPressExporter(MarkdownStore store, ImpressionsService impressions, AttachmentsDir attachmentsDir,
                              SettingsStore settingsStore) {
@@ -75,6 +78,11 @@ public class WordPressExporter {
         this.impressions = impressions;
         this.attachmentsDir = attachmentsDir;
         this.settingsStore = settingsStore;
+    }
+
+    /** What was wrong with inline images (todo 92) in the last export: empty if nothing. */
+    public List<String> lastInlineImageProblems() {
+        return lastInlineImageProblems;
     }
 
     /** Whether galleries are possible at all, i.e. a public base URL for the backpack is set. */
@@ -95,12 +103,23 @@ public class WordPressExporter {
         return export(trip, dates, images, favesOnly);
     }
 
+    private Ctx newCtx() {
+        return new Ctx(store.dataDir(), publicBaseUrl(), new ArrayList<>());
+    }
+
     /**
      * Block markup for exactly {@code dates} (already resolved and sorted, possibly with gaps —
      * see {@link #exportPost}), same rendering as the range-based
      * {@link #export(Trip, LocalDate, LocalDate, boolean, boolean)}.
      */
     public String export(Trip trip, List<LocalDate> dates, boolean images, boolean favesOnly) {
+        Ctx ctx = newCtx();
+        String markup = export(trip, dates, images, favesOnly, ctx);
+        lastInlineImageProblems = List.copyOf(ctx.problems());
+        return markup;
+    }
+
+    private String export(Trip trip, List<LocalDate> dates, boolean images, boolean favesOnly, Ctx ctx) {
         Objects.requireNonNull(trip, "trip");
         String baseUrl = images ? publicBaseUrl() : "";
         ImageFilter faves = favesOnly ? impressions.faveFilter() : ImageFilter.parse("");
@@ -118,12 +137,15 @@ public class WordPressExporter {
             String tales = e.tales() == null ? "" : Markdown.stripPrivate(e.tales()).strip();
             if (!tales.isEmpty()) {
                 // Stored tale headings start at h2 (h1 is the entry title); under the h2 day heading they start at h3
-                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadingsToMin(tales, DAY_HEADING_LEVEL + 1))));
+                blocks.addAll(blocks(PARSER.parse(Markdown.shiftHeadingsToMin(tales, DAY_HEADING_LEVEL + 1)), ctx));
             }
             blocks.addAll(linkBlocks(e, texts));
             if (!baseUrl.isEmpty()) {
                 List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
-                gallery(faves.apply(dayImages), baseUrl, columns).ifPresent(blocks::add);
+                // Images placed in the text (todo 92) are not repeated in the gallery
+                Set<Path> inline = InlineImages.referenced(tales, ctx.dataDir());
+                gallery(faves.apply(dayImages).stream().filter(p -> !inline.contains(p.normalize())).toList(),
+                        baseUrl, columns).ifPresent(blocks::add);
             }
         }
         // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
@@ -143,10 +165,20 @@ public class WordPressExporter {
         Objects.requireNonNull(trip, "trip");
         Objects.requireNonNull(post, "post");
         String intro = post.intro() == null ? "" : Markdown.stripPrivate(post.intro()).strip();
-        String body = export(trip, post.from(), post.to(), images, favesOnly);
-        if (intro.isEmpty()) return body;
-        String leading = String.join("\n\n", blocks(PARSER.parse(intro)));
-        return body.isEmpty() ? leading + "\n" : leading + "\n\n" + body;
+        Ctx ctx = newCtx();
+        List<LocalDate> dates = store.listEntryDates(trip.ref()).stream()
+                .filter(d -> (post.from() == null || !d.isBefore(post.from())) && (post.to() == null || !d.isAfter(post.to())))
+                .toList();
+        String body = export(trip, dates, images, favesOnly, ctx);
+        String result;
+        if (intro.isEmpty()) {
+            result = body;
+        } else {
+            String leading = String.join("\n\n", blocks(PARSER.parse(intro), ctx));
+            result = body.isEmpty() ? leading + "\n" : leading + "\n\n" + body;
+        }
+        lastInlineImageProblems = List.copyOf(ctx.problems());
+        return result;
     }
 
     /** A standalone HTML page that roughly shows how {@code markup} will look on the blog. */
@@ -232,27 +264,70 @@ public class WordPressExporter {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
-    private static List<String> blocks(Node parent) {
+    private static List<String> blocks(Node parent, Ctx ctx) {
         List<String> out = new ArrayList<>();
         for (Node n = parent.getFirstChild(); n != null; n = n.getNext()) {
-            out.add(block(n));
+            String block = block(n, ctx);
+            if (!block.isEmpty()) out.add(block);
         }
         return out;
     }
 
-    private static String block(Node n) {
+    private static String block(Node n, Ctx ctx) {
         return switch (n) {
-            case Paragraph p -> block("paragraph", "", render(p));
+            case Paragraph p -> inlineImage(p, ctx).orElseGet(() -> block("paragraph", "", render(p)));
             case Heading h -> heading(h.getLevel(), render(h).replaceAll("^<h\\d>|</h\\d>$", ""));
             case ListBlock l when !containsList(l) -> list(l);
             case BlockQuote q -> block("quote", "",
-                    "<blockquote class=\"wp-block-quote\">" + String.join("\n\n", blocks(q)) + "</blockquote>");
+                    "<blockquote class=\"wp-block-quote\">" + String.join("\n\n", blocks(q, ctx)) + "</blockquote>");
             case FencedCodeBlock c -> code(c.getLiteral());
             case IndentedCodeBlock c -> code(c.getLiteral());
             case ThematicBreak _ -> block("separator", "", "<hr class=\"wp-block-separator has-alpha-channel-opacity\"/>");
             // Nested lists, raw HTML and anything else stay editable as a Custom HTML block
             default -> block("html", "", render(n));
         };
+    }
+
+    /**
+     * A paragraph that is just one {@code attachments/} image (todo 92) as a core image block, hotlinked like the
+     * gallery. Empty result = not an inline image; a block without a usable file or public base URL gives an
+     * empty string, so it is left out; both report a problem. A block from elsewhere, or an image inside a
+     * sentence, stays as written.
+     */
+    private static Optional<String> inlineImage(Paragraph p, Ctx ctx) {
+        for (Node n = p.getFirstChild(); n != null; n = n.getNext()) {
+            if (!(n instanceof Image img) || !InlineImages.isAttachmentRef(img.getDestination())) continue;
+            if (p.getFirstChild() != img || img.getNext() != null) {
+                ctx.problems().add("not on its own line: " + img.getDestination());
+                continue;
+            }
+            Optional<Path> file = InlineImages.resolve(ctx.dataDir(), img.getDestination());
+            if (file.isEmpty()) {
+                ctx.problems().add("file not found: " + img.getDestination());
+                return Optional.of("");
+            }
+            if (ctx.baseUrl().isEmpty()) {
+                ctx.problems().add("no public base URL in Settings: " + img.getDestination());
+                return Optional.of("");
+            }
+            String alt = altOf(img);
+            if (alt.isBlank()) alt = InlineImages.altText(file.get());
+            String src = DiaryExporter.escapeHtml(ctx.baseUrl() + urlPath(ctx.dataDir().resolve(AttachmentsDir.DIR_NAME)
+                    .relativize(file.get())));
+            return Optional.of(block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
+                    "<figure class=\"wp-block-image size-large\"><img src=\"" + src + "\" alt=\""
+                            + DiaryExporter.escapeHtml(alt) + "\"/><figcaption class=\"wp-element-caption\">"
+                            + DiaryExporter.escapeHtml(alt) + "</figcaption></figure>"));
+        }
+        return Optional.empty();
+    }
+
+    private static String altOf(Node image) {
+        StringBuilder sb = new StringBuilder();
+        for (Node n = image.getFirstChild(); n != null; n = n.getNext()) {
+            if (n instanceof Text t) sb.append(t.getLiteral());
+        }
+        return sb.toString();
     }
 
     private static String heading(int level, String innerHtml) {
@@ -293,7 +368,7 @@ public class WordPressExporter {
                 .map(p -> block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
                         "<figure class=\"wp-block-image size-large\"><img src=\""
                                 + DiaryExporter.escapeHtml(baseUrl + urlPath(root.relativize(p)))
-                                + "\" alt=\"" + DiaryExporter.escapeHtml(altText(p)) + "\"/></figure>"))
+                                + "\" alt=\"" + DiaryExporter.escapeHtml(InlineImages.altText(p)) + "\"/></figure>"))
                 .toList();
         if (items.isEmpty()) return Optional.empty();
         return Optional.of(block("gallery", "{\"columns\":" + columns + ",\"linkTo\":\"none\"}",
@@ -309,16 +384,6 @@ public class WordPressExporter {
         return StreamSupport.stream(relative.spliterator(), false)
                 .map(seg -> URLEncoder.encode(seg.toString(), StandardCharsets.UTF_8).replace("+", "%20"))
                 .collect(Collectors.joining("/"));
-    }
-
-    /** {@code 20260529_142327_OoopsICE1011FaelltAus+_mini.jpg} → "Ooops ICE 1011 Faellt Aus". */
-    static String altText(Path image) {
-        String name = image.getFileName().toString();
-        int dot = name.lastIndexOf('.');
-        if (dot > 0) name = name.substring(0, dot);
-        name = NAME_SUFFIX.matcher(TIMESTAMP_PREFIX.matcher(name).replaceFirst("")).replaceFirst("");
-        name = WORD_BOUNDARY.matcher(name.replace('_', ' ').replace('-', ' ')).replaceAll(" ");
-        return name.replaceAll("\\s+", " ").strip();
     }
 
     private String publicBaseUrl() {

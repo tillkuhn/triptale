@@ -1,5 +1,6 @@
 package net.timafe.triptale.export;
 
+import net.timafe.triptale.attachments.InlineImages;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
@@ -282,9 +283,9 @@ class WordPressExporterTest {
 
     @Test
     void altTextFromFileName() {
-        assertEquals("Ooops ICE 1011 Faellt Aus", WordPressExporter.altText(Path.of("20260529_142327_OoopsICE1011FaelltAus+_mini.jpg")));
-        assertEquals("Stuttgarter Hofbraeu", WordPressExporter.altText(Path.of("20260529_185352_StuttgarterHofbraeu+_mini.jpg")));
-        assertEquals("IMG 1234", WordPressExporter.altText(Path.of("IMG_1234.JPG")));
+        assertEquals("Ooops ICE 1011 Faellt Aus", InlineImages.altText(Path.of("20260529_142327_OoopsICE1011FaelltAus+_mini.jpg")));
+        assertEquals("Stuttgarter Hofbraeu", InlineImages.altText(Path.of("20260529_185352_StuttgarterHofbraeu+_mini.jpg")));
+        assertEquals("IMG 1234", InlineImages.altText(Path.of("IMG_1234.JPG")));
     }
 
     @Test
@@ -322,5 +323,37 @@ class WordPressExporterTest {
         assertTrue(out.contains("42,5 km, 650 m bergauf</p>"), out);
         assertTrue(out.contains("<li>🍲 Essen: <a href=\"https://food.example.com/\">food.example.com</a></li>"), out);
         assertTrue(exporter.previewHtml("t", "").contains("<html lang=\"de\">"));
+    }
+
+    @Test
+    void inlineImageBecomesAnImageBlockAndIsNotRepeatedInTheGallery() throws IOException {
+        updateSettings(s -> s.getAttachments().setPublicBaseUrl("https://cdn.example.net/"));
+        addImages(DAY1, "20250701_101010_KiwieckBlick+_mini.jpg", "other.jpg");
+        String ref = "attachments/2025/alps-2025/2025-07-01-Tuesday/20250701_101010_KiwieckBlick+_mini.jpg";
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("Before.\n\n![](" + ref + ")\n\nAfter.").build());
+
+        String out = exporter.export(trip, null, null, true, false);
+
+        String url = "https://cdn.example.net/2025/alps-2025/2025-07-01-Tuesday/20250701_101010_KiwieckBlick%2B_mini.jpg";
+        assertTrue(out.contains("<figure class=\"wp-block-image size-large\"><img src=\"" + url
+                + "\" alt=\"Kiwieck Blick\"/><figcaption class=\"wp-element-caption\">Kiwieck Blick</figcaption></figure>"), out);
+        assertEquals(1, out.split(java.util.regex.Pattern.quote("KiwieckBlick%2B"), -1).length - 1, out);
+        assertTrue(out.contains("other.jpg"), out);
+        assertTrue(out.indexOf("<p>Before.</p>") < out.indexOf("wp-block-image") && out.indexOf("wp-block-image") < out.indexOf("<p>After.</p>"));
+        assertTrue(exporter.lastInlineImageProblems().isEmpty());
+    }
+
+    @Test
+    void inlineImageWithoutFileOrPublicBaseUrlIsSkippedAndReported() throws IOException {
+        addImages(DAY1, "pic.jpg");
+        String ref = "attachments/2025/alps-2025/2025-07-01-Tuesday/pic.jpg";
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1)
+                .tales("A.\n\n![](" + ref + ")\n\n![](attachments/nope.jpg)\n\nSee ![x](" + ref + ") here.").build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertFalse(out.contains("wp-block-image"), out);
+        assertFalse(out.contains("nope.jpg"), out);
+        assertEquals(3, exporter.lastInlineImageProblems().size(), exporter.lastInlineImageProblems().toString());
     }
 }

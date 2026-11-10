@@ -176,6 +176,7 @@ public final class ExportDiaryDialog {
                     case SOCIAL_MEDIA -> socialMediaExporter.export(trip, range.from(), range.to());
                     case MARKDOWN -> diaryExporter.exportTrip(trip, range.from(), range.to(), post);
                 });
+                if (formatCombo.getValue() == Format.WORDPRESS) reportInlineImages(wordPressExporter.lastInlineImageProblems());
             } catch (RuntimeException e) {
                 statusSink.error("Export failed: " + e.getMessage());
             }
@@ -288,9 +289,17 @@ public final class ExportDiaryDialog {
                                   Post post) {
         try {
             openInBrowser(diaryExporter.exportTripAsHtml(trip, from, to, images, favesOnly, post));
+            reportInlineImages(diaryExporter.lastInlineImageProblems());
         } catch (RuntimeException ex) {
             statusSink.error("Preview failed: " + ex.getMessage());
         }
+    }
+
+    /** Inline images (todo 92) that the export skipped or left as written, in the status line. */
+    private void reportInlineImages(List<String> problems) {
+        if (problems.isEmpty()) return;
+        statusSink.status("⚠ " + problems.size() + " inline image problem" + (problems.size() == 1 ? "" : "s") + ": "
+                + String.join("; ", problems));
     }
 
     private void openInBrowser(String html) {
