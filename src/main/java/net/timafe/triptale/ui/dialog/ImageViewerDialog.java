@@ -34,6 +34,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.util.StringConverter;
+import net.timafe.triptale.attachments.ImageReferences;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.impressions.ImageFilter;
@@ -118,9 +119,11 @@ public final class ImageViewerDialog {
     private final BrowserLauncher browser;
     private final StatusSink statusSink;
     private final RecentFolder recentFolder;
+    private final ImageReferences references;
 
     public ImageViewerDialog(ImpressionsService impressions, ExifReader exifReader, BrowserLauncher browser,
-                             StatusSink statusSink, RecentFolder recentFolder) {
+                             StatusSink statusSink, RecentFolder recentFolder, ImageReferences references) {
+        this.references = references;
         this.impressions = impressions;
         this.exifReader = exifReader;
         this.browser = browser;
@@ -167,6 +170,7 @@ public final class ImageViewerDialog {
         private final Button lastBtn = new Button("⏭");
         private final Button putBtn = new Button("＋ Put into");
         private final Button unpackBtn = new Button("－ Unpack from");
+        private final Button copyLinkBtn = new Button("📋 Copy Link");
         private final Pane galleryPane = new Pane();
         private final Button galleryBtn = new Button("▦ Gallery Layout");
         private boolean galleryShown;
@@ -308,7 +312,8 @@ public final class ImageViewerDialog {
             galleryBtn.setTooltip(new Tooltip("Preview how this day's backpack images are laid out in the gallery of the exports"));
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, galleryBtn));
+            copyLinkBtn.setOnAction(ev -> copyLink());
+            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, copyLinkBtn, galleryBtn));
             actionRow.setAlignment(Pos.CENTER_LEFT);
 
             VBox content = fixedWidth(new VBox(6, topInfo, imageBox, nav, new Separator(), sourceRow, actionRow));
@@ -534,6 +539,21 @@ public final class ImageViewerDialog {
             onImported.run();
         }
 
+        /** The shown image's copy in the backpack, empty if it is not packed. */
+        private Optional<Path> backpackFile() {
+            if (visible.isEmpty()) return Optional.empty();
+            Path shown = visible.get(index);
+            return source instanceof ImpressionSource.TripAttachments ? Optional.of(shown)
+                    : impressions.backpackCopy(trip, date, shown);
+        }
+
+        private void copyLink() {
+            backpackFile().ifPresent(file -> {
+                Clipboards.putString(references.markdownLine(file));
+                statusSink.status("Image link copied: paste it into a text, on its own line between empty lines");
+            });
+        }
+
         /**
          * Removes the shown image's backpack copy. Silent when a copy outside the backpack exists
          * (any other source shows its own file, or the library/picked folder has the same name and
@@ -547,7 +567,8 @@ public final class ImageViewerDialog {
             if (copy.isEmpty()) return;
 
             boolean hasMaster = !fromAttachments || impressions.hasMasterCopy(copy.get(), masterCandidates());
-            if (!hasMaster && !confirmUnpack(copy.get())) return;
+            List<String> usedIn = references.referencingTexts(trip, copy.get());
+            if ((!hasMaster || !usedIn.isEmpty()) && !confirmUnpack(copy.get(), hasMaster, usedIn)) return;
             try {
                 impressions.unpack(trip, date, copy.get());
             } catch (RuntimeException e) {
@@ -576,17 +597,23 @@ public final class ImageViewerDialog {
             return candidates;
         }
 
-        private boolean confirmUnpack(Path file) {
+        private boolean confirmUnpack(Path file, boolean hasMaster, List<String> usedIn) {
             ButtonType remove = new ButtonType("Unpack anyway", ButtonBar.ButtonData.OTHER);
-            Alert confirm = new Alert(Alert.AlertType.WARNING,
-                    "No copy of " + file.getFileName() + " was found in the photo library"
-                            + (pickedFolder == null ? "" : " or the picked folder") + ".\n\n"
-                            + "Unpacking deletes the only copy here"
-                            + ", and the bucket copy goes at the next backpack sync.",
-                    remove, ButtonType.CANCEL);
+            List<String> parts = new ArrayList<>();
+            if (!hasMaster) {
+                parts.add("No copy of " + file.getFileName() + " was found in the photo library"
+                        + (pickedFolder == null ? "" : " or the picked folder") + ".\n\n"
+                        + "Unpacking deletes the only copy here"
+                        + ", and the bucket copy goes at the next backpack sync.");
+            }
+            if (!usedIn.isEmpty()) {
+                parts.add("The image is placed inline in:\n" + String.join("\n", usedIn.stream().map(u -> "• " + u).toList())
+                        + "\n\nThose references will point to nothing and the exports skip the image.");
+            }
+            Alert confirm = new Alert(Alert.AlertType.WARNING, String.join("\n\n", parts), remove, ButtonType.CANCEL);
             confirm.initOwner(dlg.getDialogPane().getScene().getWindow());
             confirm.setTitle("📷 Impression Curator");
-            confirm.setHeaderText("Unpack the only copy of this image?");
+            confirm.setHeaderText(hasMaster ? "Unpack an image that is used in your texts?" : "Unpack the only copy of this image?");
             Dialogs.applyStylesheet(confirm.getDialogPane());
             // Enter must not confirm the delete: Cancel is the default button
             ((Button) confirm.getDialogPane().lookupButton(remove)).setDefaultButton(false);
@@ -694,6 +721,10 @@ public final class ImageViewerDialog {
                     ? "Already in this day's backpack (same name and size)"
                     : "Copy this image into this day's backpack (Space)"));
             unpackBtn.setDisable(!isPacked);
+            copyLinkBtn.setDisable(!isPacked);
+            copyLinkBtn.setTooltip(new Tooltip(isPacked
+                    ? "Copy the Markdown line that places this image between paragraphs of a tale, the trip or a post"
+                    : "Put this image into 🎒 first"));
             unpackBtn.setTooltip(new Tooltip(isPacked
                     ? "Remove this image from the backpack — asks first if no other copy exists (Cmd/Ctrl+Backspace)"
                     : "Not in this day's backpack"));

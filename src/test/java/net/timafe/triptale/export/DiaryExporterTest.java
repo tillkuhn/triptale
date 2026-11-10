@@ -433,7 +433,7 @@ class DiaryExporterTest {
         assertTrue(html.contains("20250701_one.jpg"));
         assertTrue(html.contains("20250701_two.jpg"));
         String uri = tempDir.resolve("20250701_one.jpg").toUri().toString();
-        assertTrue(html.contains("<a href=\"" + uri + "\" target=\"triptale-image\"><img src=\"" + uri + "\" /></a>"), html);
+        assertTrue(html.contains("<a href=\"" + uri + "\" target=\"triptale-image\"><img src=\"" + uri + "\" alt=\"20250701 one\" /></a>"), html);
     }
 
     @Test
@@ -664,5 +664,41 @@ class DiaryExporterTest {
         store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).tales("Literal {{t.day}} here").build());
 
         assertTrue(exporter.exportTrip(trip).contains("Literal {{t.day}} here"));
+    }
+
+    @Test
+    void htmlExportPlacesInlineImagesAsFiguresAndLeavesThemOutOfTheGallery() throws java.io.IOException {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "Intro");
+        store.saveTrip(trip);
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), LocalDate.of(2025, 7, 1));
+        java.nio.file.Files.createFile(dir.resolve("20250701_101010_KiwieckBlick+_mini.jpg"));
+        java.nio.file.Files.createFile(dir.resolve("other.jpg"));
+        String ref = "attachments/2025/alps-2025/" + dir.getFileName() + "/20250701_101010_KiwieckBlick+_mini.jpg";
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("A")
+                .tales("Before.\n\n![](" + ref + ")\n\n![Gone](attachments/nope.jpg)\n\nAfter.").build());
+
+        String html = exporter.exportTripAsHtml(trip, null, null, ImpressionSource.TRIP_ATTACHMENTS, false);
+
+        assertTrue(html.contains("<figure class=\"inline-image\">"), html);
+        assertTrue(html.contains("alt=\"Kiwieck Blick\""), html);
+        assertTrue(html.contains("<figcaption>Kiwieck Blick</figcaption>"), html);
+        assertFalse(html.contains("nope.jpg"), html);
+        assertTrue(html.contains("other.jpg"), html);
+        assertEquals(2, countOf(html, "KiwieckBlick+_mini.jpg"), html);
+        assertEquals(1, exporter.lastInlineImageProblems().size());
+    }
+
+    @Test
+    void markdownExportKeepsInlineImageLinesAsWritten() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "Intro");
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("A")
+                .tales("Before.\n\n![Pic](attachments/x.jpg)\n\nAfter.").build());
+
+        assertTrue(exporter.exportTrip(trip).contains("![Pic](attachments/x.jpg)"));
+    }
+
+    private static int countOf(String text, String part) {
+        return text.split(java.util.regex.Pattern.quote(part), -1).length - 1;
     }
 }

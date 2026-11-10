@@ -1,5 +1,6 @@
 package net.timafe.triptale.export;
 
+import net.timafe.triptale.attachments.InlineImages;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
@@ -26,11 +27,13 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,11 +60,17 @@ public class DiaryExporter {
     private final MarkdownStore store;
     private final ImpressionsService impressions;
     private final SettingsStore settingsStore;
+    private volatile List<String> lastInlineImageProblems = List.of();
 
     public DiaryExporter(MarkdownStore store, ImpressionsService impressions, SettingsStore settingsStore) {
         this.store = store;
         this.impressions = impressions;
         this.settingsStore = settingsStore;
+    }
+
+    /** What was wrong with inline images (todo 92) in the last HTML export: empty if nothing. */
+    public List<String> lastInlineImageProblems() {
+        return lastInlineImageProblems;
     }
 
     public String exportTrip(Trip trip) {
@@ -91,7 +100,7 @@ public class DiaryExporter {
                 ? trip.startDate() : dates.getFirst();
         LocalDate endDate = dates.isEmpty() ? null : dates.getLast();
         String heading = chapterHeading(trip, allDates, dates, post);
-        return buildMarkdown(trip, dates, heading, description(trip, post), startDate, endDate, false, false);
+        return buildMarkdown(trip, dates, heading, description(trip, post), startDate, endDate, false, false, null);
     }
 
     /** Renders the same content as {@link #exportTrip(Trip)} as a standalone HTML document. */
@@ -128,7 +137,10 @@ public class DiaryExporter {
     private String renderHtml(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
                               LocalDate startDate, LocalDate endDate, ImpressionSource images, boolean favesOnly) {
         boolean includeMarkers = images != null;
-        String markdown = buildMarkdown(trip, dates, headingTitle, headingDescription, startDate, endDate, includeMarkers, true);
+        List<String> problems = new ArrayList<>();
+        String markdown = buildMarkdown(trip, dates, headingTitle, headingDescription, startDate, endDate, includeMarkers, true,
+                problems);
+        lastInlineImageProblems = List.copyOf(problems);
         Node document = Parser.builder().build().parse(markdown);
         String bodyHtml = HtmlRenderer.builder().build().render(document);
         if (includeMarkers) {
@@ -178,10 +190,13 @@ public class DiaryExporter {
         return startDay == endDay ? dayWord + " " + startDay : dayWord + " " + startDay + " - " + endDay;
     }
 
-    /** With {@code htmlFacts}, each entry gets the facts strip as an HTML block instead of the Markdown byline. */
+    /**
+     * With {@code htmlFacts}, each entry gets the facts strip as an HTML block instead of the Markdown byline,
+     * and inline images (todo 92) become figures; their problems are added to {@code problems}.
+     */
     private String buildMarkdown(Trip trip, List<LocalDate> dates, String headingTitle, String headingDescription,
                                  LocalDate startDate, LocalDate endDate,
-                                 boolean includeImpressionMarkers, boolean htmlFacts) {
+                                 boolean includeImpressionMarkers, boolean htmlFacts, List<String> problems) {
         ExportTexts texts = texts();
         List<DiaryEntry> entries = dates.stream()
                 .map(d -> store.loadEntry(trip.ref(), d))
@@ -199,12 +214,13 @@ public class DiaryExporter {
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
             if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
-            entriesBlock.append(renderEntry(trip, e, texts, includeImpressionMarkers, htmlFacts));
+            entriesBlock.append(renderEntry(trip, e, texts, includeImpressionMarkers, htmlFacts, problems));
         }
 
         Map<String, String> vars = new LinkedHashMap<>();
         vars.put("tripName", headingTitle == null ? "" : headingTitle);
-        vars.put("tripDescription", headingDescription == null ? "" : headingDescription.strip());
+        String description = headingDescription == null ? "" : headingDescription.strip();
+        vars.put("tripDescription", htmlFacts ? inlineImages(description, problems) : description);
         vars.put("startDate", startDate == null ? MISSING : texts.longDate(startDate));
         vars.put("endDate", endDate == null ? MISSING : texts.longDate(endDate));
         long totalDays = totalDays(startDate, endDate);
@@ -236,7 +252,12 @@ public class DiaryExporter {
         StringBuilder sb = new StringBuilder();
         while (m.find()) {
             LocalDate date = LocalDate.parse(m.group(1));
-            String replacement = renderImpressionsTable(faves.apply(impressions.images(source, trip, date)));
+            // Images placed in the text (todo 92) are not repeated in the gallery
+            Set<Path> inline = InlineImages.referenced(
+                    Markdown.stripPrivate(store.loadEntry(trip.ref(), date).tales()), store.dataDir());
+            List<Path> dayImages = faves.apply(impressions.images(source, trip, date)).stream()
+                    .filter(p -> !inline.contains(p.normalize())).toList();
+            String replacement = renderImpressionsTable(dayImages);
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
         m.appendTail(sb);
@@ -255,7 +276,8 @@ public class DiaryExporter {
                 String uri = escapeHtml(image.toUri().toString());
                 // A named target: every click reuses the same tab, which shows the original size
                 sb.append("<a href=\"").append(uri).append("\" target=\"").append(IMAGE_TARGET).append("\">")
-                        .append("<img src=\"").append(uri).append("\" /></a>\n");
+                        .append("<img src=\"").append(uri).append("\" alt=\"")
+                        .append(escapeHtml(InlineImages.altText(image))).append("\" /></a>\n");
             }
             sb.append("</div>\n");
         }
@@ -291,8 +313,22 @@ public class DiaryExporter {
         return texts.weekday(e.date()) + ", " + texts.longDate(e.date());
     }
 
+    /** Inline images (todo 92) as figures, for the HTML export; the Markdown export keeps the lines as written. */
+    private String inlineImages(String markdown, List<String> problems) {
+        InlineImages.Result result = InlineImages.renderBlocks(markdown, store.dataDir(), DiaryExporter::figure);
+        problems.addAll(result.problems());
+        return result.text();
+    }
+
+    private static String figure(String alt, Path file) {
+        String uri = escapeHtml(file.toUri().toString());
+        String text = escapeHtml(alt);
+        return "<figure class=\"inline-image\"><a href=\"" + uri + "\" target=\"" + IMAGE_TARGET + "\"><img src=\""
+                + uri + "\" alt=\"" + text + "\"></a><figcaption>" + text + "</figcaption></figure>";
+    }
+
     private String renderEntry(Trip trip, DiaryEntry e, ExportTexts texts, boolean includeImpressionMarker,
-                               boolean htmlFacts) {
+                               boolean htmlFacts, List<String> problems) {
         StringBuilder sb = new StringBuilder();
         sb.append(headingLine(trip, e, texts));
 
@@ -303,6 +339,7 @@ public class DiaryExporter {
 
         // Private sections (todo 48) never leave the app
         String tales = e.tales() == null ? "" : Markdown.shiftHeadingsToMin(Markdown.stripPrivate(e.tales()).strip(), 3);
+        if (htmlFacts) tales = inlineImages(tales, problems);
         if (!tales.isBlank()) {
             String rendered = substitute(load(ENTRY_TALES), Map.of("tales", tales)).stripTrailing();
             sb.append("\n\n").append(rendered);

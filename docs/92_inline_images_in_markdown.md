@@ -48,6 +48,21 @@ parsed before the layout step. If that gets complex, postpone and keep both (the
   Posts for references to it. When found, the existing warning also lists those files
   (Cancel stays the default).
 
+## Implementation
+
+- `attachments.InlineImages` (pure Java): block detection (fence-aware), `resolve`, `altText`,
+  `markdownLine`, `referenced`. `attachments.ImageReferences` scans README, entries and Posts for the
+  Unpack warning and builds the Copy Link line.
+- HTML: `DiaryExporter` replaces blocks in the trip description/Post intro and in each tale with a
+  `<figure class="inline-image">` raw HTML block before commonmark. WordPress: a paragraph that is
+  just one `attachments/` image becomes a `wp:image` block (AST based, so lists and quotes work too).
+- Gallery overlap is done, per day: only the day's own tale counts (an image used in the README or
+  a Post intro still shows in its day's gallery).
+- Problems are collected per export (`lastInlineImageProblems()` on both exporters) and shown in the
+  status line by the Diary Composer and the WordPress send. A missing file or missing public base URL
+  skips the image; a foreign path or an image inside a sentence stays as written.
+- Names with spaces or parentheses are written as `%20`, `%28`, `%29` in the link and decoded again.
+
 ## Open / not yet decided
 
 - Rendered size and layout of an inline image (assumed: full column width, `max-width: 100%`).

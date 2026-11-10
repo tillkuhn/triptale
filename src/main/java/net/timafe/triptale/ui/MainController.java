@@ -28,6 +28,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.attachments.ImageReferences;
 import net.timafe.triptale.radio.RadioLibrary;
 import net.timafe.triptale.radio.Station;
 import net.timafe.triptale.impressions.ImpressionSource;
@@ -330,7 +331,8 @@ public class MainController implements StatusSink {
         this.exportDiaryDialog =
                 new ExportDiaryDialog(diaryExporter, wordPressExporter, socialMediaExporter, store, settingsStore, impressions,
                         exportTempFiles, browser, this, this::addPending);
-        this.imageViewerDialog = new ImageViewerDialog(impressions, exifReader, browser, this, recentFolder);
+        this.imageViewerDialog = new ImageViewerDialog(impressions, exifReader, browser, this, recentFolder,
+                new ImageReferences(store));
         BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
         this.version = buildProperties != null ? buildProperties.getVersion() : "dev";
         this.aboutDialog = new AboutDialog(appName, buildProperties, browser);

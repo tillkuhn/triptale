@@ -124,6 +124,9 @@ public final class WordPressPublishDialog {
         String markup;
         try {
             markup = exporter.exportPost(trip, draft, images, favesOnly);
+            if (!exporter.lastInlineImageProblems().isEmpty()) {
+                statusSink.status("⚠ Inline images: " + String.join("; ", exporter.lastInlineImageProblems()));
+            }
         } catch (RuntimeException e) {
             result("❌ Export failed: " + UiText.describe(e), false);
             return;

@@ -10,12 +10,6 @@
 
 ## Next Todo: 93
 
-## 92 Embed attachment images inline in Markdown (README, Posts, entries)
-
-Support `![name](attachments/...)` between paragraphs in trip README.md, Post intro text and daily entry files, not only in the gallery. Only references into attachments/ (repo-root-relative, Tolaria-compatible), blank line before and after (block only). HTML and WordPress exporters render them (name = alt = caption, derived from the file name); bad references are reported at export. Curator gets a 📋 Copy Link button for backpack images; Unpack warns about references. Gallery de-duplication preferred, may be postponed.
-
-[Details](docs/92_inline_images_in_markdown.md)
-
 ## 88 Share trip form between New Trip and Trip Details
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
@@ -180,6 +174,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 92 Embed attachment images inline in Markdown (README, Posts, entries)
+
+Support `![name](attachments/...)` between paragraphs in trip README.md, Post intro text and daily entry files, not only in the gallery. Only references into attachments/ (repo-root-relative, Tolaria-compatible), blank line before and after (block only). HTML and WordPress exporters render them (name = alt = caption, derived from the file name); bad references are reported at export. Curator gets a 📋 Copy Link button for backpack images; Unpack warns about references. Gallery de-duplication preferred, may be postponed.
+
+[Details](docs/92_inline_images_in_markdown.md)
 
 ## DONE 91 Derive name for weblinks
 
