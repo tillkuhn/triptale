@@ -8,7 +8,13 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 92
+## Next Todo: 93
+
+## 92 Embed attachment images inline in Markdown (README, Posts, entries)
+
+Support `![name](attachments/...)` between paragraphs in trip README.md, Post intro text and daily entry files, not only in the gallery. Only references into attachments/ (repo-root-relative, Tolaria-compatible), blank line before and after (block only). HTML and WordPress exporters render them (name = alt = caption, derived from the file name); bad references are reported at export. Curator gets a 📋 Copy Link button for backpack images; Unpack warns about references. Gallery de-duplication preferred, may be postponed.
+
+[Details](docs/92_inline_images_in_markdown.md)
 
 ## 88 Share trip form between New Trip and Trip Details
 
