@@ -58,7 +58,7 @@ public final class WordPressPublishDialog {
 
     private final Label postLabel = new Label();
     private final Label resultLabel = new Label();
-    private final Hyperlink openLink = new Hyperlink("Open in WordPress");
+    private final Hyperlink openLink = new Hyperlink("Open WordPress");
     private final CheckBox sendTagsBox = new CheckBox();
     private Button sendBtn;
     private Dialog<ButtonType> dlg;
@@ -139,7 +139,7 @@ public final class WordPressPublishDialog {
             return;
         }
         run(() -> fetch(draft.wpId()), existing -> {
-            Action action = decide(existing, draft);
+            Action action = decide(existing, draft, markup);
             switch (action) {
                 case CANCEL -> {
                     busy(false);
@@ -161,14 +161,17 @@ public final class WordPressPublishDialog {
     }
 
     /** Todo 60's send rules, asked on the FX thread on top of this dialog. */
-    private Action decide(Optional<WordPressApiClient.PostResult> existing, Post draft) {
+    private Action decide(Optional<WordPressApiClient.PostResult> existing, Post draft, String markup) {
         if (existing.isEmpty()) {
             return confirm("WordPress post not found", "The post " + draft.wpId()
                     + " was not found on WordPress (deleted or trashed?). Create a new draft instead?")
                     ? Action.CREATE : Action.CANCEL;
         }
         WordPressApiClient.PostResult post = existing.get();
-        if (draft.wpModified() != null && post.modified() != null && post.modified().isAfter(draft.wpModified())) {
+        // WordPress bumps "modified" on its own (editor opened, background processing), so a newer timestamp
+        // only counts when the stored content really differs from what we are about to send
+        if (draft.wpModified() != null && post.modified() != null && post.modified().isAfter(draft.wpModified())
+                && !sameContent(post.rawContent(), markup)) {
             ButtonType overwrite = new ButtonType("Overwrite", ButtonBar.ButtonData.OTHER);
             ButtonType createNew = new ButtonType("Create New Draft", ButtonBar.ButtonData.OTHER);
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
@@ -187,6 +190,14 @@ public final class WordPressPublishDialog {
             return Action.CANCEL;
         }
         return Action.UPDATE;
+    }
+
+    private static boolean sameContent(String remote, String local) {
+        return remote != null && normalize(remote).equals(normalize(local));
+    }
+
+    private static String normalize(String s) {
+        return s.replace("\r\n", "\n").strip();
     }
 
     /** Saves the Post with the returned WordPress fields; WordPress already has it, so report a failed save loudly. */

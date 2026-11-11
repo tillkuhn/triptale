@@ -244,11 +244,11 @@ class WordPressExporterTest {
         String out = exporter.export(trip, null, null, true, false);
 
         String dayUrl = "https://cdn.example.net/2025/alps-2025/2025-07-01-Tuesday/";
-        assertTrue(out.contains("<!-- wp:gallery {\"columns\":3,\"linkTo\":\"none\"} -->\n"
+        assertTrue(out.contains("<!-- wp:gallery {\"columns\":3,\"linkTo\":\"media\"} -->\n"
                 + "<figure class=\"wp-block-gallery has-nested-images columns-3 is-cropped\">"), out);
         assertTrue(out.contains("<img src=\"" + dayUrl + "20250701_101010_KiwieckBlick%2B_mini.jpg\" alt=\"Kiwieck Blick\"/>"), out);
         assertTrue(out.contains("<img src=\"" + dayUrl + "%C3%84%20b.png\" alt=\"Ä b\"/>"), out);
-        assertTrue(out.contains("<!-- wp:image {\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"} -->"), out);
+        assertTrue(out.contains("<!-- wp:image {\"sizeSlug\":\"large\",\"linkDestination\":\"media\",\"linkTarget\":\"_blank\"} -->"), out);
         assertFalse(out.contains("track.gpx"));
     }
 

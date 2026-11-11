@@ -40,8 +40,9 @@ public final class WordPressApiClient {
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
 
-    /** A post as WordPress reports it: {@code modified} is {@code modified_gmt} parsed as an Instant. */
-    public record PostResult(String id, String status, Instant modified, String link) {}
+    /** A post as WordPress reports it: {@code modified} is {@code modified_gmt} parsed as an Instant;
+     * {@code rawContent} is the stored block markup (only with {@code context=edit}, else null). */
+    public record PostResult(String id, String status, Instant modified, String link, String rawContent) {}
 
     /** The post doesn't exist (anymore) — 404, e.g. deleted or permanently trashed on the WordPress side. */
     public static final class NotFoundException extends WordPressException {
@@ -83,7 +84,7 @@ public final class WordPressApiClient {
     /** @throws NotFoundException if {@code id} is gone (404) — the caller offers creating a new draft instead. */
     public PostResult getPost(AppSettings.WordPress settings, String id) {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(postsUrl(settings) + "/" + id))
+                .uri(URI.create(postsUrl(settings) + "/" + id + "?context=edit"))
                 .timeout(REQUEST_TIMEOUT)
                 .header("Authorization", "Bearer " + settings.getAccessToken())
                 .GET()
@@ -203,7 +204,8 @@ public final class WordPressApiClient {
                     node.path("id").asText(""),
                     node.path("status").asText(""),
                     parseModifiedGmt(node.path("modified_gmt").asText("")),
-                    node.path("link").asText(""));
+                    node.path("link").asText(""),
+                    node.path("content").hasNonNull("raw") ? node.path("content").path("raw").asText() : null);
         } catch (IOException e) {
             throw new WordPressException("Unexpected response from WordPress.com: " + e.getMessage(), e);
         }

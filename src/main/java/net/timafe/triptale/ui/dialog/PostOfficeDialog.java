@@ -75,6 +75,8 @@ public final class PostOfficeDialog {
     private Button saveBtn;
     private Button deleteBtn;
     private Button openWpBtn;
+    private Button publishBtn;
+    private String publishSlug;
     private Dialog<ButtonType> dlg;
 
     public PostOfficeDialog(MarkdownStore store, SettingsStore settingsStore, BrowserLauncher browser,
@@ -159,10 +161,18 @@ public final class PostOfficeDialog {
         saveBtn = new Button("💾 Save Post");
         saveBtn.setDefaultButton(true);
         saveBtn.setOnAction(e -> save());
-        openWpBtn = new Button("🌐 Open in WordPress");
+        openWpBtn = new Button("🌐 Open WordPress");
         openWpBtn.setOnAction(e -> openInWordPress());
         openWpBtn.setDisable(true);
-        HBox actions = new HBox(8, addBtn, deleteBtn, saveBtn, openWpBtn);
+        publishBtn = new Button("📡 Post to WordPress");
+        publishBtn.setTooltip(new Tooltip("Close the Post Office and open the Diary Composer set up to send this post"));
+        publishBtn.setDisable(true);
+        publishBtn.setOnAction(e -> {
+            if (editing == null) return;
+            publishSlug = editing.slug();
+            dlg.close();
+        });
+        HBox actions = new HBox(8, addBtn, deleteBtn, saveBtn, openWpBtn, publishBtn);
 
         VBox content = new VBox(8, table, grid, errorLabel, actions);
         content.setPadding(new Insets(4));
@@ -185,6 +195,7 @@ public final class PostOfficeDialog {
         } else {
             setEditorEnabled(false);
         }
+        publishSlug = null;
         dlg.showAndWait();
     }
 
@@ -228,6 +239,7 @@ public final class PostOfficeDialog {
         errorLabel.setText("");
         deleteBtn.setDisable(false);
         openWpBtn.setDisable(!hasWpId(post));
+        publishBtn.setDisable(false);
     }
 
     private static boolean hasWpId(Post p) {
@@ -263,6 +275,7 @@ public final class PostOfficeDialog {
         errorLabel.setText("");
         deleteBtn.setDisable(true);
         openWpBtn.setDisable(true);
+        publishBtn.setDisable(true);
         titleField.requestFocus();
         titleField.selectAll();
     }
@@ -338,6 +351,12 @@ public final class PostOfficeDialog {
         table.getItems().setAll(posts);
         table.getSelectionModel().clearSelection();
         setEditorEnabled(false);
+        publishBtn.setDisable(true);
+    }
+
+    /** The slug of the saved Post whose "Post to WordPress" was pressed, empty if the dialog was just closed. */
+    public Optional<String> publishRequest() {
+        return Optional.ofNullable(publishSlug);
     }
 
     private void sortPosts() {

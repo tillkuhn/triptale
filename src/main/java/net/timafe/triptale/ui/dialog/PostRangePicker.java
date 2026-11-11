@@ -150,6 +150,17 @@ final class PostRangePicker {
         return c == null ? null : c.post();
     }
 
+    /** Selects the real Post with this slug; false if there is none. */
+    boolean select(String slug) {
+        for (Choice c : postCombo.getItems()) {
+            if (c.post() != null && c.post().slug().equals(slug)) {
+                postCombo.setValue(c);
+                return true;
+            }
+        }
+        return false;
+    }
+
     LocalDate from() { return fromCombo.getValue(); }
     LocalDate to() { return toCombo.getValue(); }
 

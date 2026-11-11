@@ -108,7 +108,16 @@ public final class ExportDiaryDialog {
         show(trip, from, to, from);
     }
 
+    /** Opens set up for sending {@code postSlug}: that Post, WordPress format, backpack images. */
+    public void showForPublish(Trip trip, String postSlug) {
+        show(trip, null, null, null, postSlug);
+    }
+
     private void show(Trip trip, LocalDate from, LocalDate to, LocalDate current) {
+        show(trip, from, to, current, null);
+    }
+
+    private void show(Trip trip, LocalDate from, LocalDate to, LocalDate current, String publishSlug) {
         PostRangePicker range;
         try {
             List<DiaryEntry> entries = store.listEntryDates(trip.ref()).stream()
@@ -194,6 +203,11 @@ public final class ExportDiaryDialog {
         favesCheck.selectedProperty().addListener((obs, old, sel) -> {
             if (formatCombo.getValue() == Format.WORDPRESS) render.run();
         });
+        Runnable presetPublish = () -> {
+            formatCombo.setValue(Format.WORDPRESS);
+            if (imagesCombo.getItems().contains(Images.ATTACHMENTS)) imagesCombo.setValue(Images.ATTACHMENTS);
+        };
+        if (publishSlug != null && range.select(publishSlug)) presetPublish.run();
         render.run();
 
         HBox imagesBox = new HBox(8, new Label("Format:"), formatCombo, new Label("Images:"), imagesCombo, favesCheck);
@@ -208,9 +222,13 @@ public final class ExportDiaryDialog {
 
         range.onOpenPostOffice(() -> {
             Post selected = range.selectedPost();
-            new PostOfficeDialog(store, settingsStore, browser, statusSink, addPending).show(dlg.getDialogPane().getScene().getWindow(), trip,
+            PostOfficeDialog office = new PostOfficeDialog(store, settingsStore, browser, statusSink, addPending);
+            office.show(dlg.getDialogPane().getScene().getWindow(), trip,
                     current != null ? current : range.from(), selected == null ? null : selected.slug());
             reloadPosts(trip, range, current);
+            office.publishRequest().ifPresent(slug -> {
+                if (range.select(slug)) presetPublish.run();
+            });
             render.run();
         });
 

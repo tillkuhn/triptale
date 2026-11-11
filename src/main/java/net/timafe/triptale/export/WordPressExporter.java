@@ -364,13 +364,15 @@ public class WordPressExporter {
         Path root = attachmentsDir.root();
         List<String> items = impressions.galleryRows(images.stream().filter(p -> p.startsWith(root)).toList()).stream()
                 .flatMap(row -> row.images().stream())
-                .map(p -> block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
-                        "<figure class=\"wp-block-image size-large\"><img src=\""
-                                + DiaryExporter.escapeHtml(baseUrl + urlPath(root.relativize(p)))
-                                + "\" alt=\"" + DiaryExporter.escapeHtml(InlineImages.altText(p)) + "\"/></figure>"))
+                .map(p -> {
+                    String src = DiaryExporter.escapeHtml(baseUrl + urlPath(root.relativize(p)));
+                    return block("image", "{\"sizeSlug\":\"large\",\"linkDestination\":\"media\",\"linkTarget\":\"_blank\"}",
+                            "<figure class=\"wp-block-image size-large\"><a href=\"" + src + "\" target=\"_blank\" rel=\"noreferrer noopener\"><img src=\"" + src
+                                    + "\" alt=\"" + DiaryExporter.escapeHtml(InlineImages.altText(p)) + "\"/></a></figure>");
+                })
                 .toList();
         if (items.isEmpty()) return Optional.empty();
-        return Optional.of(block("gallery", "{\"columns\":" + columns + ",\"linkTo\":\"none\"}",
+        return Optional.of(block("gallery", "{\"columns\":" + columns + ",\"linkTo\":\"media\"}",
                 "<figure class=\"wp-block-gallery has-nested-images columns-" + columns + " is-cropped\">"
                         + String.join("\n", items) + "</figure>"));
     }
