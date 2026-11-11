@@ -10,7 +10,7 @@
 
 ## Next Todo: 93
 
-## 88 Share trip form between New Trip and Trip Details
+## 88 Share trip form between New Trip and Trip Details (M)
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
 
@@ -159,7 +159,7 @@ While checking the remote, show the Smart Sync style dialog with spinner; if tha
 yet, make it so now (more future use cases will talk to remote pages verbosely).
 The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
 
-## 26 Show no of objects and repo size
+## 26 Show no of objects and repo size (S)
 
 in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
 
