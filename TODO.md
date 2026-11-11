@@ -159,10 +159,6 @@ While checking the remote, show the Smart Sync style dialog with spinner; if tha
 yet, make it so now (more future use cases will talk to remote pages verbosely).
 The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
 
-## 26 Show no of objects and repo size (S)
-
-in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
-
 ## 19 DatePicker has no quick year navigation
 
 The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
@@ -174,6 +170,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 26 Show no of objects and repo size (S)
+
+in repo info dialogue, show output of `git count-objects -H` e.g. 359 objects, 1.62 MiB`.
+
+Done: the dialog (now "Repository Info…") shows git objects (`count-objects -v -H`, loose + packed), and the approximate size of `attachments/`, `radio/` (local, plus bucket total with cloud sync) and `.triptale/`. The access key ID is no longer shown.
 
 ## DONE 92 Embed attachment images inline in Markdown (README, Posts, entries)
 

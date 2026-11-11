@@ -358,6 +358,35 @@ public class GitService {
         }
     }
 
+    /**
+     * Object count and size from {@code git count-objects -v -H}, loose and packed combined,
+     * e.g. {@code "359 objects, 1.62 MiB loose + 3.10 MiB packed"}.
+     */
+    public String objectSummary() {
+        long objects = 0;
+        String loose = "0 bytes";
+        String packed = "0 bytes";
+        for (String line : runGit("count-objects", "-v", "-H").split("\n")) {
+            int colon = line.indexOf(':');
+            if (colon < 0) continue;
+            String key = line.substring(0, colon).trim();
+            String value = line.substring(colon + 1).trim();
+            switch (key) {
+                case "count", "in-pack" -> {
+                    try {
+                        objects += Long.parseLong(value);
+                    } catch (NumberFormatException ignored) {
+                        // leave the count as is
+                    }
+                }
+                case "size" -> loose = value;
+                case "size-pack" -> packed = value;
+                default -> { }
+            }
+        }
+        return objects + " objects, " + loose + " loose + " + packed + " packed";
+    }
+
     private String currentBranch() {
         try (Git git = Git.open(store.dataDir().toFile())) {
             String branch = git.getRepository().getBranch();
@@ -403,7 +432,7 @@ public class GitService {
                 throw new GitException("git " + args[0] + " failed: "
                         + (output.isBlank() ? "(no output)" : output), null);
             }
-            log.info("git {} ok: {}", args[0], output);
+            log.info("git {} ok: {}", args[0], output.replace("\n", " | "));
             return output;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
