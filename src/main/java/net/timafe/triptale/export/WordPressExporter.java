@@ -314,10 +314,9 @@ public class WordPressExporter {
             if (alt.isBlank()) alt = InlineImages.altText(file.get());
             String src = DiaryExporter.escapeHtml(ctx.baseUrl() + urlPath(ctx.dataDir().resolve(AttachmentsDir.DIR_NAME)
                     .relativize(file.get())));
-            return Optional.of(block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\"}",
-                    "<figure class=\"wp-block-image size-large\"><img src=\"" + src + "\" alt=\""
-                            + DiaryExporter.escapeHtml(alt) + "\"/><figcaption class=\"wp-element-caption\">"
-                            + DiaryExporter.escapeHtml(alt) + "</figcaption></figure>"));
+            return Optional.of(block("image", "{\"lightbox\":{\"enabled\":true},\"sizeSlug\":\"large\",\"linkDestination\":\"none\",\"align\":\"center\"}",
+                    "<figure class=\"wp-block-image aligncenter size-large\"><img src=\"" + src + "\" alt=\""
+                            + DiaryExporter.escapeHtml(alt) + "\"/></figure>"));
         }
         return Optional.empty();
     }

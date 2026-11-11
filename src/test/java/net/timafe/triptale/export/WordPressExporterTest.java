@@ -335,8 +335,8 @@ class WordPressExporterTest {
         String out = exporter.export(trip, null, null, true, false);
 
         String url = "https://cdn.example.net/2025/alps-2025/2025-07-01-Tuesday/20250701_101010_KiwieckBlick%2B_mini.jpg";
-        assertTrue(out.contains("<figure class=\"wp-block-image size-large\"><img src=\"" + url
-                + "\" alt=\"Kiwieck Blick\"/><figcaption class=\"wp-element-caption\">Kiwieck Blick</figcaption></figure>"), out);
+        assertTrue(out.contains("<figure class=\"wp-block-image aligncenter size-large\"><img src=\"" + url
+                + "\" alt=\"Kiwieck Blick\"/></figure>"), out);
         assertEquals(1, out.split(java.util.regex.Pattern.quote("KiwieckBlick%2B"), -1).length - 1, out);
         assertTrue(out.contains("other.jpg"), out);
         assertTrue(out.indexOf("<p>Before.</p>") < out.indexOf("wp-block-image") && out.indexOf("wp-block-image") < out.indexOf("<p>After.</p>"));
