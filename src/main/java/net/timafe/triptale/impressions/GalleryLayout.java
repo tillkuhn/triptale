@@ -54,6 +54,21 @@ public final class GalleryLayout {
         rest.addAll(landscapeLeft);
         List<List<Cell>> rows = new ArrayList<>(full);
         List<Cell> tail = chunk(rest, cols, rows);
+        if (tail.size() == 1 && cols > 1 && tail.getFirst().aspect() < 1) {
+            // A lone portrait would fill the full width and tower over the gallery: pair it with
+            // landscapes borrowed from the last landscape row; the one left over goes last instead
+            for (int r = rows.size() - 1; r >= 0; r--) {
+                List<Cell> donor = rows.get(r);
+                if (donor.size() == cols && donor.getFirst().aspect() >= 1 && donor.getLast().aspect() >= 1) {
+                    rows.remove(r);
+                    List<Cell> mixed = new ArrayList<>(tail);
+                    mixed.addAll(donor.subList(0, cols - 1));
+                    rows.add(mixed);
+                    tail = List.of(donor.getLast());
+                    break;
+                }
+            }
+        }
         if (!tail.isEmpty()) rows.add(tail);
         return rows.stream().map(GalleryLayout::row).toList();
     }

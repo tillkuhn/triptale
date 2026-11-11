@@ -96,3 +96,11 @@ Decided together with a rework of the Impression Curator (`ui/dialog/ImageViewer
   `aspect-ratio` = 1 / row height ratio, images `object-fit: cover`, `break-inside: avoid`),
   replacing the `column-count` masonry. Numbering in the preview follows the plan order, not the
   file order; the reordering is intentional (time order no longer matters).
+
+## Update 2026-11: no lone portrait at the end
+
+With a portrait remainder and no landscape remainder (e.g. an odd number of images where the last
+is 2:3), the portrait ended up alone on a full-width row and towered over the gallery.
+`GalleryLayout.plan` now pairs a lone trailing portrait with landscape(s) borrowed from the last
+full landscape row (`[P, L]`); the leftover landscape goes last, alone and full width, which is
+short. If there is no landscape row to borrow from (all portrait), the lone portrait stays as is.

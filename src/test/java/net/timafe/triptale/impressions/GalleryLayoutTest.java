@@ -40,6 +40,12 @@ class GalleryLayoutTest {
     }
 
     @Test
+    void loneTrailingPortraitBorrowsALandscape() {
+        // 4 landscapes + 1 portrait: the portrait must not end up alone and full width
+        assertEquals(List.of(List.of(0, 1), List.of(4, 2), List.of(3)), indices(List.of(L, L, L, L, P), 2));
+    }
+
+    @Test
     void unknownAspectCountsAsLandscape() {
         assertEquals(List.of(List.of(0, 1)), indices(Arrays.asList(null, L), 2));
     }
