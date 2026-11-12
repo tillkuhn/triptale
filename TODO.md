@@ -14,19 +14,6 @@
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
 
-## 81 General repo housekeeping task
-
-One mechanism (invokable on demand or periodically) that sweep/cleanup-style tasks register
-with, instead of each feature bolting on its own one-off sweep: orphaned `.exif-cache`/
-`.tile-cache` entries, local `git gc`, and whatever else turns up over time.
-Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with its output shown).
-
-First slice done: the former "Repository Info" dialog is now **🧹 Repo Advisor**, with a
-"🧽 Janitor" button running `git gc` and the orphaned EXIF cache sweep, output shown in the dialog.
-Still open: tile cache sweep, periodic/automatic runs (last-run persistence), task registry.
-
-[Details](docs/81_housekeeping.md)
-
 ## 67 Private images
 
 Mark individual backpack images as private so they're kept but never exported, via a per-day
@@ -173,6 +160,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 81 General repo housekeeping task
+
+Done as the **🧹 Repo Advisor** dialog (the former Repository Info): info by default, a "🧽 Janitor" button runs `git gc` and the orphaned EXIF cache sweep and shows the output, the last run is stored in `.triptale/state.yml` and shown in the dialog, and a separate "🗑 Purge Tiles Cache" button frees the tile cache on demand (not part of the Janitor run). Not done, deliberately: periodic/automatic runs and a pluggable task registry.
+
+[Details](docs/81_housekeeping.md)
 
 ## DONE 93 WordPress Exporter: Embed own-blog links as post cards, embeds after gallery, add checkout verb (S)
 

@@ -356,6 +356,7 @@ public class MarkdownStore {
     private static final String STATE_LAST_TRIP_KEY = "lastTripPath";
     private static final String STATE_LAST_ENTRY_KEY = "lastEntryDate";
     private static final String STATE_LAST_GPX_FOLDER_KEY = "lastGpxFolder";
+    private static final String STATE_LAST_JANITOR_KEY = "lastJanitorRun";
     private static final String STATE_TELEGRAM_OFFSET_KEY = "telegramOffset";
     /** Pre-todo-78 key, the tile style alone; read as a fallback, dropped on the next save. */
     private static final String STATE_LAST_MAP_STYLE_KEY = "lastMapStyle";
@@ -415,6 +416,22 @@ public class MarkdownStore {
             return Optional.of(TripRef.parse(raw));
         } catch (RuntimeException e) {
             log.warn("Ignoring malformed {}: '{}'", STATE_LAST_TRIP_KEY, raw);
+            return Optional.empty();
+        }
+    }
+
+    /** When the Repo Advisor's Janitor last ran (any outcome); device-local like the rest of the state. */
+    public void saveLastJanitorRun(java.time.Instant when) {
+        saveState(STATE_LAST_JANITOR_KEY, when.toString());
+    }
+
+    public Optional<java.time.Instant> loadLastJanitorRun() {
+        String raw = asString(loadState().get(STATE_LAST_JANITOR_KEY));
+        if (raw == null) return Optional.empty();
+        try {
+            return Optional.of(java.time.Instant.parse(raw));
+        } catch (RuntimeException e) {
+            log.warn("Ignoring malformed {}: '{}'", STATE_LAST_JANITOR_KEY, raw);
             return Optional.empty();
         }
     }

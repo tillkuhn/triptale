@@ -2094,7 +2094,7 @@ public class MainController implements StatusSink {
 
     @FXML
     public void onRepoAdvisor() {
-        new RepoAdvisorDialog(gitService, settingsStore, exifReader).show();
+        new RepoAdvisorDialog(gitService, settingsStore, exifReader, store).show();
     }
 
     /**

@@ -18,6 +18,7 @@ import net.timafe.triptale.config.BucketUrl;
 import net.timafe.triptale.git.GitService;
 import net.timafe.triptale.storage.ExifReader;
 import net.timafe.triptale.storage.LocalDir;
+import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
 import net.timafe.triptale.sync.BucketSyncer;
 import net.timafe.triptale.sync.ObjectStore;
@@ -28,6 +29,9 @@ import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.util.DirSizes;
 
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -41,15 +45,29 @@ import java.util.function.Supplier;
 public final class RepoAdvisorDialog {
 
     private static final List<String> FOLDERS = List.of("attachments", "radio", LocalDir.NAME);
+    private static final DateTimeFormatter RUN_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final GitService gitService;
     private final SettingsStore settingsStore;
     private final ExifReader exifReader;
+    private final MarkdownStore store;
 
-    public RepoAdvisorDialog(GitService gitService, SettingsStore settingsStore, ExifReader exifReader) {
+    public RepoAdvisorDialog(GitService gitService, SettingsStore settingsStore, ExifReader exifReader,
+                             MarkdownStore store) {
         this.gitService = gitService;
         this.settingsStore = settingsStore;
         this.exifReader = exifReader;
+        this.store = store;
+    }
+
+    private String lastRunDisplay() {
+        try {
+            return store.loadLastJanitorRun()
+                    .map(t -> RUN_FORMAT.format(t.atZone(ZoneId.systemDefault())))
+                    .orElse("never");
+        } catch (RuntimeException e) {
+            return "(error: " + UiText.describe(e) + ")";
+        }
     }
 
     public void show() {
@@ -78,10 +96,17 @@ public final class RepoAdvisorDialog {
         grid.add(new Label("Git objects:"), 0, row);
         Label objectsLabel = new Label(ready ? objectsDisplay() : "-");
         grid.add(objectsLabel, 1, row++);
+        Label triptaleSizeRef = null;
         for (String folder : FOLDERS) {
             grid.add(new Label(folder + "/:"), 0, row);
-            grid.add(new Label(ready ? sizeDisplay(dataDir.get(), folder, attachments, cloud) : "-"), 1, row++);
+            Label size = new Label(ready ? sizeDisplay(dataDir.get(), folder, attachments, cloud) : "-");
+            if (folder.equals(LocalDir.NAME)) triptaleSizeRef = size;
+            grid.add(size, 1, row++);
         }
+        Label triptaleLabel = triptaleSizeRef;
+        Label lastRunLabel = new Label(ready ? lastRunDisplay() : "-");
+        grid.add(new Label("Last janitor run:"), 0, row);
+        grid.add(lastRunLabel, 1, row++);
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("🧹 Repo Advisor");
@@ -104,18 +129,53 @@ public final class RepoAdvisorDialog {
         alert.getDialogPane().setContent(content);
 
         ButtonType janitor = new ButtonType("🧽 Janitor", ButtonBar.ButtonData.LEFT);
-        alert.getButtonTypes().setAll(janitor, ButtonType.CLOSE);
+        ButtonType purge = new ButtonType("🗑 Purge Tiles Cache", ButtonBar.ButtonData.LEFT);
+        alert.getButtonTypes().setAll(janitor, purge, ButtonType.CLOSE);
         Dialogs.applyStylesheet(alert.getDialogPane());
         Button janitorButton = (Button) alert.getDialogPane().lookupButton(janitor);
+        Button purgeButton = (Button) alert.getDialogPane().lookupButton(purge);
         janitorButton.setDisable(!ready);
+        purgeButton.setDisable(!ready);
         janitorButton.addEventFilter(ActionEvent.ACTION, e -> {
             e.consume(); // keep the dialog open to show the output
-            log.setVisible(true);
-            log.setManaged(true);
-            alert.getDialogPane().getScene().getWindow().sizeToScene();
-            runJanitor(janitorButton, log, objectsLabel);
+            showLog(alert, log);
+            runJanitor(janitorButton, log, objectsLabel, lastRunLabel);
+        });
+        purgeButton.addEventFilter(ActionEvent.ACTION, e -> {
+            e.consume();
+            showLog(alert, log);
+            purgeTiles(purgeButton, log, dataDir.orElseThrow(), triptaleLabel);
         });
         alert.showAndWait();
+    }
+
+    private static void showLog(Alert alert, TextArea log) {
+        log.setVisible(true);
+        log.setManaged(true);
+        alert.getDialogPane().getScene().getWindow().sizeToScene();
+    }
+
+    /** Not part of the Janitor: only worth doing when the disk space is needed, tiles refill on demand. */
+    private void purgeTiles(Button button, TextArea log, Path dataDir, Label triptaleLabel) {
+        button.setDisable(true);
+        log.clear();
+        log.appendText("▶ Purge tiles cache\n");
+        Thread worker = new Thread(() -> {
+            Path tiles = LocalDir.cache(dataDir, "tiles");
+            long bytes = DirSizes.totalBytes(tiles);
+            try {
+                int files = LocalDir.purgeCache(dataDir, "tiles");
+                append(log, files + " tiles deleted, " + ByteSizes.humanize(bytes) + " freed\n✔ done");
+            } catch (RuntimeException e) {
+                append(log, "❌ FAILED: " + UiText.describe(e));
+            }
+            Platform.runLater(() -> {
+                triptaleLabel.setText(ByteSizes.humanize(DirSizes.totalBytes(LocalDir.root(dataDir))) + " local");
+                button.setDisable(false);
+            });
+        }, "repo-purge-tiles");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private record Task(String name, Supplier<String> action) { }
@@ -128,7 +188,7 @@ public final class RepoAdvisorDialog {
     }
 
     /** Runs all tasks one after the other off the FX thread, appending their output to {@code log}. */
-    private void runJanitor(Button button, TextArea log, Label objectsLabel) {
+    private void runJanitor(Button button, TextArea log, Label objectsLabel, Label lastRunLabel) {
         button.setDisable(true);
         log.clear();
         Thread worker = new Thread(() -> {
@@ -146,6 +206,12 @@ public final class RepoAdvisorDialog {
             append(log, failed == 0 ? "✅ All tasks finished."
                     : "❌ " + failed + (failed == 1 ? " task" : " tasks") + " FAILED, see above.");
             Platform.runLater(() -> {
+                try {
+                    store.saveLastJanitorRun(Instant.now());
+                } catch (RuntimeException e) {
+                    log.appendText("\n❌ Could not store the run time: " + UiText.describe(e));
+                }
+                lastRunLabel.setText(lastRunDisplay());
                 objectsLabel.setText(objectsDisplay());
                 button.setDisable(false);
             });

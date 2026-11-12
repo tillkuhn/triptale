@@ -586,6 +586,14 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void lastJanitorRunRoundTrips() {
+        assertTrue(store.loadLastJanitorRun().isEmpty());
+        java.time.Instant when = java.time.Instant.parse("2026-11-12T10:15:30Z");
+        store.saveLastJanitorRun(when);
+        assertEquals(when, store.loadLastJanitorRun().orElseThrow());
+    }
+
+    @Test
     void saveAndLoadLastGpxFolderRoundTrip() {
         store.saveLastGpxFolder(tempDir);
         assertEquals(tempDir, store.loadLastGpxFolder().orElseThrow());

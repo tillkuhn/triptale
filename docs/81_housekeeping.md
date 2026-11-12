@@ -59,3 +59,9 @@ grill-me pass before implementation.
 - Tasks today: `GitService.gc()` (shells out to `git gc`) and `ExifReader.sweepOrphans()`.
 - Not done: tile cache sweep, periodic runs, a pluggable task registry (tasks are a fixed list
   in the dialog for now).
+- Last run: `lastJanitorRun` (ISO instant) in `.triptale/state.yml`, shown as the last row of the
+  dialog; saved after every run, whatever the outcome.
+- Tile cache: **not** part of the Janitor. A separate "🗑 Purge Tiles Cache" button
+  (`LocalDir.purgeCache`) empties `cache/tiles` on demand, since tiles are the bulk of
+  `.triptale/` and are only worth deleting when the disk space is needed (they refill on use).
+- Closed with periodic/automatic runs and a pluggable task registry deliberately not done.
