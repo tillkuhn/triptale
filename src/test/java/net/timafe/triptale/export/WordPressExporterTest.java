@@ -183,6 +183,40 @@ class WordPressExporterTest {
     }
 
     @Test
+    void linkToOwnBlogPostBecomesPostEmbed() {
+        updateSettings(s -> s.getWordPress().setSite("timafe.wordpress.com"));
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("tale")
+                .link("read", Link.parse("https://timafe.wordpress.com/2023/06/25/essen-andalusien-bahn/"))
+                .link("sleep", Link.parse("https://other.wordpress.com/2023/06/25/x/"))
+                .link("tour", Link.parse("https://timafe.wordpress.com/"))
+                .build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.contains("""
+                <!-- wp:embed {"url":"https://timafe.wordpress.com/2023/06/25/essen-andalusien-bahn/","type":"wp-embed"} -->
+                <figure class="wp-block-embed is-type-wp-embed wp-block-embed"><div class="wp-block-embed__wrapper">
+                https://timafe.wordpress.com/2023/06/25/essen-andalusien-bahn/
+                </div></figure>
+                <!-- /wp:embed -->"""), out);
+        assertEquals(1, out.split("wp:embed \\{", -1).length - 1, out);
+        assertTrue(out.contains("<a href=\"https://other.wordpress.com/2023/06/25/x/\">"), out);
+        assertTrue(out.contains("<a href=\"https://timafe.wordpress.com/\">"), out);
+    }
+
+    @Test
+    void namedOwnBlogLinkGetsIntroParagraphAboveEmbed() {
+        updateSettings(s -> s.getWordPress().setSite("timafe.wordpress.com"));
+        store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).tales("tale")
+                .link("explore", Link.of("https://timafe.wordpress.com/2022/09/30/x/", "Lesetipp <1>"))
+                .build());
+
+        String out = exporter.export(trip, null, null, false, false);
+
+        assertTrue(out.contains("<p>Lesetipp &lt;1&gt;</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:embed"), out);
+    }
+
+    @Test
     void zeroOrUnsetStatsAreLeftOut() {
         store.saveEntry(trip.ref(), DiaryEntry.builder(DAY1).distance(0.0).altitudeMeters(0.0).tales("train day").build());
 

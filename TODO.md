@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 93
+## Next Todo: 94
 
 ## 88 Share trip form between New Trip and Trip Details (M)
 
@@ -170,6 +170,12 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 93 WordPress Exporter: Embed own-blog links as post cards, embeds after gallery, add checkout verb (S)
+
+Links to the registered WordPress site export as a wp:embed post card; a link name becomes an intro paragraph above it. YouTube and post embeds now come after the gallery. New multi-purpose link verb url_checkout (👀 Check out).
+
+[Details](docs/93_wordpress_exporter_embed_own_blog_links_as_post_cards_embeds.md)
 
 ## DONE 26 Show no of objects and repo size (S)
 

@@ -147,6 +147,7 @@ public class WordPressExporter {
                 gallery(faves.apply(dayImages).stream().filter(p -> !inline.contains(p.normalize())).toList(),
                         baseUrl, columns).ifPresent(blocks::add);
             }
+            blocks.addAll(embedBlocks(e));
         }
         // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
         if (places) {
@@ -205,24 +206,18 @@ public class WordPressExporter {
     }
 
     /**
-     * The entry's links, same wording as the Markdown export; invalid values as plain text. A
-     * {@code watch} link to a YouTube video is pulled out of the list and rendered as its own
-     * {@code wp:embed} block instead (matching what the block editor's "Embed" produces when you
-     * paste the URL directly), so the blog shows an inline player rather than a bare link.
+     * The entry's links as a list, same wording as the Markdown export; invalid values as plain
+     * text. Links that {@link #embedBlocks} turns into embeds are left out.
      */
-    private static List<String> linkBlocks(DiaryEntry e, ExportTexts texts) {
+    private List<String> linkBlocks(DiaryEntry e, ExportTexts texts) {
         List<String> out = new ArrayList<>();
-        if (e.links().isEmpty()) return out;
+        String siteHost = siteHost();
         StringBuilder html = new StringBuilder("<ul class=\"wp-block-list\">");
-        List<String> embeds = new ArrayList<>();
         boolean anyListItem = false;
         for (var entry : e.links().entrySet()) {
             String verb = entry.getKey();
             Link link = entry.getValue();
-            if (LinkKind.WATCH.key().equals(verb) && link.valid() && isYouTubeUrl(link.url())) {
-                embeds.add(youTubeEmbed(link.url()));
-                continue;
-            }
+            if (isEmbedded(verb, link, siteHost)) continue;
             anyListItem = true;
             String text = DiaryExporter.escapeHtml(link.valid() ? link.displayText() : link.url());
             html.append("<!-- wp:list-item -->\n<li>")
@@ -232,7 +227,35 @@ public class WordPressExporter {
                     .append("</li>\n<!-- /wp:list-item -->");
         }
         if (anyListItem) out.add(block("list", "", html.append("</ul>").toString()));
-        out.addAll(embeds);
+        return out;
+    }
+
+    private static boolean isEmbedded(String verb, Link link, String siteHost) {
+        return link.valid() && ((LinkKind.WATCH.key().equals(verb) && isYouTubeUrl(link.url()))
+                || isOwnPostUrl(link.url(), siteHost));
+    }
+
+    /**
+     * WordPress-only embeds, placed after the gallery since they are big: a {@code watch} link to
+     * a YouTube video (what the block editor's "Embed" produces when you paste the URL) and
+     * links to the own blog (post card, preceded by the link's name as intro paragraph if it
+     * has one).
+     */
+    private List<String> embedBlocks(DiaryEntry e) {
+        List<String> out = new ArrayList<>();
+        String siteHost = siteHost();
+        for (var entry : e.links().entrySet()) {
+            Link link = entry.getValue();
+            if (!isEmbedded(entry.getKey(), link, siteHost)) continue;
+            if (isOwnPostUrl(link.url(), siteHost)) {
+                if (link.name() != null) {
+                    out.add(block("paragraph", "", "<p>" + DiaryExporter.escapeHtml(link.name()) + "</p>"));
+                }
+                out.add(postEmbed(link.url()));
+            } else {
+                out.add(youTubeEmbed(link.url()));
+            }
+        }
         return out;
     }
 
@@ -255,6 +278,44 @@ public class WordPressExporter {
                 + "\"responsive\":true,\"className\":\"wp-embed-aspect-16-9 wp-has-aspect-ratio\"}";
         String html = "<figure class=\"wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube "
                 + "wp-embed-aspect-16-9 wp-has-aspect-ratio\"><div class=\"wp-block-embed__wrapper\">\n"
+                + DiaryExporter.escapeHtml(url) + "\n</div></figure>";
+        return block("embed", attrs, html);
+    }
+
+    /** Host of the registered WordPress site (settings may hold a bare host or a full URL), lower case; empty if unset. */
+    private String siteHost() {
+        String site = settingsStore.load().getWordPress().getSite();
+        if (site == null || site.isBlank()) return "";
+        site = site.strip();
+        try {
+            String host = URI.create(site.contains("://") ? site : "https://" + site).getHost();
+            return host == null ? "" : host.toLowerCase(Locale.ROOT);
+        } catch (IllegalArgumentException ex) {
+            return "";
+        }
+    }
+
+    /** A link to a page on the registered WordPress site (not just its front page), which WordPress can embed as a post card. */
+    private static boolean isOwnPostUrl(String url, String siteHost) {
+        if (siteHost.isEmpty()) return false;
+        try {
+            URI uri = URI.create(url);
+            String path = uri.getPath();
+            return uri.getHost() != null && uri.getHost().toLowerCase(Locale.ROOT).equals(siteHost)
+                    && path != null && path.length() > 1;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * A {@code wp:embed} block for a post on the own blog: renders as the post card (title, excerpt, image).
+     * The {@code ?secret=} in the editor's markup is a random token WordPress adds itself when it
+     * renders the embed, so the plain permalink is enough.
+     */
+    private static String postEmbed(String url) {
+        String attrs = "{\"url\":\"" + jsonEscape(url) + "\",\"type\":\"wp-embed\"}";
+        String html = "<figure class=\"wp-block-embed is-type-wp-embed wp-block-embed\"><div class=\"wp-block-embed__wrapper\">\n"
                 + DiaryExporter.escapeHtml(url) + "\n</div></figure>";
         return block("embed", attrs, html);
     }
