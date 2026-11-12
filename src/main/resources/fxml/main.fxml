@@ -261,6 +261,9 @@
                     <Label fx:id="statusLabel" styleClass="status-label"/>
                 </HBox>
                 <HBox HBox.hgrow="ALWAYS"/>
+                <Button fx:id="postOfficeButton" text="📮 P.O. (0)" onAction="#onOpenPostOffice" disable="true">
+                    <tooltip><Tooltip text="Open the Post Office (number of Posts in this trip)"/></tooltip>
+                </Button>
                 <Button fx:id="exportTaleButton" text="⇧ Export Tale" onAction="#onExportTale" disable="true">
                     <tooltip><Tooltip text="Export just this day (saves pending edits first)"/></tooltip>
                 </Button>

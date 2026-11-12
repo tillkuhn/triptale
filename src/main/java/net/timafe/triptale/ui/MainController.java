@@ -156,6 +156,7 @@ public class MainController implements StatusSink {
     @FXML private HBox statusBar;
     @FXML private Label titleLabel;
     @FXML private Button exportTaleButton;
+    @FXML private Button postOfficeButton;
     @FXML private Button saveButton;
     @FXML private Button syncButton;
     @FXML private Button prevDayButton;
@@ -420,6 +421,7 @@ public class MainController implements StatusSink {
                 loadEntry();
             }
         });
+        tripCombo.valueProperty().addListener((obs, old, sel) -> updatePostOfficeButton());
         tripCombo.valueProperty().addListener((obs, old, sel) -> {
             if (navigating) return;
             if (sel == null) return;
@@ -694,7 +696,24 @@ public class MainController implements StatusSink {
         if (trip == null) { error("No trip selected"); return; }
         PostOfficeDialog office = new PostOfficeDialog(store, settingsStore, browser, this, this::addPending);
         office.show(null, trip, datePicker.getValue(), null);
+        updatePostOfficeButton();
         office.publishRequest().ifPresent(slug -> exportDiaryDialog.showForPublish(trip, slug));
+        updatePostOfficeButton();
+    }
+
+    private void updatePostOfficeButton() {
+        if (postOfficeButton == null) return;
+        Trip trip = tripCombo.getValue();
+        int count = 0;
+        if (trip != null) {
+            try {
+                count = store.listPosts(trip.ref()).size();
+            } catch (RuntimeException e) {
+                log.warn("Could not count Posts: {}", e.getMessage());
+            }
+        }
+        postOfficeButton.setText("📮 P.O. (" + count + ")");
+        postOfficeButton.setDisable(trip == null);
     }
 
     @FXML
