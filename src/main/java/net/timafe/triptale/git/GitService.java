@@ -359,6 +359,22 @@ public class GitService {
     }
 
     /**
+     * Runs {@code git gc} in the data dir. Git prints its progress only to a terminal and
+     * {@code git gc} has no flag to force it, so the report is the object summary before and
+     * after, plus whatever git did print (warnings, errors).
+     */
+    public String gc() {
+        String before = objectSummary();
+        String output = runGit("gc");
+        String after = objectSummary();
+        StringBuilder out = new StringBuilder();
+        if (!output.isBlank()) out.append(output).append('\n');
+        out.append("Before: ").append(before).append('\n');
+        out.append("After:  ").append(after);
+        return out.toString();
+    }
+
+    /**
      * Object count and size from {@code git count-objects -v -H}, loose and packed combined,
      * e.g. {@code "359 objects, 1.62 MiB loose + 3.10 MiB packed"}.
      */

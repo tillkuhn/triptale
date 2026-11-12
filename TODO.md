@@ -18,9 +18,12 @@ Extract a TripForm helper in ui/dialog/ owning the shared controls (name, defaul
 
 One mechanism (invokable on demand or periodically) that sweep/cleanup-style tasks register
 with, instead of each feature bolting on its own one-off sweep: orphaned `.exif-cache`/
-`.tile-cache` entries, local `git gc`, and whatever else turns up over time. Design (scheduling,
-persistence of last-run time, trigger UI) still open.
+`.tile-cache` entries, local `git gc`, and whatever else turns up over time.
 Absorbs former todo 31 ("Run Housekeeping" in the Repository menu, `git gc` with its output shown).
+
+First slice done: the former "Repository Info" dialog is now **🧹 Repo Advisor**, with a
+"🧽 Janitor" button running `git gc` and the orphaned EXIF cache sweep, output shown in the dialog.
+Still open: tile cache sweep, periodic/automatic runs (last-run persistence), task registry.
 
 [Details](docs/81_housekeeping.md)
 

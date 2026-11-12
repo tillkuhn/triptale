@@ -104,7 +104,7 @@
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="commitMenuItem" text="📦 Commit" onAction="#onCommit" disable="true"/>
                                 <SeparatorMenuItem/>
-                                <MenuItem text="🗄 Repository Info…" onAction="#onRemoteInfo"/>
+                                <MenuItem text="🧹 Repo Advisor…" onAction="#onRepoAdvisor"/>
                                 <SeparatorMenuItem/>
                                 <MenuItem fx:id="checkConnectivityMenuItem" text="⟳ Check Connectivity" onAction="#onCheckConnectivity"/>
                                 <SeparatorMenuItem/>

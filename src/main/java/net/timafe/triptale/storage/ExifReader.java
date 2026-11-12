@@ -35,7 +35,7 @@ import java.util.Properties;
  * relative to the data dir (so the cache survives the data dir moving to a different absolute
  * path), one small {@link Properties} file per image, keyed by file size (todo 80): as long as
  * the source file's size hasn't changed, the cached fields are returned without touching
- * metadata-extractor again. Entries for deleted/moved images are never swept — see todo 81. The
+ * metadata-extractor again. Entries for deleted/moved images are removed by {@link #sweepOrphans()} (Repo Advisor's Janitor, todo 81). The
  * cache is skipped entirely (always a live read) when no data dir is configured yet.
  */
 @Component
@@ -73,6 +73,43 @@ public class ExifReader {
         ExifInfo info = readLive(path);
         if (cacheFile != null) writeCache(cacheFile, path, info);
         return info;
+    }
+
+    /**
+     * Deletes cache entries whose image no longer exists (todo 81) and prunes emptied folders.
+     *
+     * @return the number of entries removed
+     */
+    public int sweepOrphans() {
+        Path dataDir = store.dataDir();
+        Path root = LocalDir.cache(dataDir, "exif");
+        if (!Files.isDirectory(root)) return 0;
+        int removed = 0;
+        try (var walk = Files.walk(root)) {
+            for (Path entry : walk.filter(Files::isRegularFile).toList()) {
+                String relative = root.relativize(entry).toString();
+                if (!relative.endsWith(".properties")) continue;
+                Path image = dataDir.resolve(relative.substring(0, relative.length() - ".properties".length()));
+                if (!Files.exists(image)) {
+                    Files.delete(entry);
+                    removed++;
+                }
+            }
+            try (var dirs = Files.walk(root)) {
+                for (Path dir : dirs.filter(Files::isDirectory).sorted(java.util.Comparator.reverseOrder()).toList()) {
+                    if (!dir.equals(root)) {
+                        try {
+                            Files.delete(dir); // only succeeds while empty
+                        } catch (java.nio.file.DirectoryNotEmptyException ignored) {
+                            // still in use
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new StorageException("Failed to sweep EXIF cache: " + e.getMessage(), e);
+        }
+        return removed;
     }
 
     private ExifInfo readLive(Path path) {

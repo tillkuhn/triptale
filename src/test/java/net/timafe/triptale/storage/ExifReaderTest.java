@@ -231,6 +231,22 @@ class ExifReaderTest {
     }
 
     @Test
+    void sweepOrphansRemovesOnlyEntriesWithoutImage() throws IOException {
+        Path kept = copyIntoDataDir("with_exif.jpg", "kept.jpg");
+        Path gone = copyIntoDataDir("with_exif.jpg", "gone.jpg");
+        reader.read(kept);
+        reader.read(gone);
+        Files.delete(gone);
+
+        assertEquals(1, reader.sweepOrphans());
+
+        Path cache = store.dataDir().resolve(".triptale/cache/exif");
+        assertTrue(Files.exists(cache.resolve("kept.jpg.properties")));
+        assertFalse(Files.exists(cache.resolve("gone.jpg.properties")));
+        assertEquals(0, reader.sweepOrphans());
+    }
+
+    @Test
     void skipsCacheGracefullyWhenDataDirIsNotConfigured() {
         TripTaleProperties props = new TripTaleProperties();
         props.setSettingsDir(tempDir.resolve("unconfigured-settings").toString());

@@ -49,3 +49,13 @@ register with.
 This doc exists to hold the problem statement and requirement; the design itself still needs a
 grill-me pass before implementation.
 </content>
+
+## Decisions so far (first slice)
+
+- Trigger UI: the "Repository Info" dialog became **🧹 Repo Advisor** (`ui/dialog/RepoAdvisorDialog`).
+  Info only by default; a "🧽 Janitor" button runs the tasks on a daemon thread and appends each
+  task's name and output to a text area below. A failed task prints `❌ FAILED: ...` and the run
+  ends with a summary line; the remaining tasks still run.
+- Tasks today: `GitService.gc()` (shells out to `git gc`) and `ExifReader.sweepOrphans()`.
+- Not done: tile cache sweep, periodic runs, a pluggable task registry (tasks are a fixed list
+  in the dialog for now).

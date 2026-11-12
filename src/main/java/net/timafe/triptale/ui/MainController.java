@@ -73,7 +73,7 @@ import net.timafe.triptale.ui.dialog.LinksDialog;
 import net.timafe.triptale.ui.dialog.MapAssistantDialog;
 import net.timafe.triptale.ui.dialog.NewTripDialog;
 import net.timafe.triptale.ui.dialog.QuickWeblinkDialog;
-import net.timafe.triptale.ui.dialog.RemoteInfoDialog;
+import net.timafe.triptale.ui.dialog.RepoAdvisorDialog;
 import net.timafe.triptale.ui.dialog.SmartSyncDialog;
 import net.timafe.triptale.ui.dialog.SyncAttachmentsDialog;
 import net.timafe.triptale.ui.dialog.SyncTracksDialog;
@@ -262,6 +262,7 @@ public class MainController implements StatusSink {
     private final MarkdownStore store;
     private final GitService gitService;
     private final SettingsStore settingsStore;
+    private final ExifReader exifReader;
     private final GpxCandidates gpxCandidates;
     private long gpxCheckSeq;
     private final ImpressionsService impressions;
@@ -319,6 +320,7 @@ public class MainController implements StatusSink {
         this.store = store;
         this.gitService = gitService;
         this.settingsStore = settingsStore;
+        this.exifReader = exifReader;
         this.impressions = impressions;
         this.connectivityService = connectivityService;
         this.exportTempFiles = exportTempFiles;
@@ -2091,8 +2093,8 @@ public class MainController implements StatusSink {
     }
 
     @FXML
-    public void onRemoteInfo() {
-        new RemoteInfoDialog(gitService, settingsStore).show();
+    public void onRepoAdvisor() {
+        new RepoAdvisorDialog(gitService, settingsStore, exifReader).show();
     }
 
     /**
