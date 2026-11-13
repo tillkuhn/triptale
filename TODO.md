@@ -139,7 +139,9 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 we already have delete tale, but should be also possible to delete entire trip, which requires recursive delete of the folder in the git repo.
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
-## 19 DatePicker has no quick year navigation
+---
+
+## DONE 19 DatePicker has no quick year navigation
 
 The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
 page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
@@ -148,8 +150,6 @@ year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip whil
 year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
 Affects every DatePicker instance in the app, not just one dialog — worth checking all call
 sites for a consistent fix rather than patching one.
-
----
 
 ## DONE 28 Check for updates
 
