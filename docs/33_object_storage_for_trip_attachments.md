@@ -1,7 +1,8 @@
 # Todo 33 — Object storage for trip attachments
 
-Status: **decisions D1–D6 made, AWS resources provisioned (D5), storage settings in the app (D6) — sync not implemented yet.** Next step is a
-grill-me session on the open questions below.
+Built through sub-todos 33a (push), 33b (pull) and 33c (delete propagation, sync base): own SigV4
+S3 client, Backpack sync in Smart Sync and "Sync Backpack…", settings in the dialog. What was
+deliberately left out is recorded in D8.
 
 ## Decisions
 
@@ -118,6 +119,21 @@ the objects were copied with `aws s3 sync` and the admin profile, then the old b
 and the `removed` blocks were dropped again. A full rebrand of the folder and prefix was rejected:
 it needs a migration on every device, and `triptale-backpack/backpack/...` would bring back the
 redundancy this change removed.
+
+**D8 — Closing the todo: what was left out on purpose (2026-11-13).**
+- **GPX content type:** `S3Client.put` sends `application/gpx+xml` for `.gpx` files (the JDK probe
+  knows no mapping and gave `application/octet-stream`). Objects uploaded earlier keep the old
+  type until re-uploaded; it has no effect on sync.
+- **Bucket versioning + 30-day lifecycle** (ADR-0002) in `terraform/`: not done. Local deletes go
+  to the OS trash; a remote delete is accepted as final for now.
+- **Viewer delete** (🗑 in `ImageViewerDialog` for day-folder attachments): not done. Deleting in
+  Finder propagates through the sync base already.
+- **Conflicts** ("edited on both sides"): stays local-wins, no `name (conflict).ext` copy.
+- **Sync scope:** stays the whole `attachments/` tree. May become relevant again when the bucket
+  grows; syncing only the active trip would then be the lever.
+- **Links in exports** to the cloud copy (presigned URL): not done.
+- **Bulk import of photos** moved to todo 49. **Slug rename** (copy + delete on the remote side) is
+  part of todo 42, which builds on 33c.
 
 ## Problem
 

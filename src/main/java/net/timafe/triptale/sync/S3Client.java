@@ -91,13 +91,22 @@ public final class S3Client implements ObjectStore {
         return objects;
     }
 
+    static String contentTypeOf(Path file) throws IOException {
+        String name = file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+        if (name.endsWith(".gpx")) {
+            return "application/gpx+xml";
+        }
+        String probed = Files.probeContentType(file);
+        return probed == null ? "application/octet-stream" : probed;
+    }
+
     @Override
     public void put(String key, Path file, byte[] md5) {
         HttpRequest.BodyPublisher body;
         String contentType;
         try {
             body = HttpRequest.BodyPublishers.ofFile(file);
-            contentType = Files.probeContentType(file);
+            contentType = contentTypeOf(file);
         } catch (FileNotFoundException e) {
             throw new SyncException("File vanished before upload: " + file, e);
         } catch (IOException e) {
@@ -105,7 +114,7 @@ public final class S3Client implements ObjectStore {
         }
         Map<String, String> headers = Map.of(
                 "content-md5", Base64.getEncoder().encodeToString(md5),
-                "content-type", contentType == null ? "application/octet-stream" : contentType);
+                "content-type", contentType);
         String path = "/" + SigV4.uriEncode(key, false);
         HttpResponse<byte[]> resp = send("PUT", path, "", headers, SigV4.UNSIGNED_PAYLOAD, body, PUT_TIMEOUT,
                 HttpResponse.BodyHandlers.ofByteArray());

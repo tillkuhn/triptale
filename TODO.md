@@ -85,7 +85,7 @@ add a button "rename" behind the slug in the trip edit screen, that should allow
 and walks through all trip YYYY subdirectories and update references to reflect the new path, including tolaria style wikilinks "[[path/file]]. 
 Report back with "x references updated" or similar.
 If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
-Depends on todo 33c (remote deletes); S3 rename = copy + delete.
+Depends on todo 33c (remote deletes, done); S3 rename = copy + delete. Remote-side rename was left out of todo 33 on purpose and belongs here.
 
 ## 40 add "Re-init Repository" action to Repository menu
 
@@ -127,19 +127,19 @@ push reports "0 uploaded, N unchanged"; optionally map `.gpx` to `application/gp
 
 [Plan](docs/33a_attachments_mvp.md)
 
-## 33 Object storage for trip attachments 
-
-I would like to use some kind of cloud storage for stuff that I don't want to store in the git repo (which should continue focus on versioned *.md files), for example to import images that match our impressions pattern, or store gpx files along with a trip entry. First thing that came to my mind was AWS S3, I also have a subscription, but the Java SDK Is very fat and the integration seems a bit overkill. Google Drive would be also nice since we're already using it to keep other travel files, but not sure if it can be used trough an API. Other suggestions welcome as long as they are fee for say ~1-2GB, since I don't want another subscription besides AWS.
-
-
-[Plan](docs/33_object_storage_for_trip_attachments.md)
-
 ## 29 implement delete (entire) trip
 
 we already have delete tale, but should be also possible to delete entire trip, which requires recursive delete of the folder in the git repo.
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
 ---
+
+## DONE 33 Object storage for trip attachments
+
+I would like to use some kind of cloud storage for stuff that I don't want to store in the git repo (which should continue focus on versioned *.md files), for example to import images that match our impressions pattern, or store gpx files along with a trip entry. First thing that came to my mind was AWS S3, I also have a subscription, but the Java SDK Is very fat and the integration seems a bit overkill. Google Drive would be also nice since we're already using it to keep other travel files, but not sure if it can be used trough an API. Other suggestions welcome as long as they are fee for say ~1-2GB, since I don't want another subscription besides AWS.
+
+
+[Plan](docs/33_object_storage_for_trip_attachments.md)
 
 ## DONE 19 DatePicker has no quick year navigation
 
