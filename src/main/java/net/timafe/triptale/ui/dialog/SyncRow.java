@@ -1,5 +1,6 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
@@ -13,6 +14,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 
 import java.util.List;
 
@@ -76,6 +79,20 @@ final class SyncRow {
         grid.add(iconCell, 3, rowIndex);
         for (Node n : List.of(check, name, middle, iconCell)) GridPane.setValignment(n, VPos.TOP);
         showNode(spinner, false);
+    }
+
+    /** Reserves room for {@code lines} lines of status text so the window doesn't grow and shrink while progress text changes. */
+    SyncRow reserveLines(int lines) {
+        status.minHeightProperty().bind(Bindings.createDoubleBinding(
+                () -> lineHeight(status.getFont()) * lines,
+                status.fontProperty()));
+        return this;
+    }
+
+    private static double lineHeight(Font font) {
+        Text t = new Text("Ag");
+        t.setFont(font);
+        return Math.ceil(t.getLayoutBounds().getHeight());
     }
 
     void setEnabled(boolean enabled, boolean selected) {

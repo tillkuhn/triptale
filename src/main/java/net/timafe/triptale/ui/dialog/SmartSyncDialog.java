@@ -112,7 +112,7 @@ public final class SmartSyncDialog {
         messageArea.setWrapText(true);
         commitRow.addTo(grid, r++);
 
-        remoteRow = row("Git Remote", true);
+        remoteRow = row("Git Remote", true).reserveLines(2);
         remoteDetails = new TextArea();
         remoteDetails.setEditable(false);
         remoteDetails.setPrefRowCount(6);
@@ -133,7 +133,7 @@ public final class SmartSyncDialog {
 
         boolean cloud = settings.getAttachments().getSync() == AppSettings.AttachmentSync.CLOUD;
         if (cloud) {
-            attachments = new BucketSyncStep(row("Backpack", true), attachmentsDir.root(), AttachmentsDir.DIR_NAME);
+            attachments = new BucketSyncStep(row("Backpack", true).reserveLines(2), attachmentsDir.root(), AttachmentsDir.DIR_NAME);
             attachments.row.addTo(grid, r++);
         }
 
