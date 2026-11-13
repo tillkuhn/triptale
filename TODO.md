@@ -33,13 +33,6 @@ pick one style.
 
 [Background](docs/62_wordpress_publish_dialog.md)
 
-## 49 Bulk import a whole trip's photo-lib impressions as attachments
-
-Split out of todo 47 (deferred there). Trip menu action that copies every day's photo-library
-images (base filter applied, optionally faves only) into the matching attachment day folders,
-with a confirmation showing counts per day and total size. Best after todo 33c, so a mistaken
-bulk import can be deleted everywhere.
-
 ## 48 Private sections: hide internal notes from exports
 
 A heading starting with `internal`, `private`, `intern` or `privat` (any level,
@@ -133,6 +126,15 @@ we already have delete tale, but should be also possible to delete entire trip, 
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
 ---
+
+## NOPE 49 Bulk import a whole trip's photo-lib impressions as attachments
+
+Split out of todo 47 (deferred there). Trip menu action that copies every day's photo-library
+images (base filter applied, optionally faves only) into the matching attachment day folders,
+with a confirmation showing counts per day and total size. Best after todo 33c, so a mistaken
+bulk import can be deleted everywhere.
+
+Decision (2026-11-13): not doing this for now. Closed as NOPE; reopen if the need comes back.
 
 ## DONE 33 Object storage for trip attachments
 
