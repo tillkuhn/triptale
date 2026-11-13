@@ -21,7 +21,7 @@ AOT_JAR := $(AOT_DIR)/triptale.jar
 JDK_BUILD := $(shell java -XshowSettings:properties -version 2>&1 | awk -F'= ' '/java.runtime.version/{print $$2}')
 AOT_CACHE := $(AOT_DIR)/app-jdk$(JDK_BUILD).aot
 
-.PHONY: run run-jar run-fast frun aot-train help build compile test package clean format deps major minor patch shortcut
+.PHONY: run run-jar run-fast frun aot-train help build compile test package clean format deps major minor patch shortcut check-update
 
 # -Dmvnd.rawStreams: mvnd otherwise prefixes every app log line with "[INFO] [stdout] ".
 # Plain mvn just sees an unused system property.
@@ -108,6 +108,22 @@ clean: ## Remove target/ build output
 
 deps: ## Print resolved dependency tree
 	$(MVN) $(MVNARGS) dependency:tree
+
+RELEASES_API := https://api.github.com/repos/tillkuhn/triptale/releases/latest
+
+check-update: ## Compare the current git tag with the latest GitHub release (curl only; Unix)
+	@json=$$(curl -fsS --max-time 10 $(RELEASES_API)) || { echo "error: could not query $(RELEASES_API)" >&2; exit 1; }; \
+	latest=$$(printf '%s' "$$json" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1); \
+	page=$$(printf '%s' "$$json" | sed -n 's/.*"html_url": *"\([^"]*\/releases\/tag\/[^"]*\)".*/\1/p' | head -n1); \
+	jar=$$(printf '%s' "$$json" | sed -n 's/.*"browser_download_url": *"\([^"]*\.jar\)".*/\1/p' | head -n1); \
+	current=$$(git describe --tags --abbrev=0 2>/dev/null || true); \
+	[ -n "$$latest" ] || { echo "error: no release found" >&2; exit 1; }; \
+	echo "current: $${current:-unknown}"; echo "latest:  $$latest"; \
+	if [ -z "$$current" ]; then echo "? current version unknown (no git tag)"; \
+	elif [ "$$current" = "$$latest" ]; then echo "✔ up to date"; \
+	elif [ "$$(printf '%s\n%s\n' "$$current" "$$latest" | sort -V | tail -n1)" = "$$latest" ]; then echo "⬆ update available"; \
+	else echo "local build is ahead of the latest release"; fi; \
+	if [ "$$current" != "$$latest" ]; then echo "release:  $$page"; echo "download: $$jar"; fi
 
 define semtag_check
 	@if ! command -v semtag >/dev/null 2>&1; then \

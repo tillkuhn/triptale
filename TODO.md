@@ -139,16 +139,6 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 we already have delete tale, but should be also possible to delete entire trip, which requires recursive delete of the folder in the git repo.
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
-## 28 Check for updates
-
-Add a "Check for updates" function to the TripTale (app) menu. It queries the public GitHub
-repo for the most recent release. If that's equal to or older than the running version (older
-is possible, a local build can be ahead), show that the app is up to date; if newer (all tags
-are semver), show the new version and a hyperlink to download it.
-While checking the remote, show the Smart Sync style dialog with spinner; if that isn't reusable
-yet, make it so now (more future use cases will talk to remote pages verbosely).
-The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
-
 ## 19 DatePicker has no quick year navigation
 
 The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
@@ -160,6 +150,16 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 28 Check for updates
+
+Add a "Check for updates" function to the TripTale (app) menu. It queries the public GitHub
+repo for the most recent release. If that's equal to or older than the running version (older
+is possible, a local build can be ahead), show that the app is up to date; if newer (all tags
+are semver), show the new version and a hyperlink to download it.
+While checking the remote, show the Smart Sync style dialog with spinner; if that isn't reusable
+yet, make it so now (more future use cases will talk to remote pages verbosely).
+The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
 
 ## DONE 81 General repo housekeeping task
 

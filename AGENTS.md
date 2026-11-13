@@ -19,6 +19,7 @@ make package      # jar + tests            (mvnd package)
 make test         # tests only             (mvnd test)
 make clean        # remove target/
 make deps         # print dependency tree
+make check-update # compare current git tag with the latest GitHub release (curl + sed, Unix only)
 
 # Single test
 mvn test -Dtest=ClassName#method
