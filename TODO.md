@@ -40,18 +40,6 @@ images (base filter applied, optionally faves only) into the matching attachment
 with a confirmation showing counts per day and total size. Best after todo 33c, so a mistaken
 bulk import can be deleted everywhere.
 
-## 48 Private sections: hide internal notes from exports
-
-A heading starting with `internal`, `private`, `intern` or `privat` (any level,
-case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
-of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
-both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay unchanged.
-
-- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
-- New "🔒 Add Private Section" menu item appends `## Internal` + placeholder at the end.
-
-[Details](docs/48_private_sections.md)
-
 ## 46 Radio: play favorite tracks from a radio/ pool
 
 A "radio": a reusable pool of favourite tracks in `<data-dir>/radio/` (not in git), playable
@@ -160,6 +148,18 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 48 Private sections: hide internal notes from exports
+
+A heading starting with `internal`, `private`, `intern` or `privat` (any level,
+case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
+of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
+the Diary, WordPress and social media exporters; editor, word count and files stay unchanged.
+
+- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
+- "🔒 Add Private Notes" menu item appends `## Private Notes 🔒` + placeholder bullet (renamed in todo 76).
+
+[Details](docs/48_private_sections.md)
 
 ## DONE 81 General repo housekeeping task
 
