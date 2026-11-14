@@ -115,6 +115,10 @@ public final class InlineImages {
                     problems.add("file not found: " + m.group(2));
                     continue;
                 }
+                if (PrivateImages.isPrivate(file.get())) {
+                    problems.add("private image left out: " + m.group(2));
+                    continue;
+                }
                 String alt = m.group(1).isBlank() ? altText(file.get()) : m.group(1);
                 out.add(renderer.apply(alt, file.get()));
             }

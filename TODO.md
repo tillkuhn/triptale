@@ -14,16 +14,6 @@
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
 
-## 67 Private images
-
-Mark individual backpack images as private so they're kept but never exported, via a per-day
-`private.txt` sidecar listing excluded filenames (not dot-prefixed, so CLOUD sync keeps it).
-- New `attachments.PrivateImages` helper; filter in `DiaryExporter`, `WordPressExporter`,
-  `map.PhotoLocations`. Private wins over the fave marker.
-- `ImageViewerDialog` gets a per-image toggle that writes through immediately.
-
-[Details](docs/adr/0005-private-images.md)
-
 ## 63 WordPress Post leftovers: delete Posts in-app, slug style
 
 Left over from todo 62. Posts can't be deleted from the app yet (only by hand or in Tolaria);
@@ -148,6 +138,17 @@ Affects every DatePicker instance in the app, not just one dialog — worth chec
 sites for a consistent fix rather than patching one.
 
 ---
+
+## DONE 67 Private images
+
+Backpack images can be marked private: kept, but never exported. A plain `private.txt` in the day
+folder lists the file names (not dot-prefixed, so CLOUD sync carries it). `attachments.PrivateImages`
+owns the file; `ImpressionsService.exportImages` filters it for `DiaryExporter`, `WordPressExporter`,
+`PhotoLocations`, the gallery preview and the export dialog's image default. Inline `![](attachments/…)`
+references to a private image are left out and reported as a problem. Toggle "🔒 Private" in the
+Impression Curator writes through immediately. Stale names are pruned on rewrite.
+
+[Details](docs/adr/0005-private-images.md)
 
 ## DONE 48 Private sections: hide internal notes from exports
 

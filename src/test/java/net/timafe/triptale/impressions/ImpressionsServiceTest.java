@@ -55,6 +55,20 @@ class ImpressionsServiceTest {
     }
 
     @Test
+    void exportImagesLeavesOutPrivateBackpackImagesOnly() throws IOException {
+        Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
+        Path a = Files.createFile(dir.resolve("a.jpg"));
+        Files.createFile(dir.resolve("b.jpg"));
+        net.timafe.triptale.attachments.PrivateImages.set(a, true);
+
+        assertEquals(2, service.images(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).size());
+        assertEquals(List.of("b.jpg"), service.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, DAY).stream()
+                .map(p -> p.getFileName().toString()).toList());
+        // a plain folder with the same list file is not a backpack
+        assertEquals(2, service.exportImages(new ImpressionSource.Folder(dir), trip, DAY).size());
+    }
+
+    @Test
     void attachmentsSourceListsDayFolderWithBaseFilterSorted() throws IOException {
         Path dir = attachmentsDir.ensureDayDir(trip.ref(), DAY);
         Files.createFile(dir.resolve("b.jpg"));

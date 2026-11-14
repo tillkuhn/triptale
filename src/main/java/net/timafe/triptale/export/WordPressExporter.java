@@ -1,6 +1,7 @@
 package net.timafe.triptale.export;
 
 import net.timafe.triptale.attachments.InlineImages;
+import net.timafe.triptale.attachments.PrivateImages;
 import net.timafe.triptale.attachments.AttachmentsDir;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
@@ -141,7 +142,7 @@ public class WordPressExporter {
             }
             blocks.addAll(linkBlocks(e, texts));
             if (!baseUrl.isEmpty()) {
-                List<Path> dayImages = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
+                List<Path> dayImages = impressions.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
                 // Images placed in the text (todo 92) are not repeated in the gallery
                 Set<Path> inline = InlineImages.referenced(tales, ctx.dataDir());
                 gallery(faves.apply(dayImages).stream().filter(p -> !inline.contains(p.normalize())).toList(),
@@ -365,6 +366,10 @@ public class WordPressExporter {
             Optional<Path> file = InlineImages.resolve(ctx.dataDir(), img.getDestination());
             if (file.isEmpty()) {
                 ctx.problems().add("file not found: " + img.getDestination());
+                return Optional.of("");
+            }
+            if (PrivateImages.isPrivate(file.get())) {
+                ctx.problems().add("private image left out: " + img.getDestination());
                 return Optional.of("");
             }
             if (ctx.baseUrl().isEmpty()) {

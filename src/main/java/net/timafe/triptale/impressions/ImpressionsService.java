@@ -1,6 +1,7 @@
 package net.timafe.triptale.impressions;
 
 import net.timafe.triptale.attachments.AttachmentsDir;
+import net.timafe.triptale.attachments.PrivateImages;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.storage.ExifReader;
@@ -96,6 +97,15 @@ public class ImpressionsService {
                 : directory(source, trip, date).map(ImpressionsService::listFiles).orElse(List.of());
         List<Path> visible = files.stream().filter(f -> !f.getFileName().toString().startsWith(".")).toList();
         return ImageFilter.parse(settings.getImpressionsBaseFilter()).apply(visible);
+    }
+
+    /**
+     * Like {@link #images} but without the backpack's private images (todo 67), for everything
+     * that leaves the viewer: exports, Map Assistant. Only the backpack has a private list.
+     */
+    public List<Path> exportImages(ImpressionSource source, Trip trip, LocalDate date) {
+        List<Path> images = images(source, trip, date);
+        return source instanceof ImpressionSource.TripAttachments ? PrivateImages.withoutPrivate(images) : images;
     }
 
     /** The configured {@code impressionsFaveFilter}; {@link ImageFilter#isEmpty() empty} if none. */
