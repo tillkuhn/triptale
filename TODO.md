@@ -127,17 +127,14 @@ While checking the remote, show the Smart Sync style dialog with spinner; if tha
 yet, make it so now (more future use cases will talk to remote pages verbosely).
 The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
 
-## 19 DatePicker has no quick year navigation
-
-The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
-page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
-year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip while today is
-2026) means clicking through many months one at a time. JavaFX's DatePicker doesn't expose a
-year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
-Affects every DatePicker instance in the app, not just one dialog — worth checking all call
-sites for a consistent fix rather than patching one.
-
 ---
+
+## DONE 19 DatePicker has no quick year navigation — won't do
+
+The DatePicker popup (New Trip dialog, main date picker, Trip Details end date) only pages
+month-by-month; there's no direct year jump, and JavaFX offers no native year spinner. Closed
+without a fix: it hasn't been annoying in practice. Revisit with a shared helper in `Dialogs`
+(day-cell-factory or header replacement) if it starts to hurt.
 
 ## DONE 67 Private images
 
