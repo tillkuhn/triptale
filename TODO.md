@@ -56,14 +56,16 @@ Status (2026-10-04), details and measurements in `docs/43_startup_performance.md
 - Open: start Spring in parallel with the JavaFX toolkit; analyse the ~650 MB RSS
   (NMT, `-Xmx`).
 
-## 42 support refactor trip slug to rename folders and references
+## 42 support refactor trip slug to rename folders and references (L)
 
 trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
 add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
 and walks through all trip YYYY subdirectories and update references to reflect the new path, including tolaria style wikilinks "[[path/file]]. 
 Report back with "x references updated" or similar.
 If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
-Depends on todo 33c (remote deletes); S3 rename = copy + delete.
+Depends on todo 33c (remote deletes, done). Decisions: local rename only, sync does delete+upload; editable slug in New Trip too.
+
+[Details](docs/42_trip_slug_rename.md)
 
 ## 40 add "Re-init Repository" action to Repository menu
 
