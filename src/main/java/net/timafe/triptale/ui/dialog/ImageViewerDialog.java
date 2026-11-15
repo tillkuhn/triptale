@@ -35,6 +35,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.util.StringConverter;
 import net.timafe.triptale.attachments.ImageReferences;
+import net.timafe.triptale.attachments.PrivateImages;
 import net.timafe.triptale.domain.Trip;
 import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.impressions.ImageFilter;
@@ -179,6 +180,7 @@ public final class ImageViewerDialog {
         private final Button copySourceDirBtn = new Button("📋");
         private final Button pickBtn = new Button("📂");
         private final CheckBox favesCheck = new CheckBox();
+        private final CheckBox privateCheck = new CheckBox("🔒 Private");
         private final Label packedSummary = new Label();
         private final MenuItem setStartItem = new MenuItem();
         private final MenuItem setEndItem = new MenuItem();
@@ -308,12 +310,13 @@ public final class ImageViewerDialog {
             sourceRow.setAlignment(Pos.CENTER_LEFT);
 
             favesCheck.setOnAction(ev -> applyFaves());
+            privateCheck.setOnAction(ev -> togglePrivate());
             galleryBtn.setOnAction(ev -> toggleGallery());
             galleryBtn.setTooltip(new Tooltip("Preview how this day's backpack images are laid out in the gallery of the exports"));
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
             copyLinkBtn.setOnAction(ev -> copyLink());
-            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, copyLinkBtn, galleryBtn));
+            HBox actionRow = fixedWidth(new HBox(8, favesCheck, packedSummary, spacer, privateCheck, copyLinkBtn, galleryBtn));
             actionRow.setAlignment(Pos.CENTER_LEFT);
 
             VBox content = fixedWidth(new VBox(6, topInfo, imageBox, nav, new Separator(), sourceRow, actionRow));
@@ -547,6 +550,21 @@ public final class ImageViewerDialog {
                     : impressions.backpackCopy(trip, date, shown);
         }
 
+        /** Writes the toggle straight to the day's private.txt: filesystem state, not part of the saved day. */
+        private void togglePrivate() {
+            Optional<Path> file = backpackFile();
+            if (file.isEmpty()) return;
+            try {
+                PrivateImages.set(file.get(), privateCheck.isSelected());
+            } catch (RuntimeException e) {
+                statusSink.error("Could not update " + PrivateImages.FILE_NAME + ": " + UiText.describe(e));
+            }
+            refresh();
+            statusSink.status((privateCheck.isSelected() ? "🔒 " + file.get().getFileName() + " is private: never exported"
+                    : file.get().getFileName() + " is no longer private"));
+            onImported.run();
+        }
+
         private void copyLink() {
             backpackFile().ifPresent(file -> {
                 Clipboards.putString(references.markdownLine(file));
@@ -628,7 +646,7 @@ public final class ImageViewerDialog {
 
         /** The day's backpack images as the exports would list them (faves only if ticked). */
         private List<Path> galleryImages() {
-            List<Path> images = impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
+            List<Path> images = impressions.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, date);
             return favesCheck.isSelected() ? faveFilter.apply(images) : images;
         }
 
@@ -728,6 +746,14 @@ public final class ImageViewerDialog {
             unpackBtn.setTooltip(new Tooltip(isPacked
                     ? "Remove this image from the backpack — asks first if no other copy exists (Cmd/Ctrl+Backspace)"
                     : "Not in this day's backpack"));
+            Optional<Path> backpack = backpackFile();
+            boolean isPrivate = backpack.filter(PrivateImages::isPrivate).isPresent();
+            privateCheck.setDisable(backpack.isEmpty());
+            privateCheck.setSelected(isPrivate);
+            privateCheck.setTooltip(new Tooltip(backpack.isEmpty()
+                    ? "Put this image into 🎒 first"
+                    : "Keep this backpack image, but leave it out of every export and the Map Assistant (" + PrivateImages.FILE_NAME + ")"));
+            if (!empty && isPrivate) pathLabel.setText("🔒 " + pathLabel.getText());
         }
 
         private String placeholderText() {

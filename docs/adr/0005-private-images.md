@@ -1,6 +1,6 @@
 # ADR-0005: Mark individual images private with a per-day sidecar file, not EXIF
 
-Status: Proposed.
+Status: Accepted.
 
 ## Context
 
@@ -76,3 +76,15 @@ next to the entry's own attachments in `attachments/<year>/<slug>/<day>/`.
 - Unchanged: `off` mode still never syncs attachments at all, `git` mode already carried every
   non-excluded file for free.
 </content>
+
+## Implementation notes (todo 67)
+
+- `private.txt`: one name per line, `#` comments and blank lines ignored, exact (case-sensitive)
+  match, written sorted. Rewriting prunes names of files that no longer exist; an empty list
+  deletes the file.
+- Backpack only: photo-library impressions and picked folders have no list. The viewer's toggle
+  acts on the image's backpack copy and is disabled when there is none.
+- Inline images (todo 92) that point to a private image are left out of the HTML and WordPress
+  exports and reported as problems ("private image left out"). The plain Markdown export keeps
+  its lines as written.
+- "Private" means "not exported" only. In `git` mode the file itself is still committed and pushed.

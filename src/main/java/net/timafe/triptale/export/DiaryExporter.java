@@ -255,7 +255,7 @@ public class DiaryExporter {
             // Images placed in the text (todo 92) are not repeated in the gallery
             Set<Path> inline = InlineImages.referenced(
                     Markdown.stripPrivate(store.loadEntry(trip.ref(), date).tales()), store.dataDir());
-            List<Path> dayImages = faves.apply(impressions.images(source, trip, date)).stream()
+            List<Path> dayImages = faves.apply(impressions.exportImages(source, trip, date)).stream()
                     .filter(p -> !inline.contains(p.normalize())).toList();
             String replacement = renderImpressionsTable(dayImages);
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));

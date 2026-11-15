@@ -359,7 +359,7 @@ public final class ExportDiaryDialog {
     private Images defaultImages(Trip trip, LocalDate from, LocalDate to) {
         if (from != null && to != null) {
             for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-                if (!impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d).isEmpty()) {
+                if (!impressions.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, d).isEmpty()) {
                     return Images.ATTACHMENTS;
                 }
             }

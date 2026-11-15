@@ -14,16 +14,6 @@
 
 Extract a TripForm helper in ui/dialog/ owning the shared controls (name, default activity, default post tags, description): grid rows, getters, changed-vs-trip check, change listener. NewTripDialog and TripDetailsDialog embed it and add their own rows (start date, GPX import, first entry / slug, year, end date, stats, entries table). Keep two dialogs, no creating-mode flags. Adding a field then becomes a one-place change.
 
-## 67 Private images
-
-Mark individual backpack images as private so they're kept but never exported, via a per-day
-`private.txt` sidecar listing excluded filenames (not dot-prefixed, so CLOUD sync keeps it).
-- New `attachments.PrivateImages` helper; filter in `DiaryExporter`, `WordPressExporter`,
-  `map.PhotoLocations`. Private wins over the fave marker.
-- `ImageViewerDialog` gets a per-image toggle that writes through immediately.
-
-[Details](docs/adr/0005-private-images.md)
-
 ## 63 WordPress Post leftovers: delete Posts in-app, slug style
 
 Left over from todo 62. Posts can't be deleted from the app yet (only by hand or in Tolaria);
@@ -33,17 +23,6 @@ pick one style.
 
 [Background](docs/62_wordpress_publish_dialog.md)
 
-## 48 Private sections: hide internal notes from exports
-
-A heading starting with `internal`, `private`, `intern` or `privat` (any level,
-case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
-of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
-both `DiaryExporter` and `WordPressExporter`; editor, word count and files stay unchanged.
-
-- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
-- New "🔒 Add Private Section" menu item appends `## Internal` + placeholder at the end.
-
-[Details](docs/48_private_sections.md)
 
 ## 46 Radio: play favorite tracks from a radio/ pool
 
@@ -71,14 +50,16 @@ Status (2026-10-04), details and measurements in `docs/43_startup_performance.md
 - Open: start Spring in parallel with the JavaFX toolkit; analyse the ~650 MB RSS
   (NMT, `-Xmx`).
 
-## 42 support refactor trip slug to rename folders and references
+## 42 support refactor trip slug to rename folders and references (L)
 
 trip slug is currently immutable since the path may be used, e.g. in tolaria style wiki links, or in belongs_to frontmatter references.
 add a button "rename" behind the slug in the trip edit screen, that should allow to rename the slug (that still has to adhere to our naming conventions e.g. no blanks etc),
 and walks through all trip YYYY subdirectories and update references to reflect the new path, including tolaria style wikilinks "[[path/file]]. 
 Report back with "x references updated" or similar.
 If cloud attachments is active, those pathes have to be renamed and synced as well, check if this can be cheap rename operation on remote side, or has to be delete and re-upload, I remember in s3 path is only object prefix, not a real folder  
-Depends on todo 33c (remote deletes, done); S3 rename = copy + delete. Remote-side rename was left out of todo 33 on purpose and belongs here.
+Depends on todo 33c (remote deletes, done). Decisions: local rename only, sync does delete+upload; editable slug in New Trip too.
+
+[Details](docs/42_trip_slug_rename.md)
 
 ## 40 add "Re-init Repository" action to Repository menu
 
@@ -143,16 +124,6 @@ I would like to use some kind of cloud storage for stuff that I don't want to st
 
 [Plan](docs/33_object_storage_for_trip_attachments.md)
 
-## DONE 19 DatePicker has no quick year navigation
-
-The DatePicker popup (New Trip dialog, main date picker, anywhere else it's used) only lets you
-page month-by-month via the `<`/`>` arrows next to the month/year header — there's no direct
-year jump. Picking a date a year or more away (e.g. backfilling a 2025 trip while today is
-2026) means clicking through many months one at a time. JavaFX's DatePicker doesn't expose a
-year spinner natively; investigate a day-cell-factory-based or header-replacement workaround.
-Affects every DatePicker instance in the app, not just one dialog — worth checking all call
-sites for a consistent fix rather than patching one.
-
 ## DONE 28 Check for updates
 
 Add a "Check for updates" function to the TripTale (app) menu. It queries the public GitHub
@@ -162,6 +133,36 @@ are semver), show the new version and a hyperlink to download it.
 While checking the remote, show the Smart Sync style dialog with spinner; if that isn't reusable
 yet, make it so now (more future use cases will talk to remote pages verbosely).
 The About version part is done already (`f8427f4`: shows the closest git tag, not the Maven version).
+
+## DONE 19 DatePicker has no quick year navigation — won't do
+
+The DatePicker popup (New Trip dialog, main date picker, Trip Details end date) only pages
+month-by-month; there's no direct year jump, and JavaFX offers no native year spinner. Closed
+without a fix: it hasn't been annoying in practice. Revisit with a shared helper in `Dialogs`
+(day-cell-factory or header replacement) if it starts to hurt.
+
+## DONE 67 Private images
+
+Backpack images can be marked private: kept, but never exported. A plain `private.txt` in the day
+folder lists the file names (not dot-prefixed, so CLOUD sync carries it). `attachments.PrivateImages`
+owns the file; `ImpressionsService.exportImages` filters it for `DiaryExporter`, `WordPressExporter`,
+`PhotoLocations`, the gallery preview and the export dialog's image default. Inline `![](attachments/…)`
+references to a private image are left out and reported as a problem. Toggle "🔒 Private" in the
+Impression Curator writes through immediately. Stale names are pruned on rewrite.
+
+[Details](docs/adr/0005-private-images.md)
+
+## DONE 48 Private sections: hide internal notes from exports
+
+A heading starting with `internal`, `private`, `intern` or `privat` (any level,
+case-insensitive, followed by end/whitespace/`:`) marks a private block up to the next heading
+of the same or higher level, or the end of the tale. Stripped via `Markdown.stripPrivate` in
+the Diary, WordPress and social media exporters; editor, word count and files stay unchanged.
+
+- "📋 Copy Tale" is removed (raw copy: Cmd + A, Cmd + C; clean copy: Export Tale → Copy).
+- "🔒 Add Private Notes" menu item appends `## Private Notes 🔒` + placeholder bullet (renamed in todo 76).
+
+[Details](docs/48_private_sections.md)
 
 ## DONE 81 General repo housekeeping task
 

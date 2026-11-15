@@ -43,7 +43,7 @@ public class PhotoLocations {
         if (trip == null || from == null || to == null) return List.of();
         List<Path> result = new ArrayList<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            result.addAll(impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
+            result.addAll(impressions.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
         }
         return result;
     }
@@ -69,7 +69,7 @@ public class PhotoLocations {
         Map<LocalDate, List<Photo>> result = new LinkedHashMap<>();
         if (trip == null || from == null || to == null) return result;
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            List<Photo> photos = photos(impressions.images(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
+            List<Photo> photos = photos(impressions.exportImages(ImpressionSource.TRIP_ATTACHMENTS, trip, d));
             if (!photos.isEmpty()) result.put(d, photos);
         }
         return result;
