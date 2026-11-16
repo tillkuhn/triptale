@@ -8,6 +8,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class SlugsTest {
 
     @Test
+    void isValidAcceptsLettersDigitsUnderscore() {
+        org.junit.jupiter.api.Assertions.assertTrue(Slugs.isValid("moroccoTrain_2"));
+    }
+
+    @Test
+    void isValidRejectsEmptySpacesAndSymbols() {
+        org.junit.jupiter.api.Assertions.assertFalse(Slugs.isValid(""));
+        org.junit.jupiter.api.Assertions.assertFalse(Slugs.isValid(null));
+        org.junit.jupiter.api.Assertions.assertFalse(Slugs.isValid("a b"));
+        org.junit.jupiter.api.Assertions.assertFalse(Slugs.isValid("a-b"));
+        org.junit.jupiter.api.Assertions.assertFalse(Slugs.isValid("Köln"));
+    }
+
+    @Test
+    void toSlugOrEmptyReturnsEmptyInsteadOfThrowing() {
+        assertEquals("", Slugs.toSlugOrEmpty("!!!"));
+        assertEquals("", Slugs.toSlugOrEmpty(""));
+    }
+
+    @Test
     void capitalizesEachWordAndJoinsWithoutSeparators() {
         assertEquals("TourDeFrance", Slugs.toSlug("Tour de France"));
     }

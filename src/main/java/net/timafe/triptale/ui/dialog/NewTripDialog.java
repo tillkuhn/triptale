@@ -1,7 +1,13 @@
 package net.timafe.triptale.ui.dialog;
 
+import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import net.timafe.triptale.domain.TripRef;
+import net.timafe.triptale.util.Slugs;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
@@ -36,7 +42,7 @@ public final class NewTripDialog {
     }
 
     /** {@code activity} is the trip's default for new entries, null for none. */
-    public record Spec(String name, LocalDate startDate, String activity, String postTags, String description, Optional<FirstEntry> firstEntry) {}
+    public record Spec(String name, String slug, LocalDate startDate, String activity, String postTags, String description, Optional<FirstEntry> firstEntry) {}
 
     /**
      * All fields but {@code title} are null unless the trip was created from a GPX import;
@@ -82,18 +88,31 @@ public final class NewTripDialog {
         File[] gpxFile = new File[1];
 
         GridPane grid = Dialogs.formGrid();
+        TextField slugField = new TextField();
+        slugField.setPromptText("Folder name");
+        slugField.setTooltip(new Tooltip("Folder name of the trip. Follows the name until edited; fixed once the trip is created"));
+        Button slugResetButton = new Button("↺");
+        slugResetButton.setTooltip(new Tooltip("Derive the slug from the name again"));
+        HBox.setHgrow(slugField, Priority.ALWAYS);
+        HBox slugBox = new HBox(6, slugField, slugResetButton);
+        Label slugHintLabel = new Label();
+        slugHintLabel.getStyleClass().add("hint-label");
+
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
-        grid.add(new Label("Start date:"), 0, 1);
-        grid.add(startField, 1, 1);
-        grid.add(new Label("Default activity:"), 0, 2);
-        grid.add(activityCombo, 1, 2);
-        grid.add(new Label("Default post tags:"), 0, 3);
-        grid.add(postTagsField, 1, 3);
-        grid.add(new Label("Description:"), 0, 4);
-        grid.add(descArea, 1, 4);
-        grid.add(initFirstEntryCheck, 1, 5);
-        grid.add(importHintLabel, 1, 6);
+        grid.add(new Label("Slug:"), 0, 1);
+        grid.add(slugBox, 1, 1);
+        grid.add(slugHintLabel, 1, 2);
+        grid.add(new Label("Start date:"), 0, 3);
+        grid.add(startField, 1, 3);
+        grid.add(new Label("Default activity:"), 0, 4);
+        grid.add(activityCombo, 1, 4);
+        grid.add(new Label("Default post tags:"), 0, 5);
+        grid.add(postTagsField, 1, 5);
+        grid.add(new Label("Description:"), 0, 6);
+        grid.add(descArea, 1, 6);
+        grid.add(initFirstEntryCheck, 1, 7);
+        grid.add(importHintLabel, 1, 8);
 
         dlg.getDialogPane().setContent(grid);
         ButtonType importType = new ButtonType("Import GPX…", ButtonBar.ButtonData.LEFT);
@@ -134,9 +153,43 @@ public final class NewTripDialog {
 
         Node okButton = dlg.getDialogPane().lookupButton(ButtonType.OK);
         okButton.setDisable(true);
-        Runnable refreshOk = () -> okButton.setDisable(
-                nameField.getText().isBlank() || startField.getValue() == null);
-        nameField.textProperty().addListener((o, a, b) -> refreshOk.run());
+        boolean[] autoSlug = {true};
+        boolean[] settingSlug = {false};
+        Runnable refreshOk = () -> {
+            String slug = slugField.getText().trim();
+            String problem = null;
+            if (!nameField.getText().isBlank() || !slug.isEmpty()) {
+                if (!Slugs.isValid(slug)) {
+                    problem = "Slug: letters, digits and _ only";
+                } else if (startField.getValue() != null
+                        && store.tripExists(new TripRef(startField.getValue().getYear(), slug))) {
+                    problem = "A trip with this slug already exists in " + startField.getValue().getYear();
+                }
+            }
+            boolean invalid = problem != null;
+            slugHintLabel.setText(problem == null ? "" : problem);
+            slugField.pseudoClassStateChanged(PseudoClass.getPseudoClass("error"), invalid);
+            okButton.setDisable(nameField.getText().isBlank() || startField.getValue() == null
+                    || !Slugs.isValid(slug) || invalid);
+        };
+        Runnable deriveSlug = () -> {
+            settingSlug[0] = true;
+            slugField.setText(Slugs.toSlugOrEmpty(nameField.getText()));
+            settingSlug[0] = false;
+        };
+        nameField.textProperty().addListener((o, a, b) -> {
+            if (autoSlug[0]) deriveSlug.run();
+            refreshOk.run();
+        });
+        slugField.textProperty().addListener((o, a, b) -> {
+            if (!settingSlug[0]) autoSlug[0] = false;
+            refreshOk.run();
+        });
+        slugResetButton.setOnAction(e -> {
+            autoSlug[0] = true;
+            deriveSlug.run();
+            refreshOk.run();
+        });
         startField.valueProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
@@ -150,7 +203,7 @@ public final class NewTripDialog {
                             gpxDistanceKm[0], gpxAltitudeGainM[0], gpxFile[0])
                     : new FirstEntry(name, null, null, null, null, null, null, null));
         }
-        return Optional.of(new Spec(name, startField.getValue(), ActivityChoices.value(activityCombo),
+        return Optional.of(new Spec(name, slugField.getText().trim(), startField.getValue(), ActivityChoices.value(activityCombo),
                 postTagsField.getText(), descArea.getText(), firstEntry));
     }
 }

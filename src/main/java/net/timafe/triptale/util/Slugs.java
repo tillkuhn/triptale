@@ -10,6 +10,22 @@ public final class Slugs {
 
     private Slugs() {}
 
+    private static final Pattern VALID = Pattern.compile("[A-Za-z0-9_]+");
+
+    /** True for a non-empty run of ASCII letters, digits and underscores. */
+    public static boolean isValid(String slug) {
+        return slug != null && VALID.matcher(slug).matches();
+    }
+
+    /** The slug for {@code input}, or "" when none can be derived. */
+    public static String toSlugOrEmpty(String input) {
+        try {
+            return toSlug(input);
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
+    }
+
     public static String toSlug(String input) {
         if (input == null || input.isBlank()) {
             throw new IllegalArgumentException("slug input must not be blank");

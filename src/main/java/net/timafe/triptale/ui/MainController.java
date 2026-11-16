@@ -90,7 +90,6 @@ import net.timafe.triptale.util.Lengths;
 import net.timafe.triptale.util.Markdown;
 import net.timafe.triptale.util.RelativeTime;
 import net.timafe.triptale.util.SaveTarget;
-import net.timafe.triptale.util.Slugs;
 import net.timafe.triptale.util.TextStats;
 import net.timafe.triptale.util.TravelWisdoms;
 import net.timafe.triptale.weather.OpenMeteoClient;
@@ -643,7 +642,7 @@ public class MainController implements StatusSink {
         if (spec.isEmpty()) return;
         String name = spec.get().name();
         LocalDate start = spec.get().startDate();
-        String slug = Slugs.toSlug(name);
+        String slug = spec.get().slug();
         int year = start.getYear();
         TripRef ref = new TripRef(year, slug);
         if (store.tripExists(ref)) {
