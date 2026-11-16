@@ -110,7 +110,7 @@ public final class TripDetailsDialog {
         nameField.setPrefColumnCount(28);
         TextArea descArea = new TextArea(originalDesc);
         descArea.setWrapText(true);
-        descArea.setPrefRowCount(4);
+        descArea.setPrefRowCount(5);
         descArea.setPrefColumnCount(60);
 
         DatePicker endField = new DatePicker(trip.endDate());
@@ -150,8 +150,6 @@ public final class TripDetailsDialog {
         grid.add(nameField, 1, row++);
         grid.add(new Label("Slug:"), 0, row);
         grid.add(new Label(trip.slug()), 1, row++);
-        grid.add(new Label("Year:"), 0, row);
-        grid.add(new Label(Integer.toString(trip.year())), 1, row++);
         grid.add(new Label("Start / end date:"), 0, row);
         grid.add(dateBox, 1, row++);
         grid.add(new Label("Default activity:"), 0, row);

@@ -179,7 +179,7 @@ public final class PostOfficeDialog {
         dlg = new Dialog<>();
         dlg.initOwner(owner);
         dlg.setTitle("📮 Post Office");
-        dlg.setHeaderText(trip.name());
+        dlg.setHeaderText(trip.year() + " · " + trip.name());
         dlg.setResizable(true);
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().setPrefWidth(720);
