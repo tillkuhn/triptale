@@ -151,7 +151,8 @@ public class MarkdownStore {
                     asDate(data.get("end_date")),
                     description,
                     asString(data.get("activity")),
-                    asString(data.get("post_tags"))
+                    asString(data.get("post_tags")),
+                    Boolean.TRUE.equals(data.get("track_totals"))
             ));
         } catch (IOException e) {
             throw new StorageException("Failed to load trip: " + ref.path(), e);
@@ -168,6 +169,7 @@ public class MarkdownStore {
         if (trip.endDate() != null) fm.put("end_date", trip.endDate().toString());
         if (trip.postTags() != null) fm.put("post_tags", trip.postTags());
         fm.put("start_date", trip.startDate() == null ? null : trip.startDate().toString());
+        if (trip.trackTotals()) fm.put("track_totals", true);
         fm.put("type", TRIP_TYPE);
         try {
             String description = trip.description() == null ? "" : trip.description();

@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 96
+## Next Todo: 97
 
 ## 94 GPX Gecko: handle sidecar files next to the GPX exports
 
@@ -123,6 +123,13 @@ we already have delete tale, but should be also possible to delete entire trip, 
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
 ---
+
+## DONE 96 Trip Totals: Track totals per default activity (L)
+
+Trip gets a 'Track Totals' checkbox next to Default activity (frontmatter track_totals: true, only effective with an activity set). When on, totals count only days with the default activity: export stats line, Tales label running total in the editor, one merged line in Trip Details.
+Decisions in the details doc.
+
+[Details](docs/96_trip_totals_track_totals_per_default_activity.md)
 
 ## DONE 95 Map Assistant: "Show Route" button with a copy-and-paste place list
 

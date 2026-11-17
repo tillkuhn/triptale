@@ -42,7 +42,7 @@ public final class NewTripDialog {
     }
 
     /** {@code activity} is the trip's default for new entries, null for none. */
-    public record Spec(String name, String slug, LocalDate startDate, String activity, String postTags, String description, Optional<FirstEntry> firstEntry) {}
+    public record Spec(String name, String slug, LocalDate startDate, String activity, boolean trackTotals, String postTags, String description, Optional<FirstEntry> firstEntry) {}
 
     /**
      * All fields but {@code title} are null unless the trip was created from a GPX import;
@@ -63,6 +63,7 @@ public final class NewTripDialog {
         DatePicker startField = new DatePicker(LocalDate.now());
         startField.setConverter(Dialogs.isoDateConverter());
         ComboBox<String> activityCombo = ActivityChoices.newComboBox(null);
+        CheckBox trackTotalsCheck = ActivityChoices.newTrackTotalsCheck(activityCombo, false);
         TextField postTagsField = new TextField();
         postTagsField.setPromptText("WordPress tags, semicolon-separated");
         postTagsField.setTooltip(new Tooltip("Only a starting suggestion for the tags of a new Post"));
@@ -106,7 +107,7 @@ public final class NewTripDialog {
         grid.add(new Label("Start date:"), 0, 3);
         grid.add(startField, 1, 3);
         grid.add(new Label("Default activity:"), 0, 4);
-        grid.add(activityCombo, 1, 4);
+        grid.add(new HBox(12, activityCombo, trackTotalsCheck), 1, 4);
         grid.add(new Label("Default post tags:"), 0, 5);
         grid.add(postTagsField, 1, 5);
         grid.add(new Label("Description:"), 0, 6);
@@ -204,6 +205,6 @@ public final class NewTripDialog {
                     : new FirstEntry(name, null, null, null, null, null, null, null));
         }
         return Optional.of(new Spec(name, slugField.getText().trim(), startField.getValue(), ActivityChoices.value(activityCombo),
-                postTagsField.getText(), descArea.getText(), firstEntry));
+                ActivityChoices.trackTotals(trackTotalsCheck), postTagsField.getText(), descArea.getText(), firstEntry));
     }
 }

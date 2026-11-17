@@ -8,6 +8,8 @@ import java.time.temporal.ChronoUnit;
  * created rather than inherited at read time; normalized by {@link Activity#normalize}, null = none.
  * {@code postTags} is a semicolon-separated string of WordPress tags that merely pre-fills a new Post
  * (a one-time copy, never kept in sync); blank = null.
+ * {@code trackTotals} (todo 96) asks for totals over the days with the default activity only; it is kept
+ * even while no activity is set but only takes effect with one, see {@link #tracksTotals()}.
  */
 public record Trip(
         int year,
@@ -17,16 +19,27 @@ public record Trip(
         LocalDate endDate,
         String description,
         String activity,
-        String postTags
+        String postTags,
+        boolean trackTotals
 ) {
     public Trip {
         activity = Activity.normalize(activity);
         postTags = postTags == null || postTags.isBlank() ? null : postTags.strip();
     }
 
+    /** A trip that doesn't track totals. */
+    public Trip(int year, String slug, String name, LocalDate startDate, LocalDate endDate, String description, String activity, String postTags) {
+        this(year, slug, name, startDate, endDate, description, activity, postTags, false);
+    }
+
     /** A trip without default post tags. */
     public Trip(int year, String slug, String name, LocalDate startDate, LocalDate endDate, String description, String activity) {
         this(year, slug, name, startDate, endDate, description, activity, null);
+    }
+
+    /** True if totals are tracked for the default activity: the flag is set and there is an activity. */
+    public boolean tracksTotals() {
+        return trackTotals && activity != null;
     }
 
     /** A trip without a default activity. */

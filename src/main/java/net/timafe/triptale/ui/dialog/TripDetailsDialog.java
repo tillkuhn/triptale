@@ -5,6 +5,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
@@ -23,6 +24,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.HBox;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripTotals;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.ui.ActivityChoices;
 import net.timafe.triptale.ui.Dialogs;
@@ -52,44 +54,17 @@ public final class TripDetailsDialog {
         this.attachmentsDir = attachmentsDir;
     }
 
-    /**
-     * Aggregated distance/altitude over a trip's entries. "Active" days are those with a
-     * recorded value greater than zero, so rest days don't drag the averages down.
-     */
-    private record Stats(int entries, double totalDistance, int activeDays,
-                         double totalAltitude, int activeAltitudeDays) {
-
-        String distanceText() {
-            return activeDays > 0
-                    ? String.format(Locale.ROOT, "%.1f km (avg %.1f km / active day, %d days)",
-                            totalDistance, totalDistance / activeDays, activeDays)
-                    : String.format(Locale.ROOT, "%.1f km", totalDistance);
+    /** The merged totals line (todo 96): scoped to the default activity, or a hint while tracking is off. */
+    private static String totalsText(Optional<TripTotals> totals) {
+        if (totals.isEmpty()) return "tracking off (needs a default activity and Track Totals)";
+        TripTotals t = totals.get();
+        // Activity goes in the value, like the export bullet, so the "Totals:" label keeps a fixed width
+        String text = String.format(Locale.ROOT, "%.1f km %s", t.distance(), Activity.labelFor(t.activity()));
+        if (t.altitude() > 0) text += String.format(Locale.ROOT, ", %.0f m", t.altitude());
+        if (t.activeDays() > 0) {
+            text += String.format(Locale.ROOT, " (avg %.1f km / active day, %d days)", t.distance() / t.activeDays(), t.activeDays());
         }
-
-        String altitudeText() {
-            return activeAltitudeDays > 0
-                    ? String.format(Locale.ROOT, "%.0f m (avg %.0f m / active day, %d days)",
-                            totalAltitude, totalAltitude / activeAltitudeDays, activeAltitudeDays)
-                    : String.format(Locale.ROOT, "%.0f m", totalAltitude);
-        }
-    }
-
-    private Stats collectStats(Trip trip, List<DiaryEntry> entries) {
-        double totalDistance = 0;
-        double totalAltitude = 0;
-        int activeDays = 0;
-        int activeAltitudeDays = 0;
-        for (DiaryEntry e : entries) {
-            if (e.distance() != null && e.distance() > 0) {
-                totalDistance += e.distance();
-                activeDays++;
-            }
-            if (e.altitudeMeters() != null && e.altitudeMeters() > 0) {
-                totalAltitude += e.altitudeMeters();
-                activeAltitudeDays++;
-            }
-        }
-        return new Stats(entries.size(), totalDistance, activeDays, totalAltitude, activeAltitudeDays);
+        return text;
     }
 
     /**
@@ -101,7 +76,6 @@ public final class TripDetailsDialog {
     public Optional<Result> showAndWait(Trip trip) {
         List<LocalDate> dates = store.listEntryDates(trip.ref());
         List<DiaryEntry> entries = dates.stream().map(d -> store.loadEntry(trip.ref(), d)).toList();
-        Stats stats = collectStats(trip, entries);
         String originalDesc = trip.description() == null ? "" : trip.description();
         LocalDate maxEntryDate = dates.isEmpty() ? null : dates.get(dates.size() - 1);
 
@@ -135,6 +109,18 @@ public final class TripDetailsDialog {
         dateBox.setAlignment(Pos.CENTER_LEFT);
 
         ComboBox<String> activityCombo = ActivityChoices.newComboBox(trip.activity());
+        CheckBox trackTotalsCheck = ActivityChoices.newTrackTotalsCheck(activityCombo, trip.trackTotals());
+        Label totalsLabel = new Label();
+        Label totalsTitle = new Label("Totals:");
+        Runnable refreshTotals = () -> {
+            String activity = ActivityChoices.value(activityCombo);
+            Trip current = new Trip(trip.year(), trip.slug(), trip.name(), trip.startDate(), trip.endDate(),
+                    trip.description(), activity, trip.postTags(), ActivityChoices.trackTotals(trackTotalsCheck));
+            totalsLabel.setText(totalsText(TripTotals.of(current, entries)));
+        };
+        activityCombo.valueProperty().addListener((o, a, b) -> refreshTotals.run());
+        trackTotalsCheck.selectedProperty().addListener((o, a, b) -> refreshTotals.run());
+        refreshTotals.run();
 
         TextField postTagsField = new TextField(trip.postTags() == null ? "" : trip.postTags());
         postTagsField.setPromptText("WordPress tags, semicolon-separated");
@@ -153,13 +139,11 @@ public final class TripDetailsDialog {
         grid.add(new Label("Start / end date:"), 0, row);
         grid.add(dateBox, 1, row++);
         grid.add(new Label("Default activity:"), 0, row);
-        grid.add(activityCombo, 1, row++);
+        grid.add(new HBox(12, activityCombo, trackTotalsCheck), 1, row++);
+        grid.add(totalsTitle, 0, row);
+        grid.add(totalsLabel, 1, row++);
         grid.add(new Label("Default post tags:"), 0, row);
         grid.add(postTagsField, 1, row++);
-        grid.add(new Label("Total distance:"), 0, row);
-        grid.add(new Label(stats.distanceText()), 1, row++);
-        grid.add(new Label("Total altitude:"), 0, row);
-        grid.add(new Label(stats.altitudeText()), 1, row++);
         grid.add(new Label("Description:"), 0, row);
         grid.add(descArea, 1, row);
 
@@ -168,7 +152,7 @@ public final class TripDetailsDialog {
         dlg.setHeaderText(trip.year() + " · " + trip.name());
         TableView<DiaryEntry> table = overviewTable(trip, entries, backpackCounts(trip, entries), mapDates(trip, entries));
         Tab detailsTab = new Tab("Trip Details", grid);
-        Tab overviewTab = new Tab("Tale Entries (" + stats.entries() + ")", table);
+        Tab overviewTab = new Tab("Tale Entries (" + entries.size() + ")", table);
         TabPane tabs = new TabPane(detailsTab, overviewTab);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabs.getStyleClass().add("settings-tabs");
@@ -194,6 +178,7 @@ public final class TripDetailsDialog {
                                     && descArea.getText().equals(originalDesc)
                                     && Objects.equals(newEnd, trip.endDate())
                                     && Objects.equals(ActivityChoices.value(activityCombo), trip.activity())
+                                    && ActivityChoices.trackTotals(trackTotalsCheck) == trip.trackTotals()
                                     && Objects.equals(blankToNull(postTagsField.getText()), trip.postTags())));
         };
         Node openButton = dlg.getDialogPane().lookupButton(openType);
@@ -219,6 +204,7 @@ public final class TripDetailsDialog {
         descArea.textProperty().addListener((o, a, b) -> refreshOk.run());
         endField.valueProperty().addListener((o, a, b) -> refreshOk.run());
         activityCombo.valueProperty().addListener((o, a, b) -> refreshOk.run());
+        trackTotalsCheck.selectedProperty().addListener((o, a, b) -> refreshOk.run());
         postTagsField.textProperty().addListener((o, a, b) -> refreshOk.run());
 
         Optional<ButtonType> result = dlg.showAndWait();
@@ -231,12 +217,13 @@ public final class TripDetailsDialog {
         LocalDate newEnd = endField.getValue();
         String newActivity = ActivityChoices.value(activityCombo);
         String newPostTags = blankToNull(postTagsField.getText());
+        boolean newTrackTotals = ActivityChoices.trackTotals(trackTotalsCheck);
         Trip edited = null;
         if (!(newName.equals(trip.name()) && newDesc.equals(originalDesc)
                 && Objects.equals(newEnd, trip.endDate()) && Objects.equals(newActivity, trip.activity())
-                && Objects.equals(newPostTags, trip.postTags()))) {
+                && Objects.equals(newPostTags, trip.postTags()) && newTrackTotals == trip.trackTotals())) {
             // Slug and year are immutable — a rename never moves the directory.
-            edited = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity, newPostTags);
+            edited = new Trip(trip.year(), trip.slug(), newName, trip.startDate(), newEnd, newDesc, newActivity, newPostTags, newTrackTotals);
         }
         return edited == null && openDate == null ? Optional.empty() : Optional.of(new Result(edited, openDate));
     }

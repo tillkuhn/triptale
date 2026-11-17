@@ -84,7 +84,9 @@ class DiaryExporterTest {
         assertTrue(out.startsWith("# Alps 2025"), "should start with trip name heading");
         assertTrue(out.contains("Summer ride"));
         assertTrue(out.contains("July 1st 2025 → July 2nd 2025 (2 days, 2 entries)"), out);
-        assertTrue(out.contains("Distance: 82.5 km, 1200 m climbed"), out);
+        // No Track Totals: summing mixed activities is meaningless, so no stats bullet
+        assertFalse(out.contains("- Distance:"), out);
+        assertFalse(out.contains("- Altitude:"), out);
         assertTrue(out.contains("## A → B\n\n*Tuesday, July 1st 2025 · Day 1 · 📏 ~50 km, 800 m climbed*"), out);
         assertTrue(out.contains("## B → C\n\n*Wednesday, July 2nd 2025 · Day 2 · 📏 32.5 km, 400 m climbed*"), out);
         assertTrue(out.contains("Day one"));
@@ -602,6 +604,31 @@ class DiaryExporterTest {
     }
 
     @Test
+    void trackedTotalsCountOnlyTheDefaultActivityAndNameIt() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", "bikepacking", null, true);
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1))
+                .activity("bikepacking").distance(50.5).altitudeMeters(800.0).title("A").tales("x").build());
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 2))
+                .activity("railtripping").distance(1000.5).altitudeMeters(5.0).title("B").tales("y").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("- Distance: 50.5 km Bikepacking, 800 m climbed"), out);
+    }
+
+    @Test
+    void trackedTotalsShowZeroKmWithTheActivity() {
+        Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "", "bikepacking", null, true);
+        store.saveTrip(trip);
+        store.saveEntry(trip.ref(), DiaryEntry.builder(LocalDate.of(2025, 7, 1)).title("A").tales("x").build());
+
+        String out = exporter.exportTrip(trip);
+
+        assertTrue(out.contains("- Distance: 0 km Bikepacking\n"), out);
+    }
+
+    @Test
     void germanTripLanguageTranslatesWordsDatesAndNumbers() {
         setDefaultTripLanguage("de");
         Trip trip = new Trip(2025, "alps-2025", "Alps 2025", LocalDate.of(2025, 7, 1), null, "");
@@ -615,7 +642,7 @@ class DiaryExporterTest {
         String out = exporter.exportTrip(trip);
 
         assertTrue(out.contains("- Zeitraum: 1. Juli 2025 → 1. Juli 2025 (1 Tag, 1 Eintrag)"), out);
-        assertTrue(out.contains("- Distanz: 50,5 km, 800 m bergauf"), out);
+        assertFalse(out.contains("- Distanz:"), out); // no Track Totals, no stats bullet
         assertTrue(out.contains("## A → B\n\n*Dienstag, 1. Juli 2025 · Tag 1 · 📏 50,5 km, 800 m bergauf · 🧭 51°29′N 0°01′W*"), out);
         assertTrue(out.contains("* 🛏 Übernachten: [nice.hotel.com](https://nice.hotel.com/)"), out);
         // No German label for a custom verb: falls back to the capitalized verb

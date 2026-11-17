@@ -6,6 +6,7 @@ import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Post;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripTotals;
 import net.timafe.triptale.i18n.ExportTexts;
 import net.timafe.triptale.i18n.TripLanguage;
 import net.timafe.triptale.impressions.ImageFilter;
@@ -202,15 +203,6 @@ public class DiaryExporter {
                 .map(d -> store.loadEntry(trip.ref(), d))
                 .toList();
 
-        double totalDistance = entries.stream()
-                .filter(e -> e.distance() != null)
-                .mapToDouble(DiaryEntry::distance)
-                .sum();
-        double totalAltitude = entries.stream()
-                .filter(e -> e.altitudeMeters() != null)
-                .mapToDouble(DiaryEntry::altitudeMeters)
-                .sum();
-
         StringBuilder entriesBlock = new StringBuilder();
         for (DiaryEntry e : entries) {
             if (entriesBlock.length() > 0) entriesBlock.append("\n\n");
@@ -228,7 +220,10 @@ public class DiaryExporter {
         vars.put("daysLabel", texts.plural("days", totalDays));
         vars.put("entryCount", Integer.toString(dates.size()));
         vars.put("entriesLabel", texts.plural("entries", dates.size()));
-        vars.put("statsLine", statsLine(totalDistance, totalAltitude, texts));
+        // Summing mixed activities (bike + train) means nothing, so without tracking there is no stats bullet
+        vars.put("statsLine", TripTotals.of(trip, entries)
+                .map(t -> activityStatsLine(t, texts))
+                .orElse(""));
         // Place names from the Coordinator's lookup are OpenStreetMap data (ODbL): credit once at the end
         String attribution = "";
         if (entries.stream().anyMatch(EntryFacts::hasPlace)) {
@@ -369,21 +364,14 @@ public class DiaryExporter {
     }
 
     /**
-     * The trip summary's one stats bullet, e.g. {@code "- Distance: 82.5 km, 1200 m climbed"};
-     * altitude never shows on its own line, and either figure drops out entirely at 0 (no
-     * measurement at all is not the same as "0 km"). Null — no bullet at all — when both are 0.
+     * The stats bullet of a trip that tracks totals (todo 96), e.g. {@code "- Distance: 412.6 km Bikepacking, 4605 m climbed"}.
+     * The distance always shows, even at 0, naming the activity; the climb drops out at 0.
      */
-    private static String statsLine(double totalDistance, double totalAltitude, ExportTexts texts) {
-        String distance = totalDistance > 0 ? texts.distance(totalDistance) + " km" : null;
-        String climb = totalAltitude > 0 ? texts.altitude(totalAltitude) + " m " + texts.word("facts.climbed") : null;
-        if (distance != null) {
-            String value = climb == null ? distance : distance + ", " + climb;
-            return "- " + texts.word("stats.distance") + ": " + value;
-        }
-        if (climb != null) {
-            return "- " + texts.word("stats.altitude") + ": " + texts.altitude(totalAltitude) + " m";
-        }
-        return "";
+    private static String activityStatsLine(TripTotals t, ExportTexts texts) {
+        String km = t.distance() > 0 ? texts.distance(t.distance()) : "0";
+        String value = km + " km " + texts.activityLabel(t.activity());
+        if (t.altitude() > 0) value += ", " + texts.altitude(t.altitude()) + " m " + texts.word("facts.climbed");
+        return "- " + texts.word("stats.distance") + ": " + value;
     }
 
     /** Replaces {@code {{t.key}}} placeholders with words in the trip language. */

@@ -1,6 +1,8 @@
 package net.timafe.triptale.ui;
 
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Tooltip;
 import javafx.util.StringConverter;
 import net.timafe.triptale.domain.Activity;
 
@@ -47,5 +49,34 @@ public final class ActivityChoices {
     /** The selected activity, null for "not set". */
     public static String value(ComboBox<String> combo) {
         return Activity.normalize(combo.getValue());
+    }
+
+    private static final String STORED = "trackTotalsStored";
+
+    /**
+     * The "Track Totals" checkbox (todo 96) next to {@code combo}: disabled and shown unchecked
+     * while no activity is set, but the flag the user chose is remembered and comes back with an
+     * activity. Read it with {@link #trackTotals}.
+     */
+    public static CheckBox newTrackTotalsCheck(ComboBox<String> combo, boolean stored) {
+        CheckBox check = new CheckBox("Track Totals");
+        check.setTooltip(new Tooltip("Totals (export, editor, trip details) count only days with the default activity"));
+        check.getProperties().put(STORED, stored);
+        Runnable sync = () -> {
+            boolean hasActivity = value(combo) != null;
+            check.setDisable(!hasActivity);
+            check.setSelected(hasActivity && (Boolean) check.getProperties().get(STORED));
+        };
+        check.selectedProperty().addListener((o, a, b) -> {
+            if (!check.isDisabled()) check.getProperties().put(STORED, b);
+        });
+        combo.valueProperty().addListener((o, a, b) -> sync.run());
+        sync.run();
+        return check;
+    }
+
+    /** The remembered flag, which only takes effect with an activity (see {@code Trip#tracksTotals}). */
+    public static boolean trackTotals(CheckBox check) {
+        return (Boolean) check.getProperties().get(STORED);
     }
 }

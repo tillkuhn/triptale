@@ -42,10 +42,12 @@ import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.PlaceLookup;
 import net.timafe.triptale.config.AppSettings;
 import net.timafe.triptale.config.TripTaleProperties;
+import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
 import net.timafe.triptale.domain.Link;
 import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.domain.Trip;
+import net.timafe.triptale.domain.TripTotals;
 import net.timafe.triptale.domain.TripRef;
 import net.timafe.triptale.domain.Weather;
 import net.timafe.triptale.domain.WeatherCode;
@@ -478,9 +480,9 @@ public class MainController implements StatusSink {
             loadEntry();
             updatePrevButtonState();
         });
-        distanceField.textProperty().addListener((o, a, b) -> updateDirty());
-        altField.textProperty().addListener((o, a, b) -> updateDirty());
-        activityCombo.valueProperty().addListener((o, a, b) -> updateDirty());
+        distanceField.textProperty().addListener((o, a, b) -> { updateDirty(); updateTalesLabel(); });
+        altField.textProperty().addListener((o, a, b) -> { updateDirty(); updateTalesLabel(); });
+        activityCombo.valueProperty().addListener((o, a, b) -> { updateDirty(); updateTalesLabel(); });
         normalizeOnFocusLost(distanceField, Lengths::parseDistanceKm, Lengths::formatDistance);
         normalizeOnFocusLost(altField, Lengths::parseAltitudeM, Lengths::formatAltitude);
         titleField.textProperty().addListener((o, a, b) -> updateDirty());
@@ -650,7 +652,7 @@ public class MainController implements StatusSink {
             error("A trip named \"" + slug + "\" already exists for " + year);
             return;
         }
-        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity(), spec.get().postTags()));
+        store.saveTrip(new Trip(year, slug, name, start, null, spec.get().description(), spec.get().activity(), spec.get().postTags(), spec.get().trackTotals()));
         addPending(ref.path(), CREATE);
         spec.get().firstEntry().ifPresent(fe -> {
             DiaryEntry entry = DiaryEntry.builder(start)
@@ -1356,7 +1358,37 @@ public class MainController implements StatusSink {
         }
         int words = TextStats.wordCount(text);
         String ago = talesUpdatedAt == null ? "just now" : RelativeTime.ago(talesUpdatedAt, Instant.now());
-        talesLabel.setText("🐉 Tales · " + words + " word" + (words == 1 ? "" : "s") + " updated " + ago);
+        talesLabel.setText("🐉 Tales · " + words + " word" + (words == 1 ? "" : "s") + " updated " + ago + runningTotalText());
+    }
+
+    /**
+     * " · Σ 110 km of Bikepacking so far (140 m up)" (todo 96): the trip's default-activity days up to the
+     * selected one, with the form's own values for this day. Empty unless the trip tracks totals and this
+     * day has that activity.
+     */
+    private String runningTotalText() {
+        Trip trip = tripCombo.getValue();
+        LocalDate date = datePicker.getValue();
+        if (trip == null || date == null || !trip.tracksTotals()
+                || !trip.activity().equals(ActivityChoices.value(activityCombo))) return "";
+        List<DiaryEntry> entries = new java.util.ArrayList<>();
+        for (LocalDate d : store.listEntryDates(trip.ref())) {
+            if (!d.equals(date)) entries.add(store.loadEntry(trip.ref(), d));
+        }
+        Double distance = null;
+        Double alt = null;
+        try {
+            distance = Lengths.parseDistanceKm(distanceField.getText());
+            alt = Lengths.parseAltitudeM(altField.getText());
+        } catch (IllegalArgumentException ex) {
+            // half-typed value: this day counts as not recorded until it parses
+        }
+        entries.add(DiaryEntry.builder(date).activity(trip.activity()).distance(distance).altitudeMeters(alt).build());
+        return TripTotals.of(trip, entries, date).map(t -> {
+            String text = " · Σ " + String.format(Locale.ROOT, "%.1f", t.distance()).replaceFirst("\\.0$", "") + " km of "
+                    + Activity.labelFor(t.activity()) + " so far";
+            return t.altitude() > 0 ? text + String.format(Locale.ROOT, " (%.0f m up)", t.altitude()) : text;
+        }).orElse("");
     }
 
     private void snapshotBaseline() {

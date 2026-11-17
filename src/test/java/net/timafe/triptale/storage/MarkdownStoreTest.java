@@ -663,6 +663,17 @@ class MarkdownStoreTest {
     }
 
     @Test
+    void trackTotalsRoundTripsAndIsOmittedWhenFalse() throws IOException {
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps", LocalDate.of(2025, 7, 1), null, "", "bikepacking", null, true));
+        assertTrue(store.loadTrip(ALPS_2025).orElseThrow().trackTotals());
+        assertTrue(Files.readString(store.tripDir(ALPS_2025).resolve("README.md")).contains("track_totals: true"));
+
+        store.saveTrip(new Trip(2025, "alps-2025", "Alps", LocalDate.of(2025, 7, 1), null, "", "bikepacking", null, false));
+        assertFalse(store.loadTrip(ALPS_2025).orElseThrow().trackTotals());
+        assertFalse(Files.readString(store.tripDir(ALPS_2025).resolve("README.md")).contains("track_totals"));
+    }
+
+    @Test
     void postTagsRoundTripAndAreOmittedWhenEmpty() throws IOException {
         var post = net.timafe.triptale.domain.Post.of("t", "T", "", LocalDate.of(2025, 7, 1), LocalDate.of(2025, 7, 1));
 
