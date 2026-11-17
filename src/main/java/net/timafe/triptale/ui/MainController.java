@@ -778,7 +778,7 @@ public class MainController implements StatusSink {
         }
         File file = null;
         if (!found.isEmpty()) {
-            Optional<GpxCandidatesDialog.Choice> choice = GpxCandidatesDialog.showAndWait(day, found);
+            Optional<GpxCandidatesDialog.Choice> choice = GpxCandidatesDialog.showAndWait(day, found, gpxCandidates.importedNames(trip, day));
             if (choice.isEmpty()) return;
             if (choice.get().file() != null) file = choice.get().file().toFile();
         }
@@ -809,7 +809,9 @@ public class MainController implements StatusSink {
         }
         DiaryEntry existing = store.loadEntry(trip.ref(), p.date());
         String tourText = GpxCandidates.sidecarOf(file.toPath()).flatMap(TourSidecar::tourText).orElse(null);
-        Optional<GpxImportDialog.Selection> selection = GpxImportDialog.showAndWait(p, existing, file.getName(), tourText);
+        Link tourLink = GpxCandidates.sidecarOf(file.toPath()).flatMap(TourSidecar::webLink).orElse(null);
+        Optional<GpxImportDialog.Selection> selection =
+                GpxImportDialog.showAndWait(p, existing, file.getName(), tourText, tourLink);
         if (selection.isEmpty()) return;
         GpxImportDialog.Selection sel = selection.get();
 
@@ -847,10 +849,18 @@ public class MainController implements StatusSink {
         if (sel.activity() && p.activity() != null) {
             activityCombo.setValue(p.activity());
         }
+        String linkStatus = "";
+        if (sel.link() && tourLink != null) {
+            SequencedMap<String, Link> updated = new LinkedHashMap<>(links);
+            updated.put(LinkKind.TRACK.key(), tourLink);
+            links = updated;
+            updateLinksButton();
+            linkStatus = ", link " + tourLink.displayText();
+        }
         updateCoordinatesButton();
         updateGpxButton(trip, p.date());
         updateDirty();
-        status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus);
+        status("Imported \"" + p.name() + "\" for " + p.date() + attachmentStatus + linkStatus);
     }
 
     @FXML

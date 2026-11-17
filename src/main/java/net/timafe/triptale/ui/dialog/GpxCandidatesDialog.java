@@ -38,7 +38,8 @@ public final class GpxCandidatesDialog {
     }
 
     /** Empty when cancelled. The first candidate is pre-selected. */
-    public static Optional<Choice> showAndWait(LocalDate date, List<Path> candidates) {
+    public static Optional<Choice> showAndWait(LocalDate date, List<Path> candidates,
+                                                java.util.Set<String> imported) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("🦎 GPX Gecko");
         dialog.setHeaderText(candidates.size() == 1
@@ -56,7 +57,8 @@ public final class GpxCandidatesDialog {
                 String stem = name.toLowerCase(java.util.Locale.ROOT).endsWith(".gpx")
                         ? name.substring(0, name.length() - 4) : name;
                 String kind = GpxCandidates.sidecarOf(p).isPresent() ? "gpx+json" : "gpx only";
-                setText(kind + "  ·  " + sizes.get(p) + "  ·  " + stem);
+                String mark = imported.contains(name.toLowerCase(java.util.Locale.ROOT)) ? "🎒" : "⬜";
+                setText(mark + "  " + kind + "  ·  " + sizes.get(p) + "  ·  " + stem);
             }
         });
         list.getSelectionModel().selectFirst();
@@ -65,7 +67,7 @@ public final class GpxCandidatesDialog {
         Path folder = candidates.getFirst().getParent();
         Label folderLabel = new Label("📂 " + (folder == null ? "" : UiText.homeRelative(folder)));
         folderLabel.setWrapText(true);
-        VBox box = new VBox(8, folderLabel, list, new Label("Or choose another file with Browse…"));
+        VBox box = new VBox(8, folderLabel, list, new Label("🎒 = already in this day's backpack. Or choose another file with Browse…"));
         box.setPadding(new Insets(10));
 
         ButtonType browse = new ButtonType("Browse…", ButtonBar.ButtonData.LEFT);

@@ -10,6 +10,8 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import net.timafe.triptale.domain.Activity;
 import net.timafe.triptale.domain.DiaryEntry;
+import net.timafe.triptale.domain.Link;
+import net.timafe.triptale.domain.LinkKind;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.Coordinates;
 import net.timafe.triptale.util.GpxImport;
@@ -28,21 +30,23 @@ public final class GpxImportDialog {
 
     /**
      * One checkbox's answer per field; {@code altitude} is irrelevant when the GPX had none,
-     * {@code tale} (append the sidecar's text, todo 94) when there was no text.
+     * {@code tale} (append the sidecar's text, todo 94) when there was no text,
+     * {@code link} (the sidecar's {@code web_url} as {@code url_track}) when there was none.
      */
     public record Selection(boolean title, boolean startCoords, boolean stopCoords,
                              boolean distance, boolean altitude, boolean activity, boolean copyAttachment,
-                             boolean tale) {}
+                             boolean tale, boolean link) {}
 
     private GpxImportDialog() {}
 
     /**
      * Empty when cancelled. {@code existing} is the on-disk entry for {@code parsed.date()}
      * (empty fields for a brand-new day), {@code fileName} labels the "copy to attachments" row,
-     * {@code tourText} is the JSON sidecar's description/comment or {@code null} if there is none.
+     * {@code tourText} is the JSON sidecar's description/comment or {@code null} if there is none,
+     * {@code tourLink} its {@code web_url} link or {@code null}.
      */
     public static Optional<Selection> showAndWait(GpxImport.Parsed parsed, DiaryEntry existing, String fileName,
-                                                  String tourText) {
+                                                  String tourText, Link tourLink) {
         GridPane grid = new GridPane();
         grid.setHgap(14);
         grid.setVgap(8);
@@ -103,6 +107,13 @@ public final class GpxImportDialog {
                     taleEmpty ? "(none)" : preview(existing.tales()), preview(tourText), taleEmpty);
         }
 
+        CheckBox linkCheck = null;
+        if (tourLink != null) {
+            Link current = existing.links() == null ? null : existing.links().get(LinkKind.TRACK.key());
+            linkCheck = addRow(grid, row++, "Track link",
+                    current == null ? "(none)" : current.displayText(), tourLink.displayText(), current == null);
+        }
+
         CheckBox copyCheck = addRow(grid, row, "GPX attachment", "(not copied)", fileName, true);
 
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -118,6 +129,7 @@ public final class GpxImportDialog {
         CheckBox finalAltitudeCheck = altitudeCheck;
         CheckBox finalActivityCheck = activityCheck;
         CheckBox finalTaleCheck = taleCheck;
+        CheckBox finalLinkCheck = linkCheck;
         return Optional.of(new Selection(
                 titleCheck.isSelected(),
                 startCheck.isSelected(),
@@ -126,7 +138,8 @@ public final class GpxImportDialog {
                 finalAltitudeCheck != null && finalAltitudeCheck.isSelected(),
                 finalActivityCheck != null && finalActivityCheck.isSelected(),
                 copyCheck.isSelected(),
-                finalTaleCheck != null && finalTaleCheck.isSelected()));
+                finalTaleCheck != null && finalTaleCheck.isSelected(),
+                finalLinkCheck != null && finalLinkCheck.isSelected()));
     }
 
     private static String preview(String text) {

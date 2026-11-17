@@ -3,7 +3,11 @@ package net.timafe.triptale.impressions;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import net.timafe.triptale.domain.Link;
+
 import java.io.IOException;
+import java.net.URI;
+import java.util.Locale;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,6 +32,39 @@ public final class TourSidecar {
         } catch (IOException | RuntimeException e) {
             return Optional.empty();
         }
+    }
+
+    /** The tour's {@code web_url} as a named link ({@code "Komoot Tour 123"}), if present and a valid http(s) URL. */
+    public static Optional<Link> webLink(Path json) {
+        try {
+            return webLink(JSON.readTree(Files.readString(json)));
+        } catch (IOException | RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    static Optional<Link> webLink(JsonNode root) {
+        String url = root.path("web_url").asText("").strip();
+        if (!Link.isHttpUrl(url)) return Optional.empty();
+        return Optional.of(Link.of(url, nameFor(url)));
+    }
+
+    /** Link name from the URL: host without {@code www.} and top-level domain, then the path segments, capitalized. */
+    static String nameFor(String url) {
+        URI uri = URI.create(url);
+        String host = uri.getHost().toLowerCase(Locale.ROOT);
+        if (host.startsWith("www.")) host = host.substring(4);
+        List<String> words = new ArrayList<>(List.of(host.split("\\.")));
+        if (words.size() > 1) words.removeLast();
+        if (uri.getPath() != null) {
+            for (String seg : uri.getPath().split("/")) if (!seg.isBlank()) words.add(seg);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String w : words) {
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+        }
+        return sb.toString();
     }
 
     static Optional<String> tourText(JsonNode root) {

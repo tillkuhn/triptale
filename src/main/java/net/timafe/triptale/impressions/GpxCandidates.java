@@ -63,6 +63,14 @@ public class GpxCandidates {
         return p.resolveSibling(name.substring(0, name.lastIndexOf('.')) + ext);
     }
 
+    /** Lower-cased file names in the day's backpack; a candidate counts as imported if its {@code .gpx} name is in here. */
+    public java.util.Set<String> importedNames(Trip trip, LocalDate date) {
+        if (trip == null || date == null) return java.util.Set.of();
+        return attachmentsDir.dayFiles(trip.ref(), date).stream()
+                .map(f -> f.name().toLowerCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     /** True if the day's backpack already holds a {@code .gpx} file. */
     public boolean hasImported(Trip trip, LocalDate date) {
         if (trip == null || date == null) return false;

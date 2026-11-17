@@ -49,4 +49,22 @@ class TourSidecarTest {
         assertTrue(TourSidecar.tourText(bad).isEmpty());
         assertTrue(TourSidecar.tourText(tempDir.resolve("missing.json")).isEmpty());
     }
+
+    @Test
+    void webLink_namedFromUrl() throws IOException {
+        Path f = tempDir.resolve("w.json");
+        Files.writeString(f, "{\"web_url\":\"https://www.komoot.com/tour/3016247348\",\"tour\":{}}");
+        var link = TourSidecar.webLink(f).orElseThrow();
+        assertEquals("https://www.komoot.com/tour/3016247348", link.url());
+        assertEquals("Komoot Tour 3016247348", link.name());
+    }
+
+    @Test
+    void webLink_absentOrInvalidIsEmpty() throws IOException {
+        Path f = tempDir.resolve("n.json");
+        Files.writeString(f, "{\"web_url\":\"nope\"}");
+        assertTrue(TourSidecar.webLink(f).isEmpty());
+        Files.writeString(f, "{}");
+        assertTrue(TourSidecar.webLink(f).isEmpty());
+    }
 }
