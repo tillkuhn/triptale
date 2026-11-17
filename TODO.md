@@ -8,7 +8,22 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 97
+## Next Todo: 98
+
+## 97 GPX map: route points from sidecar photos, Nth-point fallback
+
+A GPX track is just `trkpt`s (lat/lon/ele/time), no waypoints or POIs. To derive a reasonable map/route line without drawing a straight start-to-end line or rendering every point, use a few well-chosen points.
+
+- Preferred: photo locations from the sidecar JSON (`cover_images[].location.lat/lng`). Photos mark interesting spots and a tour rarely has more than ~20. All 7840 photos in the exports have a location (checked), `alt` is always 0.
+- Order by `cover_images[].index` (position along the route), not `created_at` (upload time, identical for all photos of a tour).
+- Dedupe: the cover photo is listed twice (same `id`/coordinates).
+- Bracket with the first and last GPX point as start and end.
+- Cap: photo counts vary a lot (checked on 588 sidecars: 76 tours with none, median 12, 139 with more than 20, max 50). If more than ~20, thin to ~20 by even spread along `index` and/or dropping points very close to a neighbour (e.g. 2359/2360, 3653/3656 in the 2020-09-20 zorro tour, probably a later bulk upload next to the original photo).
+- `index` matches the trackpoint position (max 5655 of 6781 points in that tour), so photos can be snapped to the GPX. Real `alt` and `created_at` only on some photos, 0 / upload time on others.
+- Fallback (no sidecar or no photos): sample every Nth GPX point, with N chosen so the result is a reasonable count (e.g. ~20), always keeping first and last.
+- Open: use the points only as markers on the full track line, or as the simplified line itself? Photo coordinates probably sit on/near the track (unverified).
+
+[Details](docs/97_gpx_map_points.md)
 
 ## 94 GPX Gecko: handle sidecar files next to the GPX exports
 
