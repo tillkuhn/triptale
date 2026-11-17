@@ -671,7 +671,7 @@ public final class MapAssistantDialog {
                 statusSink.status("📋 Route copied (" + RouteText.places(range).size() + " places)");
             });
             copy.setDisable(text.isEmpty());
-            Dialogs.showInfo("Route", RouteText.places(range).size() + " places", new VBox(8, area, copy));
+            Dialogs.showInfo("🧭 Sgt. Mapper's Lonely Router", RouteText.places(range).size() + " places", new VBox(8, area, copy));
         }
 
         private MapPoints dayPoints() {
