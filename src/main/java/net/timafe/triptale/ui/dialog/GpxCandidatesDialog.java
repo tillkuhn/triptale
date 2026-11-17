@@ -7,6 +7,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.layout.VBox;
+import net.timafe.triptale.impressions.GpxCandidates;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.util.ByteSizes;
 import net.timafe.triptale.ui.UiText;
@@ -50,12 +51,17 @@ public final class GpxCandidatesDialog {
         list.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
             @Override protected void updateItem(Path p, boolean empty) {
                 super.updateItem(p, empty);
-                setText(empty || p == null ? null : p.getFileName() + "  ·  " + sizes.get(p));
+                if (empty || p == null) { setText(null); return; }
+                String name = p.getFileName().toString();
+                String stem = name.toLowerCase(java.util.Locale.ROOT).endsWith(".gpx")
+                        ? name.substring(0, name.length() - 4) : name;
+                String kind = GpxCandidates.sidecarOf(p).isPresent() ? "gpx+json" : "gpx only";
+                setText(kind + "  ·  " + sizes.get(p) + "  ·  " + stem);
             }
         });
         list.getSelectionModel().selectFirst();
         list.setPrefHeight(Math.min(220, 40 + candidates.size() * 28));
-        list.setPrefWidth(560);
+        list.setPrefWidth(680);
         Path folder = candidates.getFirst().getParent();
         Label folderLabel = new Label("📂 " + (folder == null ? "" : UiText.homeRelative(folder)));
         folderLabel.setWrapText(true);

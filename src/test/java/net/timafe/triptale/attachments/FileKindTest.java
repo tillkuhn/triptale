@@ -14,6 +14,7 @@ class FileKindTest {
         assertEquals(FileKind.TEXT, FileKind.of("notes.md"));
         assertEquals(FileKind.PDF, FileKind.of("ticket.PDF"));
         assertEquals(FileKind.VIDEO, FileKind.of("clip.mov"));
+        assertEquals(FileKind.JSON, FileKind.of("tour.JSON"));
     }
 
     @Test

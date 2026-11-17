@@ -8,7 +8,23 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 94
+## Next Todo: 95
+
+## 94 GPX Gecko: handle sidecar files next to the GPX exports
+
+The GPX exports in the folder matched by `gpxFilePattern` now come with a JSON sidecar next to each `.gpx`. GPX Gecko must cope with it: candidate matching (`impressions.GpxCandidates`) must not list or trip over the sidecar, and the tour's text should be offered on import (e.g. to prefill the day's body). Decide whether the sidecar also travels with the GPX into the day's attachments.
+
+Sidecar facts (checked against all 588 sidecars):
+- Location: `<export>/tour_recorded|tour_planned/<date>_<id>_<slug>_<changed>.json`, same basename as the GPX. UTF-8 JSON. Top-level keys: `version`, `tour`, `rating`, `cover_images`, `timeline`, `participants`, `comments`, `likes`.
+- Description: `tour.description`. Absent in 444 files, `""` in 80; treat absent, null and `""` as "no description". `strip()` it (20 have leading/trailing whitespace).
+- Comments: `comments[]` (`[]` if none), oldest first (`created_at` ISO UTC sorted). Text in `comments[i].text`; author in `_embedded.creator.username` / `.display_name`. 92 comments contain `\n`, keep them.
+- Comments by others are included (100 of 565). Keep only own ones: `_embedded.creator.username == tour._embedded.creator.username`. Don't rely on the first comment being the owner's, even though it is in this data.
+- 48 tours have several own comments: take the first only, or join all own comments in order (blank line between)? Decide.
+- Suggested rule for "the text of a tour": description if non-empty after stripping, otherwise the first own comment. Here 337 tours have only a comment, 64 have both.
+
+Decisions (first cut, done): candidate list shows one row per tour (`gpx+json` / `gpx only`); import copies the sidecar into the backpack next to the GPX (Kind "JSON"); the import dialog has a "Text" row (`TourSidecar.tourText`): description if non-blank, else all own comments oldest first joined by a blank line (not both). Ticked by default when the tale is empty, otherwise "Text (append)", unticked, appended after a blank line. Inserted as-is, no heading; no sidecar or no text = no row.
+
+[Background](docs/90_external_track_suggestions.md)
 
 ## 88 Share trip form between New Trip and Trip Details (M)
 

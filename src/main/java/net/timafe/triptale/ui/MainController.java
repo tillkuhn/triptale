@@ -65,6 +65,7 @@ import net.timafe.triptale.ui.dialog.EmojiPickerDialog;
 import net.timafe.triptale.ui.dialog.ExportDiaryDialog;
 import net.timafe.triptale.ui.dialog.PostOfficeDialog;
 import net.timafe.triptale.impressions.GpxCandidates;
+import net.timafe.triptale.impressions.TourSidecar;
 import net.timafe.triptale.ui.dialog.GpxCandidatesDialog;
 import net.timafe.triptale.ui.dialog.GpxImportDialog;
 import net.timafe.triptale.ui.dialog.ImageViewerDialog;
@@ -805,15 +806,19 @@ public class MainController implements StatusSink {
             return;
         }
         DiaryEntry existing = store.loadEntry(trip.ref(), p.date());
-        Optional<GpxImportDialog.Selection> selection = GpxImportDialog.showAndWait(p, existing, file.getName());
+        String tourText = GpxCandidates.sidecarOf(file.toPath()).flatMap(TourSidecar::tourText).orElse(null);
+        Optional<GpxImportDialog.Selection> selection = GpxImportDialog.showAndWait(p, existing, file.getName(), tourText);
         if (selection.isEmpty()) return;
         GpxImportDialog.Selection sel = selection.get();
 
         String attachmentStatus = "";
         if (sel.copyAttachment()) {
             try {
-                Path attachmentCopy = attachmentsDir.addFiles(trip.ref(), p.date(), List.of(file.toPath())).getFirst();
-                attachmentStatus = ", GPX saved to " + UiText.homeRelative(attachmentCopy);
+                List<Path> files = new java.util.ArrayList<>(List.of(file.toPath()));
+                GpxCandidates.sidecarOf(file.toPath()).ifPresent(files::add);
+                Path attachmentCopy = attachmentsDir.addFiles(trip.ref(), p.date(), files).getFirst();
+                attachmentStatus = ", GPX" + (files.size() > 1 ? " + JSON" : "") + " saved to "
+                        + UiText.homeRelative(attachmentCopy);
             } catch (RuntimeException e) {
                 error(UiText.describe(e));
                 return;
@@ -821,6 +826,10 @@ public class MainController implements StatusSink {
         }
         datePicker.setValue(p.date());
         if (sel.title()) titleField.setText(p.name());
+        if (sel.tale() && tourText != null) {
+            String current = talesArea.getText() == null ? "" : talesArea.getText().stripTrailing();
+            talesArea.setText(current.isEmpty() ? tourText : current + "\n\n" + tourText);
+        }
         if (sel.startCoords()) {
             startLat = p.lat();
             startLon = p.lon();

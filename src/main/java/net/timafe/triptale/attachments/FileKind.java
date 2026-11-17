@@ -16,6 +16,7 @@ public enum FileKind {
     TEXT("📄", "Text", Set.of("txt", "md")),
     PDF("📕", "PDF", Set.of("pdf")),
     VIDEO("🎬", "Video", Set.of("mov", "mp4")),
+    JSON("🧾", "JSON", Set.of("json")),
     OTHER("📦", "Other", Set.of());
 
     private final String emoji;

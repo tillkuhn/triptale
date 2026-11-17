@@ -26,17 +26,23 @@ import java.util.Optional;
  */
 public final class GpxImportDialog {
 
-    /** One checkbox's answer per field; {@code altitude} is irrelevant when the GPX had none. */
+    /**
+     * One checkbox's answer per field; {@code altitude} is irrelevant when the GPX had none,
+     * {@code tale} (append the sidecar's text, todo 94) when there was no text.
+     */
     public record Selection(boolean title, boolean startCoords, boolean stopCoords,
-                             boolean distance, boolean altitude, boolean activity, boolean copyAttachment) {}
+                             boolean distance, boolean altitude, boolean activity, boolean copyAttachment,
+                             boolean tale) {}
 
     private GpxImportDialog() {}
 
     /**
      * Empty when cancelled. {@code existing} is the on-disk entry for {@code parsed.date()}
-     * (empty fields for a brand-new day), {@code fileName} labels the "copy to attachments" row.
+     * (empty fields for a brand-new day), {@code fileName} labels the "copy to attachments" row,
+     * {@code tourText} is the JSON sidecar's description/comment or {@code null} if there is none.
      */
-    public static Optional<Selection> showAndWait(GpxImport.Parsed parsed, DiaryEntry existing, String fileName) {
+    public static Optional<Selection> showAndWait(GpxImport.Parsed parsed, DiaryEntry existing, String fileName,
+                                                  String tourText) {
         GridPane grid = new GridPane();
         grid.setHgap(14);
         grid.setVgap(8);
@@ -90,6 +96,13 @@ public final class GpxImportDialog {
                     Lengths.formatAltitude(parsed.altitudeGainM()), altitudeEmpty);
         }
 
+        CheckBox taleCheck = null;
+        if (tourText != null) {
+            boolean taleEmpty = existing.tales() == null || existing.tales().isBlank();
+            taleCheck = addRow(grid, row++, taleEmpty ? "Text" : "Text (append)",
+                    taleEmpty ? "(none)" : preview(existing.tales()), preview(tourText), taleEmpty);
+        }
+
         CheckBox copyCheck = addRow(grid, row, "GPX attachment", "(not copied)", fileName, true);
 
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -104,6 +117,7 @@ public final class GpxImportDialog {
         if (result.isEmpty() || result.get() != ButtonType.OK) return Optional.empty();
         CheckBox finalAltitudeCheck = altitudeCheck;
         CheckBox finalActivityCheck = activityCheck;
+        CheckBox finalTaleCheck = taleCheck;
         return Optional.of(new Selection(
                 titleCheck.isSelected(),
                 startCheck.isSelected(),
@@ -111,7 +125,13 @@ public final class GpxImportDialog {
                 distanceCheck.isSelected(),
                 finalAltitudeCheck != null && finalAltitudeCheck.isSelected(),
                 finalActivityCheck != null && finalActivityCheck.isSelected(),
-                copyCheck.isSelected()));
+                copyCheck.isSelected(),
+                finalTaleCheck != null && finalTaleCheck.isSelected()));
+    }
+
+    private static String preview(String text) {
+        String oneLine = text.strip().replaceAll("\\s+", " ");
+        return oneLine.length() <= 40 ? oneLine : oneLine.substring(0, 39) + "…";
     }
 
     private static String activityLabel(String activity) {

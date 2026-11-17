@@ -67,6 +67,23 @@ class GpxCandidatesTest {
     }
 
     @Test
+    void find_sidecarsDoNotProduceExtraEntries() throws IOException {
+        Path dir = Files.createDirectories(tempDir.resolve("tours"));
+        Files.writeString(dir.resolve("2024-09-06_111_a.gpx"), "x");
+        Files.writeString(dir.resolve("2024-09-06_111_a.json"), "{}");
+        Files.writeString(dir.resolve("2024-09-06_222_b.gpx"), "x");
+        Files.writeString(dir.resolve("2024-09-06_333_orphan.json"), "{}");
+        pattern(dir + "/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*");
+
+        List<Path> found = candidates.find(trip, DAY);
+
+        assertEquals(List.of("2024-09-06_111_a.gpx", "2024-09-06_222_b.gpx"),
+                found.stream().map(p -> p.getFileName().toString()).toList());
+        assertTrue(GpxCandidates.sidecarOf(found.get(0)).isPresent());
+        assertFalse(GpxCandidates.sidecarOf(found.get(1)).isPresent());
+    }
+
+    @Test
     void find_resolvesUserVariable() throws IOException {
         String user = System.getProperty("user.name");
         Path dir = Files.createDirectories(tempDir.resolve(user));
