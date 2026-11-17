@@ -16,7 +16,7 @@ emoji and English label, declared alphabetically by key.
 | cycling      | 🚴    | Cycling      | Radeln            |
 | ferryhopping | ⛴    | Ferryhopping | –                 |
 | hiking       | 🚶    | Hiking       | Wandern           |
-| motorcycling | 🏍    | Motorcycling | Motorradfahren    |
+| motorcycling | 🏍    | Motorcycling | Mopedfahren       |
 | railtripping | 🚆    | Railtripping | –                 |
 | relaxing     | 🏖    | Relaxing     | –                 |
 | roadtripping | 🚗    | Roadtripping | –                 |
