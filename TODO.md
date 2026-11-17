@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 95
+## Next Todo: 96
 
 ## 94 GPX Gecko: handle sidecar files next to the GPX exports
 
@@ -123,6 +123,22 @@ we already have delete tale, but should be also possible to delete entire trip, 
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
 ---
+
+## DONE 95 Map Assistant: "Show Route" button with a copy-and-paste place list
+
+In `ui/dialog/MapAssistantDialog`, add an action button "🧭 Show Route" between "Save as…" and "Close". It opens a small dialog showing the trip's route as one line of text, for copy and paste only (fine-tuning options may follow later).
+
+Rules:
+- Take the `start_place` of every day in the selected From/To range (the same range as the map).
+- Collapse consecutive duplicates, so non-transfer days (same start place as the day before) show once.
+- On the last day of the range also append its `stop_place`, so the route covers the full trip (again without a duplicate if it equals the previous place).
+- Strip a trailing country code: a place ending in `, <ISO code>` (`"Soest, DE"` becomes `"Soest"`).
+- Join places with a right arrow (` → `).
+- Days without a `start_place` are skipped.
+
+Dialog: read-only selectable text area with the line, a "Copy" button (`Clipboards.putString`), Close. Style it via `Dialogs.applyStylesheet`. Keep the route-building logic in a JavaFX-free class (e.g. `map.RouteText`) with unit tests (dedupe, last-day stop, country stripping, missing places).
+
+Decisions: only consecutive duplicates collapse (round trips keep repeats); days without `start_place` text are skipped (coordinates are not used); missing or duplicate last-day stop is omitted; country strip is `,\s*[A-Z]{2}$`; uses the current From/To selection, no render needed; Copy keeps the dialog open. Implemented as `map.RouteText` + `MapAssistantDialog.showRoute()`. Designed for reuse: `RouteText.places(entries)` returns the plain place list, so an exporter (e.g. an intro section, separate todo) can format it itself.
 
 ## NOPE 49 Bulk import a whole trip's photo-lib impressions as attachments
 

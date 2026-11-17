@@ -15,6 +15,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -39,11 +40,13 @@ import net.timafe.triptale.map.OsmMapRenderer;
 import net.timafe.triptale.map.OsmTileClient;
 import net.timafe.triptale.map.PhotoLocations;
 import net.timafe.triptale.map.PngText;
+import net.timafe.triptale.map.RouteText;
 import net.timafe.triptale.map.TileSource;
 import net.timafe.triptale.map.TripMapSettings;
 import net.timafe.triptale.storage.LocalDir;
 import net.timafe.triptale.storage.MarkdownStore;
 import net.timafe.triptale.storage.SettingsStore;
+import net.timafe.triptale.ui.Clipboards;
 import net.timafe.triptale.ui.ConnectivityService;
 import net.timafe.triptale.ui.Dialogs;
 import net.timafe.triptale.ui.StatusSink;
@@ -188,6 +191,7 @@ public final class MapAssistantDialog {
         private final ComboBox<LocalDate> targetCombo = new ComboBox<>();
         private final Button saveButton = new Button("💾 Save");
         private final Button saveAsButton = new Button("Save as…");
+        private final Button routeButton = new Button("🧭 Show Route");
         private final ImageView imageView = new ImageView();
         private final Label message = new Label();
         private final Label icon = new Label("🗺");
@@ -279,6 +283,7 @@ public final class MapAssistantDialog {
             saveButton.setTooltip(new Tooltip("Save the map on screen to the chosen day as " + AttachmentsDir.TRIP_MAP_FILE
                     + ", so it becomes part of its gallery"));
             saveAsButton.setTooltip(new Tooltip("Save the map on screen anywhere"));
+            routeButton.setTooltip(new Tooltip("The places of the chosen range as one line to copy and paste"));
 
             imageView.setPreserveRatio(true);
             message.setWrapText(true);
@@ -318,7 +323,7 @@ public final class MapAssistantDialog {
             // Save target and buttons share the button bar, on the left. Added after setAll(): the
             // pane rebuilds the bar's buttons whenever the button types change.
             ButtonBar buttonBar = (ButtonBar) dlg.getDialogPane().lookup(".button-bar");
-            for (Node n : List.of(labeled("Save to:", targetCombo), saveButton, saveAsButton)) {
+            for (Node n : List.of(labeled("Save to:", targetCombo), saveButton, saveAsButton, routeButton)) {
                 ButtonBar.setButtonData(n, ButtonBar.ButtonData.LEFT);
                 ButtonBar.setButtonUniformSize(n, false);
                 buttonBar.getButtons().add(n);
@@ -331,6 +336,7 @@ public final class MapAssistantDialog {
             onScreenButton.setDisable(entries.isEmpty());
             saveButton.setOnAction(e -> save());
             saveAsButton.setOnAction(e -> saveAs());
+            routeButton.setOnAction(e -> showRoute());
 
             range.onChange(this::changed);
             photosCheck.selectedProperty().addListener((obs, old, sel) -> changed());
@@ -649,6 +655,23 @@ public final class MapAssistantDialog {
         private void stopPulse() {
             pulse.stop();
             frame.setOpacity(FRAME_OPACITY);
+        }
+
+        private void showRoute() {
+            List<DiaryEntry> range = rangeEntries();
+            String text = RouteText.of(range);
+            TextArea area = new TextArea(text);
+            area.setEditable(false);
+            area.setWrapText(true);
+            area.setPrefRowCount(5);
+            area.setPrefWidth(520);
+            Button copy = new Button("📋 Copy");
+            copy.setOnAction(e -> {
+                Clipboards.putString(text);
+                statusSink.status("📋 Route copied (" + RouteText.places(range).size() + " places)");
+            });
+            copy.setDisable(text.isEmpty());
+            Dialogs.showInfo("Route", RouteText.places(range).size() + " places", new VBox(8, area, copy));
         }
 
         private MapPoints dayPoints() {
