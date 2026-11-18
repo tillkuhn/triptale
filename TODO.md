@@ -8,7 +8,7 @@
 * Replace dark "Notes" emoji in Weblinks label, not enough contrast
 * Coordinator: Where is the elevation for weather?
 
-## Next Todo: 98
+## Next Todo: 99
 
 ## 97 GPX map: route points from sidecar photos, Nth-point fallback
 
@@ -140,6 +140,12 @@ we already have delete tale, but should be also possible to delete entire trip, 
 add a button to the edit trip dialogue, and let the user confirm before performing the action, preferably with some stats like "You are about to delete one trip with X entries, are you sure?"
 
 ---
+
+## DONE 98 Tailwind FM: radio_normalize.py script renames radio/ tracks to 'Title - Artist' (S)
+
+Standalone script scripts/radio_normalize.py (not part of the app): rename tracks in radio/ to the 'Title - Artist.ext' pattern of toolbox/91radio/main.go. Dry-run by default, -a/--apply renames. Details in the doc.
+
+[Details](docs/98_tailwind_fm_radio_normalize_py_script_renames_radio_tracks_t.md)
 
 ## DONE 96 Trip Totals: Track totals per default activity (L)
 
