@@ -25,51 +25,39 @@ Git + Markdown turned out to be the answer. TripTale is just a friendly UI on to
 
 ## Features ✨
 
-- **Trips and tales** — one trip per journey, one tale (Markdown entry) per day, with distance, altitude, links (track, explore, visit, dive, eat, drink, sleep, …) and start/stop coordinates. Navigate by year, trip and day (`⌘⌥←` / `⌘⌥→`).
-- **GPX import** — create a new trip or prefill a day's title and start point from a GPX file (komoot, Strava, …). With a `gpxFilePattern` pointing at your track app's backup folder, 🦎 **GPX Gecko** (the **GPX** button next to the activity) offers that day's recorded tours: 📥 a tour is waiting, ✅ a GPX is already in the backpack, ❓ nothing found. You can still pick any file.
-- **Maps** — open a day's start point in Google Maps, or see all start points of a trip on a self-rendered OpenStreetMap (OpenTopoMap tiles) map, saved to the trip's attachments so exports can reuse it.
-- **Impressions & Faves** — show that day's photos straight from your picture folders, see [below](#impressions--faves-).
-- **Export** — render a whole trip as one Markdown document (copy to clipboard) or as an HTML page with a photo gallery.
-- **Smart Sync** (`⌘K`) — commit, rebase onto the remote, push, and sync the backpack in one dialog, see [below](#git--smart-sync-).
-- **Backpack 🎒** — keep GPX files, PDFs, tickets etc. next to each day, optionally synced to S3, see [below](#backpack-).
-- **Tailwind FM 📻** (alpha) — your own little radio station: random tracks from your music pool while you write, synced between machines via S3, see [below](#tailwind-fm--alpha).
+- **Trips and tales** — one trip per journey, one tale (Markdown entry) per day with activity, distance, altitude, links (track, sleep, eat, dive, …) and start/stop points. Navigate by year, trip and day. → [Trips & totals](docs/guides/trips-and-totals.md)
+- **Totals that make sense** — bikepacking across a few ferries? **Track Totals** sums only the days of your trip's main activity: `Σ 110 km of Bikepacking so far` while you write, and in the export.
+- **Places & weather** — 🌐 **Coordinator** turns coordinates into place names (and back) via OpenStreetMap; the day's weather comes from Open-Meteo automatically. No API keys.
+- **GPX import** — start a trip or prefill a day from a GPX file; 🦎 **GPX Gecko** spots the tours your track app recorded that day.
+- **Maps** — 🗺 **Sgt. Mapper** plots a day's or a trip's points and route on a self-rendered OpenStreetMap map, with photo pins.
+- **Photos** — 📷 **Impression Curator** shows a day's photos straight from your picture folders and imports your faves. → [Impressions & Faves](docs/guides/impressions-and-faves.md)
+- **Export & publish** — a trip as one Markdown document, an HTML page with photo gallery, or WordPress blocks; 📮 **Post Office** sends blog Posts to WordPress.com as drafts. → [Export & publish](docs/guides/export-and-publish.md)
+- **Smart Sync** (`⌘K`) — commit, rebase, push and sync the backpack in one dialog; write offline for weeks, sync when you find Wi-Fi. → [Git & Smart Sync](docs/guides/git-smart-sync.md)
+- **Backpack 🎒** — GPX files, PDFs, tickets next to each day, optionally synced to your own S3 bucket. → [Backpack](docs/guides/backpack.md)
+- **Octobot's Inbox 🐙** — send notes, links and photos from your phone to a private Telegram bot and file them into the right day later. → [Octobot's Inbox](docs/guides/octobots-inbox.md)
+- **Private notes** — a heading like `## Private Notes 🔒` hides everything below it from every export.
+- **Tailwind FM 📻** (alpha) — your own little radio station with random tracks from your music pool while you write. → [Tailwind FM](docs/guides/tailwind-fm.md)
 
-## How it stores your data 💾
+## Your data is just files 💾
 
-Everything lives under one **data directory**, which is itself a git repo. You choose its location on first start (⚙ Edit Settings…); until then the app stays inert and reminds you on every launch.
+Every trip is a folder, every day a Markdown file with a small YAML header, and the whole data directory is a git repo:
 
 ```
-triptale-data/                         # git repo
-├── .gitignore                         # ignores .triptale/
-├── .triptale/                         # local to this device, never committed: app state, sync bases, caches
-├── trip.md  tale.md  type.md          # Tolaria type definitions
-├── 2026/                              # year of the trip's start date
-│   └── alps-2026/                     # trip slug, fixed at creation
-│       ├── README.md                  # the trip: name, dates, description
-│       ├── 2026-06-04-Thursday.md     # one tale per day
-│       └── 2026-06-05-Friday.md
-├── attachments/                       # the backpack (optional), see "Backpack"
-│   └── 2026/alps-2026/2026-06-04-Thursday/
-│       └── gotthard.gpx
-└── radio/                             # music pool for Tailwind FM (optional), never in git
-    └── some-artist - some-song.mp3
+triptale-data/
+└── 2026/alps-2026/
+    ├── README.md                  # the trip
+    ├── 2026-06-04-Thursday.md     # one tale per day
+    └── 2026-06-05-Friday.md
 ```
-
-A tale is just Markdown with a YAML frontmatter block — structured fields on top, the day's title as the first heading, free notes below:
 
 ```markdown
 ---
-altitude: 1840.0
-belongs_to: "[[2026/alps-2026/README]]"
+activity: cycling
 date: 2026-06-04
 distance: 87.0
-start_lat: 46.6356
-start_lon: 8.5939
-stop_lat: 46.5287
-stop_lon: 8.6097
+altitude: 1840.0
+start_place: Andermatt, CH
 type: Tale
-url_sleep: "[Hotel Lepontina](https://lepontina.ch/)"
-url_track: https://www.strava.com/activities/123456
 ---
 
 # Andermatt → Airolo
@@ -78,206 +66,39 @@ Crossed the Gotthard pass today. Strong headwind from the south,
 but the descent into Airolo was worth it.
 ```
 
-The trip's `README.md` works the same way: `start_date`, `end_date` and `type: Trip` in the frontmatter, the trip name as `# Heading`, the description below.
+No database, no schema migrations. You don't even need the app: edit the files in `vim` or [Tolaria](https://github.com/refactoringhq/tolaria), `git commit`, `git push`, and the next time you open TripTale your entries are right there. If TripTale disappears tomorrow, your trips remain a perfectly readable folder of Markdown. Details: [Data storage format](docs/guides/storage-format.md).
 
-- Frontmatter keys are always written in alphabetical order, so saving never produces a noisy diff.
-- Fields you didn't fill in are left out; `0` is a real measurement, a missing key means "not recorded".
-- `url_<verb>` keys hold a few links per day, at most one each for `track`, `explore`, `visit`, `dive`, `eat`, `drink`, `rent`, `sleep`, `listen` and `watch`: either a bare URL or `"[Name](url)"`. You edit them in the 🕸️ Weblinks Manager, and the exports list them at the end of each day (e.g. `🛏️ Sleep at: Hotel Lepontina`). `url_*` keys with any other verb are kept as they are.
-- `type: Tale` / `type: Trip`, the `belongs_to` wiki link and the `trip.md`/`tale.md`/`type.md` definitions make the data directory a valid [Tolaria](https://github.com/refactoringhq/tolaria) vault, so you can browse and edit your trips there too.
-- A trip's slug (its directory name) is derived from its name once and never changes, even if you rename the trip later.
+## Try it 🛠️
 
-That's it. No database, no schema migrations. If TripTale disappears tomorrow, your trips remain a perfectly readable folder of Markdown.
-
-## The app-free workflow ✍️
-
-Because everything is just files, **you don't actually need the app to use TripTale.** A perfectly valid workflow is:
+Requires **Java 25**; building also needs Maven.
 
 ```bash
-cd ~/triptale-data/2026/alps-2026
-vim 2026-06-04-Thursday.md          # write your day
-git add . && git commit -m "Day 4"
-git push                            # if you've set a remote
-```
-
-The next time you open the app, your entries are right there. Use the app when you want a nicer editing surface; use any editor when you don't. Both round-trip cleanly through git — Smart Sync picks up files you changed outside the app, too.
-
-## Git & Smart Sync 🔄
-
-Saving a tale (`⌘S`) writes the file to disk immediately but does **not** commit. Commits happen when you ask for them, so a day of small edits becomes one commit instead of twenty.
-
-**🔄 Smart Sync** (`⌘K`, then `Enter`) is the "make my data safe" button. It saves the open tale first, then shows a dialog with one row per step, each of which you can untick:
-
-- **Commit** — everything git sees as changed, with a generated (editable) message.
-- **Git Remote** — fetch, rebase onto the remote, push. The row shows "↓ 3 incoming · ↑ 2 outgoing" before you start. On a rebase conflict nothing is lost: the rebase is aborted, push is skipped, and you resolve it by hand (terminal, Tolaria, …) and sync again.
-- **Backpack** — only in `cloud` mode, see below.
-
-You can keep writing offline for weeks and sync the whole batch the moment you find Wi-Fi. The toolbar shows whether the git host is reachable; online-only actions are disabled while it isn't. The low-level steps (Commit, Pull Git, Push Git, Repo Advisor) are still in the **Repository** menu.
-
-To enable push/pull, add a remote to the data dir: `git -C <data-dir> remote add origin <url>`. Push and pull use your OS `git` binary, so your usual SSH keys or credential helper apply.
-
-## Backpack 🎒
-
-The backpack holds the big stuff that doesn't belong in Markdown: GPX tracks, PDFs, tickets, photos. **🎒 Add to Backpack…** (Tale Entries menu) copies files into a folder for the current day: `attachments/<year>/<slug>/<day>/`. How they are synced is set by **Backpack sync** in Settings:
-
-| Mode | What happens |
-|---|---|
-| `off` (default) | Files stay on this machine only; `attachments/` is git-ignored so it doesn't weigh down the repo. |
-| `git` | Files are committed and synced with your Markdown files. Fine for a few small files. |
-| `cloud` | Files stay out of git and are synced with an **S3 bucket** — via Smart Sync or ⛅ Push / ⛅ Pull Backpack. |
-
-Cloud sync copies both ways and never deletes: pull downloads what's missing locally (never overwriting a local file), push uploads what's new or changed (by size and MD5). Object keys mirror the local layout (`<prefix>/attachments/<year>/<slug>/<day>/<file>`), so the bucket stays browsable.
-
-For `cloud` mode you need a bucket URL (`s3://bucket/optional-prefix/`), region, and an access key ID + secret. Use a dedicated IAM user restricted to that bucket (list, get, put) rather than your own credentials. TripTale talks to S3 directly (no AWS SDK, no extra tools). The keys are stored in `settings.yml`, which lives outside the data repo and is never committed. Background and design notes: [docs/33a_attachments_mvp.md](docs/33a_attachments_mvp.md).
-
-## Tailwind FM 📻 (alpha)
-
-I listen to a lot of music on the road and like to quote the soundtrack of a day in a tale.
-**Tailwind FM** is TripTale's built-in radio station: it plays random tracks from a pool of
-favourites in `<data-dir>/radio/` while you write, and the DJ drops a line now and then. It's
-still alpha, so it's off by default: tick **Enable Tailwind FM radio** in ⚙ Edit Settings… and
-restart.
-
-- Drop `mp3`, `m4a`, `aac`, `wav` or `aif(f)` files into `radio/` (subfolders are fine;
-  **📂 Open Record Crate** gets you there). FLAC and OGG don't play.
-- The 🔊 toolbar button plays and pauses; the tooltip shows "Artist – Title" from the tags. When
-  a track ends, the next random one starts. The **Tailwind FM** menu also has Next Random Track
-  and Stop.
-- `radio/` is never committed to git (the app writes its `.gitignore`). To get your tracks onto
-  another machine, **⛅ Sync Tracks…** in the Tailwind FM menu syncs them with the backpack's S3 bucket
-  under `<prefix>/radio/`, the same way as the backpack: copy both ways, never delete. It's
-  separate from Smart Sync on purpose, so music never slows down a diary sync, and it needs
-  Backpack sync mode `cloud`.
-- On Linux, playback uses the system's FFmpeg libraries; a missing or too new FFmpeg shows up as
-  an "unsupported" error. macOS and Windows need nothing extra.
-
-Design notes: [docs/46_radio.md](docs/46_radio.md).
-
-## Impressions & Faves 📷
-
-Each entry has a **📷 Impressions 12 🗂 / 3 🎒** button: that day's images in your local photo
-library (🗂) and in the day's backpack (🎒). It opens the **Impression Curator**, where you choose the
-source — **Trip Backpack**, **Local Photo Lib**, or **Pick Folder** (any folder, e.g. a camera
-card) — narrow it to faves, tick images and **🎒 Import Selected** them into that day's backpack.
-Imports copy the originals (EXIF included); a same-named file is overwritten. The backpack
-travels with the data dir (git or S3), so unlike the photo library it's available on every
-machine.
-
-Three settings shape what counts as an impression (Settings dialog or `settings.yml`):
-
-- `impressionsBaseFilter` — space-separated filename globs, default `*.jpg *.jpeg *.png`; applied
-  to every source first, so GPX tracks, PDFs etc. never show up.
-- `impressionsFaveFilter` — space-separated globs marking faves, e.g. `*+.*` for a `+` at the end
-  of the basename; enables the **Faves only** checkbox in the viewer and the export. Both filters
-  match the filename only and ignore case.
-- `impressionsFilePattern` — where the local photo library lives, see below.
-
-The photo library pattern is a filesystem path containing `${VAR}` placeholders:
-
-| Variable         | Expands to                                  | Example              |
-|------------------|----------------------------------------------|-----------------------|
-| `${HOME}`        | user home directory                          | `/Users/alice`        |
-| `${USER}`        | OS user name (also on Windows)               | `alice`               |
-| `${TRIP_SLUG}`   | the active trip's slug                       | `iceland-roadtrip`    |
-| `${TRIP_YEAR}`   | the active trip's start-date year            | `2026`                |
-| `${TRIP_MONTH}`  | the active trip's start-date month, 2-digit  | `06`                  |
-| `${TRIP_DAY}`    | the active trip's start-date day, 2-digit    | `04`                  |
-| `${ENTRY_YEAR}`  | the entry's year                             | `2026`                |
-| `${ENTRY_MONTH}` | the entry's month, 2-digit                   | `08`                  |
-| `${ENTRY_DAY}`   | the entry's day of month, 2-digit            | `07`                  |
-
-After substitution, the pattern is split on `/` and matched one directory level at a time —
-**every** segment may contain wildcards, not just the filename:
-
-- `*` matches any run of characters, `?` matches exactly one — both only within a single
-  segment, never across a `/`.
-- A segment with no wildcard must match an existing file/directory exactly.
-- A segment with a wildcard is matched against that directory's children; if more than one
-  matches, the first one (sorted by name) is used and a warning is logged — it doesn't fail.
-- Resolved directories are cached for the session. If the directory part only uses trip
-  variables, that's one lookup per trip and only the final filename glob is re-evaluated as
-  you navigate between days; `${ENTRY_*}` in a directory segment makes it one lookup per day.
-  Missing folders are cached too, so a folder you create while the app runs needs a restart.
-
-Expansion happens at the moment images are actually looked up, not when settings are saved —
-so pointing at a USB drive or NAS that isn't always mounted just yields a count of 0
-rather than an error.
-
-Examples, from simplest to most specific:
-
-```
-${HOME}/Pictures/00_Faves/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
-```
-One shared folder for every trip; photos are matched purely by date.
-
-```
-${HOME}/Pictures/${TRIP_YEAR}/${TRIP_MONTH}_??_${TRIP_SLUG}/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
-```
-A per-trip folder, e.g. `Pictures/2026/06_ab_iceland-roadtrip/output/` — the `??` absorbs two
-extra characters you typed by hand between month and slug when naming the folder.
-
-```
-${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_??_${TRIP_SLUG}/output/${ENTRY_YEAR}${ENTRY_MONTH}${ENTRY_DAY}*.jpg
-```
-Same idea, but year/month/slug combined into one directory name instead of nested folders,
-e.g. `Pictures/2026_06_ab_iceland-roadtrip/output/`.
-
-```
-${HOME}/Pictures/${TRIP_YEAR}_${TRIP_MONTH}_*/${ENTRY_YEAR}_${ENTRY_MONTH}_${ENTRY_DAY}/*.jpg
-```
-One sub-folder per day inside the trip folder, e.g. `Pictures/2026_06_iceland/2026_08_07/`.
-
-## Export 📤
-
-**⇧ Export Diary…** renders the trip as a single Markdown document — headings per day, cumulative distance and altitude totals — which you can copy to the clipboard, or open as an HTML page in your browser, optionally with each day's impressions (from the photo library or the backpack, all or faves only) as a photo gallery. Switch **Format** to **WordPress** to get block markup for a blog post instead: day headings, distance and climb, the tales as editable blocks and a gallery per day. Paste it into the WordPress block editor's Code editor (Cmd + Opt + Shift + M). Gallery images are hotlinked from the backpack, so they need a **Backpack public URL** in Settings (e.g. a CloudFront distribution, see `terraform/README.md`) and a Smart Sync before you publish. A **From / To** range narrows it to some days, with totals for just those; **⇧ Export Tale** next to Save exports only the current day. Export uses a handful of small Mustache-style templates in `src/main/resources/export/` if you want to tweak the output.
-
-## Run it 🛠️
-
-Requires **Java 25**. Building also needs Maven (`make` uses `mvnd` if it's installed, plain `mvn` otherwise).
-
-```bash
-make run        # build + launch via Maven — best while developing
-make run-fast   # launch with a JDK AOT cache — ~1.5 s faster startup, best for daily use
-make build      # build target/triptale.jar without running tests
+make run        # build + launch
+make run-fast   # launch with a JDK AOT cache, ~1.5 s faster startup
 make test       # run unit tests
-make app        # macOS only: build TripTale.app (target/dist/)
 make help       # list all targets
 ```
 
-`make run-fast` rebuilds the jar when the sources changed. On its first run (and after every rebuild or JDK upgrade) a window opens and **closes by itself** after a few seconds: that's a training run recording the cache. Let it finish; the real app opens right after. Details and measurements: [docs/43_startup_performance.md](docs/43_startup_performance.md).
+On first start, pick your data directory in ⚙ Edit Settings…. Prebuilt Linux jars are attached to every GitHub release; macOS and Windows build locally. Everything else is in [Install & run](docs/guides/install-and-run.md) and [Configuration](docs/guides/configuration.md).
 
-**A jar runs only on the OS it was built on** — it bundles that platform's JavaFX native libraries. On macOS and Windows, build it yourself.
+## Guides 📚
 
-### Linux without Maven
+Usage and setup how-tos live in [`docs/guides/`](docs/guides/README.md):
 
-Every release on GitHub has a prebuilt `triptale-linux.jar` (x86_64). You only need a JDK 25:
-
-```bash
-java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -jar triptale-linux.jar
-```
-
-For the faster AOT startup there, see "Using it on a machine without Maven" in [docs/43_startup_performance.md](docs/43_startup_performance.md).
-
-### Windows notes
-
-- `make` needs a POSIX shell (e.g. Git Bash) and uses plain `mvn` on Windows. `make run` automatically activates the `windows-javafx` Maven profile, which puts the JavaFX jars on the module path. Without `make`: `mvn -Pwindows-javafx javafx:run`.
-- `make run-jar` / `make run-fast` work the same as on macOS and Linux.
-
-Java may print warnings about restricted native access or `sun.misc.Unsafe` while JavaFX loads, and one about an "Unsupported JavaFX configuration". They're harmless; the `make` targets filter the latter.
-
-## Configuration ⚙️
-
-Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `settings.yml`:
-
-| Setting | Notes |
+| Guide | What you'll find |
 |---|---|
-| `dataDir` | The data directory / git repo, e.g. `${HOME}/git/triptale-data` (`${HOME}` and `${USER}` work). Changing it needs a restart. |
-| `git.authorName`, `git.authorEmail` | Commit author; blank falls back to your git config. |
-| `impressionsFilePattern`, `impressionsBaseFilter`, `impressionsFaveFilter`, `impressionsGridColumns` | See [Impressions & Faves](#impressions--faves-). |
-| `gpxFilePattern` | Where recorded tours are backed up, same placeholders as the photo pattern, e.g. `${HOME}/tours/${ENTRY_YEAR}-${ENTRY_MONTH}-${ENTRY_DAY}_*.gpx`. Blank = no suggestions. |
-| `attachments.*` | Backpack sync mode and S3 settings, see [Backpack](#backpack-). `publicBaseUrl` (optional) is the public HTTPS address of `attachments/`, for WordPress export images. The same bucket also syncs Tailwind FM's tracks. |
-| `radioEnabled` | Shows the Tailwind FM menu and 🔊 button, see [Tailwind FM](#tailwind-fm--alpha). Needs a restart. |
+| [Install & run](docs/guides/install-and-run.md) | Build and start the app on macOS, Linux and Windows |
+| [Configuration](docs/guides/configuration.md) | Every setting in `settings.yml` / ⚙ Edit Settings… |
+| [Trips & totals](docs/guides/trips-and-totals.md) | Default activity and per-activity totals |
+| [Data storage format](docs/guides/storage-format.md) | Folder layout, frontmatter keys, working without the app |
+| [Git & Smart Sync](docs/guides/git-smart-sync.md) | Commit, rebase, push and backpack sync in one dialog |
+| [Backpack](docs/guides/backpack.md) | GPX files, PDFs and tickets per day, optionally on S3 |
+| [Impressions & Faves](docs/guides/impressions-and-faves.md) | Photos per day, library patterns, faves filter |
+| [Export & publish](docs/guides/export-and-publish.md) | Markdown, HTML, WordPress, Post Office |
+| [Octobot's Inbox](docs/guides/octobots-inbox.md) | Notes and photos from your phone via Telegram |
+| [Tailwind FM](docs/guides/tailwind-fm.md) | The built-in radio station (alpha) |
 
-`settings.yml` lives in `$HOME/.config/triptale/` on macOS and Linux, and in `%APPDATA%\triptale\` on Windows. It belongs to the machine, not to the data repo. To use a different settings directory (e.g. a second profile, or one on a USB stick for travel), set `TRIPTALE_SETTINGS_DIR` or pass `-Dtriptale.settings-dir=/path`.
+The design notes behind each feature are the numbered files in [`docs/`](docs/).
 
 ## Tech stack 🧰
 
@@ -287,6 +108,7 @@ Almost everything is set at runtime in **⚙ Edit Settings…** and stored in `s
 - **JGit** for in-process git operations (init, commit, status); `fetch`/`pull`/`push` use the OS `git` binary
 - **Jackson YAML** for frontmatter and settings
 - **commonmark** for HTML export, **metadata-extractor** for photo EXIF data
+- Open-Meteo (weather) and Nominatim (place lookup) over plain `java.net.http`, no API keys
 - A small hand-rolled S3 client (SigV4 over `java.net.http`) for the backpack and Tailwind FM's tracks
 - **Maven** as the build system; a thin `Makefile` wraps the common targets
 
@@ -296,7 +118,7 @@ The interesting bit architecturally is that JavaFX's `Application.init()` boots 
 
 This is a hobby project, but PRs, issues, and ideas are welcome. A few ground rules:
 
-- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, `attachments`, `impressions`, `radio`, `sync`, and `domain` packages.
+- Keep JavaFX imports out of the `storage`, `git`, `config`, `export`, `attachments`, `impressions`, `map`, `radio`, `sync`, `weather`, `weblink`, `wordpress`, `inbox` and `domain` packages.
 - Domain types are records — keep them plain.
 - Constructor injection only, no field `@Autowired`.
 - New write operations save to disk, then call `addPending(...)` in `MainController` — never commit from the storage layer.

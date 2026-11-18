@@ -47,6 +47,7 @@ java --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -j
   **stays in `docs/` when the todo is done** (there is no `docs/done/` any more); record the
   final decisions in it and mark the todo DONE in `TODO.md`. Bigger architecture decisions
   go to `docs/adr/`.
+- `docs/guides/` holds the user-facing how-tos (install, configuration, backpack, export, …); `README.md` stays a short feature overview that links there. New usage documentation goes into a guide, not into the README.
 
 ---
 
