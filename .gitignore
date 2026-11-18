@@ -18,3 +18,5 @@ target/jpackage-input/
 triptale-*.jar
 
 .env
+__pycache__/
+*.pyc
